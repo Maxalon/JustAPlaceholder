@@ -96,6 +96,7 @@ object OracleParser {
         if (Regex("""^~ enters(?: the battlefield)?$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisEnters
         if (Regex("""^~ dies$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisDies
         if (Regex("""^~ leaves the battlefield$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisLeavesBattlefield
+        if (Regex("""^~ attacks$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisAttacks
         return Trigger.Unknown(c)
     }
 

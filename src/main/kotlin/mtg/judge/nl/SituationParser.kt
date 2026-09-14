@@ -155,6 +155,8 @@ class SituationParser(private val names: NameIndex) {
             when (ctx.lastVerb) {
                 "have" -> { addObject(card, actor ?: ctx.lastOwner, false, ctx); return true }
                 "cast" -> { emitCast(subject ?: "opp", card, "", m, ctx); return true }
+                "attack" -> { val who = ctx.lastActor ?: "me"; val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx); ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(other(who) ?: "opp")); return true }
+                "block" -> { val who = ctx.lastActor ?: "opp"; val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx); val attacker = ctx.events.lastOrNull { it.verb == "attack" }?.obj; ctx.events += EventSpec("block", player = who, obj = id, targets = listOfNotNull(attacker)); return true }
                 else -> return false
             }
         }
@@ -201,14 +203,14 @@ class SituationParser(private val names: NameIndex) {
             val who = actor ?: subject ?: "me"
             val card = m.cards.getValue(r.groupValues[1])
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
-            ctx.events += EventSpec("attack", player = who, obj = id, targets = targetsIn(r.groupValues[2], m, ctx).ifEmpty { listOf(other(who) ?: "opp") }); ctx.lastActor = who; ctx.lastMentioned = id; return true
+            ctx.events += EventSpec("attack", player = who, obj = id, targets = targetsIn(r.groupValues[2], m, ctx).ifEmpty { listOf(other(who) ?: "opp") }); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
         }
         Regex("""^(?:blocks?|blocking)(?: it| that| the attacker)?(?: with)?\s+(?:an? |the |my |their )?(c\d+)(.*)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "opp"
             val card = m.cards.getValue(r.groupValues[1])
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
             val attacker = ctx.events.lastOrNull { it.verb == "attack" }?.obj
-            ctx.events += EventSpec("block", player = who, obj = id, targets = listOfNotNull(attacker)); ctx.lastActor = who; return true
+            ctx.events += EventSpec("block", player = who, obj = id, targets = listOfNotNull(attacker)); ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
         // Damage as a given: "C1 deals 3 damage to <ref>".
         Regex("""^(?:an? |the |my |their )?(c\d+) deals (\d+) damage to (.*)$""").find(c)?.let { r ->

@@ -141,9 +141,12 @@ class Engine(val state: GameState) {
                 if (obj.def.isCreature) {
                     val t = obj.toughness
                     if (t != null && t <= 0) { move(obj, Zone.GRAVEYARD, "${obj.name} has toughness $t and is put into its owner's graveyard (state-based action).", "704.3", "704.5f"); changed = true; continue }
-                    if (t != null && obj.damage >= t && obj.damage > 0) {
-                        move(obj, Zone.GRAVEYARD, "${obj.name} has ${obj.damage} damage marked and toughness $t, so it's destroyed (state-based action).", "704.3", "704.5g"); changed = true; continue
+                    val lethal = t != null && obj.damage >= t && obj.damage > 0
+                    if ((lethal || obj.dealtDeathtouchDamage) && obj.def.has("indestructible")) {
+                        trace.step("${obj.name} has lethal damage but is indestructible, so it isn't destroyed.", "702.12b"); obj.dealtDeathtouchDamage = false; continue
                     }
+                    if (lethal) { move(obj, Zone.GRAVEYARD, "${obj.name} has ${obj.damage} damage marked and toughness $t, so it's destroyed (state-based action).", "704.3", "704.5g"); changed = true; continue }
+                    if (obj.dealtDeathtouchDamage && obj.damage > 0) { move(obj, Zone.GRAVEYARD, "${obj.name} was dealt damage by a source with deathtouch, so it's destroyed (state-based action).", "704.3", "704.5h", "702.2b"); changed = true; continue }
                 }
             }
             for (obj in state.objects.values.toList()) {
@@ -156,6 +159,111 @@ class Engine(val state: GameState) {
         }
     }
 
+
+    // ---- combat ----------------------------------------------------------------------------
+
+    /** Declare one attacker (508.1). `defender` is a player, or a planeswalker/battle object. */
+    fun declareAttacker(playerId: String, attackerId: String, defender: Ref) {
+        val a = state.obj(attackerId)
+        val p = state.player(playerId)
+        state.phase = "combat"; state.step = "declare_attackers"
+        if (!a.def.isCreature || !a.isOnBattlefield()) { trace.step("${a.name} isn't a creature on the battlefield, so it can't attack.", "506.3"); state.outcomes += "${a.name} can't attack."; return }
+        if (a.controller != playerId) { trace.step("${a.name} isn't controlled by ${p.subject.lowercase()}, so ${p.subject.lowercase()} can't attack with it.", "508.1a"); return }
+        if (a.def.has("defender")) { trace.step("${a.name} has defender and can't attack.", "702.3b"); state.outcomes += "${a.name} can't attack (defender)."; return }
+        if (a.tapped == true) { trace.step("${a.name} is tapped, so it can't be declared as an attacker.", "508.1a"); state.outcomes += "${a.name} can't attack (tapped)."; return }
+        if (a.summoningSick == true && !a.def.has("haste")) { trace.step("${a.name} came under ${p.possessive} control this turn and doesn't have haste, so it can't attack (\"summoning sickness\").", "508.1a", "302.6"); state.outcomes += "${a.name} can't attack (summoning sick)."; return }
+        if (a.summoningSick == null && !a.def.has("haste")) state.assumptions += "${a.name} has been under ${p.possessive} control since the turn began (otherwise it couldn't attack, 508.1a)."
+        if (a.summoningSick == true && a.def.has("haste")) trace.step("${a.name} has haste, so it can attack the turn it came under ${p.possessive} control.", "702.10b")
+        a.attacking = defender
+        if (a.def.has("vigilance")) trace.step("${p.subject} ${p.v("attacks", "attack")} with ${a.name} (${a.power}/${a.toughness}), attacking ${state.nameOf(defender)}. It has vigilance, so it doesn't tap.", "508.1a", "702.20b")
+        else { a.tapped = true; trace.step("${p.subject} ${p.v("attacks", "attack")} with ${a.name} (${a.power}/${a.toughness}), attacking ${state.nameOf(defender)}. It becomes tapped.", "508.1a", "508.1f") }
+        onEvent(GameEvent.Attacks(a))
+    }
+
+    /** Declare one blocker for one attacker (509.1). Legality of evasion abilities is checked here; menace is re-checked when damage is dealt. */
+    fun declareBlocker(playerId: String, blockerId: String, attackerId: String) {
+        val b = state.obj(blockerId); val a = state.obj(attackerId); val p = state.player(playerId)
+        state.step = "declare_blockers"
+        if (!b.def.isCreature || !b.isOnBattlefield()) { trace.step("${b.name} isn't a creature on the battlefield, so it can't block.", "506.3"); return }
+        if (a.attacking == null) { trace.step("${a.name} isn't attacking, so ${b.name} can't block it.", "509.1a"); return }
+        if (b.tapped == true) { trace.step("${b.name} is tapped, so it can't block.", "509.1a"); state.outcomes += "${b.name} can't block (tapped)."; return }
+        if (a.def.has("flying") && !(b.def.has("flying") || b.def.has("reach"))) { trace.step("${a.name} has flying and ${b.name} has neither flying nor reach, so ${b.name} can't block it.", "702.9b"); state.outcomes += "${b.name} can't block ${a.name} (flying)."; return }
+        b.blocking = a.id
+        trace.step("${p.subject} ${p.v("blocks", "block")} ${a.name} with ${b.name} (${b.power}/${b.toughness}). ${a.name} is now a blocked creature and stays blocked even if ${b.name} leaves combat.", "509.1a", "509.1g", "509.1h")
+    }
+
+    /** The combat damage step (510), including a first-strike step when needed (510.4). */
+    fun combatDamage() {
+        state.step = "combat_damage"
+        val attackers = state.objects.values.filter { it.attacking != null && it.isOnBattlefield() }
+        if (attackers.isEmpty()) { trace.step("No creatures are attacking, so there is no combat damage step.", "506.1"); return }
+        // Menace: a single blocker is not a legal block.
+        for (a in attackers) if (a.def.has("menace")) {
+            val bs = blockersOf(a)
+            if (bs.size == 1) { trace.step("${a.name} has menace and can't be blocked except by two or more creatures; blocking it with only ${bs[0].name} isn't a legal block, so ${a.name} is unblocked.", "702.111b", "509.1a"); bs[0].blocking = null }
+        }
+        val strikers = (attackers + attackers.flatMap { blockersOf(it) }).filter { it.def.has("first strike") || it.def.has("double strike") }
+        if (strikers.isNotEmpty()) {
+            trace.step("At least one creature has first strike or double strike, so there is an extra combat damage step in which only those creatures deal damage.", "510.4", "702.7b")
+            dealCombatDamage(attackers) { it.def.has("first strike") || it.def.has("double strike") }
+            trace.step("Then the regular combat damage step: creatures without first strike, plus any with double strike, deal damage.", "510.4", "702.4b")
+            dealCombatDamage(attackers.filter { it.isOnBattlefield() && it.attacking != null }) { !it.def.has("first strike") || it.def.has("double strike") }
+        } else {
+            dealCombatDamage(attackers) { true }
+        }
+        state.combatDamageDealt = true
+        trace.step("The active player receives priority.", "510.3")
+    }
+
+    private fun blockersOf(a: GameObject) = state.objects.values.filter { it.blocking == a.id && it.isOnBattlefield() }
+
+    private fun dealCombatDamage(attackers: List<GameObject>, deals: (GameObject) -> Boolean) {
+        data class Hit(val source: GameObject, val target: Ref, val amount: Int)
+        val hits = mutableListOf<Hit>()
+        for (a in attackers) {
+            if (!a.isOnBattlefield() || a.attacking == null) continue
+            val blockers = blockersOf(a)
+            if (deals(a)) {
+                val power = a.power ?: 0
+                if (power <= 0) trace.step("${a.name} has power $power and assigns no combat damage.", "510.1a")
+                else if (blockers.isEmpty()) { trace.step("${a.name} is unblocked and assigns $power damage to ${state.nameOf(a.attacking!!)}.", "510.1b"); hits += Hit(a, a.attacking!!, power) }
+                else if (blockers.size == 1) {
+                    val b = blockers[0]
+                    val lethal = if (a.def.has("deathtouch")) 1 else maxOf(0, (b.toughness ?: 0) - b.damage)
+                    if (a.def.has("trample") && power > lethal) {
+                        trace.step("${a.name} has trample: it assigns lethal damage ($lethal${if (a.def.has("deathtouch")) ", any amount is lethal with deathtouch" else ""}) to ${b.name} and the remaining ${power - lethal} to ${state.nameOf(a.attacking!!)}.", "510.1c", "702.19b", *(if (a.def.has("deathtouch")) arrayOf("702.2c") else emptyArray()))
+                        hits += Hit(a, Ref.Obj(b.id), lethal); hits += Hit(a, a.attacking!!, power - lethal)
+                    } else { trace.step("${a.name} is blocked by ${b.name} and assigns all $power damage to it.", "510.1c"); hits += Hit(a, Ref.Obj(b.id), power) }
+                } else {
+                    // Divided as the attacker's controller chooses (510.1c): assume lethal to each in order, remainder to the last (or over with trample).
+                    var left = power
+                    val parts = mutableListOf<String>()
+                    for ((i, b) in blockers.withIndex()) {
+                        val lethal = if (a.def.has("deathtouch")) 1 else maxOf(0, (b.toughness ?: 0) - b.damage)
+                        val give = if (i == blockers.lastIndex && !a.def.has("trample")) left else minOf(left, lethal)
+                        if (give > 0) { hits += Hit(a, Ref.Obj(b.id), give); parts += "$give to ${b.name}"; left -= give }
+                    }
+                    if (left > 0 && a.def.has("trample")) { hits += Hit(a, a.attacking!!, left); parts += "$left to ${state.nameOf(a.attacking!!)} (trample)" }
+                    trace.step("${a.name} is blocked by ${blockers.joinToString(" and ") { it.name }}; its controller divides its $power damage among them as they choose. Assuming ${parts.joinToString(", ")}.", "510.1c", *(if (a.def.has("trample")) arrayOf("702.19b") else emptyArray()))
+                    state.assumptions += "${a.name}'s damage is divided as: ${parts.joinToString(", ")} (510.1c lets its controller choose)."
+                }
+            }
+            for (b in blockers) if (deals(b)) {
+                val bp = b.power ?: 0
+                if (bp <= 0) trace.step("${b.name} has power $bp and assigns no combat damage.", "510.1a")
+                else { trace.step("${b.name} assigns $bp damage to ${a.name}.", "510.1d"); hits += Hit(b, Ref.Obj(a.id), bp) }
+            }
+        }
+        if (hits.isEmpty()) return
+        trace.step("All that combat damage is dealt simultaneously.", "510.2")
+        for (h in hits) {
+            applyDamage(h.source.name, h.target, h.amount)
+            if (h.source.def.has("deathtouch")) (h.target as? Ref.Obj)?.let { state.objects[it.id]?.dealtDeathtouchDamage = true }
+            if (h.source.def.has("lifelink")) { val c = state.player(h.source.controller); c.life = c.life?.plus(h.amount); trace.step("${h.source.name} has lifelink, so ${c.subject.lowercase()} ${c.v("gains", "gain")} ${h.amount} life${c.life?.let { " ($it)" } ?: ""}.", "702.15b"); state.outcomes += "${c.subject} ${c.v("gains", "gain")} ${h.amount} life (lifelink)." }
+        }
+        stateBasedActions()
+    }
+
     // ---- triggers --------------------------------------------------------------------------
 
     sealed interface GameEvent {
@@ -163,6 +271,7 @@ class Engine(val state: GameState) {
         data class EntersBattlefield(val obj: GameObject) : GameEvent
         data class Dies(val obj: GameObject) : GameEvent
         data class LeavesBattlefield(val obj: GameObject) : GameEvent
+        data class Attacks(val obj: GameObject) : GameEvent
     }
 
     private fun onEvent(event: GameEvent) {
@@ -190,6 +299,7 @@ class Engine(val state: GameState) {
                 is GameEvent.EntersBattlefield -> "${event.obj.name} entering the battlefield"
                 is GameEvent.Dies -> "${event.obj.name} dying"
                 is GameEvent.LeavesBattlefield -> "${event.obj.name} leaving the battlefield"
+                is GameEvent.Attacks -> "${event.obj.name} attacking"
             }
             trace.step("${obj.name}'s ability triggers on $cause.", "603.2", *(if (event is GameEvent.EntersBattlefield) arrayOf("603.6a") else emptyArray()))
             putTriggerOnStack(obj, ability, emptyList())
@@ -206,6 +316,7 @@ class Engine(val state: GameState) {
         Trigger.ThisEnters -> event is GameEvent.EntersBattlefield && event.obj === obj
         Trigger.ThisDies -> event is GameEvent.Dies && event.obj === obj
         Trigger.ThisLeavesBattlefield -> (event is GameEvent.LeavesBattlefield || event is GameEvent.Dies) && (event as? GameEvent.LeavesBattlefield)?.obj === obj || (event as? GameEvent.Dies)?.obj === obj
+        Trigger.ThisAttacks -> event is GameEvent.Attacks && event.obj === obj
         is Trigger.Unknown -> false
     }
 
@@ -280,7 +391,7 @@ class Engine(val state: GameState) {
 
     private fun move(obj: GameObject, to: Zone, text: String, vararg rules: String) {
         val from = obj.zone
-        obj.zone = to; obj.damage = 0; obj.pumps.clear(); obj.tapped = false
+        obj.zone = to; obj.damage = 0; obj.pumps.clear(); obj.tapped = false; obj.attacking = null; obj.blocking = null; obj.dealtDeathtouchDamage = false
         trace.step(text, *rules)
         state.outcomes += "${obj.name}: ${zoneName(from, obj)} → ${zoneName(to, obj)}."
         if (from == Zone.BATTLEFIELD) {

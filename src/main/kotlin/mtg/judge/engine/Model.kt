@@ -30,6 +30,7 @@ sealed interface Trigger {
     data object ThisEnters : Trigger
     data object ThisDies : Trigger
     data object ThisLeavesBattlefield : Trigger
+    data object ThisAttacks : Trigger
     data class Unknown(val text: String) : Trigger
 }
 

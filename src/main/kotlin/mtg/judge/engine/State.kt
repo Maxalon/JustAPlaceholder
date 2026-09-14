@@ -28,6 +28,10 @@ class GameObject(
     /** Until-end-of-turn power/toughness modifications from resolved effects (611.2a). */
     val pumps = mutableListOf<Pair<Int, Int>>()
     var timestamp: Int = 0
+    /** Combat status this turn. */
+    var attacking: Ref? = null            // what this creature is attacking
+    var blocking: String? = null          // id of the attacker this creature blocks
+    var dealtDeathtouchDamage = false     // for 704.5h
 
     val power: Int? get() = def.power?.let { it + pumps.sumOf { p -> p.first } + (counters["+1/+1"] ?: 0) - (counters["-1/-1"] ?: 0) }
     val toughness: Int? get() = def.toughness?.let { it + pumps.sumOf { p -> p.second } + (counters["+1/+1"] ?: 0) - (counters["-1/-1"] ?: 0) }
@@ -83,6 +87,7 @@ class GameState(
     var step: String? = null,
 ) {
     val trace = Trace()
+    var combatDamageDealt = false
     val outcomes = mutableListOf<String>()
     val assumptions = mutableListOf<String>()
     val clarifications = mutableListOf<Clarification>()

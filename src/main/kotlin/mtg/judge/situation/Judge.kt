@@ -59,6 +59,10 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             }
         }
         if (sit.events.isEmpty() && state.stack.isNotEmpty()) { understood += "No events given; resolving the stack."; engine.resolveAll() }
+        if (state.objects.values.any { it.attacking != null } && !state.combatDamageDealt) {
+            understood += "Combat damage is dealt after the described actions."
+            engine.resolveAll(); engine.combatDamage()
+        }
 
         val cited = state.trace.steps.flatMap { it.rules }.distinct()
         val citations = cited.associateWith { n -> rules?.rule(n)?.text ?: "" }.filterValues { it.isNotEmpty() }
@@ -91,7 +95,9 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "leave" -> engine.leave(e.obj ?: throw JudgeException("leave needs an object"), zone(e.to ?: "graveyard"))
             "damage" -> engine.dealDamage(e.source?.let { state.objects[it]?.name } ?: e.source ?: "A source", targets.firstOrNull() ?: throw JudgeException("damage needs a target"), e.amount ?: throw JudgeException("damage needs an amount"))
             "statecheck" -> engine.stateBasedActions()
-            "attack", "block" -> state.unsupported += mtg.judge.engine.Unsupported("combat", "Attacking and blocking aren't modeled yet (${state.objects[e.obj]?.name ?: e.obj} ${e.verb}s); rules 506–511 apply.")
+            "attack" -> { val objId = e.obj ?: throw JudgeException("attack needs an object"); engine.declareAttacker(e.player ?: state.obj(objId).controller, objId, targets.firstOrNull() ?: Ref.Player(state.opponentsOf(state.obj(objId).controller).firstOrNull()?.id ?: throw JudgeException("no defending player"))) }
+            "block" -> { val objId = e.obj ?: throw JudgeException("block needs an object"); val att = (targets.firstOrNull() as? Ref.Obj)?.id ?: state.objects.values.lastOrNull { it.attacking != null }?.id ?: throw JudgeException("block needs the attacker"); engine.declareBlocker(e.player ?: state.obj(objId).controller, objId, att) }
+            "combatdamage" -> engine.combatDamage()
             else -> throw JudgeException("Unknown event verb '${e.verb}'")
         }
     }
@@ -109,7 +115,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "leave" -> "${state.objects[e.obj]?.name ?: e.obj} goes to ${e.to}"
             "damage" -> "${e.source} deals ${e.amount} damage$tg"
             "attack" -> "${who ?: "you"} attack${if (who == null || who == "you") "" else "s"} with ${state.objects[e.obj]?.name ?: e.obj}$tg"
-            "block" -> "${who ?: "opponent"} block${if (who == null || who == "you") "" else "s"} with ${state.objects[e.obj]?.name ?: e.obj}"
+            "block" -> "${who ?: "opponent"} block${if (who == null || who == "you") "" else "s"} with ${state.objects[e.obj]?.name ?: e.obj}$tg"
+            "combatdamage" -> "combat damage is dealt"
             else -> e.verb
         }
     }
