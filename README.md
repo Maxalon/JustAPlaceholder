@@ -22,7 +22,6 @@ $ mtg-judge resolve "rystic studdy"         # how a (misspelled) name resolves
 | `src/main/kotlin/mtg/judge/engine` | the rules engine: stack, triggers, targets, resolution, state-based actions, with a rule-cited trace |
 | `src/main/kotlin/mtg/judge/situation` | the situation language (see `docs/situation-language.md`) and the judge that runs it |
 | `src/main/kotlin/mtg/judge/nl` | hand-written natural-language front door |
-| `.github/workflows/fetch-rulesguru.yml` | manual: fetch the RulesGuru question pool for measuring the engine (see the license note inside) |
 
 ## Getting a database
 
