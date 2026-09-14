@@ -39,8 +39,15 @@ jobs:
           echo "::group::Scryfall bulk data"
           curl -fsSL --retry 3 -A "$UA" -H "Accept: application/json" \
             https://api.scryfall.com/bulk-data -o scryfall-bulk-manifest.json
+          echo "--- bulk-data manifest ---"
+          jq . scryfall-bulk-manifest.json | head -c 4000; echo
+          echo "--------------------------"
           for t in oracle_cards default_cards rulings; do
-            url=$(jq -r ".data[] | select(.type==\"$t\") | .download_uri" scryfall-bulk-manifest.json)
+            url=$(jq -r ".data[] | select(.type==\"$t\") | (.download_uri // .uri // empty)" scryfall-bulk-manifest.json | head -1)
+            if [ -z "$url" ] || [ "$url" = "null" ]; then
+              echo "::error::No download URL for bulk type $t in the Scryfall manifest"
+              exit 1
+            fi
             echo "$t <- $url"
             curl -fsSL --retry 3 -A "$UA" "$url" -o "scryfall-$t.json"
             ls -l "scryfall-$t.json"
