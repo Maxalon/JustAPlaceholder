@@ -42,15 +42,18 @@ jobs:
           echo "--- bulk-data manifest ---"
           jq . scryfall-bulk-manifest.json | head -c 4000; echo
           echo "--------------------------"
+          # Scryfall publishes each bulk file as gzipped JSON Lines under `jsonl_download_uri`
+          # (the older `download_uri` plain-JSON field is no longer present in the listing).
           for t in oracle_cards default_cards rulings; do
-            url=$(jq -r ".data[] | select(.type==\"$t\") | (.download_uri // .uri // empty)" scryfall-bulk-manifest.json | head -1)
-            if [ -z "$url" ] || [ "$url" = "null" ]; then
-              echo "::error::No download URL for bulk type $t in the Scryfall manifest"
+            url=$(jq -r ".data[] | select(.type==\"$t\") | (.jsonl_download_uri // empty)" scryfall-bulk-manifest.json | head -1)
+            if [ -z "$url" ]; then
+              echo "::error::No jsonl_download_uri for bulk type $t in the Scryfall manifest"
               exit 1
             fi
             echo "$t <- $url"
-            curl -fsSL --retry 3 -A "$UA" "$url" -o "scryfall-$t.json"
-            ls -l "scryfall-$t.json"
+            curl -fsSL --retry 3 -A "$UA" "$url" -o "scryfall-$t.jsonl.gz"
+            ls -l "scryfall-$t.jsonl.gz"
+            gzip -t "scryfall-$t.jsonl.gz"
           done
           echo "::endgroup::"
 
@@ -64,8 +67,10 @@ jobs:
           echo "::group::Comprehensive Rules"
           BROWSER_UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
           cr_url=""
-          if curl -fsSL --retry 2 -A "$BROWSER_UA" https://magic.wizards.com/en/rules -o rules.html; then
-            cr_url=$(grep -oE 'https://media\.wizards\.com/[^"'"'"' <>]*MagicCompRules[^"'"'"' <>]*\.txt' rules.html | head -1 || true)
+          code=$(curl -sSL --retry 2 -A "$BROWSER_UA" -o rules.html -w "%{http_code}" https://magic.wizards.com/en/rules || true)
+          echo "rules page http status: $code ($(stat -c %s rules.html 2>/dev/null || echo 0) bytes)"
+          if [ "$code" = "200" ]; then
+            cr_url=$(grep -oiE 'https?://media\.wizards\.com/[^"'"'"' <>]*MagicCompRules[^"'"'"' <>]*\.txt' rules.html | head -1 || true)
           fi
           echo "rules txt url: ${cr_url:-<not found>}"
           if [ -n "$cr_url" ] && curl -fsSL --retry 2 -A "$BROWSER_UA" "$cr_url" -o MagicCompRules.txt; then
@@ -84,11 +89,9 @@ jobs:
         run: |
           set -euo pipefail
           cd src
-          for f in scryfall-oracle_cards.json scryfall-default_cards.json scryfall-rulings.json; do
-            xz -T0 -6 "$f"
-          done
-          mv scryfall-*.json.xz mtgjson-AllPrintings.json.xz scryfall-bulk-manifest.json mtgjson-meta.json \
-             MagicCompRules.txt MagicCompRules.source.txt ../out/
+          cr_source=$(cat MagicCompRules.source.txt)
+          mv scryfall-*.jsonl.gz mtgjson-AllPrintings.json.xz scryfall-bulk-manifest.json mtgjson-meta.json \
+             MagicCompRules.txt ../out/
           cd ../out
 
           # Split anything over 90 MB so every blob stays under GitHub's 100 MB limit.
@@ -121,16 +124,15 @@ jobs:
           jq -n \
             --arg fetched_at "$fetched_at" \
             --arg cr_effective "$cr_effective" \
-            --arg cr_source "$(cat MagicCompRules.source.txt)" \
+            --arg cr_source "$cr_source" \
             --slurpfile scry scryfall-bulk-manifest.json \
             --slurpfile mtg mtgjson-meta.json \
             --argjson files "$entries" \
             '{fetched_at:$fetched_at,
-              scryfall: ($scry[0].data | map({type, updated_at, size}) ),
+              scryfall: ($scry[0].data | map({type, updated_at, compressed_size}) ),
               mtgjson: $mtg[0].data,
               comprehensive_rules: {effective: $cr_effective, source: $cr_source},
               files: $files}' > manifest.json
-          rm MagicCompRules.source.txt
           cat manifest.json
           ls -l
 
