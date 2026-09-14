@@ -11,8 +11,8 @@ Design rules:
    Oracle ID, never by free text. Name resolution is deterministic and happens
    against the card database. A parser cannot invent a card.
 2. **Unknown is a first-class value.** Anything the user did not say is
-   `unknown`, not a default. The engine asks about an unknown only when the
-   answer depends on it.
+   `null` (unknown), not a default. The engine asks about an unknown only when
+   the answer depends on it.
 3. **Small vocabulary.** A fixed list of event verbs and object attributes. If
    something cannot be expressed here, the system says so instead of guessing.
 4. **Serializable and diffable.** Plain JSON. A situation plus the engine's
@@ -34,7 +34,7 @@ Design rules:
 ## Player
 
 ```json
-{ "id": "me", "name": "me", "life": 40, "isActive": "unknown" }
+{ "id": "me", "name": "me", "life": 40 }
 ```
 
 `id` is a short handle used everywhere else (`me`, `opp`, `opp2`, or a name).
@@ -50,7 +50,7 @@ unless stated otherwise.
 Phases: `beginning`, `precombat_main`, `combat`, `postcombat_main`, `ending`.
 Steps: `untap`, `upkeep`, `draw`, `beginning_of_combat`, `declare_attackers`,
 `declare_blockers`, `combat_damage`, `end_of_combat`, `end`, `cleanup`.
-Any field may be `"unknown"`.
+Any field may be `null` (unknown).
 
 ## GameObject
 
@@ -76,7 +76,8 @@ A card or token in some zone.
 
 Zones: `battlefield`, `hand`, `graveyard`, `library`, `exile`, `stack`,
 `command`. Cards in hidden zones are listed only when the user mentioned them.
-Every boolean may be `"unknown"`.
+Every boolean may be `null` (unknown). `card` may be a plain name string or
+`{ "name", "oracleId" }`.
 
 `id` is a handle the user's text can refer back to ("the second Bear" becomes
 `bear2`). The parser assigns them; the echo shows them.
@@ -87,16 +88,31 @@ Every boolean may be `"unknown"`.
 {
   "id": "s1",
   "kind": "spell",              // spell | activated | triggered
-  "source": "rhystic",          // object id, or card ref for a spell being cast
-  "card": { "oracleId": "…", "name": "Stifle" },
+  "source": "rhystic",          // object id whose ability this is (abilities)
+  "card": "Stifle",             // the card, for a spell
   "controller": "opp",
-  "targets": [ "s0" ],          // object ids, stack ids, or player ids
-  "abilityIndex": 0,            // which ability on the card, when it has several
-  "modes": [], "x": null
+  "targets": [ "s0" ],          // references, see below
+  "abilityIndex": 0             // which ability on the card, when it has several
 }
 ```
 
 The stack is listed bottom to top. Order matters and is part of the question.
+
+### References
+
+Wherever a target or object is named, a reference is one of:
+
+| form | means |
+|---|---|
+| `bears` | the object with that id |
+| `opp` | the player with that id |
+| `s1` | the stack item with that id |
+| `rhystic:trigger` | the topmost triggered ability on the stack whose source is object `rhystic` |
+| `bolt:spell` | the spell on the stack whose card is object `bolt` |
+| `Grizzly Bears` | a card name, when exactly one object in the situation has it |
+
+References in events are resolved when the event is applied, so `rhystic:trigger`
+in the second event means "the trigger that is on the stack at that moment".
 
 ## Event
 
@@ -104,12 +120,12 @@ What happens next, in order. The engine applies these to the described state.
 
 | verb | fields |
 |---|---|
-| `cast` | `player`, `card`, `targets`, `modes`, `x`, `alternativeCost` |
+| `cast` | `player`, `card` (or `object` for a card already in the situation), `targets` |
 | `activate` | `player`, `object`, `abilityIndex`, `targets` |
-| `trigger` | `object`, `abilityIndex` (used when the user asserts a trigger happened) |
+| `trigger` | `object`, `abilityIndex`, `targets` (used when the user asserts a trigger happened) |
 | `resolve` | (resolves the top of the stack) |
 | `resolveAll` | (everyone passes until the stack is empty) |
-| `pass` | `player` |
+| `pass` | (same as `resolve`) |
 | `attack` | `player`, `attackers`: [{ `object`, `defending`: player or planeswalker id }] |
 | `block` | `player`, `blocks`: [{ `blocker`, `attacker` }] |
 | `damage` | `source`, `target`, `amount` (used when the user describes damage as a given) |
@@ -117,9 +133,8 @@ What happens next, in order. The engine applies these to the described state.
 | `leave` | `object`, `to`: zone |
 | `stateCheck` | (explicitly ask for state-based actions to be performed) |
 
-Any event may carry `"inResponse": true` to mean "before the previous item
-resolves", which is the default anyway when the stack is non-empty. Unknown
-ordering between two events is an ambiguity the engine reports.
+Events are applied in order. A spell cast while something is on the stack is,
+by construction, cast "in response". Not yet implemented: `attack`, `block`.
 
 ## Question
 
@@ -141,20 +156,23 @@ The engine's output. Every step carries the rule that justified it.
 
 ```json
 {
-  "understood": Situation,          // the echo
-  "outcome": "Nobody draws a card.",
+  "understood": [ "Players: me (40 life), opponent…", "Battlefield: …", "Event 1: …" ],
+  "outcome": [ "me draws 1 card.", "Rhystic Study's triggered ability is countered." ],
   "trace": [
-    { "step": "Stifle resolves.", "rules": ["608.2"] },
-    { "step": "Rhystic Study's triggered ability is countered and removed from the stack.", "rules": ["603.3", "701.5a"] }
+    { "text": "Stifle (top of the stack) starts to resolve.", "rules": ["117.4", "608.1"] },
+    { "text": "Rhystic Study's triggered ability is countered: …", "rules": ["701.6a"] }
   ],
-  "clarifications": [
-    { "path": "objects[1].tapped", "why": "Rule 302.6: a tapped creature can't be declared as a blocker." }
-  ],
-  "unsupported": [],                 // things the engine could not model, with the card/rule involved
+  "assumptions": [ "opponent does not pay {1} for Rhystic Study's triggered ability." ],
+  "clarifications": [ "active player: … whose turn it is decides which resolves first (603.3b)." ],
+  "unsupported": [ "Rampant Growth: Part of the spell's effect is not modeled: Search your library…" ],
   "citations": { "603.3": "Once an ability has triggered, …" }
 }
 ```
 
-`clarifications` is how the engine asks. `unsupported` is how it refuses. A
-wrong answer is the one outcome the design is built to avoid: when in doubt, the
-engine says what it cannot decide and cites what it can.
+`assumptions` lists the player choices the engine made to reach an outcome (it
+always picks the option the text offers and says so). `clarifications` is how
+the engine asks. `unsupported` is how it refuses. A wrong answer is the one
+outcome the design is built to avoid: when in doubt, the engine says what it
+cannot decide and cites what it can.
+
+Run one with `mtg-judge judge situation.json`.

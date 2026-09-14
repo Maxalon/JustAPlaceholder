@@ -18,6 +18,7 @@ mtg-judge <command> [options]
   rule    NUMBER|KEYWORD|TERM [--db FILE]            A rule with its subrules, or a glossary term
   search  TEXT [--db FILE]                           Full-text search over cards and rules
   resolve TEXT [--db FILE]                           Show how a name resolves
+  judge   FILE.json|- [--json] [--db FILE]           Answer a situation written in the situation language (docs/)
   meta    [--db FILE]                                Data provenance
 
 The database defaults to ${'$'}MTG_JUDGE_DB or ./judge.db.
@@ -45,6 +46,14 @@ fun main(args: Array<String>) {
         "resolve" -> withDb(opts) { cards, _ ->
             val r = cards.resolve(positional.joinToString(" "))
             if (r.matches.isEmpty()) println("no match") else r.matches.forEach { println("${it.how.name.lowercase().padEnd(6)} ${"%.2f".format(it.score)}  ${it.card.name}  (matched \"${it.matchedName}\")") }
+        }
+        "judge" -> withDb(opts) { cards, rules ->
+            val src = positional.firstOrNull() ?: fail("judge needs a situation file (or - for stdin)")
+            val text = if (src == "-") generateSequence(::readLine).joinToString("\n") else java.io.File(src).readText()
+            val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; isLenient = true; prettyPrint = true }
+            val situation = json.decodeFromString<mtg.judge.situation.Situation>(text)
+            val answer = mtg.judge.situation.Judge(cards, rules).answer(situation)
+            if (opts.containsKey("json")) println(json.encodeToString(mtg.judge.situation.Answer.serializer(), answer)) else print(mtg.judge.situation.AnswerRenderer.render(answer))
         }
         "meta" -> withDb(opts) { cards, _ -> cards.meta().toSortedMap().forEach { (k, v) -> println("$k = $v") } }
         else -> { println(USAGE.trim()); exitProcess(2) }

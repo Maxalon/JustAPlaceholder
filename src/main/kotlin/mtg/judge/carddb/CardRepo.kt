@@ -25,7 +25,7 @@ data class Resolution(val query: String, val matches: List<Match>) {
     data class Match(val card: Card, val how: How, val matchedName: String, val score: Double)
     enum class How { EXACT, FACE, ALIAS, FUZZY }
     val best: Match? get() = matches.firstOrNull()
-    val ambiguous: Boolean get() = matches.size > 1 && matches[0].how == matches[1].how && matches[0].score == matches[1].score
+    val ambiguous: Boolean get() = matches.size > 1 && matches[0].how == matches[1].how && matches[0].score == matches[1].score && matches[0].card.isCard == matches[1].card.isCard
 }
 
 /** Read-only access to cards, printings, rulings and Oracle history. */
@@ -58,8 +58,13 @@ class CardRepo(private val conn: Connection) {
             }
         }
         if (exact.isNotEmpty()) {
-            // Real cards outrank tokens and emblems that share a name (e.g. "Food", "Treasure").
-            return Resolution(text, exact.sortedWith(compareBy({ it.how }, { !it.card.isCard })).take(limit))
+            // A match whose printed name is the query itself (ignoring case) beats one that only
+            // normalizes the same ("Rampant Growth" vs "Rampant, Growth"); real cards outrank tokens
+            // and emblems that share a name (e.g. "Food", "Treasure").
+            val trimmed = text.trim()
+            val sorted = exact.sortedWith(compareBy({ it.how }, { !it.matchedName.equals(trimmed, ignoreCase = true) }, { !it.card.isCard }))
+            val scored = sorted.map { m -> if (m.matchedName.equals(trimmed, ignoreCase = true) || sorted.none { o -> o.matchedName.equals(trimmed, ignoreCase = true) }) m else m.copy(score = 0.99) }
+            return Resolution(text, scored.take(limit))
         }
         // Fuzzy: names sharing the most trigrams with the query, then ranked by edit distance.
         // (A quoted phrase against the trigram tokenizer is a substring match, so the query is
