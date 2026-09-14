@@ -5,6 +5,12 @@ enum class Zone { BATTLEFIELD, HAND, GRAVEYARD, LIBRARY, EXILE, STACK, COMMAND }
 class Player(val id: String, val name: String, var life: Int?) {
     var drew = 0
     var lost = false
+    /** The player asking the question is addressed as "you". */
+    val you: Boolean get() = name.equals("me", true) || name.equals("you", true) || name.equals("i", true)
+    val subject: String get() = if (you) "You" else name
+    val possessive: String get() = if (you) "your" else "$name's"
+    /** "You draw" / "Alice draws". */
+    fun v(third: String, second: String) = if (you) second else third
 }
 
 class GameObject(
@@ -93,7 +99,7 @@ class GameState(
     fun nameOf(ref: Ref): String = when (ref) {
         is Ref.Obj -> objects[ref.id]?.name ?: ref.id
         is Ref.Stack -> stackItem(ref.id)?.describe ?: ref.id
-        is Ref.Player -> players.firstOrNull { it.id == ref.id }?.name ?: ref.id
+        is Ref.Player -> players.firstOrNull { it.id == ref.id }?.let { if (it.you) "you" else it.name } ?: ref.id
     }
 }
 

@@ -44,9 +44,9 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             state.stack += item
         }
 
-        understood += "Players: " + state.players.joinToString(", ") { it.name + (it.life?.let { l -> " ($l life)" } ?: "") } + (state.activePlayer?.let { "; active player: ${state.player(it).name}" } ?: "; active player unknown")
+        understood += "Players: " + state.players.joinToString(", ") { (if (it.you) "you" else it.name) + (it.life?.let { l -> " ($l life)" } ?: "") } + (state.activePlayer?.let { "; it's ${state.player(it).possessive} turn" } ?: "; whose turn it is wasn't stated")
         state.objects.values.groupBy { it.zone }.forEach { (zone, objs) ->
-            understood += "${zone.name.lowercase().replaceFirstChar { it.uppercase() }}: " + objs.joinToString(", ") { "${it.name} [${it.id}] (${state.player(it.controller).name}${if (it.tapped == true) ", tapped" else ""}${if (it.damage > 0) ", ${it.damage} damage" else ""})" }
+            understood += "${zone.name.lowercase().replaceFirstChar { it.uppercase() }}: " + objs.joinToString(", ") { "${it.name} [${it.id}] (${state.player(it.controller).possessive}${if (it.tapped == true) ", tapped" else ""}${if (it.damage > 0) ", ${it.damage} damage" else ""})" }
         }
         if (state.stack.isNotEmpty()) understood += "Stack (bottom to top): " + state.stack.joinToString(", ") { "${it.describe} [${it.id}]" + (if (it.targets.isNotEmpty()) " targeting " + it.targets.joinToString(" & ") { t -> state.nameOf(t) } else "") }
 
@@ -91,15 +91,16 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "leave" -> engine.leave(e.obj ?: throw JudgeException("leave needs an object"), zone(e.to ?: "graveyard"))
             "damage" -> engine.dealDamage(e.source?.let { state.objects[it]?.name } ?: e.source ?: "A source", targets.firstOrNull() ?: throw JudgeException("damage needs a target"), e.amount ?: throw JudgeException("damage needs an amount"))
             "statecheck" -> engine.stateBasedActions()
+            "attack", "block" -> state.unsupported += mtg.judge.engine.Unsupported("combat", "Attacking and blocking aren't modeled yet (${state.objects[e.obj]?.name ?: e.obj} ${e.verb}s); rules 506–511 apply.")
             else -> throw JudgeException("Unknown event verb '${e.verb}'")
         }
     }
 
     private fun describeEvent(e: EventSpec, state: GameState): String {
-        val who = e.player?.let { state.players.firstOrNull { p -> p.id == it }?.name ?: it }
+        val who = e.player?.let { state.players.firstOrNull { p -> p.id == it }?.let { p -> if (p.you) "you" else p.name } ?: it }
         val tg = if (e.targets.isEmpty()) "" else " targeting " + e.targets.joinToString(" and ") { runCatching { state.nameOf(parseRef(it, state)) }.getOrDefault(it) }
         return when (e.verb.lowercase()) {
-            "cast" -> "${who ?: state.players.first().name} casts ${e.card ?: e.obj}$tg"
+            "cast" -> "${who ?: "you"} ${if (who == null || who == "you") "cast" else "casts"} ${e.card ?: e.obj}$tg"
             "activate" -> "${who ?: "controller"} activates ${state.objects[e.obj]?.name ?: e.obj}$tg"
             "trigger" -> "${state.objects[e.obj]?.name ?: e.obj}'s ability triggers$tg"
             "resolve", "pass" -> "the top of the stack resolves"
@@ -107,6 +108,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "enter" -> "${state.objects[e.obj]?.name ?: e.obj} enters the battlefield"
             "leave" -> "${state.objects[e.obj]?.name ?: e.obj} goes to ${e.to}"
             "damage" -> "${e.source} deals ${e.amount} damage$tg"
+            "attack" -> "${who ?: "you"} attack${if (who == null || who == "you") "" else "s"} with ${state.objects[e.obj]?.name ?: e.obj}$tg"
+            "block" -> "${who ?: "opponent"} block${if (who == null || who == "you") "" else "s"} with ${state.objects[e.obj]?.name ?: e.obj}"
             else -> e.verb
         }
     }

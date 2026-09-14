@@ -18,6 +18,7 @@ mtg-judge <command> [options]
   rule    NUMBER|KEYWORD|TERM [--db FILE]            A rule with its subrules, or a glossary term
   search  TEXT [--db FILE]                           Full-text search over cards and rules
   resolve TEXT [--db FILE]                           Show how a name resolves
+  ask     "TEXT" [--json] [--db FILE]                Describe a situation in plain English and get the ruling
   judge   FILE.json|- [--json] [--db FILE]           Answer a situation written in the situation language (docs/)
   meta    [--db FILE]                                Data provenance
 
@@ -47,6 +48,28 @@ fun main(args: Array<String>) {
             val r = cards.resolve(positional.joinToString(" "))
             if (r.matches.isEmpty()) println("no match") else r.matches.forEach { println("${it.how.name.lowercase().padEnd(6)} ${"%.2f".format(it.score)}  ${it.card.name}  (matched \"${it.matchedName}\")") }
         }
+        "ask" -> withDbConn(opts) { conn, cards, rules ->
+            val text = positional.joinToString(" ").ifBlank { fail("ask needs the situation text") }
+            val index = mtg.judge.nl.NameIndex.load(conn)
+            val parser = mtg.judge.nl.SituationParser(index)
+            if (opts.containsKey("debug")) { println("name index: ${index.size} names, up to ${index.maxWords} words"); parser.debugMark(text).forEach { println("  mark: $it") } }
+            val parsed = parser.parse(text)
+            val json = kotlinx.serialization.json.Json { prettyPrint = true; encodeDefaults = false }
+            if (parsed.situation.objects.isEmpty() && parsed.situation.events.isEmpty()) {
+                println("I couldn't find any cards or actions in that. Try naming the cards and what happens to them, e.g.")
+                println("  \"I have Rhystic Study. My opponent casts Sol Ring and Stifles the trigger.\"")
+                if (parsed.unread.isNotEmpty()) println("Not understood: " + parsed.unread.joinToString(" | "))
+                exitProcess(1)
+            }
+            val answer = mtg.judge.situation.Judge(cards, rules).answer(parsed.situation)
+            if (opts.containsKey("json")) { println(json.encodeToString(mtg.judge.situation.Answer.serializer(), answer)) }
+            else {
+                print(mtg.judge.situation.AnswerRenderer.render(answer, withCitations = !opts.containsKey("short")))
+                if (parsed.notes.isNotEmpty()) { println(); println("Parser notes:"); parsed.notes.forEach { println("  ~ $it") } }
+                if (parsed.unread.isNotEmpty()) { println(); println("Not understood (ignored):"); parsed.unread.forEach { println("  ✗ $it") } }
+                if (opts.containsKey("show-situation")) { println(); println(json.encodeToString(mtg.judge.situation.Situation.serializer(), parsed.situation)) }
+            }
+        }
         "judge" -> withDb(opts) { cards, rules ->
             val src = positional.firstOrNull() ?: fail("judge needs a situation file (or - for stdin)")
             val text = if (src == "-") generateSequence(::readLine).joinToString("\n") else java.io.File(src).readText()
@@ -60,10 +83,12 @@ fun main(args: Array<String>) {
     }
 }
 
-private fun withDb(opts: Map<String, String>, block: (CardRepo, RulesRepo) -> Unit) {
+private fun withDb(opts: Map<String, String>, block: (CardRepo, RulesRepo) -> Unit) = withDbConn(opts) { _, c, r -> block(c, r) }
+
+private fun withDbConn(opts: Map<String, String>, block: (java.sql.Connection, CardRepo, RulesRepo) -> Unit) {
     val path: Path = Path(opts["db"] ?: System.getenv("MTG_JUDGE_DB") ?: "judge.db")
     if (!path.exists()) fail("Database not found at $path. Build one with: mtg-judge build --data DIR --out $path")
-    Db.open(path, readOnly = true).use { conn -> block(CardRepo(conn), RulesRepo(conn)) }
+    Db.open(path, readOnly = true).use { conn -> block(conn, CardRepo(conn), RulesRepo(conn)) }
 }
 
 private fun showCard(cards: CardRepo, rules: RulesRepo, query: String, set: String?, number: String?) {
