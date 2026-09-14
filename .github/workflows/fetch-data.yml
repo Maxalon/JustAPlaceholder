@@ -1,0 +1,142 @@
+name: Fetch card data
+
+# Pulls the raw upstream sources (Scryfall bulk data, MTGJSON, the Comprehensive
+# Rules) and publishes them as a single orphan commit on the `data` branch.
+# Large files are split into <90 MB parts to stay under GitHub's file limit;
+# `manifest.json` lists every file, its parts, and its checksum.
+#
+# Reassemble a split file with:  cat NAME.part* > NAME
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * *"   # daily, after Scryfall's overnight bulk refresh
+  push:
+    branches:
+      - claude/mtg-player-bot-design-j52iiz
+    paths:
+      - ".github/workflows/fetch-data.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-data
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    env:
+      UA: "mtg-judge-data-fetch/0.1 (+https://github.com/${{ github.repository }})"
+    steps:
+      - name: Download upstream sources
+        run: |
+          set -euo pipefail
+          mkdir -p src out
+          cd src
+
+          echo "::group::Scryfall bulk data"
+          curl -fsSL --retry 3 -A "$UA" -H "Accept: application/json" \
+            https://api.scryfall.com/bulk-data -o scryfall-bulk-manifest.json
+          for t in oracle_cards default_cards rulings; do
+            url=$(jq -r ".data[] | select(.type==\"$t\") | .download_uri" scryfall-bulk-manifest.json)
+            echo "$t <- $url"
+            curl -fsSL --retry 3 -A "$UA" "$url" -o "scryfall-$t.json"
+            ls -l "scryfall-$t.json"
+          done
+          echo "::endgroup::"
+
+          echo "::group::MTGJSON"
+          curl -fsSL --retry 3 -A "$UA" https://mtgjson.com/api/v5/Meta.json -o mtgjson-meta.json
+          cat mtgjson-meta.json
+          curl -fsSL --retry 3 -A "$UA" https://mtgjson.com/api/v5/AllPrintings.json.xz -o mtgjson-AllPrintings.json.xz
+          ls -l mtgjson-AllPrintings.json.xz
+          echo "::endgroup::"
+
+          echo "::group::Comprehensive Rules"
+          BROWSER_UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
+          cr_url=""
+          if curl -fsSL --retry 2 -A "$BROWSER_UA" https://magic.wizards.com/en/rules -o rules.html; then
+            cr_url=$(grep -oE 'https://media\.wizards\.com/[^"'"'"' <>]*MagicCompRules[^"'"'"' <>]*\.txt' rules.html | head -1 || true)
+          fi
+          echo "rules txt url: ${cr_url:-<not found>}"
+          if [ -n "$cr_url" ] && curl -fsSL --retry 2 -A "$BROWSER_UA" "$cr_url" -o MagicCompRules.txt; then
+            echo "$cr_url" > MagicCompRules.source.txt
+          else
+            echo "Falling back to the mtg.wtf mirror of the rules text"
+            curl -fsSL --retry 3 -A "$UA" \
+              https://raw.githubusercontent.com/taw/magic-search-engine/master/data/MagicCompRules.txt -o MagicCompRules.txt
+            echo "https://raw.githubusercontent.com/taw/magic-search-engine/master/data/MagicCompRules.txt" > MagicCompRules.source.txt
+          fi
+          rm -f rules.html
+          head -c 400 MagicCompRules.txt; echo
+          echo "::endgroup::"
+
+      - name: Compress, split and build manifest
+        run: |
+          set -euo pipefail
+          cd src
+          for f in scryfall-oracle_cards.json scryfall-default_cards.json scryfall-rulings.json; do
+            xz -T0 -6 "$f"
+          done
+          mv scryfall-*.json.xz mtgjson-AllPrintings.json.xz scryfall-bulk-manifest.json mtgjson-meta.json \
+             MagicCompRules.txt MagicCompRules.source.txt ../out/
+          cd ../out
+
+          # Split anything over 90 MB so every blob stays under GitHub's 100 MB limit.
+          for f in *; do
+            size=$(stat -c %s "$f")
+            if [ "$size" -gt 94371840 ]; then
+              split -b 90m -d -a 2 "$f" "$f.part"
+              rm "$f"
+            fi
+          done
+
+          # Manifest: one entry per logical file, with parts and sha256 of the whole.
+          fetched_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          cr_effective=$(grep -m1 -oE 'effective as of [A-Za-z]+ [0-9]+, [0-9]{4}' MagicCompRules.txt | sed 's/effective as of //' || true)
+          entries="[]"
+          for logical in $(ls | sed -E 's/\.part[0-9]+$//' | sort -u | grep -v '^manifest.json$'); do
+            parts=$(ls "$logical".part* 2>/dev/null | sort || true)
+            if [ -n "$parts" ]; then
+              sha=$(cat $parts | sha256sum | cut -d' ' -f1)
+              bytes=$(cat $parts | wc -c)
+              plist=$(printf '%s\n' $parts | jq -R . | jq -s .)
+            else
+              sha=$(sha256sum "$logical" | cut -d' ' -f1)
+              bytes=$(stat -c %s "$logical")
+              plist="[]"
+            fi
+            entries=$(echo "$entries" | jq --arg n "$logical" --arg s "$sha" --argjson b "$bytes" --argjson p "$plist" \
+              '. + [{name:$n, sha256:$s, bytes:$b, parts:$p}]')
+          done
+          jq -n \
+            --arg fetched_at "$fetched_at" \
+            --arg cr_effective "$cr_effective" \
+            --arg cr_source "$(cat MagicCompRules.source.txt)" \
+            --slurpfile scry scryfall-bulk-manifest.json \
+            --slurpfile mtg mtgjson-meta.json \
+            --argjson files "$entries" \
+            '{fetched_at:$fetched_at,
+              scryfall: ($scry[0].data | map({type, updated_at, size}) ),
+              mtgjson: $mtg[0].data,
+              comprehensive_rules: {effective: $cr_effective, source: $cr_source},
+              files: $files}' > manifest.json
+          rm MagicCompRules.source.txt
+          cat manifest.json
+          ls -l
+
+      - name: Publish to the data branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd out
+          git init -q -b data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Card data snapshot $(date -u +%Y-%m-%d)"
+          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
+          echo "Published $(git rev-parse --short HEAD) to data"
