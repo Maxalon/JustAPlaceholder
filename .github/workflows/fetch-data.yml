@@ -1,9 +1,11 @@
 name: Fetch card data
 
 # Pulls the raw upstream sources (Scryfall bulk data, MTGJSON, the Comprehensive
-# Rules) and publishes them as a single orphan commit on the `data` branch.
-# Large files are split into <90 MB parts to stay under GitHub's file limit;
-# `manifest.json` lists every file, its parts, and its checksum.
+# Rules), builds the SQLite database from them (judge.db.xz, carrying Oracle text
+# history forward from the previous day's database), and publishes everything as
+# a single orphan commit on the `data` branch. Large files are split into <90 MB
+# parts to stay under GitHub's file limit; `manifest.json` lists every file, its
+# parts, and its checksum.
 #
 # Reassemble a split file with:  cat NAME.part* > NAME
 
@@ -29,12 +31,21 @@ jobs:
     runs-on: ubuntu-latest
     env:
       UA: "mtg-judge-data-fetch/0.1 (+https://github.com/${{ github.repository }})"
+      SRC: ${{ runner.temp }}/src
+      OUT: ${{ runner.temp }}/out
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+
       - name: Download upstream sources
         run: |
           set -euo pipefail
-          mkdir -p src out
-          cd src
+          mkdir -p "$SRC" "$OUT"
+          cd "$SRC"
 
           echo "::group::Scryfall bulk data"
           curl -fsSL --retry 3 -A "$UA" -H "Accept: application/json" \
@@ -85,14 +96,48 @@ jobs:
           head -c 400 MagicCompRules.txt; echo
           echo "::endgroup::"
 
+      - name: Fetch the previous database (for Oracle text history)
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/prev"
+          if git fetch --depth=1 origin data 2>/dev/null; then
+            parts=$(git ls-tree --name-only origin/data | grep -E '^judge\.db\.xz(\.part[0-9]+)?$' | sort || true)
+            if [ -n "$parts" ]; then
+              for p in $parts; do git show "origin/data:$p"; done > "$RUNNER_TEMP/prev/judge.db.xz"
+              xz -d "$RUNNER_TEMP/prev/judge.db.xz"
+              echo "previous database: $(stat -c %s "$RUNNER_TEMP/prev/judge.db") bytes"
+            else
+              echo "no database on the data branch yet"
+            fi
+          else
+            echo "no data branch yet"
+          fi
+
+      - name: Build the database
+        run: |
+          set -euo pipefail
+          cd "$SRC"
+          cr_source=$(cat MagicCompRules.source.txt)
+          mv scryfall-*.jsonl.gz mtgjson-AllPrintings.json.xz scryfall-bulk-manifest.json mtgjson-meta.json \
+             MagicCompRules.txt "$OUT/"
+          echo "$cr_source" > "$RUNNER_TEMP/cr_source.txt"
+          cd "$GITHUB_WORKSPACE"
+          ./gradlew installDist --no-daemon -q
+          prev=""; [ -f "$RUNNER_TEMP/prev/judge.db" ] && prev="--previous $RUNNER_TEMP/prev/judge.db"
+          # The manifest is not written yet, so pass the source metadata for `meta` via a stub manifest.
+          jq -n --arg fetched_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg cr_source "$cr_source" \
+            --slurpfile scry "$OUT/scryfall-bulk-manifest.json" --slurpfile mtg "$OUT/mtgjson-meta.json" \
+            '{fetched_at:$fetched_at, scryfall:($scry[0].data|map({type,updated_at,compressed_size})), mtgjson:$mtg[0].data, comprehensive_rules:{source:$cr_source}, files:[]}' > "$OUT/manifest.json"
+          build/install/mtg-judge/bin/mtg-judge build --data "$OUT" --out "$RUNNER_TEMP/judge.db" $prev
+          rm "$OUT/manifest.json"
+          xz -T0 -6 -c "$RUNNER_TEMP/judge.db" > "$OUT/judge.db.xz"
+          ls -l "$OUT/judge.db.xz"
+
       - name: Compress, split and build manifest
         run: |
           set -euo pipefail
-          cd src
-          cr_source=$(cat MagicCompRules.source.txt)
-          mv scryfall-*.jsonl.gz mtgjson-AllPrintings.json.xz scryfall-bulk-manifest.json mtgjson-meta.json \
-             MagicCompRules.txt ../out/
-          cd ../out
+          cr_source=$(cat "$RUNNER_TEMP/cr_source.txt")
+          cd "$OUT"
 
           # Split anything over 90 MB so every blob stays under GitHub's 100 MB limit.
           for f in *; do
@@ -141,7 +186,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          cd out
+          cd "$OUT"
           git init -q -b data
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
