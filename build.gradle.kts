@@ -15,6 +15,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("org.xerial:sqlite-jdbc:3.46.1.3")
     implementation("org.tukaani:xz:1.10")
+    implementation("com.fasterxml.jackson.core:jackson-core:2.18.2")
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -26,6 +27,7 @@ kotlin {
 
 application {
     mainClass.set("mtg.judge.cli.MainKt")
+    applicationDefaultJvmArgs = listOf("-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8", "-Dfile.encoding=UTF-8", "-Xss4m")
 }
 
 tasks.test {

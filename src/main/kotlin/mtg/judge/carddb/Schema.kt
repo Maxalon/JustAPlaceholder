@@ -108,6 +108,7 @@ object Schema {
              definition TEXT NOT NULL
            )""",
         "CREATE INDEX IF NOT EXISTS glossary_norm ON glossary(term_norm)",
+        "CREATE VIRTUAL TABLE IF NOT EXISTS card_names_trigram USING fts5(name_norm, content='card_names', content_rowid='rowid', tokenize='trigram')",
         "CREATE VIRTUAL TABLE IF NOT EXISTS cards_fts USING fts5(name, oracle_text, type_line, content='cards', content_rowid='rowid', tokenize='unicode61 remove_diacritics 2')",
         "CREATE VIRTUAL TABLE IF NOT EXISTS rules_fts USING fts5(number, text, content='rules', content_rowid='rowid', tokenize='unicode61 remove_diacritics 2')",
         "CREATE VIRTUAL TABLE IF NOT EXISTS glossary_fts USING fts5(term, definition, content='glossary', content_rowid='rowid', tokenize='unicode61 remove_diacritics 2')",
@@ -120,6 +121,7 @@ object Schema {
     /** External-content FTS tables must be told to re-read their source tables after a bulk load. */
     fun rebuildFts(conn: Connection) {
         conn.createStatement().use { st ->
+            st.execute("INSERT INTO card_names_trigram(card_names_trigram) VALUES('rebuild')")
             st.execute("INSERT INTO cards_fts(cards_fts) VALUES('rebuild')")
             st.execute("INSERT INTO rules_fts(rules_fts) VALUES('rebuild')")
             st.execute("INSERT INTO glossary_fts(glossary_fts) VALUES('rebuild')")
