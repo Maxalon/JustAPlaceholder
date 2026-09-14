@@ -150,7 +150,7 @@ class SituationParser(private val names: NameIndex) {
         val subject = actor ?: ctx.lastActor
 
         // Bare continuation: "… and Smothering Tithe" after a possession, "… and Counterspell" after a cast.
-        Regex("""^(?:an? |the |my |their |another |also )?(c\d+)(?:'s)?$""").find(c)?.let { r ->
+        Regex("""^(?:an? |the |my |their |another |also )?(c\d+)(?:'s)?(?: out| in play| on the battlefield| on board| on the field)?$""").find(c)?.let { r ->
             val card = m.cards.getValue(r.groupValues[1])
             when (ctx.lastVerb) {
                 "have" -> { addObject(card, actor ?: ctx.lastOwner, false, ctx); return true }

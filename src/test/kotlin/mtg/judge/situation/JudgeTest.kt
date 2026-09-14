@@ -40,7 +40,7 @@ class JudgeTest {
                        {"verb":"resolveAll"}]}
         """)
         assertTrue(a.outcome.any { it.contains("countered") })
-        assertTrue(a.outcome.any { it.contains("draws 1 card") }, "Stifle itself triggers Rhystic Study: ${a.outcome}")
+        assertTrue(a.outcome.any { it.contains("draw 1 card") }, "Stifle itself triggers Rhystic Study: ${a.outcome}")
         assertTrue(a.outcome.any { it.contains("Sol Ring enters the battlefield") })
         assertTrue(a.trace.any { "701.6a" in it.rules })
         assertTrue(a.understood.any { it.startsWith("Event 2: opponent casts Stifle targeting Rhystic Study's triggered ability") })
