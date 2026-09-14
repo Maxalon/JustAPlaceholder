@@ -31,8 +31,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       UA: "mtg-judge-data-fetch/0.1 (+https://github.com/${{ github.repository }})"
-      SRC: ${{ runner.temp }}/src
-      OUT: ${{ runner.temp }}/out
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -44,6 +42,7 @@ jobs:
       - name: Download upstream sources
         run: |
           set -euo pipefail
+          SRC="$RUNNER_TEMP/src"; OUT="$RUNNER_TEMP/out"
           mkdir -p "$SRC" "$OUT"
           cd "$SRC"
 
@@ -99,6 +98,7 @@ jobs:
       - name: Fetch the previous database (for Oracle text history)
         run: |
           set -euo pipefail
+          SRC="$RUNNER_TEMP/src"; OUT="$RUNNER_TEMP/out"
           mkdir -p "$RUNNER_TEMP/prev"
           if git fetch --depth=1 origin data 2>/dev/null; then
             parts=$(git ls-tree --name-only origin/data | grep -E '^judge\.db\.xz(\.part[0-9]+)?$' | sort || true)
@@ -116,6 +116,7 @@ jobs:
       - name: Build the database
         run: |
           set -euo pipefail
+          SRC="$RUNNER_TEMP/src"; OUT="$RUNNER_TEMP/out"
           cd "$SRC"
           cr_source=$(cat MagicCompRules.source.txt)
           mv scryfall-*.jsonl.gz mtgjson-AllPrintings.json.xz scryfall-bulk-manifest.json mtgjson-meta.json \
@@ -136,6 +137,7 @@ jobs:
       - name: Compress, split and build manifest
         run: |
           set -euo pipefail
+          SRC="$RUNNER_TEMP/src"; OUT="$RUNNER_TEMP/out"
           cr_source=$(cat "$RUNNER_TEMP/cr_source.txt")
           cd "$OUT"
 
@@ -186,6 +188,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          SRC="$RUNNER_TEMP/src"; OUT="$RUNNER_TEMP/out"
           cd "$OUT"
           git init -q -b data
           git config user.name "github-actions[bot]"
