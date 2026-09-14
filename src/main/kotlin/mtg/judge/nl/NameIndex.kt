@@ -67,15 +67,14 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
         )
 
         private val stopWords = setOf(
-            "counter", "target", "turn", "attack", "block", "cast", "play", "draw", "opt", "fog", "study", "growth", "damage", "life", "control",
+            "counter", "target", "turn", "attack", "block", "cast", "play", "draw", "damage", "life", "control",
             "creature", "spell", "ability", "trigger", "stack", "response", "resolve", "resolves", "tap", "untap", "exile", "destroy", "sacrifice",
             "discard", "hand", "library", "graveyard", "battlefield", "token", "copy", "end", "step", "upkeep", "combat", "main", "phase", "pay",
-            "mana", "land", "island", "forest", "mountain", "plains", "swamp", "player", "opponent", "me", "my", "i", "you", "they", "it", "the", "a", "an",
+            "mana", "land", "player", "opponent", "me", "my", "i", "you", "they", "it", "the", "a", "an",
             "then", "and", "or", "with", "on", "at", "to", "in", "of", "from", "is", "are", "was", "has", "have", "had", "do", "does", "did", "what", "happens",
             "who", "which", "when", "if", "that", "this", "their", "its", "his", "her", "him", "them", "kill", "dies", "die", "gets", "get", "becomes", "put",
             "one", "two", "three", "four", "five", "first", "second", "last", "next", "now", "still", "also", "just", "only", "again", "before", "after",
-            "wrath", "shock", "bolt", "swords", "path", "negate", "cancel", "dispel", "twist", "loot", "tutor", "wish", "hope", "fear", "doom", "fate",
-            "lightning", "giant", "grizzly", "bears", "wild", "brainstorm", "ponder", "preordain", "harrow", "farseek", "rampant", "cultivate",
+            "everything", "all", "nothing", "everyone", "nobody", "blockers", "attackers", "response", "responses",
         )
 
         fun load(conn: Connection): NameIndex {

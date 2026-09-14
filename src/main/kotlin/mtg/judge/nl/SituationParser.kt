@@ -150,10 +150,11 @@ class SituationParser(private val names: NameIndex) {
         val subject = actor ?: ctx.lastActor
 
         // Bare continuation: "… and Smothering Tithe" after a possession, "… and Counterspell" after a cast.
-        Regex("""^(?:an? |the |my |their |another |also )?(c\d+)(?:'s)?(?: out| in play| on the battlefield| on board| on the field)?$""").find(c)?.let { r ->
-            val card = m.cards.getValue(r.groupValues[1])
+        Regex("""^(?:an? |the |my |their |another |also |(\d+|two|three|four|five) )?(c\d+)(?:'s)?(?: out| in play| on the battlefield| on board| on the field)?$""").find(c)?.let { r ->
+            val card = m.cards.getValue(r.groupValues[2])
+            val count = r.groupValues[1].let { numberWords[it] ?: it.toIntOrNull() ?: 1 }
             when (ctx.lastVerb) {
-                "have" -> { addObject(card, actor ?: ctx.lastOwner, false, ctx); return true }
+                "have" -> { repeat(count) { addObject(card, actor ?: ctx.lastOwner, false, ctx, allowDuplicate = count > 1) }; return true }
                 "cast" -> { emitCast(subject ?: "opp", card, "", m, ctx); return true }
                 "attack" -> { val who = ctx.lastActor ?: "me"; val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx); ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(other(who) ?: "opp")); return true }
                 "block" -> { val who = ctx.lastActor ?: "opp"; val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx); val attacker = ctx.events.lastOrNull { it.verb == "attack" }?.obj; ctx.events += EventSpec("block", player = who, obj = id, targets = listOfNotNull(attacker)); return true }
@@ -198,6 +199,12 @@ class SituationParser(private val names: NameIndex) {
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
             ctx.events += EventSpec("activate", player = who, obj = id, targets = targetsIn(r.groupValues[2], m, ctx)); ctx.lastActor = who; return true
         }
+        // "attack with everything" / "no blocks".
+        if (Regex("""^(?:attacks?|attacking|swings?|swinging)(?: with)? (?:everything|everyone|all(?: of)?(?: my)?(?: creatures)?|the team|with everything)$""").matches(c)) {
+            val who = actor ?: subject ?: "me"
+            ctx.events += EventSpec("attackAll", player = who, targets = listOf(other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"; return true
+        }
+        if (Regex("""^(?:have no blockers|has no blockers|don't block|doesn't block|no blocks?|can't block|won't block|take it|takes it)$""").matches(c)) return true
         // Combat: "attack with c1", "swing with c1 (at them)", "block (it) with c2".
         Regex("""^(?:attacks?|attacking|swings?|swinging)(?: with)?\s+(?:an? |the |my |their )?(c\d+)(.*)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"

@@ -19,6 +19,14 @@ data class ObjFilter(
     val tapped: Boolean? = null,
     val unknownWords: List<String> = emptyList(),
     val raw: String = "",
+    /** Required creature/other subtypes ("Elf creatures"), singular lowercase. */
+    val subtypes: Set<String> = emptySet(),
+    /** Required keywords ("creature with flying"). */
+    val keywords: Set<String> = emptySet(),
+    val token: Boolean? = null,
+    val legendary: Boolean? = null,
+    /** "other …": excludes the source of the effect. */
+    val other: Boolean = false,
 ) {
     val verifiable get() = unknownWords.isEmpty()
 }
@@ -43,6 +51,8 @@ sealed interface Effect {
     data class Tap(val target: TargetSpec) : Effect
     data class Untap(val target: TargetSpec) : Effect
     data class Pump(val target: TargetSpec, val power: Int, val toughness: Int) : Effect
+    /** "target creature gains flying until end of turn" (layer 6, 611.2a). */
+    data class GainKeywords(val target: TargetSpec, val keywords: Set<String>) : Effect
     data class GainLife(val who: Who, val amount: Int) : Effect
     data class LoseLife(val who: Who, val amount: Int) : Effect
     data class May(val effect: Effect) : Effect
@@ -53,7 +63,7 @@ sealed interface Effect {
     /** Every target specification this effect (recursively) needs, in order. */
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target)
-        is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target)
+        is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }
         is Draw, is GainLife, is LoseLife, is Unparsed -> emptyList()
     }
@@ -64,10 +74,18 @@ sealed interface Effect {
     }
 }
 
+/** Continuous effects from static abilities (604), applied in the layer system (613). */
+sealed interface StaticEffect {
+    /** Layer 7c: "[filter] get +N/+N". */
+    data class PtModify(val filter: ObjFilter, val power: Int, val toughness: Int) : StaticEffect
+    /** Layer 6: "[filter] have [keywords]". */
+    data class KeywordGrant(val filter: ObjFilter, val keywords: Set<String>) : StaticEffect
+}
+
 sealed interface Ability { val text: String }
 data class TriggeredAbility(val trigger: Trigger, val effect: Effect, override val text: String) : Ability
 data class ActivatedAbility(val cost: String, val effect: Effect, override val text: String) : Ability
-data class StaticAbility(override val text: String, val keyword: String? = null) : Ability
+data class StaticAbility(override val text: String, val keyword: String? = null, val effects: List<StaticEffect> = emptyList()) : Ability
 data class UnparsedAbility(override val text: String) : Ability
 
 /** Everything the engine knows about a card, independent of any game. */

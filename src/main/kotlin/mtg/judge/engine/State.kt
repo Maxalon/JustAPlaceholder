@@ -33,8 +33,14 @@ class GameObject(
     var blocking: String? = null          // id of the attacker this creature blocks
     var dealtDeathtouchDamage = false     // for 704.5h
 
-    val power: Int? get() = def.power?.let { it + pumps.sumOf { p -> p.first } + (counters["+1/+1"] ?: 0) - (counters["-1/-1"] ?: 0) }
-    val toughness: Int? get() = def.toughness?.let { it + pumps.sumOf { p -> p.second } + (counters["+1/+1"] ?: 0) - (counters["-1/-1"] ?: 0) }
+    /** Until-end-of-turn keyword grants from resolved effects. */
+    val tempKeywords = mutableSetOf<String>()
+    /** Set by the owning GameState so characteristics include static effects from other permanents. */
+    var state: GameState? = null
+
+    val power: Int? get() = state?.powerOf(this) ?: def.power?.let { it + pumps.sumOf { p -> p.first } + (counters["+1/+1"] ?: 0) - (counters["-1/-1"] ?: 0) }
+    val toughness: Int? get() = state?.toughnessOf(this) ?: def.toughness?.let { it + pumps.sumOf { p -> p.second } + (counters["+1/+1"] ?: 0) - (counters["-1/-1"] ?: 0) }
+    fun has(keyword: String): Boolean = state?.hasKeyword(this, keyword) ?: (def.has(keyword) || keyword.lowercase() in tempKeywords)
     val name get() = def.name
     fun isOnBattlefield() = zone == Zone.BATTLEFIELD
     override fun toString() = "$name [$id]"
@@ -94,6 +100,69 @@ class GameState(
     val unsupported = mutableListOf<Unsupported>()
     private var nextId = 1
     private var clock = 1
+
+    /** Registers an object so its characteristics see the static effects of everything else. */
+    fun add(obj: GameObject): GameObject { objects[obj.id] = obj; obj.state = this; return obj }
+
+    // ---- characteristics through the layer system (613) -----------------------------------
+
+    /** Static effects currently applying to [obj] from permanents on the battlefield (604.2), with their sources. */
+    fun staticEffectsOn(obj: GameObject): List<Pair<GameObject, StaticEffect>> {
+        val out = mutableListOf<Pair<GameObject, StaticEffect>>()
+        for (src in objects.values) {
+            if (!src.isOnBattlefield()) continue
+            for (ab in src.def.abilities.filterIsInstance<StaticAbility>()) for (eff in ab.effects) {
+                val filter = when (eff) { is StaticEffect.PtModify -> eff.filter; is StaticEffect.KeywordGrant -> eff.filter }
+                if (filter.other && src === obj) continue
+                if (matches(filter, obj, src.controller)) out += src to eff
+            }
+        }
+        return out
+    }
+
+    fun powerOf(obj: GameObject): Int? = obj.def.power?.let { base ->
+        base + staticEffectsOn(obj).sumOf { (_, e) -> (e as? StaticEffect.PtModify)?.power ?: 0 } + obj.pumps.sumOf { it.first } + (obj.counters["+1/+1"] ?: 0) - (obj.counters["-1/-1"] ?: 0)
+    }
+    fun toughnessOf(obj: GameObject): Int? = obj.def.toughness?.let { base ->
+        base + staticEffectsOn(obj).sumOf { (_, e) -> (e as? StaticEffect.PtModify)?.toughness ?: 0 } + obj.pumps.sumOf { it.second } + (obj.counters["+1/+1"] ?: 0) - (obj.counters["-1/-1"] ?: 0)
+    }
+    fun hasKeyword(obj: GameObject, keyword: String): Boolean {
+        val k = keyword.lowercase()
+        if (obj.def.has(k) || k in obj.tempKeywords) return true
+        return staticEffectsOn(obj).any { (_, e) -> e is StaticEffect.KeywordGrant && k in e.keywords }
+    }
+
+    /** "3/3 (2/2, +1/+1 from Glorious Anthem, +0/+0 …)" for traces and echoes. */
+    fun describePt(obj: GameObject): String {
+        val p = obj.power ?: return "no power/toughness"
+        val t = obj.toughness ?: return "no power/toughness"
+        val parts = mutableListOf<String>()
+        val statics = staticEffectsOn(obj).filter { it.second is StaticEffect.PtModify }
+        for ((src, e) in statics) { e as StaticEffect.PtModify; parts += "${sign(e.power)}/${sign(e.toughness)} from ${src.name}" }
+        if (obj.pumps.isNotEmpty()) parts += "${sign(obj.pumps.sumOf { it.first })}/${sign(obj.pumps.sumOf { it.second })} until end of turn"
+        (obj.counters["+1/+1"] ?: 0).let { if (it > 0) parts += "$it +1/+1 counter${if (it > 1) "s" else ""}" }
+        (obj.counters["-1/-1"] ?: 0).let { if (it > 0) parts += "$it -1/-1 counter${if (it > 1) "s" else ""}" }
+        return if (parts.isEmpty()) "$p/$t" else "$p/$t (${obj.def.power}/${obj.def.toughness} base, ${parts.joinToString(", ")})"
+    }
+    private fun sign(n: Int) = if (n >= 0) "+$n" else "$n"
+
+    /** Whether a permanent matches a filter, relative to [controller] (the source's controller). Mirrors Engine.filterMatches for battlefield objects. */
+    fun matches(f: ObjFilter, o: GameObject, controller: String): Boolean {
+        if (!o.isOnBattlefield()) return false
+        val typeOk = f.kinds.any { k -> when (k) {
+            Kind.CREATURE -> o.def.isCreature; Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types
+            Kind.LAND -> "Land" in o.def.types; Kind.PLANESWALKER -> "Planeswalker" in o.def.types; Kind.BATTLE -> "Battle" in o.def.types
+            Kind.PERMANENT -> true; else -> false
+        } }
+        val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> o.def.isCreature; Kind.LAND -> "Land" in o.def.types; Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types; else -> false } }
+        val ctrlOk = when (f.controller) { null -> true; Who.YOU -> o.controller == controller; Who.OPPONENT -> o.controller != controller; else -> true }
+        val subOk = f.subtypes.all { st -> o.def.subtypes.any { it.equals(st, true) } }
+        val kwOk = f.keywords.all { hasKeyword(o, it) }
+        val tokenOk = f.token == null || f.token == o.token
+        val legOk = f.legendary == null || f.legendary == ("Legendary" in o.def.supertypes)
+        val stateOk = (f.tapped == null || o.tapped == f.tapped) && (f.attacking == null || (o.attacking != null) == f.attacking)
+        return typeOk && notOk && ctrlOk && subOk && kwOk && tokenOk && legOk && stateOk
+    }
 
     fun player(id: String): Player = players.firstOrNull { it.id == id } ?: throw JudgeException("Unknown player '$id'")
     fun obj(id: String): GameObject = objects[id] ?: throw JudgeException("Unknown object '$id'")

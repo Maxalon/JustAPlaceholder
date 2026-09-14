@@ -35,8 +35,12 @@ class OracleParserTest {
         assertEquals(setOf(Kind.SPELL), f.kinds); assertEquals(setOf(Kind.CREATURE), f.notKinds)
         val opp = OracleParser.parseFilter("creature an opponent controls")
         assertEquals(Who.OPPONENT, opp.controller); assertTrue(opp.verifiable)
-        val odd = OracleParser.parseFilter("creature with flying")
-        assertTrue(!odd.verifiable && "flying" in odd.unknownWords)
+        val flyer = OracleParser.parseFilter("creature with flying")
+        assertTrue(flyer.verifiable && "flying" in flyer.keywords)
+        val odd = OracleParser.parseFilter("creature with mana value 3 or less")
+        assertTrue(!odd.verifiable)
+        val elves = OracleParser.parseFilter("Elves you control")
+        assertEquals(setOf("elf"), elves.subtypes); assertEquals(setOf(Kind.CREATURE), elves.kinds)
     }
 
     @Test
