@@ -156,7 +156,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "resolveall" -> engine.resolveAll()
             "ask" -> {
                 if (e.to == "playerDamage") { val p = state.player(e.player ?: throw JudgeException("ask needs a player")); val name = if (p.you) "you" else p.name; val hit = state.trace.steps.any { Regex("""deals \d+ (?:combat )?damage to ${Regex.escape(name)}\b""").containsMatchIn(it.text) }; val prevented = state.trace.steps.any { it.text.contains("to $name") && it.text.contains("prevented") }; state.outcomes += if (hit) "Yes: $name ${p.v("takes", "take")} damage." else "No: $name ${p.v("takes", "take")} no damage${if (prevented) " (it's prevented)" else ""}."; return }
-                if (e.to == "playerSurvive") { val p = state.player(e.player ?: throw JudgeException("ask needs a player")); state.outcomes += if (p.lost) "No: ${p.subject} ${p.v("has", "have")} lost the game." else "Yes: ${p.subject} ${p.v("is", "are")} still in the game${p.life?.let { " at $it life" } ?: ""}."; return }
+                if (e.to == "playerSurvive" || e.to == "playerDie" || e.to == "playerWin") { state.outcomes += playerAnswer(e.to, state.player(e.player ?: throw JudgeException("ask needs a player")), state); return }
                 val o = state.obj(e.obj ?: throw JudgeException("ask needs an object"))
                 when (e.to) {
                     "trigger" -> state.outcomes += if (state.trace.steps.any { it.text.startsWith("${o.name}'s ability triggers") || it.text.startsWith("${o.name}'s evoke ability triggers") }) "Yes: ${o.name}'s ability triggered." else "No: ${o.name}'s ability didn't trigger (nothing that happened matched its trigger condition)."
@@ -168,7 +168,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         val blocked = state.trace.steps.any { it.text.contains("blocks ${o.name}") }
                         state.outcomes += if (hit) "Yes: ${o.name} dealt damage to $who." else "No: ${o.name} dealt no damage to $who${if (blocked) " (it was blocked, and a blocked creature stays blocked even if its blocker leaves combat; without trample it assigns no damage to the player, 509.1h)" else ""}."
                     }
-                    "playerSurvive" -> { val p = state.player(e.player ?: o.controller); state.outcomes += if (p.lost) "No: ${p.subject} ${p.v("has", "have")} lost the game." else "Yes: ${p.subject} ${p.v("is", "are")} still in the game${p.life?.let { " at $it life" } ?: ""}." }
+                    "playerSurvive", "playerDie", "playerWin" -> state.outcomes += playerAnswer(e.to, state.player(e.player ?: o.controller), state)
                     "survive", "die" -> {
                         val where = when (o.zone) { mtg.judge.engine.Zone.GRAVEYARD -> "the graveyard"; mtg.judge.engine.Zone.EXILE -> "exile"; mtg.judge.engine.Zone.HAND -> "its owner's hand"; mtg.judge.engine.Zone.LIBRARY -> "its owner's library"; mtg.judge.engine.Zone.COMMAND -> "the command zone"; else -> o.zone.name.lowercase() }
                         state.outcomes += if (e.to == "die") { if (o.isOnBattlefield()) "No: ${o.name} is still on the battlefield." else if (o.zone == mtg.judge.engine.Zone.GRAVEYARD) "Yes: ${o.name} died (it's in the graveyard)." else "No: ${o.name} didn't die, but it left the battlefield; it's in $where." }
@@ -208,7 +208,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "pay" -> "${who ?: "the player"} ${if (e.to == "no") "${if (who == "you") "don't" else "doesn't"} pay" else "${if (who == "you") "pay" else "pays"}"}"
             "resolve", "pass" -> "the top of the stack resolves"
             "resolveall" -> "everything on the stack resolves"
-            "ask" -> if (e.to == "playerSurvive") "question: ${if (who == "you") "do you" else "does $who"} survive?" else if (e.to == "playerDamage") "question: ${if (who == "you") "do you" else "does $who"} take damage?" else "question: ${if (e.to == "block" || e.to == "attack") "can" else "does"} ${state.objects[e.obj]?.name ?: e.obj} ${if (e.to == "damage") "deal damage to ${e.targets.firstOrNull()?.let { t -> state.players.firstOrNull { it.id == t }?.let { if (it.you) "you" else it.name } } ?: "the player"}" else e.to}?"
+            "ask" -> if (e.to == "playerSurvive") "question: ${if (who == "you") "do you" else "does $who"} survive?" else if (e.to == "playerDie") "question: ${if (who == "you") "do you" else "does $who"} lose?" else if (e.to == "playerWin") "question: ${if (who == "you") "do you" else "does $who"} win?" else if (e.to == "playerDamage") "question: ${if (who == "you") "do you" else "does $who"} take damage?" else "question: ${if (e.to == "block" || e.to == "attack") "can" else "does"} ${state.objects[e.obj]?.name ?: e.obj} ${if (e.to == "damage") "deal damage to ${e.targets.firstOrNull()?.let { t -> state.players.firstOrNull { it.id == t }?.let { if (it.you) "you" else it.name } } ?: "the player"}" else e.to}?"
             "enter" -> "${state.objects[e.obj]?.name ?: e.obj} enters the battlefield"
             "leave" -> "${state.objects[e.obj]?.name ?: e.obj} goes to ${e.to}"
             "damage" -> "${e.source} deals ${e.amount} damage$tg"
@@ -269,6 +269,17 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
     private fun zone(s: String) = runCatching { Zone.valueOf(s.uppercase()) }.getOrElse { throw JudgeException("Unknown zone '$s'") }
     private fun freshId(state: GameState, name: String): String { val base = name.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_'); var id = base; var i = 2; while (state.objects.containsKey(id)) id = "${base}_${i++}"; return id }
+
+    /** The yes/no for "do they survive / die / win?", phrased the way it was asked. */
+    private fun playerAnswer(to: String, p: mtg.judge.engine.Player, state: GameState): String {
+        val won = !p.lost && state.players.all { it.id == p.id || it.lost }
+        val alive = "${p.subject} ${p.v("is", "are")} still in the game${p.life?.let { " at $it life" } ?: ""}."
+        return when (to) {
+            "playerDie" -> if (p.lost) "Yes: ${p.subject} ${p.v("has", "have")} lost the game." else "No: $alive"
+            "playerWin" -> if (won) "Yes: ${p.subject} ${p.v("has", "have")} won the game." else if (p.lost) "No: ${p.subject} ${p.v("has", "have")} lost the game." else "No: ${p.subject} ${p.v("hasn't", "haven't")} won; ${alive.replaceFirstChar { it.lowercase() }}"
+            else -> if (p.lost) "No: ${p.subject} ${p.v("has", "have")} lost the game." else "Yes: $alive"
+        }
+    }
 
     companion object {
         /** A colour name or mana letter as its mana symbol letter: "blue" is U, not B (black). */

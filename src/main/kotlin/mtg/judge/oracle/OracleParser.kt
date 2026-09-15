@@ -607,7 +607,7 @@ object OracleParser {
         }
         Regex("""^you may (search your library for .+)$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> zurRe.matchEntire(m.groupValues[1])?.let { z -> zurEffect(z)?.let { return Effect.May(it) } } }
         Regex("""^(that player|its controller|you|target player) may search (?:their|your) library for (.+?)(?:, then shuffle)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
-            return Effect.May(Effect.Narrated("search ${if (m.groupValues[1].lowercase() == "you") "your" else "their"} library for ${m.groupValues[2]}, then shuffle", listOf("701.23a", "701.24a")), if (m.groupValues[1].lowercase() == "you") Who.YOU else if (m.groupValues[1].lowercase() == "target player") Who.TARGET_PLAYER else Who.THAT_PLAYER)
+            return Effect.May(Effect.Narrated("search ${if (m.groupValues[1].lowercase() == "you") "your" else "their"} library for ${m.groupValues[2]}, then shuffle", listOf("701.23a", "701.24a")), when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "target player" -> Who.TARGET_PLAYER; "its controller" -> Who.CONTROLLER_OF_TARGET; else -> Who.THAT_PLAYER })
         }
         tuckAllRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[1], Kind.PERMANENT); if (f.verifiable) return Effect.ForAll(f, "tuck") }
         Regex("""^(you |target player |that player |each player |each opponent )?mills? (\w+|\d+) cards?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->

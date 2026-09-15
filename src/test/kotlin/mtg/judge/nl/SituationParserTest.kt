@@ -181,7 +181,7 @@ class SituationParserTest {
         assertEquals(3, p.situation.turn.number)
         assertEquals(listOf("hexproof"), p.situation.objects.first { it.card.name == "Sol Ring" }.keywords)
         assertEquals(5, p.situation.players.first { it.id == "me" }.life)
-        val ask = p.situation.events.last(); assertEquals("ask", ask.verb); assertEquals("playerSurvive", ask.to); assertEquals("me", ask.player)
+        val ask = p.situation.events.last(); assertEquals("ask", ask.verb); assertEquals("playerDie", ask.to); assertEquals("me", ask.player)
         val q = parser.parse("I have Stifle in hand. I cast it paying 3 life.")
         assertEquals(listOf("loseLife", "cast", "resolveAll"), q.situation.events.map { it.verb }); assertEquals(3, q.situation.events[1].amount)
     }
@@ -209,5 +209,17 @@ class SituationParserTest {
         assertEquals("die", d.situation.events.last { it.verb == "ask" }.to); assertEquals("sol_ring", d.situation.events.last { it.verb == "ask" }.obj)
         val w = parser.parse("I control Sol Ring. Then I draw two.")
         assertEquals(2, w.situation.events.first { it.verb == "draw" }.amount)
+    }
+
+    @Test
+    fun `player win and lose questions, described-creature questions, and where-questions are not card names`() {
+        val p = parser.parse("I'm at 2 life. My opponent casts Sol Ring. Do I lose?")
+        assertEquals("playerDie", p.situation.events.last { it.verb == "ask" }.to); assertEquals("me", p.situation.events.last { it.verb == "ask" }.player)
+        assertEquals("playerWin", parser.parse("My opponent casts Sol Ring. Do I win?").situation.events.last { it.verb == "ask" }.to)
+        assertEquals("playerDie", parser.parse("My opponent casts Sol Ring. Am I dead?").situation.events.last { it.verb == "ask" }.to)
+        val q = parser.parse("I attack with a 2/2 with flying. My opponent blocks with Sol Ring. Does my creature survive?")
+        assertEquals("2_2_creature_with_flying", q.situation.events.last { it.verb == "ask" }.obj); assertEquals("survive", q.situation.events.last { it.verb == "ask" }.to)
+        val w = parser.parse("I control Sol Ring. My opponent casts Stifle on it. Where does Sol Ring go?")
+        assertTrue(w.unread.isEmpty(), w.unread.toString()); assertTrue(w.situation.players.none { it.name == "Where" }); assertTrue(w.notes.any { "answered by the outcome" in it })
     }
 }

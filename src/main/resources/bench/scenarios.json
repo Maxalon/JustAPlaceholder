@@ -839,7 +839,7 @@
     "id": "blasphemous-act-token",
     "text": "My opponent casts Blasphemous Act. I control Grizzly Bears, Serra Angel and a 7/7 token.",
     "expect": [
-      "token: the battlefield → your graveyard"
+      "a 7/7 token: the battlefield → your graveyard"
     ],
     "cite": [
       "704.5g"
@@ -1421,7 +1421,7 @@
     "id": "path-their-token",
     "text": "I cast Path to Exile on my opponent's token.",
     "expect": [
-      "token: the battlefield → exile"
+      "a 1/1 token: the battlefield → exile"
     ],
     "cite": [
       "701.13a"
@@ -2656,7 +2656,7 @@
     "expect": [
       "You lose 2 life. (×3)",
       "You lose the game",
-      "No: You have lost the game"
+      "Yes: You have lost the game"
     ],
     "cite": [
       "704.5a"
@@ -2977,6 +2977,85 @@
     "expect": [
       "Hill Giant is 6/6 until end of turn",
       "Hill Giant: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "healing-salve-gaining-in-response",
+    "text": "My opponent has 3 life. I cast Lightning Bolt targeting them and they respond with Healing Salve gaining 3 life. Do they die?",
+    "expect": [
+      "opponent gains 3 life",
+      "No: opponent is still in the game at 3 life"
+    ],
+    "notExpect": [
+      "Which mode"
+    ],
+    "cite": [
+      "700.2a"
+    ]
+  },
+  {
+    "id": "first-strike-does-my-creature-survive",
+    "text": "I attack with a 2/2 with first strike. My opponent blocks with Grizzly Bears. Does my creature survive?",
+    "expect": [
+      "Yes: a 2/2 creature with first strike is still on the battlefield",
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "702.7b"
+    ]
+  },
+  {
+    "id": "rancor-where-does-it-go",
+    "text": "I control Grizzly Bears enchanted with Rancor. My opponent casts Doom Blade on the Bears. Where does Rancor go?",
+    "expect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5m"
+    ]
+  },
+  {
+    "id": "bolt-do-i-lose",
+    "text": "I'm at 2 life. My opponent casts Lightning Bolt at me. Do I lose?",
+    "expect": [
+      "Yes: You have lost the game"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "bolt-do-i-win",
+    "text": "My opponent is at 3. I cast Lightning Bolt at them. Do I win?",
+    "expect": [
+      "Yes: You have won the game"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "is-the-wall-dead",
+    "text": "My opponent attacks with Grizzly Bears. I block with Wall of Omens. Is the Wall dead?",
+    "expect": [
+      "No: Wall of Omens is still on the battlefield"
+    ],
+    "cite": [
+      "510.2"
+    ]
+  },
+  {
+    "id": "token-blocks-does-their-creature-die",
+    "text": "My opponent attacks with a 4/4. I block with a 2/2 token. Does their creature die?",
+    "expect": [
+      "a 2/2 token: the battlefield → your graveyard",
+      "No: a 4/4 creature is still on the battlefield"
     ],
     "cite": [
       "704.5g"
