@@ -3327,5 +3327,41 @@
     "cite": [
       "602.2a"
     ]
+  },
+  {
+    "id": "vampire-hexmage-strips-counters",
+    "text": "I control Grizzly Bears with a +1/+1 counter and my opponent casts Vampire Hexmage. Then they sacrifice Hexmage targeting my Bears.",
+    "expect": [
+      "Grizzly Bears loses all its counters (1 +1/+1)"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "122.1"
+    ]
+  },
+  {
+    "id": "thoughtseize-self-do-i-lose-2",
+    "text": "I cast Thoughtseize targeting myself. Do I lose 2 life?",
+    "expect": [
+      "You lose 2 life."
+    ],
+    "notExpect": [
+      "(×2)"
+    ],
+    "cite": [
+      "119.3"
+    ]
+  },
+  {
+    "id": "giant-growth-mine-does-theirs-die",
+    "text": "I attack with Grizzly Bears and my opponent blocks with Grizzly Bears. I cast Giant Growth on mine. Does theirs die?",
+    "expect": [
+      "Yes: Grizzly Bears died (it's in the graveyard)"
+    ],
+    "cite": [
+      "704.5g"
+    ]
   }
 ]

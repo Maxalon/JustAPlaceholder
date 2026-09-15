@@ -1166,6 +1166,13 @@ class Engine(val state: GameState) {
                 else forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let(put) }
                 if (effect.kind == "+1/+1" || effect.kind == "-1/-1") stateBasedActions()
             }
+            is Effect.RemoveAllCounters -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o ->
+                val had = o.counters.filterValues { it > 0 }
+                if (had.isEmpty()) trace.step("${o.name} has no counters on it, so nothing is removed.", "608.2c")
+                else { trace.step("All counters are removed from ${o.name}: ${had.entries.joinToString(", ") { (k, n) -> "$n $k" }}${if (o.def.isCreature) "; it's now ${o.power}/${o.toughness} once they're gone" else ""}.", "608.2c", "122.1"); state.outcomes += "${o.name} loses all its counters (${had.entries.joinToString(", ") { (k, n) -> "$n $k" }})." }
+                o.counters.clear()
+                if (had.keys.any { it == "+1/+1" || it == "-1/-1" || it == "loyalty" }) stateBasedActions()
+            } }
             is Effect.Attach -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { t ->
                 item.source.attachedTo = t.id; applyControlEnchanted(item.source)
                 trace.step("${item.source.name} becomes attached to ${t.name}${if (item.source.def.isEquipment) " (equipped creature)" else ""}.", *(if (item.source.def.isEquipment) arrayOf("702.6a", "301.5a") else arrayOf("701.3a")))
@@ -1646,7 +1653,7 @@ class Engine(val state: GameState) {
         is Effect.GainControl -> "gain control of ${effect.target.raw}${if (effect.untilEndOfTurn) " until end of turn" else ""}"
         is Effect.PumpSelf -> "${item.source.name} gets ${signed(effect.power)}/${signed(effect.toughness)}"
         is Effect.PumpAll -> "${effect.filter.raw} get ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.SetBasePtAll -> "${effect.filter.raw} have base power and toughness ${if (effect.x) "X/X" else "${effect.power}/${effect.toughness}"} until end of turn"
-        is Effect.PutCounters -> "put ${effect.count} ${effect.kind} counter(s) on ${effect.target?.raw ?: item.source.name}"
+        is Effect.PutCounters -> "put ${effect.count} ${effect.kind} counter(s) on ${effect.target?.raw ?: item.source.name}"; is Effect.RemoveAllCounters -> "remove all counters from ${effect.target.raw}"
         is Effect.AddMana -> "add ${effect.text}"; is Effect.Narrated -> effect.text.replace("~", item.source.name).replaceFirstChar { it.lowercase() }
         is Effect.ForAll -> "${effect.action} ${if (effect.action == "damage") "${effect.amount} to " else ""}each ${effect.filter.raw}"
         is Effect.IfYouDo -> "${describe(effect.choice, item)}, and if so ${describe(effect.then, item)}"

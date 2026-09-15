@@ -30,6 +30,7 @@ class BatchThirteenTest {
     private val solRing = card("Sol Ring", "Artifact", "{T}: Add {C}{C}.", "{1}", "")
     private val goyf = card("Tarmogoyf", "Creature — Lhurgoyf", "Tarmogoyf's power is equal to the number of card types among cards in all graveyards and its toughness is equal to that number plus 1.", "{1}{G}", "G", "*", "1+*")
     private val rancor = card("Rancor", "Enchantment — Aura", "Enchant creature\nEnchanted creature gets +2/+0 and has trample.\nWhen Rancor is put into a graveyard from the battlefield, return Rancor to its owner's hand.", "{G}", "G")
+    private val hexmage = card("Vampire Hexmage", "Creature — Vampire Shaman", "First strike\nSacrifice Vampire Hexmage: Remove all counters from target permanent.", "{B}{B}", "B", "2", "1", "First strike")
     private val serra = card("Serra Angel", "Creature — Angel", "Flying, vigilance", "{3}{W}{W}", "W", "4", "4", "Flying", "Vigilance")
     private val viper = card("Ambush Viper", "Creature — Snake", "Flash\nDeathtouch", "{1}{G}", "G", "2", "1", "Flash", "Deathtouch")
     private val krenko = card("Krenko, Mob Boss", "Legendary Creature — Goblin Warrior", "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.", "{2}{R}{R}", "R", "3", "3")
@@ -359,6 +360,14 @@ class BatchThirteenTest {
     fun `cleanup discards down to seven`() {
         val s = state(); s.player("me").handSize = 9; val e = Engine(s)
         e.beginStep("cleanup", "me"); assertEquals(7, s.player("me").handSize); assertTrue("514.1" in s.cited()); assertTrue(s.outcomes.any { it.contains("discard 2 cards to hand size") }, s.outcomes.toString())
+    }
+
+    @Test
+    fun `vampire hexmage strips every counter and state-based actions follow`() {
+        val s = state(); s.put("hexmage", hexmage, "opp"); s.put("bears", bears, "me"); s.obj("bears").counters["+1/+1"] = 2; s.obj("bears").counters["-1/-1"] = 0; val e = Engine(s)
+        assertTrue(e.activate("opp", "hexmage", 0, listOf(Ref.Obj("bears"))) != null); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("hexmage").zone); assertTrue(s.obj("bears").counters.isEmpty()); assertEquals(2, s.obj("bears").power)
+        assertTrue(s.outcomes.any { it.startsWith("Grizzly Bears loses all its counters (2 +1/+1)") }, s.outcomes.toString())
     }
 
     @Test

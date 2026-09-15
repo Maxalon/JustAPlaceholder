@@ -610,6 +610,7 @@ object OracleParser {
         Regex("""^(?:all |each )?(.+?) (?:gain|gains) (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             if (!m.groupValues[1].startsWith("target", true) && m.groupValues[1] != "~") { val f = parseFilter(m.groupValues[1], Kind.PERMANENT); val kws = keywordsIn(m.groupValues[2]); if (f.verifiable && kws != null) return Effect.PumpAll(f, 0, 0, kws.toList()) }
         }
+        Regex("""^Remove all counters from (target .+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.RemoveAllCounters(target(m.groupValues[1])) }
         countersOnRe.matchEntire(s)?.let { m ->
             val n = number(m.groupValues[1]) ?: return Effect.Unparsed(s)
             val where = m.groupValues[3]

@@ -250,4 +250,13 @@ class SituationParserTest {
         val t = parser.parse("My opponent has 8 cards in hand at their cleanup step.")
         assertEquals(8, t.situation.players.first { it.id == "opp" }.handSize); assertEquals("cleanup", t.situation.events.first { it.verb == "step" }.to)
     }
+
+    @Test
+    fun `amount questions are not actions, and theirs or mine picks the other copy`() {
+        val p = parser.parse("I cast Stifle targeting myself. Do I lose 2 life?")
+        assertTrue(p.situation.events.none { it.verb == "loseLife" }, p.situation.events.toString()); assertTrue(p.notes.any { "answered by the outcome" in it })
+        val q = parser.parse("I attack with Sol Ring and my opponent blocks with Sol Ring. I cast Stifle on mine. Does theirs die?")
+        val ask = q.situation.events.last { it.verb == "ask" }; assertEquals("die", ask.to)
+        assertEquals("opp", q.situation.objects.first { it.id == ask.obj }.controller); assertEquals(2, q.situation.objects.count { it.card.name == "Sol Ring" })
+    }
 }
