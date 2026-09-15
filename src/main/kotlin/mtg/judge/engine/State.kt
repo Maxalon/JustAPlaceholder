@@ -197,7 +197,7 @@ class GameState(
         val out = mutableSetOf<String>()
         val texts = obj.def.abilities.filterIsInstance<StaticAbility>().map { it.text } + obj.tempKeywords +
             staticEffectsOn(obj).flatMap { (_, e) -> (e as? StaticEffect.KeywordGrant)?.keywords ?: emptySet() }
-        for (t in texts) Regex("""protection from ([a-z]+)(?: and from ([a-z]+))?""", RegexOption.IGNORE_CASE).findAll(t).forEach { m ->
+        for (t in texts) Regex("""protection from ([a-z]+(?: spells)?)(?: and from ([a-z]+(?: spells)?))?""", RegexOption.IGNORE_CASE).findAll(t).forEach { m ->
             out += m.groupValues[1].lowercase(); if (m.groupValues[2].isNotEmpty()) out += m.groupValues[2].lowercase()
         }
         return out

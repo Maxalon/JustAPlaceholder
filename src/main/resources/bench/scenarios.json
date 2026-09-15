@@ -1285,5 +1285,94 @@
     "cite": [
       "400.7"
     ]
+  },
+  {
+    "id": "elder-sac-in-response",
+    "text": "I cast Sakura-Tribe Elder and sacrifice it in response to Lightning Bolt.",
+    "expect": [
+      "Sakura-Tribe Elder: the battlefield → your graveyard",
+      "Lightning Bolt doesn't resolve (all targets illegal)"
+    ],
+    "cite": [
+      "701.21a",
+      "608.2b"
+    ]
+  },
+  {
+    "id": "aura-shards-target",
+    "text": "I control Aura Shards and cast Grizzly Bears. Opponent has Sol Ring.",
+    "expect": [
+      "Sol Ring: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "701.8a"
+    ]
+  },
+  {
+    "id": "bridge-two-cards",
+    "text": "My opponent controls Ensnaring Bridge with 2 cards in hand. I attack with Llanowar Elves and Serra Angel.",
+    "expect": [
+      "Serra Angel can't attack (Ensnaring Bridge)",
+      "opponent takes 1 damage"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "emrakul-swords",
+    "text": "I cast Swords to Plowshares on Emrakul, the Aeons Torn.",
+    "expect": [
+      "Swords to Plowshares can't target Emrakul, the Aeons Torn"
+    ],
+    "cite": [
+      "702.16b"
+    ]
+  },
+  {
+    "id": "mind-control-next-turn",
+    "text": "I cast Mind Control on their Serra Angel and attack with it next turn.",
+    "expect": [
+      "You control Serra Angel",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "613.1b",
+      "502.3"
+    ]
+  },
+  {
+    "id": "mana-in-response-split-second",
+    "text": "Opponent casts Krosan Grip on my Sol Ring. Can I tap Sol Ring for mana in response?",
+    "expect": [
+      "Sol Ring's mana ability: add {C}{C}",
+      "Sol Ring: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "702.61a",
+      "605.3b"
+    ]
+  },
+  {
+    "id": "unsummon-recast",
+    "text": "I cast Unsummon on my own Mulldrifter and recast it.",
+    "expect": [
+      "Mulldrifter: the battlefield → your hand",
+      "You draw 2 cards"
+    ],
+    "cite": [
+      "400.7",
+      "121.1"
+    ]
+  },
+  {
+    "id": "bolt-wall-before-damage",
+    "text": "I attack with Grizzly Bears and my opponent blocks with Wall of Omens. Then I cast Lightning Bolt on the Wall before damage.",
+    "expect": [
+      "Wall of Omens: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
   }
 ]

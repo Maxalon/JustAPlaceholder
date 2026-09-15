@@ -212,6 +212,8 @@ sealed interface StaticEffect {
     /** "~ enters with N +1/+1 counters on it" (614.1c). count null = X. */
     data class EntersWithCounters(val kind: String, val count: Int?) : StaticEffect
     /** "~ can't block" / "~ can't attack" / "~ can't be countered" / "~ can't be blocked". */
+    /** "You control enchanted creature" (Mind Control): a control-changing static, layer 2. */
+    data object ControlEnchanted : StaticEffect
     /** Panharmonicon: artifacts and creatures entering make your triggered abilities trigger an additional time. */
     data object ExtraEtbTrigger : StaticEffect
     /** Propaganda / Ghostly Prison: "Creatures can't attack you unless their controller pays [cost] for each creature …". */

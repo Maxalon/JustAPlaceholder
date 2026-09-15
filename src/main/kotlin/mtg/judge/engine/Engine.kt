@@ -32,7 +32,7 @@ class Engine(val state: GameState) {
         val effect = card.spellEffect ?: card.enchant?.takeIf { card.isAura }?.let { Effect.Attach(TargetSpec(it, "enchant ${it.raw}")) }
         val needed = effect?.targets() ?: emptyList()
         var asked = false
-        var targets = if (targets.isEmpty() && needed.size == 1) inferTarget(card.name, needed[0], playerId).also { asked = it == null && state.clarifications.any { c -> c.about == "${card.name}'s target" } } ?: targets else targets
+        var targets = if (targets.isEmpty() && needed.size == 1) inferTarget(card.name, needed[0], playerId, harmful = isHarmful(effect)).also { asked = it == null && state.clarifications.any { c -> c.about == "${card.name}'s target" } } ?: targets else targets
         if (!card.isInstantOrSorcery && card.abilities.none { it is TriggeredAbility || it is ActivatedAbility || it is StaticAbility } && card.abilities.isNotEmpty()) {
             state.unsupported += Unsupported(card.name, "Rules text not modeled: " + card.abilities.filterIsInstance<UnparsedAbility>().joinToString(" | ") { it.text })
         }
@@ -212,6 +212,7 @@ class Engine(val state: GameState) {
         return item
     }
 
+    private fun isHarmful(e: Effect?): Boolean = when (e) { is Effect.Destroy, is Effect.Exile, is Effect.Damage, is Effect.Bounce, is Effect.Tap, is Effect.Counter, is Effect.ShuffleIntoLibrary, is Effect.GainControl -> true; is Effect.Seq -> e.effects.firstOrNull()?.let { isHarmful(it) } ?: false; is Effect.May -> isHarmful(e.effect); is Effect.UnlessPays -> isHarmful(e.effect); else -> false }
     private fun usesX(e: Effect): Boolean = when (e) { is Effect.Damage -> e.x; is Effect.Seq -> e.effects.any { usesX(it) }; is Effect.May -> usesX(e.effect); is Effect.Modal -> e.modes.any { usesX(it) }; else -> false }
 
     /** Steps and combat can't begin while something is on the stack: everything pending resolves first (500.2). */
@@ -224,6 +225,14 @@ class Engine(val state: GameState) {
 
     fun beginStep(step: String, activePlayer: String) {
         emptyStackFirst("the ${step.replace('_', ' ')} step")
+        if (step == "untap") {
+            state.activePlayer = activePlayer; state.step = step; state.phase = "beginning"
+            val p = state.player(activePlayer)
+            val mine = state.objects.values.filter { it.isOnBattlefield() && it.controller == activePlayer }
+            mine.forEach { it.tapped = false; it.summoningSick = false; it.attacking = null; it.blocking = null }
+            trace.step("${p.possessive.replaceFirstChar { it.uppercase() }} turn begins: ${p.subject.lowercase()} ${p.v("untaps", "untap")} all ${p.possessive} permanents, and everything ${p.subject.lowercase()} ${p.v("has", "have")} controlled since the turn began can attack and use {T} abilities.", "502.3", "302.6")
+            return
+        }
         if (step == "cleanup") {
             state.activePlayer = activePlayer; state.step = step; state.phase = "ending"
             val affected = state.objects.values.filter { it.isOnBattlefield() && (it.pumps.isNotEmpty() || it.tempKeywords.isNotEmpty() || it.damage > 0) }
@@ -272,10 +281,11 @@ class Engine(val state: GameState) {
                     if (def.isAura) {
                         val t = item.targets.firstOrNull()
                         val tid = (t as? Ref.Obj)?.id
-                        item.source.attachedTo = tid
+                        item.source.attachedTo = tid; applyControlEnchanted(item.source)
                         trace.step("${def.name} enters the battlefield attached to ${t?.let { state.nameOf(it) } ?: "nothing"}.", "608.3b", "303.4")
                     }
                     applyEntersReplacements(item.source)
+                    val before = state.objects.values.filter { it.isOnBattlefield() && it.def.isCreature && it !== item.source }.associate { it.id to (it.power to it.toughness) }
                     trace.step("${def.name} resolves and enters the battlefield under ${state.player(item.controller).possessive} control${if (def.isCreature) " as a ${state.describePt(item.source)}" else ""}${if (item.source.tapped == true) ", tapped" else ""}.", "608.3a")
                     if (def.abilities.any { it is StaticAbility && it.effects.isNotEmpty() }) trace.step("${def.name}'s static ability starts applying to the permanents it describes.", "604.2", "613.1")
                     state.outcomes += "${def.name} enters the battlefield."
@@ -659,7 +669,7 @@ class Engine(val state: GameState) {
         if (needed.size == 1 && targets.isEmpty()) {
             // A trigger nobody named a target for: the only legal target, or for "target player"/"target opponent" the one opponent.
             val spec = needed[0]
-            val inferred = inferTarget("${obj.name}'s triggered ability", spec, obj.controller)
+            val inferred = inferTarget("${obj.name}'s triggered ability", spec, obj.controller, harmful = isHarmful(ability.effect))
                 ?: if (spec.filter.kinds == setOf(Kind.PLAYER) && state.opponentsOf(obj.controller).size == 1) {
                     state.clarifications.removeAll { it.about == "${obj.name}'s triggered ability's target" }
                     val opp = state.opponentsOf(obj.controller).single()
@@ -843,7 +853,7 @@ class Engine(val state: GameState) {
                 if (effect.kind == "+1/+1" || effect.kind == "-1/-1") stateBasedActions()
             }
             is Effect.Attach -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { t ->
-                item.source.attachedTo = t.id
+                item.source.attachedTo = t.id; applyControlEnchanted(item.source)
                 trace.step("${item.source.name} becomes attached to ${t.name}${if (item.source.def.isEquipment) " (equipped creature)" else ""}.", *(if (item.source.def.isEquipment) arrayOf("702.6a", "301.5a") else arrayOf("701.3a")))
                 state.outcomes += "${item.source.name} is attached to ${t.name}."
                 if (t.def.isCreature) trace.step("${t.name} is now ${state.describePt(t)}.", "613.1")
@@ -909,7 +919,23 @@ class Engine(val state: GameState) {
 
     private fun tap(o: GameObject) { if (o.tapped != true) { o.tapped = true; onEvent(GameEvent.BecomesTapped(o)) } }
 
+    /** Mind Control and friends: the Aura's controller controls the enchanted creature while it's attached (613.1b). */
+    private fun applyControlEnchanted(aura: GameObject) {
+        if (aura.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.none { it is StaticEffect.ControlEnchanted }) return
+        val host = aura.attachedTo?.let { state.objects[it] } ?: return
+        if (host.controller == aura.controller) return
+        val was = state.player(host.controller); host.controller = aura.controller; host.summoningSick = true
+        trace.step("${aura.name} says its controller controls the enchanted creature: ${state.player(aura.controller).subject} ${state.player(aura.controller).v("controls", "control")} ${host.name} now (it was ${was.possessive}). It's summoning sick for its new controller unless it has haste.", "613.1b", "302.6")
+        state.outcomes += "${state.player(aura.controller).subject} ${state.player(aura.controller).v("controls", "control")} ${host.name}."
+    }
+
     private fun moveRaw(obj: GameObject, to: Zone) {
+        if (obj.isOnBattlefield()) {
+            // A control-changing Aura leaving gives the creature back (the effect ends, 611.2b).
+            if (obj.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.ControlEnchanted }) obj.attachedTo?.let { state.objects[it] }?.let { host ->
+                if (host.controller != host.owner) { host.controller = host.owner; trace.step("${obj.name} has left the battlefield, so its control effect ends and ${host.name} goes back to ${state.player(host.owner).possessive} control.", "611.2b"); state.outcomes += "${state.player(host.owner).subject} ${state.player(host.owner).v("controls", "control")} ${host.name} again." }
+            }
+        }
         if (obj.isOnBattlefield()) obj.lkiPower = obj.power
         obj.zone = to; obj.damage = 0; obj.pumps.clear(); obj.tempKeywords.clear(); obj.tapped = false; obj.attacking = null; obj.blocking = null; obj.dealtDeathtouchDamage = false
     }
@@ -1097,7 +1123,8 @@ class Engine(val state: GameState) {
         val prots = state.protections(o)
         if (prots.isNotEmpty()) {
             val qualities = qualitiesOf(source.def)
-            val hit = prots.firstOrNull { it == "everything" || it in qualities }
+            val isSpell = source.def.isInstantOrSorcery || source.zone == Zone.STACK
+            val hit = prots.firstOrNull { it == "everything" || it in qualities || (it == "colored spells" && isSpell && source.def.colors.isNotEmpty()) || (it == "spells" && isSpell) }
             if (hit != null) return "${o.name} has protection from $hit, so it can't be targeted by ${if (source.def.isInstantOrSorcery || source.zone == Zone.STACK) "that spell" else "an ability from that source"}" to "702.16b"
         }
         return null
@@ -1129,13 +1156,18 @@ class Engine(val state: GameState) {
      * When the user didn't say what a one-target spell targets, and exactly one thing in the
      * situation is a legal target, use it and say so. Several candidates: ask instead.
      */
-    private fun inferTarget(what: String, spec: TargetSpec, controller: String): List<Ref>? {
+    private fun inferTarget(what: String, spec: TargetSpec, controller: String, harmful: Boolean = false): List<Ref>? {
         if (!spec.filter.verifiable) return null
         val candidates = mutableListOf<Ref>()
         for (o in state.objects.values) if (o.zone == Zone.BATTLEFIELD || o.zone == Zone.STACK) { val r = Ref.Obj(o.id); if (filterMatches(spec.filter, r, controller)) candidates += r }
         for (s in state.stack) if (s.kind != StackKind.SPELL) { val r = Ref.Stack(s.id); if (filterMatches(spec.filter, r, controller)) candidates += r }
         if (Kind.PLAYER in spec.filter.kinds) state.players.forEach { candidates += Ref.Player(it.id) }
-        val distinct = candidates.distinctBy { when (it) { is Ref.Obj -> "o:" + it.id; is Ref.Stack -> "s:" + it.id; is Ref.Player -> "p:" + it.id } }
+        var distinct = candidates.distinctBy { when (it) { is Ref.Obj -> "o:" + it.id; is Ref.Stack -> "s:" + it.id; is Ref.Player -> "p:" + it.id } }
+        // Destroying, exiling or damaging: nobody aims that at their own things when an opponent's qualify.
+        if (harmful && distinct.size > 1) {
+            val theirs = distinct.filter { r -> when (r) { is Ref.Obj -> state.objects[r.id]?.controller != controller; is Ref.Player -> r.id != controller; is Ref.Stack -> state.stackItem(r.id)?.controller != controller } }
+            if (theirs.isNotEmpty() && theirs.size < distinct.size) { distinct = theirs; if (theirs.size == 1) { state.assumptions += if (theirs[0] is Ref.Player) "$what targets ${state.nameOf(theirs[0])} (\"${spec.raw}\" with no target named; assuming the opponent)." else "$what targets ${state.nameOf(theirs[0])}: of the legal targets for \"${spec.raw}\", it's the only one an opponent controls."; return theirs } }
+        }
         return when (distinct.size) {
             1 -> { state.assumptions += "$what targets ${state.nameOf(distinct[0])}, the only legal target for \"${spec.raw}\" in this situation."; distinct }
             0 -> null

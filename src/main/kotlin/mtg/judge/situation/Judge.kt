@@ -155,7 +155,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         val tg = if (e.targets.isEmpty()) "" else " targeting " + e.targets.joinToString(" and ") { runCatching { state.nameOf(parseRef(it, state)) }.getOrDefault(it) }
         return when (e.verb.lowercase()) {
             "cast" -> { val land = e.card?.let { c -> runCatching { cardDef(c, state) }.getOrNull() }?.let { "Land" in it.types && !it.isInstantOrSorcery } == true
-                "${who ?: "you"} ${if (land) (if (who == null || who == "you") "play" else "plays") else (if (who == null || who == "you") "cast" else "casts")} ${e.card ?: e.obj}${if (e.to == "overload") " overloaded" else if (e.to == "kicked") " kicked" else ""}$tg" }
+                "${who ?: "you"} ${if (land) (if (who == null || who == "you") "play" else "plays") else (if (who == null || who == "you") "cast" else "casts")} ${e.card ?: state.objects[e.obj]?.name ?: e.obj}${if (e.to == "overload") " overloaded" else if (e.to == "kicked") " kicked" else ""}$tg" }
             "activate" -> "${who ?: "controller"} ${if (who == "you") "activate" else "activates"} ${state.objects[e.obj]?.name ?: e.obj}${e.to?.takeIf { e.abilityIndex == null && Regex("""^[+\u2212-]?\d+$""").matches(it) }?.let { " ($it)" } ?: ""}$tg"
             "trigger" -> "${state.objects[e.obj]?.name ?: e.obj}'s ability triggers$tg"
             "regenerate" -> "${state.objects[e.obj]?.name ?: e.obj} has a regeneration shield"

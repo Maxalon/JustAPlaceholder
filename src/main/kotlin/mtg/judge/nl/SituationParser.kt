@@ -39,7 +39,8 @@ class SituationParser(private val names: NameIndex) {
         var lastNamed: String? = null              // the last named (non-"me") player who acted, for "they"/"he"/"she"
         var lastActor: String? = null
         var clauseActor: String? = null            // the actor of the clause being read (for "their X" defaults)
-        val inHand = HashMap<String, MutableList<NameIndex.Entry>>()   // cards noted as in hand, per player ("I cast it")
+        val inHand = HashMap<String, MutableList<NameIndex.Entry>>()
+        var nextTurn = false   // cards noted as in hand, per player ("I cast it")
         var lastVerb: String? = null               // "have" | "cast" for bare continuations ("… and Smothering Tithe")
         var lastOwner: String = "me"
         var lastMentioned: String? = null          // object id, or "cast:<slug>" for a spell just cast
@@ -287,8 +288,17 @@ class SituationParser(private val names: NameIndex) {
             ctx.activePlayer = who
             ctx.events += EventSpec("step", player = who, to = step); return true
         }
+        // "… next turn" / "on my next turn": a turn has passed, so nothing is summoning sick any more.
+        Regex("""\s+(?:next turn|on my next turn|the next turn|the turn after|a turn later|on their next turn)$""").find(clauseIn)?.let { r ->
+            ctx.objects.keys.toList().forEach { id -> ctx.objects[id] = ctx.objects.getValue(id).copy(summoningSick = false) }
+            ctx.notes += "A turn has passed: nothing is summoning sick any more, and until-end-of-turn effects from earlier are over."
+            if (ctx.events.lastOrNull()?.verb in setOf("cast", "activate", "trigger")) ctx.events += EventSpec("resolveAll")
+            val who = actorOfClause(clauseIn) ?: ctx.lastActor ?: "me"
+            ctx.events += EventSpec("step", player = who, to = "cleanup"); ctx.events += EventSpec("step", player = who, to = "untap")
+            ctx.nextTurn = true
+        }
         // Trailing "with Guttersnipe out" / "with Rhystic Study on the battlefield": a permanent of the actor's; "with no blockers" says nothing.
-        var clause0 = clauseIn
+        var clause0 = clauseIn.replace(Regex("""\s+(?:next turn|on my next turn|the next turn|the turn after|a turn later|on their next turn)$"""), "")
         Regex("""\s+with (?:an? |the |my |their |@(\w+)'s )?(c\d+) (?:out|in play|on the battlefield|on board|on the field)$""").find(clause0)?.let { r ->
             val owner = r.groupValues[1].ifEmpty { actorOfClause(clause0) ?: ctx.lastActor ?: "me" }
             addObject(m.cards.getValue(r.groupValues[2]), owner, false, ctx); clause0 = clause0.removeRange(r.range)
@@ -337,8 +347,11 @@ class SituationParser(private val names: NameIndex) {
                 val caster = ctx.other(actorOfClause(c) ?: ctx.lastActor ?: "me") ?: "opp"
                 // What was that spell aimed at? Read the response's own target as the best guess ("Swords on my Angel in response to Bolt").
                 val guess = Regex("""(?:targeting|target|on|at)\s+(?:my |their |the |an? |own |my own )*(c\d+)""").find(c)?.let { t -> m.cards[t.groupValues[1]]?.let { objectIdFor(it, ctx) ?: addObject(it, actorOfClause(c) ?: ctx.lastActor ?: "me", false, ctx) } }
+                    ?: Regex("""^(?:i |they |@\w+ )?(?:sacrifices?|sacs?|regenerates?|pumps?|protects?|saves?) (?:it|itself|the c\d+|my c\d+|c\d+)""").find(c)?.let { ctx.events.lastOrNull { it.verb == "cast" }?.card?.name?.let { n -> ctx.objects.values.firstOrNull { it.card.name == n }?.id ?: slug(n) } }
+                // The thing being responded to was cast after whatever this player did just before ("I cast Elder and sacrifice it in response to Bolt").
+                if (ctx.events.lastOrNull()?.let { it.verb in setOf("cast", "activate") && it.player != caster } == true) ctx.events += EventSpec("resolveAll")
                 ctx.events += EventSpec("cast", player = caster, card = CardRef(name = card.display, oracleId = card.oracleId), targets = listOfNotNull(guess)); ctx.castCards += card.display; ctx.note(caster)
-                if (guess != null) ctx.notes += "${card.display} was read as targeting ${ctx.objects.getValue(guess).card.name} (the thing the response protects); say otherwise if it targeted something else."
+                if (guess != null) ctx.notes += "${card.display} was read as targeting ${ctx.objects[guess]?.card?.name ?: ctx.events.lastOrNull { it.verb == "cast" && it.card != null && slug(it.card.name ?: "") == guess }?.card?.name ?: guess} (the thing the response protects); say otherwise if it targeted something else."
             }
         }
         var actor: String? = null
@@ -392,9 +405,10 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("regenerate", obj = id); return true
         }
         // "sacrifice a Bears (to Viscera Seer)": the sacrifice, then the ability it paid for.
-        Regex("""^(?:sacrifices?|sacs?|sacrificing|saccing) (?:an? |the |my |one |another )?(c\d+)(?: to (?:an? |the |my )?(c\d+)(?:'s ability)?)?(.*)$""").find(c)?.let { r ->
+        Regex("""^(?:sacrifices?|sacs?|sacrificing|saccing) (?:an? |the |my |one |another )?(c\d+|it|itself)(?: to (?:an? |the |my )?(c\d+)(?:'s ability)?)?(.*)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
-            val card = m.cards.getValue(r.groupValues[1]); val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
+            val id = if (r.groupValues[1] == "it" || r.groupValues[1] == "itself") (ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.lastOrNull { it.verb == "cast" && it.player == who }?.card?.name?.let { slug(it) } ?: return@let)
+                     else m.cards.getValue(r.groupValues[1]).let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) }
             ctx.events += EventSpec("sacrifice", player = who, obj = id)
             if (r.groupValues[2].isNotEmpty()) { val outlet = m.cards.getValue(r.groupValues[2]); val oid = objectIdFor(outlet, ctx) ?: addObject(outlet, who, false, ctx); ctx.events += EventSpec("activate", player = who, obj = oid, abilityIndex = 0, targets = targetsIn(r.groupValues[3], m, ctx)) }
             ctx.lastActor = who; return true
@@ -438,7 +452,7 @@ class SituationParser(private val names: NameIndex) {
             addObject(card, who, false, ctx); emitCast(who, card, "", m, ctx); return true
         }
         // "tap Llanowar Elves for mana", "tap Sol Ring for {C}{C}"
-        Regex("""^taps? (?:an? |the |my )?(c\d+) for (?:mana|\{.*|[a-z]+ mana|[a-z]+)$""").find(c)?.let { r ->
+        Regex("""^taps? (?:an? |the |my )?(c\d+) for (?:mana|\{.*|[a-z]+ mana|[a-z]+)(?: in response(?: to (?:it|that))?)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val card = m.cards.getValue(r.groupValues[1]); val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
             ctx.events += EventSpec("activate", player = who, obj = id, to = "mana"); ctx.lastActor = who; ctx.lastMentioned = id; return true
@@ -559,6 +573,13 @@ class SituationParser(private val names: NameIndex) {
             if (first.display !in ctx.castCards) emitCast(ctx.other(who) ?: "me", first, "", m, ctx)
             emitCast(who, m.cards.getValue(r.groupValues[2]), " targeting ${r.groupValues[1]}", m, ctx); return true
         }
+        // "recast it" / "cast it again" / "replay it": the card that just went to hand.
+        Regex("""^(?:recasts?|replays?|casts? (?:it|that) again|plays? (?:it|that) again)(?: it| that)?$""").find(c)?.let {
+            val who = actor ?: subject ?: "me"
+            val id = ctx.events.lastOrNull { it.verb == "cast" }?.targets?.firstOrNull { it in ctx.objects } ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+            if (ctx.events.lastOrNull()?.verb in setOf("cast", "activate", "trigger")) ctx.events += EventSpec("resolveAll")   // it went to hand first
+            ctx.events += EventSpec("cast", player = who, obj = id); ctx.lastActor = who; ctx.lastVerb = "cast"; return true
+        }
         // "cast it" after "I have X in hand": the card noted in hand.
         Regex("""^(?:$castVerbs) (?:it|that|the card)$""").find(c)?.let {
             val who = actor ?: subject ?: "me"
@@ -622,7 +643,8 @@ class SituationParser(private val names: NameIndex) {
             val count = r.groupValues[1].let { numberWords[it] ?: it.toIntOrNull() ?: 1 }
             val rest = r.groupValues[3]
             if (count > 1) { repeat(count) { addObject(m.cards.getValue(r.groupValues[2]), owner, false, ctx, allowDuplicate = true) }; ctx.lastVerb = "have"; ctx.lastOwner = owner; return true }
-            if (rest.contains("in hand") || rest.contains("in my hand")) {
+            Regex("""\bwith (\d+|\w+|no) cards? in (?:their |my |his |her )?hand\b""").find(rest)?.let { h -> ctx.handSize[owner] = if (h.groupValues[1] == "no") 0 else number(h.groupValues[1]) ?: 0 }
+            if ((rest.contains("in hand") || rest.contains("in my hand")) && !Regex("""\bcards? in (?:their |my |his |her )?hand\b""").containsMatchIn(rest)) {
                 ctx.notes += "${m.cards.getValue(r.groupValues[2]).display} noted as in hand (hidden zones are only tracked when you cast from them)."
                 ctx.inHand.getOrPut(owner) { mutableListOf() } += m.cards.getValue(r.groupValues[2])
                 ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner
