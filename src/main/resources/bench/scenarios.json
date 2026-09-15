@@ -1212,5 +1212,78 @@
     "cite": [
       "702.16b"
     ]
+  },
+  {
+    "id": "counter-their-counterspell",
+    "text": "I cast Counterspell on my opponent's Counterspell that targets my Grizzly Bears.",
+    "expect": [
+      "Counterspell is countered"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "bolt-face-in-response",
+    "text": "My opponent casts Thoughtseize. I respond with Lightning Bolt to their face. They're at 3.",
+    "expect": [
+      "opponent takes 3 damage",
+      "opponent loses the game"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "cast-it-from-hand",
+    "text": "I have Wrath of God in hand. Opponent controls Grizzly Bears, Serra Angel and Darksteel Colossus. I cast it.",
+    "expect": [
+      "Serra Angel: the battlefield → opponent's graveyard",
+      "Darksteel Colossus is indestructible and isn't destroyed"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "attack-into-no-block",
+    "text": "I attack with Grizzly Bears into their untapped Serra Angel. They don't block.",
+    "expect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "510.1b"
+    ]
+  },
+  {
+    "id": "rhystic-triggers-i-draw",
+    "text": "It's my opponent's turn. They cast Sol Ring, then Rhystic Study triggers for me and I draw.",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "mana-leak-paid",
+    "text": "My opponent counters my Grizzly Bears with Mana Leak. I pay the 3.",
+    "expect": [
+      "You pay {3}; Mana Leak has no further effect",
+      "Grizzly Bears enters the battlefield"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "naturalize-rancor",
+    "text": "I control Grizzly Bears with Rancor. Opponent casts Naturalize on Rancor.",
+    "expect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "cite": [
+      "400.7"
+    ]
   }
 ]

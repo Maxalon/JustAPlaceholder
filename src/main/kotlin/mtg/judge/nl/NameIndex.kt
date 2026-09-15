@@ -26,7 +26,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
                 // Exact name, then nickname, then singularized forms; a nickname beats a token that happens to share the word ("bears" -> Grizzly Bears, not a Bear token).
                 val e = byNorm[key] ?: alias(key) ?: sing?.let { alias(it) } ?: sing?.let { byNorm[it] }
                 // A name made only of everyday words ("The End", "Turn Aside" no, "Wear // Tear" yes) is table talk unless it's a nickname.
-                val ordinary = span.all { it in commonWords || it.removeSuffix("s") in commonWords } && key !in aliases && sing !in aliases
+                val ordinary = span.flatMap { it.split(' ') }.all { it in commonWords || it.removeSuffix("s") in commonWords } && key !in aliases && sing !in aliases
                 if (e != null && !ordinary && (len > 1 || isSafeSingleWord(key, e) || key in aliases || sing in aliases)) { hit = Found(i, i + len, e); break }
             }
             if (hit != null) { found += hit; i = hit.end } else i++
@@ -72,7 +72,8 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
         private val commonWords = setOf("the", "a", "an", "of", "end", "start", "beginning", "turn", "step", "phase", "time", "game", "play", "attacking", "blocking", "wear", "tear", "begin",
             "my", "your", "their", "our", "it", "its", "this", "that", "and", "or", "not", "no", "yes", "in", "on", "at", "to", "for", "with", "from", "by", "as", "is", "are", "was", "be",
             "one", "two", "three", "first", "second", "last", "next", "new", "old", "big", "small", "up", "down", "out", "off", "over", "under", "back", "again", "now", "then", "here", "there",
-            "life", "death", "damage", "counter", "target", "attack", "block", "draw", "hand", "deck", "library", "graveyard", "exile", "battlefield", "stack", "response", "trigger", "ability", "poison", "commander", "cards", "card")
+            "life", "death", "damage", "counter", "target", "attack", "block", "draw", "hand", "deck", "library", "graveyard", "exile", "battlefield", "stack", "response", "trigger", "ability", "poison", "commander", "cards", "card",
+            "they", "them", "he", "she", "we", "you", "i", "me", "re", "ve", "ll", "m", "s", "d", "t", "don", "doesn", "can", "won", "isn", "aren")
         private val stopWords = setOf(
             "counter", "target", "turn", "attack", "block", "cast", "play", "draw", "damage", "life", "control",
             "creature", "spell", "ability", "trigger", "stack", "response", "resolve", "resolves", "tap", "untap", "exile", "destroy", "sacrifice",
