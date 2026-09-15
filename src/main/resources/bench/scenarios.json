@@ -3363,5 +3363,76 @@
     "cite": [
       "704.5g"
     ]
+  },
+  {
+    "id": "threaten-attack-get-it-back",
+    "text": "I control Serra Angel. My opponent casts Threaten on it and attacks me. Do I get it back?",
+    "expect": [
+      "You take 4 damage",
+      "Serra Angel is back under your control",
+      "Yes: Serra Angel is under your control"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Can't verify"
+    ],
+    "cite": [
+      "611.2a",
+      "514.2"
+    ]
+  },
+  {
+    "id": "aura-of-silence-sol-ring-cost",
+    "text": "I have Aura of Silence. My opponent casts Sol Ring. How much does it cost?",
+    "expect": [
+      "Aura of Silence makes Sol Ring cost {2} more"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "601.2f"
+    ]
+  },
+  {
+    "id": "two-attackers-one-blocked-takes-the-other",
+    "text": "I attack with two 2/2s. My opponent blocks one with a 4/4 and takes the other. They're at 2.",
+    "expect": [
+      "opponent takes 2 damage",
+      "opponent loses the game"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "rhystic-then-they-pay",
+    "text": "I control Rhystic Study and my opponent casts Lightning Bolt at me. Then they pay the 1.",
+    "expect": [
+      "opponent pays {1}; Rhystic Study's triggered ability has no further effect",
+      "You take 3 damage"
+    ],
+    "notExpect": [
+      "You draw 1 card"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "bears-attack-no-creatures-take-2",
+    "text": "I attack with Grizzly Bears. My opponent has no creatures. Do they take 2?",
+    "expect": [
+      "opponent takes 2 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "510.1b"
+    ]
   }
 ]

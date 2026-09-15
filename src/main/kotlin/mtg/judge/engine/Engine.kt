@@ -362,6 +362,11 @@ class Engine(val state: GameState) {
             } }
             val affected = state.objects.values.filter { it.isOnBattlefield() && (it.pumps.isNotEmpty() || it.tempKeywords.isNotEmpty() || it.damage > 0 || it.basePt != null) }
             trace.step("The cleanup step: all damage marked on permanents is removed and all \"until end of turn\" effects end, simultaneously.", "514.2")
+            for (o in state.objects.values.filter { it.isOnBattlefield() && it.controlRevertsTo != null }) {
+                val back = state.player(o.controlRevertsTo!!); o.controller = back.id; o.controlRevertsTo = null
+                trace.step("The \"until end of turn\" control change on ${o.name} ends: ${back.subject} ${back.v("controls", "control")} it again (it doesn't leave the battlefield or untap).", "514.2", "611.2a")
+                state.outcomes += "${o.name} is back under ${back.possessive} control."
+            }
             for (o in affected) { o.pumps.clear(); o.tempKeywords.clear(); o.basePt = null; o.damage = 0; trace.step("${o.name} is back to ${if (o.def.isCreature) state.describePt(o) else "normal"} with no damage.", "514.2"); state.outcomes += "${o.name}'s until-end-of-turn effects and damage are gone (cleanup)." }
             state.shields.clear()
             return
@@ -1185,7 +1190,7 @@ class Engine(val state: GameState) {
                 applyEffect(effect.choice, item); applyEffect(effect.then, item)
             }
             is Effect.GainControl -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o ->
-                val was = state.player(o.controller); o.controller = item.controller
+                val was = state.player(o.controller); if (effect.untilEndOfTurn && o.controlRevertsTo == null) o.controlRevertsTo = o.controller; o.controller = item.controller
                 trace.step("${state.player(item.controller).subject} ${state.player(item.controller).v("gains", "gain")} control of ${o.name}${if (effect.untilEndOfTurn) " until end of turn" else ""} (it was ${was.possessive}). A control-changing effect applies in layer 2; the permanent doesn't change zones, so it isn't summoning sick only if it has haste or has been under its new controller's control since the turn began.", "613.1b", "611.2a", "302.6")
                 if (o.def.isCreature) o.summoningSick = true
                 state.outcomes += "${state.player(item.controller).subject} ${state.player(item.controller).v("controls", "control")} ${o.name}${if (effect.untilEndOfTurn) " until end of turn" else ""}."

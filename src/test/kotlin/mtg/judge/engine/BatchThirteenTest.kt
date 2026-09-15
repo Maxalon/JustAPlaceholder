@@ -31,6 +31,8 @@ class BatchThirteenTest {
     private val goyf = card("Tarmogoyf", "Creature — Lhurgoyf", "Tarmogoyf's power is equal to the number of card types among cards in all graveyards and its toughness is equal to that number plus 1.", "{1}{G}", "G", "*", "1+*")
     private val rancor = card("Rancor", "Enchantment — Aura", "Enchant creature\nEnchanted creature gets +2/+0 and has trample.\nWhen Rancor is put into a graveyard from the battlefield, return Rancor to its owner's hand.", "{G}", "G")
     private val hexmage = card("Vampire Hexmage", "Creature — Vampire Shaman", "First strike\nSacrifice Vampire Hexmage: Remove all counters from target permanent.", "{B}{B}", "B", "2", "1", "First strike")
+    private val threaten = card("Threaten", "Sorcery", "Untap target creature and gain control of it until end of turn. That creature gains haste until end of turn.", "{2}{R}", "R")
+    private val auraOfSilence = card("Aura of Silence", "Enchantment", "Artifact and enchantment spells your opponents cast cost {2} more to cast.\nSacrifice Aura of Silence: Destroy target artifact or enchantment.", "{1}{W}{W}", "W")
     private val serra = card("Serra Angel", "Creature — Angel", "Flying, vigilance", "{3}{W}{W}", "W", "4", "4", "Flying", "Vigilance")
     private val viper = card("Ambush Viper", "Creature — Snake", "Flash\nDeathtouch", "{1}{G}", "G", "2", "1", "Flash", "Deathtouch")
     private val krenko = card("Krenko, Mob Boss", "Legendary Creature — Goblin Warrior", "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.", "{2}{R}{R}", "R", "3", "3")
@@ -368,6 +370,22 @@ class BatchThirteenTest {
         assertTrue(e.activate("opp", "hexmage", 0, listOf(Ref.Obj("bears"))) != null); e.resolveAll()
         assertEquals(Zone.GRAVEYARD, s.obj("hexmage").zone); assertTrue(s.obj("bears").counters.isEmpty()); assertEquals(2, s.obj("bears").power)
         assertTrue(s.outcomes.any { it.startsWith("Grizzly Bears loses all its counters (2 +1/+1)") }, s.outcomes.toString())
+    }
+
+    @Test
+    fun `threaten hands the creature back at cleanup`() {
+        val s = state(); s.put("serra", serra, "opp"); s.obj("serra").tapped = true; val e = Engine(s)
+        e.cast("me", threaten, listOf(Ref.Obj("serra"))); e.resolveAll()
+        assertEquals("me", s.obj("serra").controller); assertEquals(false, s.obj("serra").tapped); assertTrue(s.hasKeyword(s.obj("serra"), "haste"))
+        e.beginStep("cleanup", "me"); assertEquals("opp", s.obj("serra").controller); assertTrue(s.outcomes.any { it.contains("back under opp's control") }, s.outcomes.toString())
+    }
+
+    @Test
+    fun `aura of silence taxes an opponent's artifact spell only`() {
+        val s = state(); s.put("aura", auraOfSilence, "me"); val e = Engine(s)
+        e.cast("opp", solRing, emptyList()); assertTrue(s.trace.steps.any { it.text.contains("Aura of Silence makes Sol Ring cost {2} more") }, s.trace.steps.joinToString("\n") { it.text })
+        val s2 = state(); s2.put("aura", auraOfSilence, "me"); val e2 = Engine(s2)
+        e2.cast("me", solRing, emptyList()); assertTrue(s2.trace.steps.none { it.text.contains("cost {2} more") })
     }
 
     @Test

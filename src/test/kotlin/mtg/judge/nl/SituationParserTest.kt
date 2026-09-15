@@ -259,4 +259,15 @@ class SituationParserTest {
         val ask = q.situation.events.last { it.verb == "ask" }; assertEquals("die", ask.to)
         assertEquals("opp", q.situation.objects.first { it.id == ask.obj }.controller); assertEquals(2, q.situation.objects.count { it.card.name == "Sol Ring" })
     }
+
+    @Test
+    fun `attacks me, get-it-back questions, payments after then, and no-creature statements`() {
+        val p = parser.parse("I control Sol Ring. My opponent casts Stifle on it and attacks me. Do I get it back?")
+        val attack = p.situation.events.first { it.verb == "attack" }; assertEquals("opp", attack.player); assertEquals("sol_ring", attack.obj); assertEquals(listOf("me"), attack.targets)
+        val ask = p.situation.events.last { it.verb == "ask" }; assertEquals("control", ask.to); assertEquals("me", ask.player); assertEquals(listOf("opp"), ask.targets)
+        val q = parser.parse("I control Rhystic Study and my opponent casts Sol Ring. Then they pay the 1.")
+        val verbs = q.situation.events.map { it.verb }; assertTrue(verbs.indexOf("pay") < verbs.indexOf("resolveAll"), verbs.toString())
+        val r = parser.parse("I attack with Sol Ring. My opponent has no creatures. Do they take 2?")
+        assertTrue(r.unread.isEmpty(), r.unread.toString())
+    }
 }

@@ -50,6 +50,8 @@ class GameObject(
     val pumps = mutableListOf<Pair<Int, Int>>()
     /** An until-end-of-turn "base power and toughness N/N" (layer 7b, 613.4b); applied before counters and pumps. */
     var basePt: Pair<Int, Int>? = null
+    /** The controller an until-end-of-turn control change (Threaten) hands this back to at cleanup. */
+    var controlRevertsTo: String? = null
     var timestamp: Int = 0
     /** Combat status this turn. */
     /** Aura/Equipment: id of the object this is attached to. */
