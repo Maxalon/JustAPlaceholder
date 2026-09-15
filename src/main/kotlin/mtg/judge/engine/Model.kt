@@ -212,6 +212,12 @@ sealed interface StaticEffect {
     /** "~ enters with N +1/+1 counters on it" (614.1c). count null = X. */
     data class EntersWithCounters(val kind: String, val count: Int?) : StaticEffect
     /** "~ can't block" / "~ can't attack" / "~ can't be countered" / "~ can't be blocked". */
+    /** "You have hexproof" (Leyline of Sanctity): the controller can't be targeted by opponents (702.11c). */
+    data object PlayerHexproof : StaticEffect
+    /** "You can't lose the game and your opponents can't win the game" (Platinum Angel). */
+    data object CantLose : StaticEffect
+    /** "Nonbasic lands are Mountains" (Blood Moon): a type-changing effect, layer 4 (613.1d, 305.7). */
+    data object NonbasicLandsAreMountains : StaticEffect
     /** "You control enchanted creature" (Mind Control): a control-changing static, layer 2. */
     data object ControlEnchanted : StaticEffect
     /** Panharmonicon: artifacts and creatures entering make your triggered abilities trigger an additional time. */

@@ -82,6 +82,8 @@ object OracleParser {
         }
         if (isSpell && spellLines.isNotEmpty()) spellEffect = parseEffect(spellLines.joinToString(" "))
         val kws = keywords.map { it.lowercase() }.toSet()
+        // Basic land types carry intrinsic mana abilities (305.6): "({T}: Add {G} or {U}.)" is reminder text, so add them from the type line.
+        if ("Land" in types) for (sub in subs) basicLandMana[sub]?.let { sym -> if (abilities.none { it is ActivatedAbility && it.cost == "{T}" && (it.effect as? Effect.AddMana)?.text == sym }) abilities += ActivatedAbility("{T}", Effect.AddMana(sym), "{T}: Add $sym. (intrinsic, from being a $sub)") }
         return CardDef(oracleId, name, typeLine, supers, types, subs, manaCost, manaValue, if ("devoid" in kws) emptySet() else colors.toSet(), CardDef.parseStat(power), CardDef.parseStat(toughness),
             kws, abilities, spellEffect, oracleText, enchant, "changeling" in kws, loyalty?.toIntOrNull())
     }
@@ -310,6 +312,9 @@ object OracleParser {
             return listOf(StaticEffect.Cant(m.groupValues[3].lowercase(), applies = ObjFilter(setOf(Kind.PERMANENT), raw = "${m.groupValues[1].lowercase()} ${m.groupValues[2].lowercase()}", attachedToSource = true)))
         }
         Regex("""^you control enchanted (?:creature|permanent|artifact|land)\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.ControlEnchanted) }
+        Regex("""^you have hexproof\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.PlayerHexproof) }
+        Regex("""^you can't lose the game and your opponents can't win the game\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.CantLose) }
+        Regex("""^nonbasic lands are mountains\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.NonbasicLandsAreMountains) }
         Regex("""^creatures with power greater than the number of cards in your hand can't attack\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.Cant("attack", powerAboveHand = true)) }
         if (Regex("""^~ attacks each combat if able\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.MustAttack)
         Regex("""^~ gets ([+-]\d+)/([+-]\d+)(?: and has (.+?))? as long as (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
@@ -379,8 +384,9 @@ object OracleParser {
     }
 
     private fun keywordsIn(text: String): Set<String>? {
-        val parts = text.lowercase().trimEnd('.').split(Regex(""",\s*|\s+and\s+""")).map { it.trim() }.filter { it.isNotEmpty() }
-        return if (parts.isNotEmpty() && parts.all { it in keywordList }) parts.toSet() else null
+        val parts = text.lowercase().trimEnd('.').replace(" and from ", " and protection from ").split(Regex(""",\s*|\s+and\s+""")).map { it.trim() }.filter { it.isNotEmpty() }
+        val ok = parts.isNotEmpty() && parts.all { it in keywordList || Regex("""^protection from (?:white|blue|black|red|green|colorless|everything|colored spells|spells|artifacts|creatures|instants|sorceries|planeswalkers|the color of your choice|[a-z]+)$""").matches(it) }
+        return if (ok) parts.toSet() else null
     }
 
     // ---- effects -------------------------------------------------------------------------
@@ -656,6 +662,7 @@ object OracleParser {
         else -> w
     }
 
+    private val basicLandMana = mapOf("Plains" to "{W}", "Island" to "{U}", "Swamp" to "{B}", "Mountain" to "{R}", "Forest" to "{G}")
     private val colorWords = mapOf("white" to 'W', "blue" to 'U', "black" to 'B', "red" to 'R', "green" to 'G')
     private val kindWords = mapOf(
         "creature" to Kind.CREATURE, "creatures" to Kind.CREATURE, "artifact" to Kind.ARTIFACT, "enchantment" to Kind.ENCHANTMENT,

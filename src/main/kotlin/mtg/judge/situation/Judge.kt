@@ -131,7 +131,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 val idx = e.abilityIndex
                     ?: e.to?.takeIf { it == "mana" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> a.effect is Effect.AddMana || (a.effect as? Effect.Seq)?.effects?.firstOrNull() is Effect.AddMana }.takeIf { it >= 0 } }
                     ?: e.to?.let { cost -> obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { it.cost.replace('\u2212', '-') == cost.replace('\u2212', '-') }.takeIf { it >= 0 } }
-                engine.activate(e.player ?: obj.controller, objId, idx, targets)
+                engine.activate(e.player ?: obj.controller, objId, idx, targets, choice = e.to?.takeIf { it.startsWith("color:") }?.removePrefix("color:"))
             }
             "trigger" -> engine.assertTrigger(e.obj ?: throw JudgeException("trigger needs an object"), e.abilityIndex, targets)
             "resolve" -> engine.resolveTop()

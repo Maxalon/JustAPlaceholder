@@ -1374,5 +1374,78 @@
     "cite": [
       "704.5g"
     ]
+  },
+  {
+    "id": "both-bears-boros-charm",
+    "text": "Both of us control Grizzly Bears. I cast Wrath of God. My opponent responds with Boros Charm for indestructible.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Grizzly Bears is indestructible and isn't destroyed"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "mother-of-runes",
+    "text": "I have Mother of Runes and Grizzly Bears. Opponent casts Doom Blade on the Bears and I give it protection from black in response.",
+    "expect": [
+      "Grizzly Bears has protection from black until end of turn",
+      "Doom Blade doesn't resolve (all targets illegal)"
+    ],
+    "cite": [
+      "608.2b"
+    ]
+  },
+  {
+    "id": "platinum-angel",
+    "text": "My opponent has 5 life and Platinum Angel. I attack with Craterhoof Behemoth and three Elves.",
+    "expect": [
+      "opponent stays in the game: Platinum Angel keeps opponent from losing"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "leyline-thoughtseize",
+    "text": "I control Leyline of Sanctity. My opponent casts Thoughtseize targeting me.",
+    "expect": [
+      "Thoughtseize can't target you"
+    ],
+    "cite": [
+      "702.11c"
+    ]
+  },
+  {
+    "id": "path-their-token",
+    "text": "I cast Path to Exile on my opponent's token.",
+    "expect": [
+      "token: the battlefield → exile"
+    ],
+    "cite": [
+      "701.13a"
+    ]
+  },
+  {
+    "id": "blood-moon-tropical",
+    "text": "My opponent plays Blood Moon while I control Tropical Island. Can I still tap it for green?",
+    "expect": [
+      "Tropical Island adds {R} (only), because of Blood Moon"
+    ],
+    "cite": [
+      "305.7",
+      "613.1d"
+    ]
+  },
+  {
+    "id": "fog-from-hand-after-blockers",
+    "text": "I attack with Grizzly Bears. Opponent has Fog in hand and casts it after blockers.",
+    "expect": [
+      "Damage to opponent from Grizzly Bears is prevented"
+    ],
+    "cite": [
+      "615.6"
+    ]
   }
 ]

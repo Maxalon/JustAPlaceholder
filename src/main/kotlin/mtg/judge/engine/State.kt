@@ -91,6 +91,8 @@ class StackItem(
     val x: Int? = null,
     /** Whether the kicker cost was paid (702.33d). */
     val kicked: Boolean = false,
+    /** A choice made on activation or casting ("the color of your choice"). */
+    val choice: String? = null,
 ) {
     val describe: String get() = when (kind) {
         StackKind.SPELL -> source.name

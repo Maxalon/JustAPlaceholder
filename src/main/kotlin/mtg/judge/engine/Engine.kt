@@ -105,9 +105,15 @@ class Engine(val state: GameState) {
         stateBasedActions()
     }
 
-    fun activate(playerId: String, objectId: String, abilityIndex: Int?, targets: List<Ref>): StackItem? {
+    fun activate(playerId: String, objectId: String, abilityIndex: Int?, targets: List<Ref>, choice: String? = null): StackItem? {
         val obj = state.obj(objectId)
         val abilities = obj.def.abilities.filterIsInstance<ActivatedAbility>()
+        if ("Land" in obj.def.types && "Basic" !in obj.def.supertypes) state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.NonbasicLandsAreMountains } }?.let { moon ->
+            val p = state.player(playerId)
+            trace.step("${moon.name} makes ${obj.name} a Mountain: it loses its other land types and all its printed abilities and has only \"{T}: Add {R}\" (a type-changing effect, layer 4).", "613.1d", "305.7")
+            if (obj.tapped == true) { trace.step("${obj.name} is already tapped, so it can't be tapped for mana.", "602.5a"); state.outcomes += "${obj.name} can't be tapped (already tapped)."; return null }
+            tap(obj); trace.step("${p.subject} ${p.v("taps", "tap")} ${obj.name} for {R}; that's the only mana it can make under ${moon.name}.", "605.1a", "605.3b"); state.outcomes += "${obj.name} adds {R} (only), because of ${moon.name}."; return null
+        }
         if (abilities.isEmpty()) { state.unsupported += Unsupported(obj.name, "No activated ability was recognised on ${obj.name}."); return null }
         if (abilities.size > 1 && abilityIndex == null) {
             state.clarifications += Clarification("${obj.name}'s ability", "${obj.name} has ${abilities.size} activated abilities; which one? " + abilities.mapIndexed { i, a -> "[$i] ${a.text}" }.joinToString(" "))
@@ -150,7 +156,7 @@ class Engine(val state: GameState) {
             trace.step("${obj.name}'s ability can't target ${state.nameOf(ref)}: $why.", rule, "602.2b", "601.2c"); state.outcomes += "${obj.name}'s ability can't target ${state.nameOf(ref)}."; return null
         }
         ability.restriction?.let { trace.step("${obj.name}'s ability says \"$it\"; assuming that timing is satisfied.", "602.5", "602.2") }
-        val item = StackItem(state.newStackId(), StackKind.ACTIVATED, playerId, obj, ability.effect, targets, zonesOf(targets), ability.text)
+        val item = StackItem(state.newStackId(), StackKind.ACTIVATED, playerId, obj, ability.effect, targets, zonesOf(targets), ability.text, choice = choice)
         state.stack += item
         wardTriggers(item)
         targets.forEach { ref -> objOf(ref)?.let { onEvent(GameEvent.BecomesTarget(it)) } }
@@ -349,6 +355,8 @@ class Engine(val state: GameState) {
                 p.commanderDamage.entries.firstOrNull { it.value >= 21 }?.let { (cid, dmg) -> if (!p.lost) { p.lost = true; trace.step("${p.subject} ${p.v("has", "have")} been dealt $dmg combat damage by ${state.objects[cid]?.name ?: "a commander"} and ${p.v("loses", "lose")} the game (state-based action).", "704.6c", "903.10a"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} the game (commander damage)."; changed = true } }
                 if (p.poison >= 10 && !p.lost) { p.lost = true; trace.step("${p.subject} ${p.v("has", "have")} ${p.poison} poison counters and ${p.v("loses", "lose")} the game (state-based action).", "704.3", "704.5c"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} the game (poison)."; changed = true }
                 val life = p.life
+                val cantLose = state.objects.values.firstOrNull { it.isOnBattlefield() && it.controller == p.id && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.CantLose } }
+                if (cantLose != null && ((life != null && life <= 0) || p.poison >= 10 || p.commanderDamage.values.any { it >= 21 })) { if (state.outcomes.none { it.contains("${cantLose.name} keeps") }) { trace.step("${p.subject} would lose the game, but ${cantLose.name} says ${p.subject.lowercase()} can't lose, so the state-based action doesn't apply while it's on the battlefield.", "704.5a", "104.3b"); state.outcomes += "${p.subject} ${p.v("stays", "stay")} in the game: ${cantLose.name} keeps ${p.subject.lowercase()} from losing." }; continue }
                 if (life != null && life <= 0 && !p.lost) { p.lost = true; trace.step("${p.subject} ${p.v("has", "have")} $life life and ${p.v("loses", "lose")} the game (state-based action).", "704.3", "704.5a"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} the game."; changed = true }
             }
         }
@@ -827,6 +835,8 @@ class Engine(val state: GameState) {
                 state.outcomes += "${it.name} is ${it.power}/${it.toughness} until end of turn."
             } }
             is Effect.GainKeywords -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let {
+                val kws = effect.keywords.map { k -> if (k == "protection from the color of your choice") "protection from ${item.choice ?: run { state.clarifications += Clarification("${item.describe}'s colour", "${item.describe} grants protection from a colour of your choice; which colour? (assuming none)"); "nothing" }}" else k }
+                if (kws != effect.keywords) { trace.step("${state.player(item.controller).subject} ${state.player(item.controller).v("chooses", "choose")} ${item.choice ?: "no colour"}.", "608.2c"); it.tempKeywords += kws; trace.step("${it.name} gains ${kws.joinToString(" and ")} until end of turn.", "611.2a"); state.outcomes += "${it.name} has ${kws.joinToString(" and ")} until end of turn."; return@let }
                 it.tempKeywords += effect.keywords
                 trace.step("${it.name} gains ${effect.keywords.joinToString(" and ")} until end of turn.", "611.2a")
                 state.outcomes += "${it.name} has ${effect.keywords.joinToString(" and ")} until end of turn."
@@ -1116,6 +1126,8 @@ class Engine(val state: GameState) {
 
     /** Why [ref] can't be targeted by a spell/ability from [source] controlled by [controller], or null if it can. */
     private fun targetingProblem(source: GameObject, controller: String, ref: Ref): Pair<String, String>? {
+        if (ref is Ref.Player && ref.id != controller && state.objects.values.any { it.isOnBattlefield() && it.controller == ref.id && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.PlayerHexproof } })
+            return "${state.nameOf(ref)} ${if (state.player(ref.id).you) "have" else "has"} hexproof (${state.objects.values.first { it.isOnBattlefield() && it.controller == ref.id && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.PlayerHexproof } }.name}) and can't be the target of spells or abilities an opponent controls" to "702.11c"
         val o = (ref as? Ref.Obj)?.let { state.objects[it.id] } ?: return null
         if (!o.isOnBattlefield()) return null
         if (o.has("shroud")) return "${o.name} has shroud and can't be the target of spells or abilities" to "702.18a"
