@@ -60,6 +60,7 @@ class Engine(val state: GameState) {
         val needed = effect?.targets() ?: emptyList()
         var asked = false
         var noLegalTarget = false
+        var targetsUnknown = false
         var targets = if (targets.isEmpty() && needed.size == 1) inferTarget(card.name, needed[0], playerId, harmful = isHarmful(effect), source = obj, beneficial = isBeneficial(effect)).also { asked = it == null && state.clarifications.any { c -> c.about == "${card.name}'s target" }; noLegalTarget = it != null && it.isEmpty() } ?: targets else targets
         if (noLegalTarget) { trace.step("${card.name} needs a target (${needed[0].raw}) and nothing can legally be chosen, so it can't be cast.", "601.2c", "115.1"); state.outcomes += "${card.name} can't be cast: no legal target."; return null }
         if (!card.isInstantOrSorcery && card.abilities.none { it is TriggeredAbility || it is ActivatedAbility || it is StaticAbility } && card.abilities.isNotEmpty()) {
@@ -74,7 +75,8 @@ class Engine(val state: GameState) {
         if (needed.size != targets.size && effect !is Effect.Modal && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && effect != null && targetsAPlayer(effect))) {
             if (!asked) state.clarifications += Clarification("${card.name}'s target${if (needed.size == 1) "" else "s"}",
                 "${card.name} needs ${needed.size} target${if (needed.size == 1) "" else "s"} (${needed.joinToString("; ") { it.raw }}) but ${targets.size} ${if (targets.size == 1) "was" else "were"} given (601.2c).")
-            if (needed.size > targets.size) return null
+            if (needed.size > targets.size && (card.isInstantOrSorcery || obj.zone == Zone.HAND)) { targetsUnknown = true; trace.step("${card.name} needs a target that wasn't stated; it's put on the stack anyway so responses to it can be shown, but what it does to its target can't be.", "601.2c") }
+            else if (needed.size > targets.size) return null
         }
         for (ref in targets) targetingProblem(obj, playerId, ref)?.let { (why, rule) ->
             trace.step("${card.name} can't be cast targeting ${state.nameOf(ref)}: $why.", rule, "601.2c")
@@ -104,7 +106,7 @@ class Engine(val state: GameState) {
             if (fits.size == 1) { state.assumptions += "${card.name}'s mode: \"${modal.modeTexts.getOrNull(fits[0].index) ?: "?"}\" (the one the target fits)."; listOf(fits[0].index + 1) } else modes
         } else modes
         val modeEffect = modal?.let { m -> modes.mapNotNull { i -> m.modes.getOrNull(i - 1) }.let { if (it.isEmpty()) null else Effect.Seq(it) } }
-        val item = StackItem(state.newStackId(), StackKind.SPELL, playerId, obj, effect, targets, zonesOf(targets), card.oracleText, modes, x = x, kicked = kicked, evoked = evoked && card.has("evoke"), choice = choice)
+        val item = StackItem(state.newStackId(), StackKind.SPELL, playerId, obj, effect, targets, zonesOf(targets), card.oracleText, modes, x = x, kicked = kicked, evoked = evoked && card.has("evoke"), choice = choice, targetsUnknown = targetsUnknown)
         state.stack += item
         if (evoked && !card.has("evoke")) { state.clarifications += Clarification("${card.name}'s evoke", "${card.name} doesn't have evoke, so it can't be cast for an evoke cost; treating it as cast normally.") }
         if (item.evoked) trace.step("${card.name} is cast for its evoke cost, an alternative cost paid instead of its mana cost. It's still a creature spell and resolves normally; its evoke trigger will sacrifice it once it has entered.", "702.74a", "601.2b")
@@ -404,7 +406,8 @@ class Engine(val state: GameState) {
             StackKind.SPELL -> {
                 val def = item.source.def
                 if (def.isInstantOrSorcery) {
-                    item.effect?.let { applyEffect(it, item) } ?: if (!Generic.isGeneric(def)) state.unsupported.add(Unsupported(def.name, "The spell has no modeled effect.")) else Unit
+                    if (item.targetsUnknown) trace.step("${def.name} resolves, but its target was never stated, so what it does to it isn't shown.", "608.2c")
+                    else item.effect?.let { applyEffect(it, item) } ?: if (!Generic.isGeneric(def)) state.unsupported.add(Unsupported(def.name, "The spell has no modeled effect.")) else Unit
                     item.source.zone = Zone.GRAVEYARD
                     if (item.source.token) trace.step("The copy of ${def.name} finishes resolving; a copy of a spell ceases to exist once it leaves the stack.", "608.2c", "707.10a")
                     else trace.step("${def.name} finishes resolving and is put into its owner's graveyard.", "608.2c", "608.2n")
@@ -953,7 +956,7 @@ class Engine(val state: GameState) {
             is Effect.Counter -> forEachLegalTarget(item, effect.target) { ref ->
                 val target = (ref as? Ref.Stack)?.let { state.stackItem(it.id) } ?: (ref as? Ref.Obj)?.let { r -> state.stack.firstOrNull { it.source.id == r.id } }
                 if (target == null) { trace.step("${state.nameOf(ref)} is no longer on the stack, so it can't be countered.", "701.6a"); return@forEachLegalTarget }
-                if (target.kind == StackKind.SPELL && cant(target.source, "be countered")) { trace.step("${target.describe} can't be countered, so ${item.describe} has no effect on it.", "701.6a"); return@forEachLegalTarget }
+                if (target.kind == StackKind.SPELL && cant(target.source, "be countered")) { trace.step("${target.describe} can't be countered, so ${item.describe} has no effect on it.", "701.6a"); state.outcomes += "${target.describe} isn't countered (it can't be)."; return@forEachLegalTarget }
                 state.stack.remove(target); state.lastCountered = target.source
                 if (target.kind == StackKind.SPELL) target.source.zone = Zone.GRAVEYARD
                 trace.step("${target.describe} is countered: it's removed from the stack and none of its effects happen" + (if (target.kind == StackKind.SPELL) "; the card goes to its owner's graveyard" else "") + ".", "701.6a")

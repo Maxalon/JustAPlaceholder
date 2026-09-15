@@ -112,6 +112,8 @@ class StackItem(
     val kicked: Boolean = false,
     /** A choice made on activation or casting ("the color of your choice"). */
     val choice: String? = null,
+    /** The situation named no target for a spell that needs one: it's on the stack (so it can be countered or responded to) but its effect can't be shown. */
+    val targetsUnknown: Boolean = false,
 ) {
     val describe: String get() = when (kind) {
         StackKind.SPELL -> source.name

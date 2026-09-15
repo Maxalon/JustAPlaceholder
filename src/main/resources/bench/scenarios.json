@@ -3434,5 +3434,60 @@
     "cite": [
       "510.1b"
     ]
+  },
+  {
+    "id": "unsummon-in-response-to-bolt",
+    "text": "My opponent controls Grizzly Bears. I cast Lightning Bolt on it and they respond by bouncing it with Unsummon. Does Bolt fizzle?",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's hand",
+      "Lightning Bolt doesn't resolve (all targets illegal)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "608.2b"
+    ]
+  },
+  {
+    "id": "shatter-in-response-to-attack",
+    "text": "I control Grizzly Bears equipped with Bonesplitter. My opponent casts Shatter on Bonesplitter in response to my attack.",
+    "expect": [
+      "Bonesplitter: the battlefield → your graveyard",
+      "opponent takes 2 damage"
+    ],
+    "notExpect": [
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "701.8a",
+      "510.1b"
+    ]
+  },
+  {
+    "id": "disenchant-anthem-what-are-my-bears",
+    "text": "I have Glorious Anthem and two Grizzly Bears. My opponent casts Disenchant on the Anthem. What are my Bears?",
+    "expect": [
+      "Grizzly Bears is 2/2."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "701.8a"
+    ]
+  },
+  {
+    "id": "counterspell-abrupt-decay",
+    "text": "I cast Counterspell on my opponent's Abrupt Decay.",
+    "expect": [
+      "Abrupt Decay can't be countered, so Counterspell has no effect on it"
+    ],
+    "notExpect": [
+      "No spell from"
+    ],
+    "cite": [
+      "701.6a"
+    ]
   }
 ]

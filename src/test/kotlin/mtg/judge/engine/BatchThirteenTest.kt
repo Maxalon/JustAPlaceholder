@@ -389,6 +389,15 @@ class BatchThirteenTest {
     }
 
     @Test
+    fun `a spell whose target wasn't stated still goes on the stack and can be countered`() {
+        val s = state(); val e = Engine(s)
+        val decay = card("Abrupt Decay", "Instant", "This spell can't be countered.\nDestroy target nonland permanent with mana value 3 or less.", "{B}{G}", "BG")
+        val item = e.cast("opp", decay, emptyList()); assertTrue(item != null, "on the stack despite the missing target"); assertTrue(item!!.targetsUnknown)
+        e.cast("me", card("Counterspell", "Instant", "Counter target spell.", "{U}{U}", "U"), listOf(Ref.Stack(item.id))); e.resolveAll()
+        assertTrue(s.trace.steps.any { it.text.contains("can't be countered") }, s.trace.steps.joinToString("\n") { it.text }); assertTrue(s.trace.steps.any { it.text.contains("target was never stated") })
+    }
+
+    @Test
     fun `a blocked creature stays blocked when its blocker leaves, unless it has trample`() {
         val s = state(); s.put("bears", bears, "me"); s.put("giant", serra, "opp"); val e = Engine(s)
         e.beginDeclaringAttackers(); e.declareAttacker("me", "bears", Ref.Player("opp")); e.finishDeclaringAttackers(); e.declareBlocker("opp", "giant", "bears")

@@ -101,8 +101,9 @@ class EngineTest {
     fun `missing target is asked for when there are several candidates, and defaults to the opponent when only players qualify`() {
         val s = state(); s.add("bears", bears, "me"); val e = Engine(s)
         val item = e.cast("opp", bolt, emptyList())
-        assertEquals(null, item)
+        assertTrue(item != null && item.targetsUnknown, "the spell still goes on the stack, with its target unknown")
         assertTrue(s.clarifications.any { it.about.contains("target") })
+        e.resolveAll(); assertEquals(20, s.player("me").life); assertEquals(Zone.BATTLEFIELD, s.obj("bears").zone)
         val s2 = state(); val e2 = Engine(s2)
         assertTrue(e2.cast("opp", bolt, emptyList()) != null)
         assertTrue(s2.assumptions.any { "assuming the opponent" in it })
