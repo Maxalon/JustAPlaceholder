@@ -174,4 +174,15 @@ class SituationParserTest {
         val q = parser.parse("I have Rhystic Study and it attacks. Does my Rhystic Study survive?")
         assertEquals(listOf("attack", "resolveAll", "ask"), q.situation.events.map { it.verb }); assertEquals("survive", q.situation.events.last().to)
     }
+
+    @Test
+    fun `turn numbers, keyword adjectives, life at casting, paid life as X and player questions`() {
+        val p = parser.parse("It's turn 3. My opponent controls hexproof Sol Ring. I cast Stifle at 5 life. Do I die?")
+        assertEquals(3, p.situation.turn.number)
+        assertEquals(listOf("hexproof"), p.situation.objects.first { it.card.name == "Sol Ring" }.keywords)
+        assertEquals(5, p.situation.players.first { it.id == "me" }.life)
+        val ask = p.situation.events.last(); assertEquals("ask", ask.verb); assertEquals("playerSurvive", ask.to); assertEquals("me", ask.player)
+        val q = parser.parse("I have Stifle in hand. I cast it paying 3 life.")
+        assertEquals(listOf("loseLife", "cast", "resolveAll"), q.situation.events.map { it.verb }); assertEquals(3, q.situation.events[1].amount)
+    }
 }

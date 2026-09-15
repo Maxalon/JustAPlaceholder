@@ -151,7 +151,7 @@ sealed interface Effect {
     /** "~ gets +N/+N until end of turn" (no target). */
     data class PumpSelf(val power: Int, val toughness: Int) : Effect
     /** "[filter] get +N/+N until end of turn": affects the objects present when it resolves (611.2c). */
-    data class PumpAll(val filter: ObjFilter, val power: Int, val toughness: Int, val keywords: List<String> = emptyList()) : Effect
+    data class PumpAll(val filter: ObjFilter, val power: Int, val toughness: Int, val keywords: List<String> = emptyList(), val x: Boolean = false) : Effect
     /** "Gain control of target creature (until end of turn)". */
     data class GainControl(val target: TargetSpec, val untilEndOfTurn: Boolean) : Effect
     /** "Put N [kind] counters on target …" / "… on ~" (target null = self). */
@@ -248,6 +248,8 @@ sealed interface StaticEffect {
     data object OpponentsSorcerySpeed : StaticEffect
     /** Grand Abolisher: "During your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments." */
     data object OpponentsLockedOnYourTurn : StaticEffect
+    /** Serra Avenger: "You can't cast this spell during your first, second, or third turns of the game." */
+    data class CantCastBeforeTurn(val turn: Int) : StaticEffect
     /** Thalia: "Noncreature spells cost {1} more to cast." (a tax on spells matching the filter; `yours` limits it to the controller's / opponents' spells) */
     data class CostTax(val filter: ObjFilter, val amount: Int, val whose: Who? = null) : StaticEffect
     /** Cost modifiers and additional costs: narrated when the spell is cast (601.2b, 601.2f). */

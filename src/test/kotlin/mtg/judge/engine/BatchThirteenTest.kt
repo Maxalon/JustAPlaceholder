@@ -40,6 +40,8 @@ class BatchThirteenTest {
     private val kci = card("Krark-Clan Ironworks", "Artifact", "Sacrifice an artifact: Add {C}{C}.", "{4}")
     private val guttersnipe = card("Guttersnipe", "Creature — Goblin Shaman", "Whenever you cast an instant or sorcery spell, Guttersnipe deals 2 damage to each opponent.", "{2}{R}", "R", "2", "2")
     private val rift = card("Cyclonic Rift", "Instant", "Return target nonland permanent you don't control to its owner's hand.\nOverload {6}{U}", "{1}{U}", "U", null, null, "Overload")
+    private val avenger = card("Serra Avenger", "Creature — Angel", "You can't cast Serra Avenger during your first, second, or third turns of the game.\nFlying\nVigilance", "{W}{W}", "W", "3", "3", "Flying", "Vigilance")
+    private val deluge = card("Toxic Deluge", "Sorcery", "As an additional cost to cast this spell, pay X life.\nAll creatures get -X/-X until end of turn.", "{2}{B}", "B")
     private val sakura = card("Sakura-Tribe Elder", "Creature — Snake Shaman", "Sacrifice Sakura-Tribe Elder: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.", "{1}{G}", "G", "1", "1")
 
     private fun state() = GameState(listOf(Player("me", "me", 20), Player("opp", "opp", 20)), LinkedHashMap(), activePlayer = "me")
@@ -270,5 +272,15 @@ class BatchThirteenTest {
         assertTrue(e.cast("me", rift, listOf(Ref.Obj("bears"))) == null); assertTrue(s.outcomes.any { "can't target" in it })
         val s2 = state(); s2.put("bears", bears, "opp"); val e2 = Engine(s2)
         assertTrue(e2.cast("me", rift, listOf(Ref.Obj("bears"))) != null)
+    }
+
+    @Test
+    fun `serra avenger waits for turn four and toxic deluge shrinks by the life paid`() {
+        val s = state(); s.turnNumber = 3; val e = Engine(s)
+        assertTrue(e.cast("me", avenger, emptyList()) == null); assertTrue(s.outcomes.any { "can't be cast yet" in it })
+        s.turnNumber = 4; assertTrue(e.cast("me", avenger, emptyList()) != null)
+        val s2 = state(); s2.put("bears", bears, "opp"); s2.put("serra", serra, "opp"); val e2 = Engine(s2)
+        e2.cast("me", deluge, emptyList(), x = 3); e2.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s2.obj("bears").zone); assertEquals(Zone.BATTLEFIELD, s2.obj("serra").zone); assertEquals(1, s2.obj("serra").power)
     }
 }

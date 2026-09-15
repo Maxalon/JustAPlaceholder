@@ -2628,5 +2628,83 @@
     "cite": [
       "702.8a"
     ]
+  },
+  {
+    "id": "wall-dies-question-after-damage",
+    "text": "My opponent attacks with Grizzly Bears and I block with Wall of Omens. They cast Giant Growth on the Bears. Does my Wall die?",
+    "expect": [
+      "Wall of Omens: the battlefield → your graveyard",
+      "No: Wall of Omens is in the graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "serra-avenger-turn-three",
+    "text": "I control Serra Avenger and it's turn 3. Can I cast it?",
+    "expect": [
+      "Serra Avenger can't be cast yet (turn 3; not before your turn 4)"
+    ],
+    "cite": [
+      "101.2"
+    ]
+  },
+  {
+    "id": "sheoldred-brainstorm-at-five",
+    "text": "My opponent has Sheoldred, the Apocalypse and I cast Brainstorm at 5 life. Do I die?",
+    "expect": [
+      "You lose 2 life. (×3)",
+      "You lose the game",
+      "No: You have lost the game"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "hexproof-adjective-bolt",
+    "text": "I have Lightning Bolt in hand and my opponent controls hexproof Grizzly Bears. Can I bolt it?",
+    "expect": [
+      "Lightning Bolt can't target Grizzly Bears"
+    ],
+    "cite": [
+      "702.11b"
+    ]
+  },
+  {
+    "id": "fling-ghalta-it",
+    "text": "I control Ghalta, Primal Hunger and cast Fling sacrificing it targeting my opponent at 12 life.",
+    "expect": [
+      "opponent takes 12 damage",
+      "opponent loses the game"
+    ],
+    "cite": [
+      "608.2h",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "toxic-deluge-paying-three",
+    "text": "I control Toxic Deluge and cast it paying 3 life. My opponent has Grizzly Bears and Serra Angel.",
+    "expect": [
+      "You lose 3 life",
+      "Serra Angel is 1/1 until end of turn",
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "704.5f",
+      "107.3a"
+    ]
+  },
+  {
+    "id": "rancor-disenchant-question",
+    "text": "I have Grizzly Bears with Rancor. My opponent casts Disenchant on Rancor. Does Rancor come back to my hand?",
+    "expect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "cite": [
+      "603.2"
+    ]
   }
 ]

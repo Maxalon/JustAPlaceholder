@@ -36,7 +36,9 @@ data class PlayerSpec(val id: String, val name: String = id, val life: Int? = nu
                       val mana: Int? = null)
 
 @Serializable
-data class TurnSpec(val activePlayer: String? = null, val phase: String? = null, val step: String? = null)
+data class TurnSpec(val activePlayer: String? = null, val phase: String? = null, val step: String? = null,
+                    /** The game's turn number, when stated ("it's turn 3"). */
+                    val number: Int? = null)
 
 /** A card reference: `"Rhystic Study"` or `{ "name": "...", "oracleId": "..." }`. */
 @Serializable(with = CardRefSerializer::class)
@@ -76,6 +78,8 @@ data class ObjectSpec(
     val attachedTo: String? = null,
     /** An until-end-of-turn modification already applied, e.g. "+3/+3". */
     val pump: String? = null,
+    /** Keywords the permanent has been given ("hexproof Grizzly Bears"). */
+    val keywords: List<String> = emptyList(),
     /** The player's commander (its combat damage to each player is tracked, 903.10a). */
     val commander: Boolean = false,
 )

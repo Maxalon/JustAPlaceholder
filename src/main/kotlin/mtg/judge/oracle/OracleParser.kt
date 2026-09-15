@@ -341,6 +341,7 @@ object OracleParser {
         if (Regex("""^(?:Combat )?damage that would be dealt by (?:creatures|sources) you control can't be prevented\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("615.12")))
         if (Regex("""^Each opponent can cast spells only any time they could cast a sorcery\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsSorcerySpeed)
         if (Regex("""^During your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsLockedOnYourTurn)
+        Regex("""^You can't cast ~ during your first(?:, second)?(?:, or third| or second)? turns? of the game\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.CantCastBeforeTurn(if (line.contains("third")) 4 else if (line.contains("second")) 3 else 2)) }
         Regex("""^(Noncreature spells|Creature spells|Instant and sorcery spells|Spells|Artifact spells|Enchantment spells)(?: your opponents cast| you cast)? cost \{(\d+)\} (more|less) to cast\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val f = when (m.groupValues[1].lowercase()) { "noncreature spells" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE), raw = "noncreature spell"); "creature spells" -> ObjFilter(setOf(Kind.CREATURE), raw = "creature spell"); "instant and sorcery spells" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE, Kind.ARTIFACT, Kind.ENCHANTMENT, Kind.PLANESWALKER, Kind.LAND), raw = "instant or sorcery spell"); "artifact spells" -> ObjFilter(setOf(Kind.ARTIFACT), raw = "artifact spell"); "enchantment spells" -> ObjFilter(setOf(Kind.ENCHANTMENT), raw = "enchantment spell"); else -> ObjFilter(setOf(Kind.SPELL), raw = "spell") }
             val whose = when { line.contains("your opponents cast", true) -> Who.OPPONENT; line.contains("you cast", true) -> Who.YOU; else -> null }
@@ -671,6 +672,9 @@ object OracleParser {
             return Effect.Damage(n, target(m.groupValues[2]))
         }
         counterRe.matchEntire(s)?.let { return Effect.Counter(target(it.groupValues[1], Kind.SPELL)) }
+        Regex("""^(all creatures|creatures your opponents control|creatures you control|all other creatures|other creatures) get -X/-X until end of turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val f = parseFilter(m.groupValues[1].removePrefix("all ").removePrefix("All "), Kind.CREATURE); if (f.verifiable) return Effect.PumpAll(f, 0, 0, x = true)
+        }
         Regex("""^prevent all combat damage that would be dealt to and (?:dealt )?by (target .+?) this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.PreventCombatToAndBy(target(it.groupValues[1].removePrefix("target "))) }
         Regex("""^copy target (.+? spell)(?:\. you may choose new targets for the copy)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.CopySpell(target(it.groupValues[1], Kind.SPELL), s.contains("new targets", true)) }
         destroyRe.matchEntire(s)?.let { return Effect.Destroy(target(it.groupValues[1])) }

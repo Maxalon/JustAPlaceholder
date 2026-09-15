@@ -25,13 +25,14 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
     fun answer(sit: Situation): Answer {
         val understood = mutableListOf<String>()
-        val state = GameState(sit.players.map { ps -> Player(ps.id, ps.name, ps.life).also { it.poison = ps.poison ?: 0; it.handSize = ps.handSize; it.librarySize = ps.librarySize; it.commanderDamage.putAll(ps.commanderDamage); it.mana = ps.mana } }, LinkedHashMap(), activePlayer = sit.turn.activePlayer, phase = sit.turn.phase, step = sit.turn.step)
+        val state = GameState(sit.players.map { ps -> Player(ps.id, ps.name, ps.life).also { it.poison = ps.poison ?: 0; it.handSize = ps.handSize; it.librarySize = ps.librarySize; it.commanderDamage.putAll(ps.commanderDamage); it.mana = ps.mana } }, LinkedHashMap(), activePlayer = sit.turn.activePlayer, phase = sit.turn.phase, step = sit.turn.step).also { it.turnNumber = sit.turn.number }
         val engine = Engine(state)
 
         for (o in sit.objects) {
             val def = cardDef(o.card, state) ?: continue
             state.add(GameObject(o.id, def, zone(o.zone), o.controller, o.owner ?: o.controller, o.tapped, o.summoningSick, o.counters.toMutableMap(), o.damage, o.token)).also {
                 it.timestamp = state.tick(); it.attachedTo = o.attachedTo; it.commander = o.commander
+                o.keywords.forEach { kw -> it.tempKeywords += kw.lowercase() }
                 o.pump?.let { pm -> Regex("""^([+-]?\d+)/([+-]?\d+)$""").matchEntire(pm)?.let { m -> it.pumps += m.groupValues[1].toInt() to m.groupValues[2].toInt() } }
                 if (def.isPlaneswalker && it.isOnBattlefield() && !it.counters.containsKey("loyalty") && def.loyalty != null) it.counters["loyalty"] = def.loyalty
             }
@@ -64,7 +65,9 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         // The described state may already call for state-based actions (a 1/1 under an opposing Elesh Norn).
         engine.stateBasedActions()
         var attackBatchEnd = -1
+        val deferredAsks = mutableListOf<Pair<Int, EventSpec>>()
         for ((i, e) in sit.events.withIndex()) {
+            if (e.verb == "ask") { deferredAsks += i to e; continue }   // answered once combat damage has been dealt
             // Consecutive attack events are one declaration: "attacks alone", exalted and "whenever you attack" need the whole set.
             if ((e.verb == "attack" || e.verb == "attackAll") && i > attackBatchEnd) {
                 attackBatchEnd = i; while (attackBatchEnd + 1 < sit.events.size && sit.events[attackBatchEnd + 1].verb in setOf("attack", "attackAll") && sit.events[attackBatchEnd + 1].player == e.player) attackBatchEnd++
@@ -84,6 +87,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             engine.resolveAll(); engine.combatDamage()
             if (state.stack.isNotEmpty()) engine.resolveAll()   // abilities that triggered on combat damage or deaths
         }
+        for ((i, e) in deferredAsks) { try { understood += "Event ${i + 1}: " + describeEvent(e, state); apply(e, state, engine) } catch (ex: JudgeException) { state.unsupported += mtg.judge.engine.Unsupported("event ${i + 1} (ask)", ex.message ?: "failed") } }
 
         // Life totals that changed, as a single line each (individual damage lines may repeat and collapse).
         for (p in state.players) {
@@ -149,6 +153,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "resolve" -> engine.resolveTop()
             "resolveall" -> engine.resolveAll()
             "ask" -> {
+                if (e.to == "playerSurvive") { val p = state.player(e.player ?: throw JudgeException("ask needs a player")); state.outcomes += if (p.lost) "No: ${p.subject} ${p.v("has", "have")} lost the game." else "Yes: ${p.subject} ${p.v("is", "are")} still in the game${p.life?.let { " at $it life" } ?: ""}."; return }
                 val o = state.obj(e.obj ?: throw JudgeException("ask needs an object"))
                 when (e.to) {
                     "trigger" -> state.outcomes += if (state.trace.steps.any { it.text.startsWith("${o.name}'s ability triggers") || it.text.startsWith("${o.name}'s evoke ability triggers") }) "Yes: ${o.name}'s ability triggered." else "No: ${o.name}'s ability didn't trigger (nothing that happened matched its trigger condition)."
@@ -160,6 +165,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         val blocked = state.trace.steps.any { it.text.contains("blocks ${o.name}") }
                         state.outcomes += if (hit) "Yes: ${o.name} dealt damage to $who." else "No: ${o.name} dealt no damage to $who${if (blocked) " (it was blocked, and a blocked creature stays blocked even if its blocker leaves combat; without trample it assigns no damage to the player, 509.1h)" else ""}."
                     }
+                    "playerSurvive" -> { val p = state.player(e.player ?: o.controller); state.outcomes += if (p.lost) "No: ${p.subject} ${p.v("has", "have")} lost the game." else "Yes: ${p.subject} ${p.v("is", "are")} still in the game${p.life?.let { " at $it life" } ?: ""}." }
                     "survive" -> state.outcomes += if (o.isOnBattlefield()) "Yes: ${o.name} is still on the battlefield." else "No: ${o.name} is in ${when (o.zone) { mtg.judge.engine.Zone.GRAVEYARD -> "the graveyard"; mtg.judge.engine.Zone.EXILE -> "exile"; mtg.judge.engine.Zone.HAND -> "its owner's hand"; mtg.judge.engine.Zone.LIBRARY -> "its owner's library"; else -> o.zone.name.lowercase() }}."
                     else -> {}
                 }
@@ -195,7 +201,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "pay" -> "${who ?: "the player"} ${if (e.to == "no") "${if (who == "you") "don't" else "doesn't"} pay" else "${if (who == "you") "pay" else "pays"}"}"
             "resolve", "pass" -> "the top of the stack resolves"
             "resolveall" -> "everything on the stack resolves"
-            "ask" -> "question: ${if (e.to == "block" || e.to == "attack") "can" else "does"} ${state.objects[e.obj]?.name ?: e.obj} ${if (e.to == "damage") "deal damage to ${e.targets.firstOrNull()?.let { t -> state.players.firstOrNull { it.id == t }?.let { if (it.you) "you" else it.name } } ?: "the player"}" else e.to}?"
+            "ask" -> if (e.to == "playerSurvive") "question: ${if (who == "you") "do you" else "does $who"} survive?" else "question: ${if (e.to == "block" || e.to == "attack") "can" else "does"} ${state.objects[e.obj]?.name ?: e.obj} ${if (e.to == "damage") "deal damage to ${e.targets.firstOrNull()?.let { t -> state.players.firstOrNull { it.id == t }?.let { if (it.you) "you" else it.name } } ?: "the player"}" else e.to}?"
             "enter" -> "${state.objects[e.obj]?.name ?: e.obj} enters the battlefield"
             "leave" -> "${state.objects[e.obj]?.name ?: e.obj} goes to ${e.to}"
             "damage" -> "${e.source} deals ${e.amount} damage$tg"

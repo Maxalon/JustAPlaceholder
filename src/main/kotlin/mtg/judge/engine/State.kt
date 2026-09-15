@@ -131,6 +131,8 @@ class GameState(
 ) {
     val trace = Trace()
     var combatDamageDealt = false
+    /** The game's turn number, when the situation said so. */
+    var turnNumber: Int? = null
     /** Creatures whose combat damage, dealt and received, is prevented this turn (Maze of Ith). */
     val combatDamageMuted = mutableSetOf<String>()
     /** Spells cast this turn, per player (storm counts, Aetherflux Reservoir). */

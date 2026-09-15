@@ -40,6 +40,11 @@ class Engine(val state: GameState) {
             if (taxes.isNotEmpty()) trace.step("${taxes.joinToString(" and ") { "${it.first.name} makes ${card.name} cost {${kotlin.math.abs(it.second.amount)}} ${if (it.second.amount < 0) "less" else "more"}" }}: its total cost is ${card.manaCost ?: "?"} plus {${tax}}${if (tax > 0) "" else ""} (${cost} mana in all).", "601.2f", "118.7")
             player.mana?.let { avail -> if (cost > avail) { trace.step("${player.subject} ${player.v("has", "have")} only $avail mana available and ${card.name} costs $cost, so it can't be cast: the total cost can't be paid.", "601.2h", "601.2f"); state.outcomes += "${card.name} can't be cast (costs $cost, only $avail mana available)."; return null } else if (taxes.isNotEmpty()) trace.step("${player.subject} ${player.v("has", "have")} $avail mana available, enough for the $cost.", "601.2h") }
         }
+        card.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CantCastBeforeTurn>().firstOrNull()?.let { c ->
+            val t = state.turnNumber
+            if (t != null && t < c.turn) { trace.step("${card.name} can't be cast during ${player.possessive} first ${c.turn - 1} turns of the game, and it's only turn $t. It can't be cast yet.", "101.2"); state.outcomes += "${card.name} can't be cast yet (turn $t; not before ${player.possessive} turn ${c.turn})."; return null }
+            else if (t == null) state.assumptions += "${card.name} can't be cast during ${player.possessive} first ${c.turn - 1} turns; assuming the game is past that (the turn number wasn't stated)."
+        }
         if (overload) return castOverloaded(playerId, card, obj)
         if ("Land" in card.types && !card.isInstantOrSorcery) {
             // Lands aren't cast: playing one is a special action that doesn't use the stack.
@@ -308,7 +313,7 @@ class Engine(val state: GameState) {
         val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> card.isCreature; Kind.ARTIFACT -> "Artifact" in card.types; Kind.ENCHANTMENT -> "Enchantment" in card.types; Kind.PLANESWALKER -> card.isPlaneswalker; Kind.LAND -> "Land" in card.types; else -> false } }
         return typeOk && notOk
     }
-    private fun usesX(e: Effect): Boolean = when (e) { is Effect.Damage -> e.x; is Effect.Draw -> e.x; is Effect.Seq -> e.effects.any { usesX(it) }; is Effect.May -> usesX(e.effect); is Effect.Modal -> e.modes.any { usesX(it) }; else -> false }
+    private fun usesX(e: Effect): Boolean = when (e) { is Effect.Damage -> e.x; is Effect.Draw -> e.x; is Effect.PumpAll -> e.x; is Effect.Seq -> e.effects.any { usesX(it) }; is Effect.May -> usesX(e.effect); is Effect.Modal -> e.modes.any { usesX(it) }; else -> false }
 
     /** Steps and combat can't begin while something is on the stack: everything pending resolves first (500.2). */
     private fun emptyStackFirst(what: String) {
@@ -1061,6 +1066,7 @@ class Engine(val state: GameState) {
             is Effect.LoseLife -> resolvePlayers(effect.who, item).forEach { p -> p.life = p.life?.minus(effect.amount); trace.step("${p.subject} ${p.v("loses", "lose")} ${effect.amount} life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} ${effect.amount} life." }
             is Effect.PumpSelf -> { val o = item.source; if (o.isOnBattlefield()) { o.pumps += effect.power to effect.toughness; trace.step("${o.name} gets ${signed(effect.power)}/${signed(effect.toughness)} until end of turn; it's now ${o.power}/${o.toughness}.", "611.2a"); state.outcomes += "${o.name} is ${o.power}/${o.toughness} until end of turn." } else trace.step("${o.name} isn't on the battlefield, so there's nothing for the effect to modify.", "611.2c") }
             is Effect.PumpAll -> {
+                val effect = if (effect.x) effect.copy(power = -(item.x ?: 0), toughness = -(item.x ?: 0)).also { if (item.x == null) state.clarifications += Clarification("${item.source.name}'s X", "${item.source.name} gives -X/-X; what was X? (assuming 0)") else trace.step("X is ${item.x}, so it's -${item.x}/-${item.x}.", "107.3a") } else effect
                 val affected = state.objects.values.filter { state.matches(effect.filter, it, item.controller) }
                 affected.forEach { it.pumps += effect.power to effect.toughness; it.tempKeywords += effect.keywords }
                 if (effect.power == 0 && effect.toughness == 0 && effect.keywords.isNotEmpty()) {
