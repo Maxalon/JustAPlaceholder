@@ -35,6 +35,8 @@ class GameObject(
     var attacking: Ref? = null            // what this creature is attacking
     var blocking: String? = null          // id of the attacker this creature blocks
     var dealtDeathtouchDamage = false     // for 704.5h
+    /** Power as it last was on the battlefield (last known information, 113.7a) for "equal to its power" after a zone change. */
+    var lkiPower: Int? = null
 
     /** Until-end-of-turn keyword grants from resolved effects. */
     val tempKeywords = mutableSetOf<String>()
@@ -71,6 +73,8 @@ class StackItem(
     val text: String,
     /** Chosen modes (1-based) for modal spells and abilities (700.2). */
     val modes: List<Int> = emptyList(),
+    /** For triggered abilities: the player whose action caused the trigger ("that player"). */
+    val causedBy: String? = null,
 ) {
     val describe: String get() = when (kind) {
         StackKind.SPELL -> source.name

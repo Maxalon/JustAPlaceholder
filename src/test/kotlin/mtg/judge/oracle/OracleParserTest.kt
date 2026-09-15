@@ -47,8 +47,11 @@ class OracleParserTest {
     fun `sequences and unparsed parts are kept apart`() {
         val swords = OracleParser.parse("x", "Swords to Plowshares", "Instant", "{W}", 1.0, "W", null, null, emptyList(), "Exile target creature. Its controller gains life equal to its power.")
         val seq = assertIs<Effect.Seq>(swords.spellEffect)
-        assertIs<Effect.Exile>(seq.effects[0]); assertIs<Effect.Unparsed>(seq.effects[1])
-        assertTrue(swords.spellEffect!!.hasUnparsed())
+        assertIs<Effect.Exile>(seq.effects[0]); assertIs<Effect.GainLifeEqualToPower>(seq.effects[1])
+        val odd = OracleParser.parse("y", "Oddity", "Instant", "{W}", 1.0, "W", null, null, emptyList(), "Exile target creature. Its controller shuffles their graveyard into their library.")
+        val seq2 = assertIs<Effect.Seq>(odd.spellEffect)
+        assertIs<Effect.Exile>(seq2.effects[0]); assertIs<Effect.Unparsed>(seq2.effects[1])
+        assertTrue(odd.spellEffect!!.hasUnparsed())
     }
 
     @Test

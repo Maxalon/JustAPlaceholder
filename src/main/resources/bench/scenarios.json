@@ -485,5 +485,137 @@
     "cite": [
       "613.1b"
     ]
+  },
+  {
+    "id": "wrath-vs-regeneration",
+    "text": "My opponent controls Drudge Skeletons with a regeneration shield. I cast Wrath of God.",
+    "expect": [
+      "Drudge Skeletons: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "701.19c",
+      "701.8a"
+    ]
+  },
+  {
+    "id": "sheoldred-draw-step",
+    "text": "I control Sheoldred, the Apocalypse. My opponent draws a card during their draw step.",
+    "expect": [
+      "opponent loses 2 life"
+    ],
+    "cite": [
+      "119.3",
+      "603.2"
+    ]
+  },
+  {
+    "id": "esper-sentinel",
+    "text": "I have Esper Sentinel. Opponent casts Counterspell targeting my Lightning Bolt.",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "chump-block",
+    "text": "I'm at 3 life and control Grizzly Bears. Opponent swings with Colossal Dreadmaw and I chump block with the Bears.",
+    "expect": [
+      "You take 4 damage",
+      "You lose the game"
+    ],
+    "cite": [
+      "702.19b",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "path-question",
+    "text": "I cast Path to Exile on my opponent's Grizzly Bears. Do they get a land?",
+    "expect": [
+      "Grizzly Bears: the battlefield → exile"
+    ],
+    "cite": [
+      "701.23a"
+    ]
+  },
+  {
+    "id": "elesh-norn-sba",
+    "text": "Opponent has Elesh Norn, Grand Cenobite. I control Llanowar Elves and Grizzly Bears.",
+    "expect": [
+      "Llanowar Elves: the battlefield → your graveyard",
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "swords-in-response",
+    "text": "I cast Swords to Plowshares on my own Serra Angel in response to Lightning Bolt.",
+    "expect": [
+      "You gain 4 life",
+      "Lightning Bolt doesn't resolve (all targets illegal)"
+    ],
+    "cite": [
+      "608.2b",
+      "608.2h"
+    ]
+  },
+  {
+    "id": "after-blockers-bolt",
+    "text": "I attack with Serra Angel. They block with Grizzly Bears. After blockers I cast Lightning Bolt on the Bears.",
+    "expect": [
+      "Grizzly Bears can't block Serra Angel (flying)",
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "702.9b"
+    ]
+  },
+  {
+    "id": "thoughtseize-brainstorm",
+    "text": "My opponent casts Thoughtseize targeting me. I respond with Brainstorm.",
+    "expect": [
+      "You draw 3 cards"
+    ],
+    "cite": [
+      "701.20a",
+      "701.9a"
+    ]
+  },
+  {
+    "id": "rhystic-three-spells",
+    "text": "I control Rhystic Study and my opponent casts three spells.",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "block-attacker-first",
+    "text": "I attack with Grizzly Bears and Hill Giant. Opponent blocks Hill Giant with Serra Angel and doesn't block the Bears.",
+    "expect": [
+      "opponent takes 2 damage",
+      "Hill Giant: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "510.1c"
+    ]
+  },
+  {
+    "id": "rift-overload",
+    "text": "Opponent casts Cyclonic Rift overloaded. I control Grizzly Bears and Sol Ring.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your hand",
+      "Sol Ring: the battlefield → your hand"
+    ],
+    "cite": [
+      "702.96a",
+      "400.7"
+    ]
   }
 ]

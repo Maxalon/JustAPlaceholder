@@ -54,6 +54,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         }
         if (state.stack.isNotEmpty()) understood += "Stack (bottom to top): " + state.stack.joinToString(", ") { "${it.describe} [${it.id}]" + (if (it.targets.isNotEmpty()) " targeting " + it.targets.joinToString(" & ") { t -> state.nameOf(t) } else "") }
 
+        // The described state may already call for state-based actions (a 1/1 under an opposing Elesh Norn).
+        engine.stateBasedActions()
         for ((i, e) in sit.events.withIndex()) {
             try {
                 understood += "Event ${i + 1}: " + describeEvent(e, state)
@@ -93,8 +95,10 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 val player = e.player ?: state.players.first().id
                 val existing = e.obj?.let { state.objects[it] }
                 val def = existing?.def ?: cardDef(e.card ?: throw JudgeException("cast needs a card"), state) ?: return
-                engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, e.modes)
+                engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, e.modes, overload = e.to == "overload")
             }
+            "draw" -> engine.draw(e.player ?: throw JudgeException("draw needs a player"), e.amount ?: 1)
+            "regenerate" -> { val o = state.obj(e.obj ?: throw JudgeException("regenerate needs an object")); state.shields += mtg.judge.engine.Shield(mtg.judge.engine.Replacement.Regenerate, o.id, null, 1, "a regeneration effect") }
             "pay" -> {
                 val who = e.player ?: throw JudgeException("pay needs a player")
                 if (e.to == "no") state.willPay.remove(who) else state.willPay += who
@@ -128,9 +132,11 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         val tg = if (e.targets.isEmpty()) "" else " targeting " + e.targets.joinToString(" and ") { runCatching { state.nameOf(parseRef(it, state)) }.getOrDefault(it) }
         return when (e.verb.lowercase()) {
             "cast" -> { val land = e.card?.let { c -> runCatching { cardDef(c, state) }.getOrNull() }?.let { "Land" in it.types && !it.isInstantOrSorcery } == true
-                "${who ?: "you"} ${if (land) (if (who == null || who == "you") "play" else "plays") else (if (who == null || who == "you") "cast" else "casts")} ${e.card ?: e.obj}$tg" }
+                "${who ?: "you"} ${if (land) (if (who == null || who == "you") "play" else "plays") else (if (who == null || who == "you") "cast" else "casts")} ${e.card ?: e.obj}${if (e.to == "overload") " overloaded" else ""}$tg" }
             "activate" -> "${who ?: "controller"} ${if (who == "you") "activate" else "activates"} ${state.objects[e.obj]?.name ?: e.obj}${e.to?.takeIf { e.abilityIndex == null && Regex("""^[+\u2212-]?\d+$""").matches(it) }?.let { " ($it)" } ?: ""}$tg"
             "trigger" -> "${state.objects[e.obj]?.name ?: e.obj}'s ability triggers$tg"
+            "regenerate" -> "${state.objects[e.obj]?.name ?: e.obj} has a regeneration shield"
+            "draw" -> "${who ?: "the player"} ${if (who == "you") "draw" else "draws"} ${e.amount ?: 1} card${if ((e.amount ?: 1) > 1) "s" else ""}"
             "pay" -> "${who ?: "the player"} ${if (e.to == "no") "${if (who == "you") "don't" else "doesn't"} pay" else "${if (who == "you") "pay" else "pays"}"}"
             "resolve", "pass" -> "the top of the stack resolves"
             "resolveall" -> "everything on the stack resolves"
@@ -179,7 +185,22 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         throw JudgeException("Can't tell what '$s' refers to (not an object id, player id, stack id, or id:trigger)")
     }
 
+    /** "a spell", "an instant", "a creature spell": a stand-in card with no rules text, for "my opponent casts three spells". */
+    private fun genericDef(name: String): CardDef? {
+        val n = name.lowercase().removePrefix("a ").removePrefix("an ").trim()
+        val typeLine = when (n) {
+            "spell", "instant", "instant spell", "noncreature spell" -> "Instant"
+            "sorcery", "sorcery spell" -> "Sorcery"
+            "creature", "creature spell" -> "Creature"
+            "artifact", "artifact spell" -> "Artifact"
+            "enchantment", "enchantment spell" -> "Enchantment"
+            else -> return null
+        }
+        return OracleParser.parse("generic-$n", "a $n", typeLine, "{1}", 1.0, "", if (typeLine == "Creature") "1" else null, if (typeLine == "Creature") "1" else null, emptyList(), "")
+    }
+
     private fun cardDef(ref: CardRef, state: GameState): CardDef? {
+        ref.name?.let { n -> if (ref.oracleId == null) genericDef(n)?.let { return it } }
         val card: Card? = ref.oracleId?.let { cards.byOracleId(it) } ?: ref.name?.let { n ->
             val r = cards.resolve(n)
             val m = r.best

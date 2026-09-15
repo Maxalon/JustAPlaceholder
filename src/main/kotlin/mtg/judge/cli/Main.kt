@@ -21,6 +21,7 @@ mtg-judge <command> [options]
   ask     "TEXT" [--json] [--db FILE]                Describe a situation in plain English and get the ruling
   judge   FILE.json|- [--json] [--db FILE]           Answer a situation written in the situation language (docs/)
   meta    [--db FILE]                                Data provenance
+  parse   NAME [--db FILE]                           How the Oracle parser reads a card (for debugging)
   coverage [--format commander] [--top N] [--db FILE] How much of the card pool's rules text the engine models
   bench   [--only ID] [--show] [--db FILE]           Run the built-in plain-English scenarios and score answered/refused/wrong
 
@@ -81,6 +82,13 @@ fun main(args: Array<String>) {
             if (opts.containsKey("json")) println(json.encodeToString(mtg.judge.situation.Answer.serializer(), answer)) else print(mtg.judge.situation.AnswerRenderer.render(answer))
         }
         "meta" -> withDb(opts) { cards, _ -> cards.meta().toSortedMap().forEach { (k, v) -> println("$k = $v") } }
+        "parse" -> withDb(opts) { cards, _ ->
+            val c = cards.resolve(positional.joinToString(" ")).best?.card ?: fail("No card matches")
+            val def = mtg.judge.situation.Judge.toDef(c)
+            println("${def.name}  ${def.typeLine}  keywords=${def.keywords}")
+            def.spellEffect?.let { println("spell: $it") }
+            def.abilities.forEach { println("  ${it::class.simpleName}: $it") }
+        }
         "coverage" -> withDbConn(opts) { conn, _, _ -> mtg.judge.oracle.Coverage.report(conn, opts["format"] ?: "commander", opts["top"]?.toIntOrNull() ?: 40) }
         "bench" -> withDbConn(opts) { conn, _, _ ->
             val all = mtg.judge.situation.Bench.load()

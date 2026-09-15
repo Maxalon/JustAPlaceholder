@@ -62,6 +62,8 @@ sealed interface Trigger {
     data class PermanentDies(val filter: ObjFilter, val other: Boolean) : Trigger
     /** "Whenever you draw a card". */
     data object YouDraw : Trigger
+    /** "Whenever an opponent draws a card" / "a player draws a card". */
+    data class PlayerDraws(val who: Who) : Trigger
     /** "Whenever you draw your second card each turn". */
     data class YouDrawNth(val n: Int) : Trigger
     /** "Whenever ~ is dealt damage". */
@@ -89,7 +91,13 @@ sealed interface Effect {
     data class Draw(val who: Who, val count: Int) : Effect
     data class Damage(val amount: Int, val target: TargetSpec) : Effect
     data class Counter(val target: TargetSpec) : Effect
-    data class Destroy(val target: TargetSpec) : Effect
+    data class Destroy(val target: TargetSpec, val noRegen: Boolean = false) : Effect
+    /** "Return target X to its owner's hand" (null target = ~). */
+    data class Bounce(val target: TargetSpec?) : Effect
+    /** "Its controller gains life equal to its power" (uses last known information after a zone change). */
+    data class GainLifeEqualToPower(val who: Who) : Effect
+    /** Something that targets but whose effect is only narrated ("Target player reveals their hand"). */
+    data class NarratedTargeted(val target: TargetSpec, val text: String, val rules: List<String>) : Effect
     data class Exile(val target: TargetSpec) : Effect
     data class Tap(val target: TargetSpec) : Effect
     data class Untap(val target: TargetSpec) : Effect
@@ -112,7 +120,7 @@ sealed interface Effect {
     /** Effects the engine understands well enough to narrate with rule citations but doesn't track state for (libraries, hands). */
     data class Narrated(val text: String, val rules: List<String>) : Effect
     /** "Destroy all [filter]" / "Exile all …" / "~ deals N damage to each [filter]". */
-    data class ForAll(val filter: ObjFilter, val action: String, val amount: Int = 0) : Effect
+    data class ForAll(val filter: ObjFilter, val action: String, val amount: Int = 0, val noRegen: Boolean = false) : Effect
     /** "You may pay [cost]. If you do, [effect]." / "You may [do X]. If you do, [effect]." */
     data class IfYouDo(val choice: Effect, val then: Effect, val cost: String?) : Effect
     /** Attach the source (Aura on resolution, Equipment via equip) to the target (301.5, 303.4). */
@@ -125,7 +133,8 @@ sealed interface Effect {
     data class CreateShield(val replacement: Replacement.PreventDamage, val target: TargetSpec?) : Effect
     /** "Regenerate target creature" (701.19a). target null = self. */
     data class Regenerate(val target: TargetSpec?) : Effect
-    data class May(val effect: Effect) : Effect
+    /** "You may …" / "Its controller may …": [who] decides. */
+    data class May(val effect: Effect, val who: Who = Who.YOU) : Effect
     data class UnlessPays(val effect: Effect, val payer: Who, val cost: String) : Effect
     data class Seq(val effects: List<Effect>) : Effect
     data class Unparsed(val text: String) : Effect
@@ -134,7 +143,7 @@ sealed interface Effect {
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
-        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target)
+        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList()
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked

@@ -183,6 +183,7 @@ object OracleParser {
         Regex("""^(.+?) deals combat damage to a player$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m -> if (!m.groupValues[1].equals("~", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Trigger.PermanentDealsCombatDamageToPlayer(f) } }
         if (Regex("""^you gain life$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.YouGainLife
         if (Regex("""^you draw a card$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.YouDraw
+        Regex("""^(an opponent|a player) draws a card$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { return Trigger.PlayerDraws(if (it.groupValues[1].lowercase() == "an opponent") Who.OPPONENT else Who.ANY_PLAYER) }
         Regex("""^you draw your (first|second|third) card each turn$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { return Trigger.YouDrawNth(mapOf("first" to 1, "second" to 2, "third" to 3).getValue(it.groupValues[1].lowercase())) }
         Regex("""^~ or another (.+?) enters(?: the battlefield)?(?: under your control)?$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
             val f = parseFilter(m.groupValues[1], Kind.CREATURE).let { if (c.contains("under your control", true) || it.controller == null) it.copy(controller = Who.YOU) else it }
@@ -370,6 +371,10 @@ object OracleParser {
                     val cost = payRe.matchEntire(choice)?.groupValues?.get(1)
                     out += Effect.IfYouDo(if (cost != null) Effect.Narrated("pay $cost", listOf("608.2g")) else parseSentence(choice.replaceFirstChar { it.uppercase() }), parseSentence(next.removePrefix("If you do, ").removePrefix("if you do, ").replaceFirstChar { it.uppercase() }), cost)
                     i += 2
+                } else if (Regex("""^(?:It|They) can't be regenerated\.?$""", RegexOption.IGNORE_CASE).matches(cur) && out.isNotEmpty()) {
+                    val prev = out.removeAt(out.lastIndex)
+                    out += when (prev) { is Effect.Destroy -> prev.copy(noRegen = true); is Effect.ForAll -> prev.copy(noRegen = true); else -> Effect.Seq(listOf(prev, Effect.Narrated("it can't be regenerated", listOf("701.19c")))) }
+                    i++
                 } else { val e = parseSentence(cur); out += e; e.targets().lastOrNull()?.let { lastTarget = it }; i++ }
             }
             return if (out.size == 1) out[0] else Effect.Seq(out)
@@ -377,12 +382,13 @@ object OracleParser {
         return parseSentence(t)
     }
 
-    private val unlessRe = Regex("""^(.+?) unless (that player|its controller|an opponent|you|target player|they) pays? (\{[^}]+\}(?:\{[^}]+\})*|\d+ life)\.?$""", RegexOption.IGNORE_CASE)
+    private val unlessRe = Regex("""^(.+?) unless (that player|its controller|an opponent|you|target player|they) pays? (\{[^}]+\}(?:\{[^}]+\})*(?:, where X is [^.]+)?|\d+ life)\.?$""", RegexOption.IGNORE_CASE)
     private val mayRe = Regex("""^you may (.+)$""", RegexOption.IGNORE_CASE)
     private val drawRe = Regex("""^(you |target player |that player |each player )?draws? (a|an|\w+|\d+) cards?\.?$""", RegexOption.IGNORE_CASE)
     private val damageRe = Regex("""^(?:~|it) deals (\d+|X) damage to (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val counterRe = Regex("""^counter target (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val destroyRe = Regex("""^destroy target (.+?)\.?$""", RegexOption.IGNORE_CASE)
+    private val bounceRe = Regex("""^return (~|target .+?) to its owner's hand\.?$""", RegexOption.IGNORE_CASE)
     private val exileRe = Regex("""^exile target (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val tapRe = Regex("""^tap target (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val untapRe = Regex("""^untap target (.+?)\.?$""", RegexOption.IGNORE_CASE)
@@ -392,7 +398,7 @@ object OracleParser {
     private val gainSelfRe = Regex("""^~ gains (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val payRe = Regex("""^(?:you may )?pay (\{[^}]+\}(?:\{[^}]+\})*|\d+ life)\.?$""", RegexOption.IGNORE_CASE)
     private val gainLifeRe = Regex("""^(you|target player|that player|each player|each opponent) gains? (\d+) life\.?$""", RegexOption.IGNORE_CASE)
-    private val loseLifeRe = Regex("""^(you|target player|that player|each opponent|each player) loses? (\d+) life\.?$""", RegexOption.IGNORE_CASE)
+    private val loseLifeRe = Regex("""^(you|target player|that player|they|each opponent|each player) loses? (\d+) life\.?$""", RegexOption.IGNORE_CASE)
 
     private val selfPumpRe = Regex("""^~ gets ([+-]\d+)/([+-]\d+) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val massPumpRe = Regex("""^(?:all |each )?(.+?) (?:get|gets) ([+-]\d+)/([+-]\d+) until end of turn\.?$""", RegexOption.IGNORE_CASE)
@@ -402,6 +408,9 @@ object OracleParser {
     private val forAllRe = Regex("""^(destroy|exile|tap|untap) (?:all|each) (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val damageEachRe = Regex("""^(?:~|it) deals (\d+) damage to each (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val narratedRes: List<Pair<Regex, List<String>>> = listOf(
+        Regex("""^you choose an? (?:nonland |noncreature |nonbasic |creature |land |instant or sorcery |instant |sorcery )?card from it\.?$""", RegexOption.IGNORE_CASE) to listOf("701.20a"),
+        Regex("""^that player discards (?:that card|it|a card|\w+ cards?)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.9a"),
+        Regex("""^put (?:a|an|\w+|\d+) cards? from your hand on top of your library(?: in any order)?\.?$""", RegexOption.IGNORE_CASE) to listOf("401.1"),
         Regex("""^scry (\d+)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.22a"),
         Regex("""^surveil (\d+)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.25a"),
         Regex("""^(?:you |target player |each player )?mills? (\w+|\d+) cards?\.?$""", RegexOption.IGNORE_CASE) to listOf("701.17a"),
@@ -411,7 +420,6 @@ object OracleParser {
         Regex("""^(?:you |target player |each player )?discards? (a|an|\w+|\d+) cards?(?: at random)?\.?$""", RegexOption.IGNORE_CASE) to listOf("701.9a"),
         Regex("""^draw (a|\w+) cards?, then discard (a|\w+) cards?\.?$""", RegexOption.IGNORE_CASE) to listOf("121.1", "701.9a"),
         Regex("""^return target (.+?) card from your graveyard to your hand\.?$""", RegexOption.IGNORE_CASE) to listOf("400.7"),
-        Regex("""^return (~|target .+?) to its owner's hand\.?$""", RegexOption.IGNORE_CASE) to listOf("400.7"),
         Regex("""^sacrifice (~|a|an|\w+) .*$""", RegexOption.IGNORE_CASE) to listOf("701.21a"),
         Regex("""^sacrifice ~\.?$""", RegexOption.IGNORE_CASE) to listOf("701.21a"),
         Regex("""^create (a|an|\w+|\d+|X) (?:.+? )?tokens?.*$""", RegexOption.IGNORE_CASE) to listOf("701.7a"),
@@ -427,8 +435,6 @@ object OracleParser {
         Regex("""^transform (?:~|it|target .+?)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.27a"),
         Regex("""^exile ~\.?$""", RegexOption.IGNORE_CASE) to listOf("701.13a"),
         Regex("""^destroy ~\.?$""", RegexOption.IGNORE_CASE) to listOf("701.8a"),
-        Regex("""^return ~ to its owner's hand\.?$""", RegexOption.IGNORE_CASE) to listOf("400.7"),
-        Regex("""^(?:you |target player |each player )?loses? (\d+) life\.?$""", RegexOption.IGNORE_CASE) to listOf("119.3"),
         Regex("""^untap ~\.?$""", RegexOption.IGNORE_CASE) to listOf("701.26b"),
         Regex("""^tap ~\.?$""", RegexOption.IGNORE_CASE) to listOf("701.26a"),
         Regex("""^as ~ enters, choose (?:a|an) .+$""", RegexOption.IGNORE_CASE) to listOf("614.1c"),
@@ -466,6 +472,7 @@ object OracleParser {
     private val regenerateRe = Regex("""^regenerate (~|target .+?)\.?$""", RegexOption.IGNORE_CASE)
 
     private fun parseSentence(s: String): Effect {
+        if (Regex("""^target player reveals their hand\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.NarratedTargeted(target("player"), "reveals their hand", listOf("701.20a"))
         modalRe.matchEntire(s)?.let { m ->
             val modeTexts = m.groupValues[3].split("•").map { it.trim().trimEnd('.') }.filter { it.isNotEmpty() }
             return Effect.Modal(m.groupValues[2].lowercase(), modeTexts.map { parseEffect(it) }, modeTexts)
@@ -514,7 +521,7 @@ object OracleParser {
         }
         unlessRe.matchEntire(s)?.let { m ->
             val payer = when (m.groupValues[2].lowercase()) { "you" -> Who.YOU; "an opponent" -> Who.OPPONENT; "target player" -> Who.TARGET_PLAYER; "its controller" -> Who.CONTROLLER_OF_TARGET; else -> Who.THAT_PLAYER }
-            return Effect.UnlessPays(parseSentence(m.groupValues[1]), payer, m.groupValues[3])
+            return Effect.UnlessPays(parseSentence(m.groupValues[1]), payer, m.groupValues[3].replace(Regex(""", where X is (.+)$"""), " (X = $1)"))
         }
         mayRe.matchEntire(s)?.let { return Effect.May(parseSentence(it.groupValues[1])) }
         drawRe.matchEntire(s)?.let { m ->
@@ -524,6 +531,14 @@ object OracleParser {
         damageRe.matchEntire(s)?.let { m -> return Effect.Damage(m.groupValues[1].toIntOrNull() ?: return Effect.Unparsed(s), target(m.groupValues[2])) }
         counterRe.matchEntire(s)?.let { return Effect.Counter(target(it.groupValues[1], Kind.SPELL)) }
         destroyRe.matchEntire(s)?.let { return Effect.Destroy(target(it.groupValues[1])) }
+        bounceRe.matchEntire(s)?.let { m -> return Effect.Bounce(if (m.groupValues[1] == "~") null else target(m.groupValues[1])) }
+        if (Regex("""^its controller gains life equal to its power\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.GainLifeEqualToPower(Who.CONTROLLER_OF_TARGET)
+        if (Regex("""^its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.May(Effect.Narrated("search their library for a basic land card, put it onto the battlefield tapped, then shuffle", listOf("701.23a", "701.23e")), Who.CONTROLLER_OF_TARGET)
+        // "Draw three cards, then put two cards from your hand on top of your library in any order."
+        Regex("""^(.+?), then (.+)$""").matchEntire(s)?.let { m ->
+            val a = parseSentence(m.groupValues[1].trimEnd('.') + "."); val b = parseSentence(m.groupValues[2].replaceFirstChar { it.uppercase() })
+            if (!a.hasUnparsed() && !b.hasUnparsed()) return Effect.Seq(listOf(a, b))
+        }
         exileRe.matchEntire(s)?.let { return Effect.Exile(target(it.groupValues[1])) }
         tapRe.matchEntire(s)?.let { return Effect.Tap(target(it.groupValues[1])) }
         untapRe.matchEntire(s)?.let { return Effect.Untap(target(it.groupValues[1])) }
@@ -567,7 +582,7 @@ object OracleParser {
         if (d == "any target") return ObjFilter(setOf(Kind.CREATURE, Kind.PLAYER, Kind.PLANESWALKER, Kind.BATTLE), raw = desc)
         var controller: Who? = null
         var core = d
-        Regex("""\s+(you control|an opponent controls|you don't control)$""").find(core)?.let { m ->
+        Regex("""\s+(you control|an opponent controls|you don't control|your opponents control|opponents control)$""").find(core)?.let { m ->
             controller = when (m.groupValues[1]) { "you control" -> Who.YOU; else -> Who.OPPONENT }
             core = core.removeRange(m.range)
         }

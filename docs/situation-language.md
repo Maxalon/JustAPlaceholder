@@ -132,6 +132,12 @@ What happens next, in order. The engine applies these to the described state.
 | `combatDamage` | (deals combat damage now; otherwise it's dealt after the last event) |
 | `step` | `player` (the active player), `to`: `upkeep` / `draw` / `precombat_main` / `combat` / `end` (a step begins; its triggers fire) |
 | `pay` | `player`, `to`: `yes` / `no` (whether the player pays the next "unless … pays" cost asked of them) |
+| `draw` | `player`, `amount` (a player draws outside any effect; draw triggers see it) |
+| `regenerate` | `object` (the permanent has a regeneration shield this turn) |
+
+`cast` also accepts `to: "overload"` (cast for the overload cost, every "target" read as "each") and a
+generic `card` such as `"a spell"`, `"a creature spell"` or `"an instant"` for spells whose identity
+doesn't matter.
 | `damage` | `source`, `target`, `amount` (used when the user describes damage as a given) |
 | `enter` | `object` (a permanent enters, source unspecified) |
 | `leave` | `object`, `to`: zone |

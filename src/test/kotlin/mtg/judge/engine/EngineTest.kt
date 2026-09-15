@@ -65,7 +65,7 @@ class EngineTest {
         assertEquals(Zone.EXILE, s.obj("bears").zone)
         assertTrue(s.outcomes.any { it.contains("doesn't resolve") })
         assertTrue("608.2b" in s.rulesCited())
-        assertTrue(s.unsupported.any { it.detail.contains("gains life equal to its power") }, "the unmodeled part is reported, not silently dropped")
+        assertTrue(s.unsupported.none { it.detail.contains("gains life equal to its power") }, "the life gain is modeled now")
     }
 
     @Test
