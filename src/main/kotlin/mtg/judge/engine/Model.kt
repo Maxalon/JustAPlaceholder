@@ -121,7 +121,7 @@ sealed interface Effect {
     /** "That player sacrifices that many permanents" (Phyrexian Obliterator): as many as the causing amount, their choice. */
     data class SacrificeThatMany(val who: Who, val filter: ObjFilter) : Effect
     /** "Put a creature card from your hand onto the battlefield" (Aether Vial: with mana value equal to its charge counters). */
-    data class PutFromHand(val filter: ObjFilter, val mvEqualsCounters: String? = null, val tapped: Boolean = false, val attacking: Boolean = false, val fromLibrary: Boolean = false, val maxMv: Int? = null) : Effect
+    data class PutFromHand(val filter: ObjFilter, val mvEqualsCounters: String? = null, val tapped: Boolean = false, val attacking: Boolean = false, val fromLibrary: Boolean = false, val maxMv: Int? = null, val fromGraveyard: Boolean = false) : Effect
     /** Maze of Ith: "Prevent all combat damage that would be dealt to and dealt by that creature this turn." */
     data class PreventCombatToAndBy(val target: TargetSpec) : Effect
     /** Approach of the Second Sun: win if another spell with this name was cast this game, else tuck it seventh from the top and gain life. */

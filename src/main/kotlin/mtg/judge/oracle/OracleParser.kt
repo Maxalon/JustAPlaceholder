@@ -516,6 +516,7 @@ object OracleParser {
         Regex("""^as ~ enters, choose (?:a|an) .+$""", RegexOption.IGNORE_CASE) to listOf("614.1c"),
         Regex("""^you may have ~ enter as a copy of .+$""", RegexOption.IGNORE_CASE) to listOf("707.9", "614.1c"),
         Regex("""^copy target .+$""", RegexOption.IGNORE_CASE) to listOf("707.10"),
+        Regex("""^at the beginning of (?:your|the) next .+, .+$""", RegexOption.IGNORE_CASE) to listOf("603.7a"),
         Regex("""^~ deals (\d+) damage to you\.?$""", RegexOption.IGNORE_CASE) to listOf("120.3a"),
         Regex("""^~ fights target .+$""", RegexOption.IGNORE_CASE) to listOf("701.14a"),
         Regex("""^(?:each|target) (?:opponent|player) (?:discards|sacrifices|mills|exiles) .+$""", RegexOption.IGNORE_CASE) to listOf("701.9a"),
@@ -631,6 +632,11 @@ object OracleParser {
             return Effect.PutFromHand(parseFilter(m.groupValues[1], Kind.PERMANENT), m.groupValues[2].ifEmpty { null }, tapped = m.groupValues[3].isNotEmpty(), attacking = m.groupValues[4].isNotEmpty())
         }
         zurRe.matchEntire(s)?.let { m -> zurEffect(m)?.let { return it } }
+        // Sun Titan: "return target permanent card with mana value 3 or less from your graveyard to the battlefield"
+        Regex("""^return target (.+?) card(?: with mana value (\d+) or less)? from your graveyard to the battlefield(?: tapped)?(?: under your control)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val f = parseFilter(m.groupValues[1], Kind.PERMANENT)
+            if (f.verifiable) return Effect.PutFromHand(f, null, tapped = s.contains("battlefield tapped", true), fromGraveyard = true, maxMv = m.groupValues[2].toIntOrNull())
+        }
         Regex("""^you gain (\d+) life for each spell you've cast this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.GainLifePerSpellThisTurn(Who.YOU, it.groupValues[1].toInt()) }
         for ((re, rules) in narratedRes) if (re.matches(s)) return Effect.Narrated(s.trimEnd('.'), rules)
         // "You draw a card and you lose 1 life." / "Each opponent loses 1 life and you gain 1 life.": two effects joined by "and".

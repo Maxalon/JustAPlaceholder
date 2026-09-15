@@ -140,6 +140,8 @@ class GameState(
     /** Prevention/regeneration shields created by resolved effects this turn (615.7, 701.19a). */
     val shields = mutableListOf<Shield>()
     val outcomes = mutableListOf<String>()
+    /** The spell most recently countered (Mana Drain's "that spell's mana value"). */
+    var lastCountered: GameObject? = null
     /** The permanent most recently sacrificed (Fling's "the sacrificed creature's power"), with last-known information. */
     var lastSacrificed: GameObject? = null
     val assumptions = mutableListOf<String>()

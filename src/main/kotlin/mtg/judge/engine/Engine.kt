@@ -56,7 +56,7 @@ class Engine(val state: GameState) {
             state.unsupported += Unsupported(card.name, "Rules text not modeled: " + card.abilities.filterIsInstance<UnparsedAbility>().joinToString(" | ") { it.text })
         }
         // "Ravenous Chupacabra targeting their Bears": the creature spell targets nothing; its enters-the-battlefield trigger will.
-        targets = if (needed.isEmpty() && targets.isNotEmpty() && card.abilities.any { it is TriggeredAbility && it.trigger == Trigger.ThisEnters && it.effect.targets().isNotEmpty() }) {
+        targets = if (needed.isEmpty() && targets.isNotEmpty() && card.abilities.any { it is TriggeredAbility && it.trigger == Trigger.ThisEnters && (it.effect.targets().isNotEmpty() || Regex("""\btarget\b""", RegexOption.IGNORE_CASE).containsMatchIn(it.text)) }) {
             obj.etbTargets = targets
             trace.step("${card.name} itself doesn't target anything as a spell; ${describeTargets(targets).removePrefix(" targeting ")} will be the target of its enters-the-battlefield trigger when it's put on the stack.", "603.3d", "601.2c")
             emptyList()
@@ -909,7 +909,7 @@ class Engine(val state: GameState) {
                 val target = (ref as? Ref.Stack)?.let { state.stackItem(it.id) } ?: (ref as? Ref.Obj)?.let { r -> state.stack.firstOrNull { it.source.id == r.id } }
                 if (target == null) { trace.step("${state.nameOf(ref)} is no longer on the stack, so it can't be countered.", "701.6a"); return@forEachLegalTarget }
                 if (target.kind == StackKind.SPELL && cant(target.source, "be countered")) { trace.step("${target.describe} can't be countered, so ${item.describe} has no effect on it.", "701.6a"); return@forEachLegalTarget }
-                state.stack.remove(target)
+                state.stack.remove(target); state.lastCountered = target.source
                 if (target.kind == StackKind.SPELL) target.source.zone = Zone.GRAVEYARD
                 trace.step("${target.describe} is countered: it's removed from the stack and none of its effects happen" + (if (target.kind == StackKind.SPELL) "; the card goes to its owner's graveyard" else "") + ".", "701.6a")
                 state.outcomes += "${target.describe} is countered."
@@ -990,7 +990,7 @@ class Engine(val state: GameState) {
             }
             is Effect.PutFromHand -> {
                 val you = state.player(item.controller)
-                val fromZone = if (effect.fromLibrary) Zone.LIBRARY else Zone.HAND; val zoneName = if (effect.fromLibrary) "library" else "hand"
+                val fromZone = if (effect.fromLibrary) Zone.LIBRARY else if (effect.fromGraveyard) Zone.GRAVEYARD else Zone.HAND; val zoneName = if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"
                 val chosen = (item.choice ?: state.pendingChoices.remove(item.source.id))?.let { c -> state.objects[c] } ?: state.objects.values.firstOrNull { it.zone == fromZone && it.controller == item.controller && state.matches(effect.filter, it, item.controller, anyZone = true) }
                     // A basic land fetched from the library: nobody needs to name it; assume one is there.
                     ?: if (effect.fromLibrary && effect.filter.raw.contains("basic land", true)) Generic.spell("basic land")?.let { def -> state.add(GameObject(freshObjectId("basic land"), def, Zone.LIBRARY, item.controller)).also { state.assumptions += "${item.source.name} finds a basic land (${you.possessive} library has one)." } } else null
@@ -1105,6 +1105,7 @@ class Engine(val state: GameState) {
             }
             is Effect.AddMana -> trace.step("${describeManaEffect(effect)}.", "605.1a")
             is Effect.Narrated -> {
+                state.lastCountered?.let { c -> if (effect.text.contains("that spell's mana value")) { val mv = c.def.manaValue.toInt(); trace.step("That spell was ${c.name}, mana value $mv. ${effect.text.replace("that spell's mana value", "$mv").replaceFirstChar { it.uppercase() }} (a delayed triggered ability created as ${item.source.name} resolves).", "202.3", "608.2h", *effect.rules.toTypedArray()); state.outcomes += "${item.source.name}: ${effect.text.replace("that spell's mana value", "$mv (${c.name}'s mana value)").replace("~", item.source.name).replaceFirstChar { it.uppercase() }.trimEnd('.')}."; return } }
                 // Text with its own subject ("You choose…", "That player discards…", "Its controller may…") is quoted as the instruction it is.
                 val ownSubject = Regex("""^(you|that player|its controller|each|the|its|their|if|search)\b""", RegexOption.IGNORE_CASE).containsMatchIn(effect.text)
                 if (ownSubject) trace.step("${item.source.name}: \"${effect.text.replace("~", item.source.name).replaceFirstChar { it.uppercase() }.trimEnd('.')}.\" (${you.subject} ${you.v("carries", "carry")} this out; the details aren't tracked here.)", *effect.rules.toTypedArray())
@@ -1519,7 +1520,7 @@ class Engine(val state: GameState) {
         is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.PreventCombatToAndBy -> "prevent all combat damage dealt to and by ${effect.target.raw} this turn"; is Effect.WinIfCastBefore -> "win the game if another spell with this name was cast this game, otherwise tuck it seventh from the top and gain ${effect.life} life"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
         is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
-        is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.GainLifePerSpellThisTurn -> "gain ${effect.per} life for each spell cast this turn"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else "hand"} onto the battlefield"
+        is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.GainLifePerSpellThisTurn -> "gain ${effect.per} life for each spell cast this turn"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"} onto the battlefield"
         is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"
         is Effect.Tap -> "tap ${effect.target.raw}"; is Effect.Untap -> "untap ${effect.target.raw}"
         is Effect.Pump -> "${effect.target.raw} gets ${signed(effect.power)}/${signed(effect.toughness)}"

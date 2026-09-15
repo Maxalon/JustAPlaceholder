@@ -153,6 +153,13 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 when (e.to) {
                     "trigger" -> state.outcomes += if (state.trace.steps.any { it.text.startsWith("${o.name}'s ability triggers") || it.text.startsWith("${o.name}'s evoke ability triggers") }) "Yes: ${o.name}'s ability triggered." else "No: ${o.name}'s ability didn't trigger (nothing that happened matched its trigger condition)."
                     "block", "attack" -> state.outcomes += engine.cantWhy(o.id, e.to)?.let { why -> "No: ${o.name} can't ${e.to} (${if (why == o.name) "its own ability" else why} says so)." } ?: if (o.isOnBattlefield()) "Yes: ${o.name} can ${e.to}${if (e.to == "attack" && o.summoningSick == true && !o.has("haste")) ", but not this turn: it's summoning sick (302.6)" else ""}." else "No: ${o.name} isn't on the battlefield."
+                    "damage" -> {
+                        val victim = e.targets.firstOrNull()?.let { parseRef(it, state) as? mtg.judge.engine.Ref.Player }?.let { state.player(it.id) }
+                        val who = victim?.let { if (it.you) "you" else it.name } ?: "opponent"
+                        val hit = state.trace.steps.any { Regex("""^${Regex.escape(o.name)} deals \d+ (?:combat )?damage to ${Regex.escape(who)}\b""").containsMatchIn(it.text) }
+                        val blocked = state.trace.steps.any { it.text.contains("blocks ${o.name}") }
+                        state.outcomes += if (hit) "Yes: ${o.name} dealt damage to $who." else "No: ${o.name} dealt no damage to $who${if (blocked) " (it was blocked, and a blocked creature stays blocked even if its blocker leaves combat; without trample it assigns no damage to the player, 509.1h)" else ""}."
+                    }
                     "survive" -> state.outcomes += if (o.isOnBattlefield()) "Yes: ${o.name} is still on the battlefield." else "No: ${o.name} is in ${when (o.zone) { mtg.judge.engine.Zone.GRAVEYARD -> "the graveyard"; mtg.judge.engine.Zone.EXILE -> "exile"; mtg.judge.engine.Zone.HAND -> "its owner's hand"; mtg.judge.engine.Zone.LIBRARY -> "its owner's library"; else -> o.zone.name.lowercase() }}."
                     else -> {}
                 }
@@ -188,7 +195,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "pay" -> "${who ?: "the player"} ${if (e.to == "no") "${if (who == "you") "don't" else "doesn't"} pay" else "${if (who == "you") "pay" else "pays"}"}"
             "resolve", "pass" -> "the top of the stack resolves"
             "resolveall" -> "everything on the stack resolves"
-            "ask" -> "question: ${if (e.to == "block" || e.to == "attack") "can" else "does"} ${state.objects[e.obj]?.name ?: e.obj} ${e.to}?"
+            "ask" -> "question: ${if (e.to == "block" || e.to == "attack") "can" else "does"} ${state.objects[e.obj]?.name ?: e.obj} ${if (e.to == "damage") "deal damage to ${e.targets.firstOrNull()?.let { t -> state.players.firstOrNull { it.id == t }?.let { if (it.you) "you" else it.name } } ?: "the player"}" else e.to}?"
             "enter" -> "${state.objects[e.obj]?.name ?: e.obj} enters the battlefield"
             "leave" -> "${state.objects[e.obj]?.name ?: e.obj} goes to ${e.to}"
             "damage" -> "${e.source} deals ${e.amount} damage$tg"

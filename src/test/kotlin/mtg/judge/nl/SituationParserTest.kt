@@ -164,4 +164,14 @@ class SituationParserTest {
         val attack = p.situation.events.first { it.verb == "attack" }
         assertEquals("rhystic_study", attack.obj); assertEquals(listOf("opp"), attack.targets); assertTrue(p.unread.isEmpty(), "unread: ${p.unread}")
     }
+
+    @Test
+    fun `yes-no questions become ask events, and everyday-word card names stay table talk`() {
+        val p = parser.parse("I attack with Sol Ring and my opponent blocks with Time Vault. Does the Sol Ring deal damage to my opponent?")
+        val ask = p.situation.events.last()
+        assertEquals("ask", ask.verb); assertEquals("damage", ask.to); assertEquals("sol_ring", ask.obj); assertEquals(listOf("opp"), ask.targets)
+        assertTrue(p.unread.isEmpty(), "unread: ${p.unread}")
+        val q = parser.parse("I have Rhystic Study and it attacks. Does my Rhystic Study survive?")
+        assertEquals(listOf("attack", "resolveAll", "ask"), q.situation.events.map { it.verb }); assertEquals("survive", q.situation.events.last().to)
+    }
 }

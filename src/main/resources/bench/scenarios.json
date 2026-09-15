@@ -2550,5 +2550,83 @@
     "cite": [
       "508.1a"
     ]
+  },
+  {
+    "id": "blocked-stays-blocked-question",
+    "text": "I attack with Grizzly Bears and my opponent blocks with Wall of Omens. After blockers I cast Lightning Bolt on the Wall. Does the Bears deal damage to my opponent?",
+    "expect": [
+      "No: Grizzly Bears dealt no damage to opponent (it was blocked"
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "krenko-elesh-norn-die-question",
+    "text": "My opponent has Elesh Norn, Grand Cenobite and I cast Krenko, Mob Boss. Does Krenko die?",
+    "expect": [
+      "Yes: Krenko, Mob Boss is still on the battlefield"
+    ],
+    "cite": [
+      "608.3a"
+    ]
+  },
+  {
+    "id": "sun-titan-return",
+    "text": "I have Sun Titan and it attacks. I return Grizzly Bears from my graveyard.",
+    "expect": [
+      "Grizzly Bears enters the battlefield",
+      "opponent takes 6 damage"
+    ],
+    "cite": [
+      "603.3"
+    ]
+  },
+  {
+    "id": "rhystic-tithe-pays-neither",
+    "text": "I control Rhystic Study and Smothering Tithe. My opponent casts a spell and pays for neither.",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "blightsteel-chump",
+    "text": "My opponent has 3 poison counters. I attack with Blightsteel Colossus and they chump with a 1/1.",
+    "expect": [
+      "opponent has 13 poison counters",
+      "opponent loses the game (poison)"
+    ],
+    "cite": [
+      "702.90b",
+      "702.19b"
+    ]
+  },
+  {
+    "id": "mana-drain-mana-value",
+    "text": "I cast Mana Drain on my opponent's Grizzly Bears. How much mana do I get next turn?",
+    "expect": [
+      "Grizzly Bears is countered",
+      "2 (Grizzly Bears's mana value)"
+    ],
+    "cite": [
+      "202.3",
+      "603.7a"
+    ]
+  },
+  {
+    "id": "vendilion-flash-target",
+    "text": "It's my opponent's turn. I flash in Vendilion Clique targeting them.",
+    "expect": [
+      "Vendilion Clique enters the battlefield"
+    ],
+    "notExpect": [
+      "needs 0 targets"
+    ],
+    "cite": [
+      "702.8a"
+    ]
   }
 ]
