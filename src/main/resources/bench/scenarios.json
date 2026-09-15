@@ -3530,5 +3530,62 @@
     "cite": [
       "704.5b"
     ]
+  },
+  {
+    "id": "sword-stays-when-bears-dies",
+    "text": "I have Sword of Fire and Ice equipped to Grizzly Bears. My opponent casts Doom Blade on the Bears. What happens to the Sword?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Sword of Fire and Ice stays on the battlefield, unattached"
+    ],
+    "cite": [
+      "704.5n"
+    ]
+  },
+  {
+    "id": "sun-titan-returns-bears",
+    "text": "I control Sun Titan. It enters. I have Grizzly Bears in my graveyard.",
+    "expect": [
+      "Grizzly Bears enters the battlefield"
+    ],
+    "notExpect": [
+      "which card?"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "pacifism-can-it-block",
+    "text": "My opponent controls Grizzly Bears with Pacifism on it. Can it block?",
+    "expect": [
+      "No: Grizzly Bears can't block (Pacifism says so)"
+    ],
+    "cite": []
+  },
+  {
+    "id": "propaganda-cant-pay-second",
+    "text": "My opponent has Propaganda. I attack with Grizzly Bears and pay. Then I attack with Hill Giant too but can't pay.",
+    "expect": [
+      "opponent takes 2 damage",
+      "Hill Giant can't attack"
+    ],
+    "notExpect": [
+      "opponent takes 3 damage"
+    ],
+    "cite": [
+      "508.1a"
+    ]
+  },
+  {
+    "id": "equip-then-attack",
+    "text": "I control Grizzly Bears and Bonesplitter. I equip Bonesplitter to the Bears. Then I attack.",
+    "expect": [
+      "Bonesplitter is attached to Grizzly Bears",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "702.6a"
+    ]
   }
 ]
