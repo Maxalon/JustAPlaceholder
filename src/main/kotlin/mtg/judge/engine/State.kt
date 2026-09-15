@@ -99,6 +99,8 @@ class GameState(
 ) {
     val trace = Trace()
     var combatDamageDealt = false
+    /** Prevention/regeneration shields created by resolved effects this turn (615.7, 701.19a). */
+    val shields = mutableListOf<Shield>()
     val outcomes = mutableListOf<String>()
     val assumptions = mutableListOf<String>()
     val clarifications = mutableListOf<Clarification>()
@@ -198,5 +200,8 @@ class GameState(
         is Ref.Player -> players.firstOrNull { it.id == ref.id }?.let { if (it.you) "you" else it.name } ?: ref.id
     }
 }
+
+/** A shield from a resolved effect: applies to [objectId] / [playerId] (null = the filter in the replacement), with a remaining amount for "prevent the next N". */
+class Shield(val replacement: Replacement, val objectId: String?, val playerId: String?, var remaining: Int?, val sourceName: String)
 
 class JudgeException(message: String) : RuntimeException(message)

@@ -109,6 +109,10 @@ sealed interface Effect {
     data class GainKeywordsSelf(val keywords: Set<String>) : Effect
     /** "Choose one —" with bulleted modes (700.2). */
     data class Modal(val count: String, val modes: List<Effect>, val modeTexts: List<String>) : Effect
+    /** One-shot effects that create a prevention shield until end of turn (615.7, 615.8): "Prevent the next 3 damage that would be dealt to any target this turn", "Prevent all combat damage that would be dealt this turn". */
+    data class CreateShield(val replacement: Replacement.PreventDamage, val target: TargetSpec?) : Effect
+    /** "Regenerate target creature" (701.19a). target null = self. */
+    data class Regenerate(val target: TargetSpec?) : Effect
     data class May(val effect: Effect) : Effect
     data class UnlessPays(val effect: Effect, val payer: Who, val cost: String) : Effect
     data class Seq(val effects: List<Effect>) : Effect
@@ -118,7 +122,7 @@ sealed interface Effect {
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
-        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target)
+        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }
         is IfYouDo -> choice.targets() + then.targets()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
@@ -151,6 +155,22 @@ sealed interface StaticEffect {
     data object MustAttack : StaticEffect
     /** Recognised static text the engine cites but has no game model for (level-up stats, "look at the top card any time", …). */
     data class Note(val text: String, val rules: List<String>) : StaticEffect
+    /** A continuous replacement or prevention effect from a static ability (614, 615). */
+    data class Replace(val replacement: Replacement) : StaticEffect
+}
+
+/** Replacement and prevention effects (614, 615). */
+sealed interface Replacement {
+    /** Prevent [amount] (null = all) damage that would be dealt to things matching [to] (or the player [toPlayer]), optionally only combat damage / only from sources matching [from]. */
+    data class PreventDamage(val amount: Int?, val to: ObjFilter?, val toPlayer: Who?, val combatOnly: Boolean, val from: ObjFilter?, val fromSelf: Boolean = false) : Replacement
+    /** "If [filter] would die, [instead] instead" / "would be put into a graveyard from anywhere". instead: exile | hand | library_bottom | library_top */
+    data class GraveyardReplacement(val filter: ObjFilter, val self: Boolean, val instead: String, val fromAnywhere: Boolean) : Replacement
+    /** "If a source (you control) would deal damage …, it deals double that damage instead." */
+    data class DamageMultiplier(val factor: Int, val sourceControl: Who?) : Replacement
+    /** "If you would gain life, you gain twice that much life instead." */
+    data class LifeGainMultiplier(val factor: Int) : Replacement
+    /** Regeneration shield: the next time it would be destroyed this turn (701.19a). */
+    data object Regenerate : Replacement
 }
 
 sealed interface Ability { val text: String }

@@ -198,8 +198,8 @@ class Engine(val state: GameState) {
                     if ((lethal || obj.dealtDeathtouchDamage) && obj.has("indestructible")) {
                         trace.step("${obj.name} has lethal damage but is indestructible, so it isn't destroyed.", "702.12b"); obj.dealtDeathtouchDamage = false; continue
                     }
-                    if (lethal) { move(obj, Zone.GRAVEYARD, "${obj.name} has ${obj.damage} damage marked and toughness $t, so it's destroyed (state-based action).", "704.3", "704.5g"); changed = true; continue }
-                    if (obj.dealtDeathtouchDamage && obj.damage > 0) { move(obj, Zone.GRAVEYARD, "${obj.name} was dealt damage by a source with deathtouch, so it's destroyed (state-based action).", "704.3", "704.5h", "702.2b"); changed = true; continue }
+                    if (lethal) { destroy(obj, "${obj.name} has ${obj.damage} damage marked and toughness $t, so it's destroyed (state-based action).", "704.3", "704.5g"); changed = true; continue }
+                    if (obj.dealtDeathtouchDamage && obj.damage > 0) { destroy(obj, "${obj.name} was dealt damage by a source with deathtouch, so it's destroyed (state-based action).", "704.3", "704.5h", "702.2b"); changed = true; continue }
                 }
             }
             for (obj in state.objects.values.toList()) {
@@ -295,7 +295,7 @@ class Engine(val state: GameState) {
     private fun blockersOf(a: GameObject) = state.objects.values.filter { it.blocking == a.id && it.isOnBattlefield() }
 
     private fun dealCombatDamage(attackers: List<GameObject>, deals: (GameObject) -> Boolean) {
-        data class Hit(val source: GameObject, val target: Ref, val amount: Int)
+        data class Hit(val source: GameObject, val target: Ref, val amount: Int) { var dealt = 0 }
         val hits = mutableListOf<Hit>()
         for (a in attackers) {
             if (!a.isOnBattlefield() || a.attacking == null) continue
@@ -335,9 +335,9 @@ class Engine(val state: GameState) {
         trace.step("All that combat damage is dealt simultaneously.", "510.2")
         inCombatDamage = true
         for (h in hits) {
-            applyDamage(h.source.name, h.target, h.amount)
+            h.dealt = applyDamage(h.source.name, h.target, h.amount, h.source)
             if (h.source.has("deathtouch")) (h.target as? Ref.Obj)?.let { state.objects[it.id]?.dealtDeathtouchDamage = true }
-            if (h.source.has("lifelink")) { val c = state.player(h.source.controller); c.life = c.life?.plus(h.amount); trace.step("${h.source.name} has lifelink, so ${c.subject.lowercase()} ${c.v("gains", "gain")} ${h.amount} life${c.life?.let { " ($it)" } ?: ""}.", "702.15b"); state.outcomes += "${c.subject} ${c.v("gains", "gain")} ${h.amount} life (lifelink)."; onEvent(GameEvent.LifeGained(c.id, h.amount)) }
+            if (h.source.has("lifelink") && h.dealt > 0) { val c = state.player(h.source.controller); trace.step("${h.source.name} has lifelink, so its controller gains life equal to the damage dealt.", "702.15b"); gainLife(c, h.dealt) }
         }
         inCombatDamage = false
         hits.filter { it.target is Ref.Player }.map { it.source.controller }.distinct().forEach { onEvent(GameEvent.CreaturesDealtCombatDamageToPlayer(it)) }
@@ -491,7 +491,16 @@ class Engine(val state: GameState) {
                 trace.step("${target.describe} is countered: it's removed from the stack and none of its effects happen" + (if (target.kind == StackKind.SPELL) "; the card goes to its owner's graveyard" else "") + ".", "701.6a")
                 state.outcomes += "${target.describe} is countered."
             }
-            is Effect.Destroy -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { move(it, Zone.GRAVEYARD, "${it.name} is destroyed and put into its owner's graveyard.", "701.8a") } }
+            is Effect.Destroy -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { destroy(it, "${it.name} is destroyed and put into its owner's graveyard.", "701.8a") } }
+            is Effect.Regenerate -> {
+                val put: (GameObject) -> Unit = { o -> state.shields += Shield(Replacement.Regenerate, o.id, null, 1, item.describe); trace.step("${o.name} gets a regeneration shield: the next time it would be destroyed this turn, it's instead tapped, its damage is removed, and it's removed from combat.", "701.19a", "614.8"); state.outcomes += "${o.name} has a regeneration shield this turn." }
+                if (effect.target == null) put(item.source) else forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let(put) }
+            }
+            is Effect.CreateShield -> {
+                val r = effect.replacement
+                if (effect.target == null) { state.shields += Shield(r, null, if (r.toPlayer == Who.YOU) item.controller else null, r.amount, item.describe); trace.step("${item.describe} creates a prevention effect until end of turn: prevent ${r.amount?.toString() ?: "all"}${if (r.combatOnly) " combat" else ""} damage that would be dealt${r.from?.let { " by ${it.raw}" } ?: ""}${r.toPlayer?.let { " to " + (if (it == Who.YOU) you.subject.lowercase() else "players") } ?: r.to?.let { " to ${it.raw}" } ?: ""}.", "615.1", "615.7", "611.2a"); state.outcomes += "Prevention effect until end of turn (${item.describe})." }
+                else forEachLegalTarget(item, effect.target) { ref -> state.shields += Shield(r, (ref as? Ref.Obj)?.id, (ref as? Ref.Player)?.id, r.amount, item.describe); trace.step("${state.nameOf(ref)} gets a prevention shield: the next ${r.amount?.toString() ?: "all"} damage that would be dealt to it this turn is prevented.", "615.7", "615.1"); state.outcomes += "${state.nameOf(ref)} has a prevention shield (${r.amount?.toString() ?: "all"}) this turn." }
+            }
             is Effect.Exile -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { move(it, Zone.EXILE, "${it.name} is exiled.", "701.13a") } }
             is Effect.Tap -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { trace.step("${it.name} becomes tapped.", "701.26a"); tap(it) } }
             is Effect.Untap -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { it.tapped = false; trace.step("${it.name} becomes untapped.", "701.26b") } }
@@ -505,7 +514,7 @@ class Engine(val state: GameState) {
                 trace.step("${it.name} gains ${effect.keywords.joinToString(" and ")} until end of turn.", "611.2a")
                 state.outcomes += "${it.name} has ${effect.keywords.joinToString(" and ")} until end of turn."
             } }
-            is Effect.GainLife -> resolveWho(effect.who, item)?.let { p -> p.life = p.life?.plus(effect.amount); trace.step("${p.subject} ${p.v("gains", "gain")} ${effect.amount} life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("gains", "gain")} ${effect.amount} life."; onEvent(GameEvent.LifeGained(p.id, effect.amount)) }
+            is Effect.GainLife -> resolveWho(effect.who, item)?.let { p -> gainLife(p, effect.amount) }
             is Effect.LoseLife -> resolveWho(effect.who, item)?.let { p -> p.life = p.life?.minus(effect.amount); trace.step("${p.subject} ${p.v("loses", "lose")} ${effect.amount} life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} ${effect.amount} life." }
             is Effect.PumpSelf -> { val o = item.source; if (o.isOnBattlefield()) { o.pumps += effect.power to effect.toughness; trace.step("${o.name} gets ${signed(effect.power)}/${signed(effect.toughness)} until end of turn; it's now ${o.power}/${o.toughness}.", "611.2a"); state.outcomes += "${o.name} is ${o.power}/${o.toughness} until end of turn." } else trace.step("${o.name} isn't on the battlefield, so there's nothing for the effect to modify.", "611.2c") }
             is Effect.PumpAll -> {
@@ -545,7 +554,7 @@ class Engine(val state: GameState) {
                 val affected = state.objects.values.filter { state.matches(effect.filter, it, item.controller) }
                 if (affected.isEmpty()) trace.step("Nothing matches \"${effect.filter.raw}\", so ${effect.action} affects nothing.")
                 for (o in affected) when (effect.action) {
-                    "destroy" -> if (o.has("indestructible")) trace.step("${o.name} is indestructible and isn't destroyed.", "702.12b") else move(o, Zone.GRAVEYARD, "${o.name} is destroyed.", "701.8a")
+                    "destroy" -> destroy(o, "${o.name} is destroyed.", "701.8a")
                     "exile" -> move(o, Zone.EXILE, "${o.name} is exiled.", "701.13a")
                     "tap" -> { o.tapped = true; trace.step("${o.name} becomes tapped.", "701.26a") }
                     "untap" -> { o.tapped = false; trace.step("${o.name} becomes untapped.", "701.26b") }
@@ -569,20 +578,85 @@ class Engine(val state: GameState) {
 
     private fun tap(o: GameObject) { if (o.tapped != true) { o.tapped = true; onEvent(GameEvent.BecomesTapped(o)) } }
 
+    private fun moveRaw(obj: GameObject, to: Zone) {
+        obj.zone = to; obj.damage = 0; obj.pumps.clear(); obj.tempKeywords.clear(); obj.tapped = false; obj.attacking = null; obj.blocking = null; obj.dealtDeathtouchDamage = false
+    }
+
+    /** Destruction with regeneration (701.19a, 614.8): returns true if the destruction was replaced. */
+    private fun destroy(obj: GameObject, text: String, vararg rules: String): Boolean {
+        if (obj.has("indestructible")) { trace.step("${obj.name} is indestructible and can't be destroyed.", "702.12b"); return true }
+        val shield = state.shields.firstOrNull { it.replacement == Replacement.Regenerate && it.objectId == obj.id && (it.remaining ?: 0) > 0 }
+        if (shield != null) {
+            shield.remaining = 0
+            obj.tapped = true; obj.damage = 0; obj.attacking = null; obj.blocking = null
+            trace.step("$text But ${obj.name} has a regeneration shield from ${shield.sourceName}: instead of being destroyed, it's tapped, all damage is removed from it and it's removed from combat.", *rules, "701.19a", "614.8")
+            state.outcomes += "${obj.name} regenerates."
+            return true
+        }
+        move(obj, Zone.GRAVEYARD, text, *rules)
+        return false
+    }
+
     private fun cant(o: GameObject, what: String) = o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.Cant && (it.what == what || it.what == "attack or block" && (what == "attack" || what == "block")) }
 
     private fun describeManaEffect(e: Effect): String = when (e) { is Effect.AddMana -> "add ${e.text}"; is Effect.Seq -> e.effects.joinToString(", then ") { describeManaEffect(it) }; else -> e.toString().lowercase() }
     /** "~" -> the source's name; first letter lowercased for use after a subject. */
     private fun effectText(t: String, item: StackItem) = t.replace("~", item.source.name).replaceFirstChar { it.lowercase() }
 
-    private fun applyDamage(sourceName: String, target: Ref, amount: Int, source: GameObject? = state.objects.values.firstOrNull { it.name == sourceName }) {
+    /** Applicable prevention effects for damage from [source] to [target]: static ones from the battlefield plus shields. */
+    private fun preventionFor(source: GameObject?, target: Ref, combat: Boolean): List<Pair<String, Any>> {
+        val out = mutableListOf<Pair<String, Any>>()
+        val tObj = (target as? Ref.Obj)?.let { state.objects[it.id] }
+        val tPlayer = (target as? Ref.Player)?.let { state.player(it.id) }
+        fun applies(r: Replacement.PreventDamage, owner: GameObject?, ownerPlayer: String?, shield: Shield?): Boolean {
+            if (r.combatOnly && !combat) return false
+            if (r.fromSelf && source !== owner) return false
+            if (r.from != null && (source == null || !state.matches(r.from, source, ownerPlayer ?: "", owner))) return false
+            if (shield != null && shield.objectId != null) return tObj?.id == shield.objectId
+            if (shield != null && shield.playerId != null) return tPlayer?.id == shield.playerId
+            val toOk = when {
+                r.to != null && r.to.raw == "~" -> tObj != null && tObj === owner
+                r.to != null && r.to.raw == "everything" -> true
+                r.to != null -> tObj != null && state.matches(r.to, tObj, ownerPlayer ?: "", owner)
+                else -> false
+            }
+            val playerOk = r.toPlayer != null && tPlayer != null && when (r.toPlayer) { Who.YOU -> tPlayer.id == ownerPlayer; Who.OPPONENT -> tPlayer.id != ownerPlayer; else -> true }
+            // "Prevent all damage that would be dealt by X" restricts the source only: any recipient qualifies.
+            if (r.to == null && r.toPlayer == null) return true
+            return toOk || playerOk
+        }
+        for (o in state.objects.values) if (o.isOnBattlefield()) for (e in o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }) {
+            val r = (e as? StaticEffect.Replace)?.replacement as? Replacement.PreventDamage ?: continue
+            if (applies(r, o, o.controller, null)) out += o.name to r
+        }
+        for (sh in state.shields) { val r = sh.replacement as? Replacement.PreventDamage ?: continue; if ((sh.remaining ?: 1) > 0 && applies(r, null, sh.playerId ?: state.players.first().id, sh)) out += sh.sourceName to sh }
+        return out
+    }
+
+    private fun applyDamage(sourceName: String, target: Ref, amount: Int, source: GameObject? = state.objects.values.firstOrNull { it.name == sourceName }): Int {
+        var amount = amount
+        // Replacement effects that modify damage (614.2, 609.7): doublers from the battlefield.
+        val doublers = state.objects.values.filter { it.isOnBattlefield() }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.DamageMultiplier }.filter { d -> d.sourceControl == null || source == null || (d.sourceControl == Who.YOU) == (source.controller == o.controller) }.map { o to it } }
+        val prevention = preventionFor(source, target, inCombatDamage)
+        if (doublers.isNotEmpty() && prevention.isNotEmpty()) trace.step("Both a damage-doubling replacement effect and a prevention effect apply; the affected player chooses the order (616.1). Assuming the prevention is applied first, which is best for the affected player.", "616.1", "616.1e")
+        if (prevention.isNotEmpty()) {
+            for ((name, p) in prevention) {
+                if (amount <= 0) break
+                when (p) {
+                    is Replacement.PreventDamage -> { trace.step("$name prevents ${if (p.amount == null) "all" else p.amount.toString()} of the $amount damage $sourceName would deal to ${state.nameOf(target)}.", "615.1", "615.6"); amount = if (p.amount == null) 0 else maxOf(0, amount - p.amount) }
+                    is Shield -> { val r = p.replacement as Replacement.PreventDamage; val prevented = if (r.amount == null) amount else minOf(amount, p.remaining ?: 0); trace.step("$name's prevention shield prevents $prevented of the $amount damage $sourceName would deal to ${state.nameOf(target)}.", "615.7", "615.6"); amount -= prevented; if (r.amount != null) p.remaining = (p.remaining ?: 0) - prevented }
+                }
+            }
+            if (amount <= 0) { state.outcomes += "Damage to ${state.nameOf(target)} from $sourceName is prevented."; return 0 }
+        }
+        for ((o, d) in doublers) { trace.step("${o.name} replaces the damage: $sourceName deals ${amount * d.factor} damage instead of $amount.", "614.1a", "614.6"); amount *= d.factor }
         if (source != null && target is Ref.Obj) {
             val o = state.objects[target.id]
             if (o != null) {
                 val qualities = qualitiesOf(source.def)
                 state.protections(o).firstOrNull { it == "everything" || it in qualities }?.let { q ->
                     trace.step("$sourceName would deal $amount damage to ${o.name}, but ${o.name} has protection from $q, so that damage is prevented.", "702.16e", "615.1")
-                    state.outcomes += "Damage to ${o.name} from $sourceName is prevented (protection)."; return
+                    state.outcomes += "Damage to ${o.name} from $sourceName is prevented (protection)."; return 0
                 }
             }
         }
@@ -594,16 +668,52 @@ class Engine(val state: GameState) {
             is Ref.Obj -> { val o = state.obj(target.id)
                 if (infect || wither) { o.counters["-1/-1"] = (o.counters["-1/-1"] ?: 0) + amount; trace.step("$sourceName has ${if (infect) "infect" else "wither"}, so the $amount damage to ${o.name} is dealt as $amount -1/-1 counter${if (amount > 1) "s" else ""}; it's now ${o.power}/${o.toughness}.", if (infect) "702.90c" else "702.80a", "120.3d"); state.outcomes += "${o.name} has ${o.counters["-1/-1"]} -1/-1 counter(s)." }
                 else { o.damage += amount; trace.step("$sourceName deals $amount damage to ${o.name}; it now has ${o.damage} damage marked (toughness ${o.toughness ?: "?"}).", "120.3e"); state.outcomes += "${o.name} has ${o.damage} damage marked." } }
-            is Ref.Stack -> state.unsupported += Unsupported(sourceName, "Damage can't be dealt to something on the stack.")
+            is Ref.Stack -> { state.unsupported += Unsupported(sourceName, "Damage can't be dealt to something on the stack."); return 0 }
         }
         if (source != null && target !is Ref.Stack) onEvent(GameEvent.DamageDealt(source, target, amount, inCombatDamage))
+        return amount
+    }
+
+    private fun gainLife(p: Player, amount: Int) {
+        var n = amount
+        state.objects.values.filter { it.isOnBattlefield() && it.controller == p.id }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.LifeGainMultiplier }.map { o to it } }
+            .forEach { (o, m) -> trace.step("${o.name} replaces the life gain: ${p.subject.lowercase()} ${p.v("gains", "gain")} ${n * m.factor} life instead of $n.", "614.1a", "614.6"); n *= m.factor }
+        p.life = p.life?.plus(n)
+        trace.step("${p.subject} ${p.v("gains", "gain")} $n life${p.life?.let { " ($it)" } ?: ""}.", "119.3")
+        state.outcomes += "${p.subject} ${p.v("gains", "gain")} $n life."
+        onEvent(GameEvent.LifeGained(p.id, n))
     }
 
     private var inCombatDamage = false
 
+    /** "If X would die, exile it instead" (614.1a) and Rest-in-Peace style effects: the replaced destination, with the source's name. */
+    private fun graveyardReplacement(obj: GameObject, from: Zone): Pair<Zone, String>? {
+        for (o in state.objects.values) {
+            if (!o.isOnBattlefield()) continue
+            for (e in o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }) {
+                val r = (e as? StaticEffect.Replace)?.replacement as? Replacement.GraveyardReplacement ?: continue
+                if (r.self && o !== obj) continue
+                if (!r.self && !r.fromAnywhere && from != Zone.BATTLEFIELD) continue
+                if (!r.self && !(if (from == Zone.BATTLEFIELD) state.matches(r.filter, obj, o.controller, o) else matchesLki(r.filter, obj, o.controller))) continue
+                if (r.filter.other && o === obj) continue
+                if (r.filter.controller == Who.OPPONENT && obj.owner == o.controller) continue
+                val zone = when (r.instead) { "exile" -> Zone.EXILE; "hand" -> Zone.HAND; else -> Zone.LIBRARY }
+                return zone to o.name
+            }
+        }
+        return null
+    }
+
     private fun move(obj: GameObject, to: Zone, text: String, vararg rules: String) {
+        if (to == Zone.GRAVEYARD) graveyardReplacement(obj, obj.zone)?.let { (zone, by) ->
+            val from = obj.zone
+            trace.step("$text But $by replaces that: instead of going to the graveyard, ${obj.name} is put into ${zoneName(zone, obj)}. The graveyard event never happens, so nothing triggers on it.", *rules, "614.1a", "614.6")
+            moveRaw(obj, zone); state.outcomes += "${obj.name}: ${zoneName(from, obj)} → ${zoneName(zone, obj)} (replaced by $by)."
+            if (from == Zone.BATTLEFIELD) onEvent(GameEvent.LeavesBattlefield(obj))
+            return
+        }
         val from = obj.zone
-        obj.zone = to; obj.damage = 0; obj.pumps.clear(); obj.tempKeywords.clear(); obj.tapped = false; obj.attacking = null; obj.blocking = null; obj.dealtDeathtouchDamage = false
+        moveRaw(obj, to)
         trace.step(text, *rules)
         state.outcomes += "${obj.name}: ${zoneName(from, obj)} → ${zoneName(to, obj)}."
         if (from == Zone.BATTLEFIELD) {
@@ -769,6 +879,8 @@ class Engine(val state: GameState) {
         is Effect.Attach -> "attach ${item.source.name} to ${effect.target.raw}"
         is Effect.GainKeywordsSelf -> "${item.source.name} gains ${effect.keywords.joinToString(" and ")}"
         is Effect.Modal -> "choose ${effect.count}: " + effect.modeTexts.joinToString(" / ")
+        is Effect.CreateShield -> "prevent ${effect.replacement.amount?.toString() ?: "all"} damage" + (effect.target?.let { " to ${it.raw}" } ?: "") + " this turn"
+        is Effect.Regenerate -> "regenerate ${effect.target?.raw ?: item.source.name}"
         is Effect.GainLife -> "gain ${effect.amount} life"; is Effect.LoseLife -> "lose ${effect.amount} life"
         is Effect.May -> "may " + describe(effect.effect, item); is Effect.UnlessPays -> describe(effect.effect, item) + " unless ${effect.cost} is paid"
         is Effect.Seq -> effect.effects.joinToString(", then ") { describe(it, item) }; is Effect.Unparsed -> "\"${effect.text}\""

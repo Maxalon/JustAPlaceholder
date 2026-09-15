@@ -8,6 +8,7 @@ import mtg.judge.engine.Kind
 import mtg.judge.engine.ObjFilter
 import mtg.judge.engine.StaticAbility
 import mtg.judge.engine.StaticEffect
+import mtg.judge.engine.Replacement
 import mtg.judge.engine.TargetSpec
 import mtg.judge.engine.Trigger
 import mtg.judge.engine.TriggeredAbility
@@ -205,8 +206,47 @@ object OracleParser {
     private val grantRe = Regex("""^(all |each |other )?(.+?) (?:have|has) (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val keywordList = setOf("flying", "first strike", "double strike", "deathtouch", "haste", "hexproof", "indestructible", "lifelink", "menace", "reach", "trample", "vigilance", "flash", "defender", "protection from everything", "ward 1", "ward 2")
 
+    private val preventStaticRe = Regex("""^prevent all (combat )?damage that would be dealt (to|by) (~|enchanted creature|equipped creature|you|creatures you control|other creatures you control|creatures|players|you and permanents you control)\.?$""", RegexOption.IGNORE_CASE)
+    private val diesReplRe = Regex("""^if (~|a creature|a nontoken creature|a creature you control|another creature|a creature an opponent controls|a permanent|a nontoken permanent|an? (.+?)) would die, (exile it|return it to its owner's hand|put it on the bottom of its owner's library|put it on top of its owner's library|shuffle it into its owner's library|exile it instead)(?: instead)?\.?$""", RegexOption.IGNORE_CASE)
+    private val gyReplRe = Regex("""^if (a card or token|a card|a creature card|a nontoken creature|a permanent|a nontoken permanent|a creature) would be put into (a|an opponent's|your|a player's) graveyard from anywhere, exile it instead\.?$""", RegexOption.IGNORE_CASE)
+    private val doublerRe = Regex("""^if a source (you control |an opponent controls )?would deal damage to (?:a permanent or player|a creature or player|a player|a creature|a permanent|you|an opponent|a player or planeswalker|a creature or planeswalker|any target), it deals (double|twice) that damage(?: to that (?:permanent or player|creature or player|player|creature|permanent|player or planeswalker))? instead\.?$""", RegexOption.IGNORE_CASE)
+    private val lifeDoubleRe = Regex("""^if you would gain life, you gain (twice|double) that much life instead\.?$""", RegexOption.IGNORE_CASE)
+
+    /** Replacement and prevention statics (614.1a, 615). */
+    fun parseReplacementStatic(line: String): StaticEffect? {
+        preventStaticRe.matchEntire(line)?.let { m ->
+            val combat = m.groupValues[1].isNotEmpty(); val what = m.groupValues[3].lowercase()
+            return if (m.groupValues[2].equals("to", true)) {
+                when (what) { "you" -> StaticEffect.Replace(Replacement.PreventDamage(null, null, Who.YOU, combat, null)); "players" -> StaticEffect.Replace(Replacement.PreventDamage(null, null, Who.ANY_PLAYER, combat, null))
+                    "~" -> StaticEffect.Replace(Replacement.PreventDamage(null, ObjFilter(setOf(Kind.PERMANENT), raw = "~"), null, combat, null, fromSelf = false).let { it.copy(to = it.to!!.copy(raw = "~")) })
+                    "you and permanents you control" -> StaticEffect.Replace(Replacement.PreventDamage(null, parseFilter("permanents you control", Kind.PERMANENT), Who.YOU, combat, null))
+                    else -> StaticEffect.Replace(Replacement.PreventDamage(null, parseFilter(what, Kind.CREATURE), null, combat, null)) }
+            } else {
+                when (what) { "~" -> StaticEffect.Replace(Replacement.PreventDamage(null, null, null, combat, null, fromSelf = true))
+                    else -> StaticEffect.Replace(Replacement.PreventDamage(null, null, null, combat, parseFilter(what, Kind.CREATURE))) }
+            }
+        }
+        diesReplRe.matchEntire(line)?.let { m ->
+            val what = m.groupValues[1]; val self = what == "~"
+            val filter = if (self) ObjFilter(setOf(Kind.PERMANENT), raw = "~") else parseFilter(what.removePrefix("a ").removePrefix("an "), Kind.CREATURE).let { if (what.startsWith("another")) it.copy(other = true) else it }
+            if (!filter.verifiable) return null
+            val instead = when { m.groupValues[3].startsWith("exile", true) -> "exile"; m.groupValues[3].contains("hand", true) -> "hand"; m.groupValues[3].contains("bottom", true) -> "library_bottom"; m.groupValues[3].contains("top", true) -> "library_top"; else -> "library_shuffle" }
+            return StaticEffect.Replace(Replacement.GraveyardReplacement(filter, self, instead, false))
+        }
+        gyReplRe.matchEntire(line)?.let { m ->
+            val what = m.groupValues[1].lowercase()
+            val filter = when (what) { "a card or token" -> ObjFilter(setOf(Kind.PERMANENT, Kind.CARD), raw = "card or token"); "a card" -> ObjFilter(setOf(Kind.PERMANENT, Kind.CARD), token = false, raw = "card"); else -> parseFilter(what.removePrefix("a "), Kind.CREATURE) }
+            val whose = when (m.groupValues[2].lowercase()) { "an opponent's" -> Who.OPPONENT; "your" -> Who.YOU; else -> null }
+            return StaticEffect.Replace(Replacement.GraveyardReplacement(filter.copy(controller = whose), false, "exile", true))
+        }
+        doublerRe.matchEntire(line)?.let { m -> return StaticEffect.Replace(Replacement.DamageMultiplier(2, when (m.groupValues[1].trim().lowercase()) { "you control" -> Who.YOU; "an opponent controls" -> Who.OPPONENT; else -> null })) }
+        lifeDoubleRe.matchEntire(line)?.let { return StaticEffect.Replace(Replacement.LifeGainMultiplier(2)) }
+        return null
+    }
+
     /** "Creatures you control get +1/+1", "Other Elf creatures you control get +1/+1 and have trample", "Creatures you control have haste". */
     fun parseStatic(line: String): List<StaticEffect> {
+        parseReplacementStatic(line)?.let { return listOf(it) }
         Regex("""^~ enters(?: the battlefield)? tapped\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.EntersTapped) }
         Regex("""^~ enters(?: the battlefield)? with (a|an|X|\w+) ([+-]\d/[+-]\d|\w+) counters? on it\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val n = if (m.groupValues[1].equals("x", true)) null else (number(m.groupValues[1]) ?: return emptyList())
@@ -301,7 +341,6 @@ object OracleParser {
         Regex("""^sacrifice ~\.?$""", RegexOption.IGNORE_CASE) to listOf("701.21a"),
         Regex("""^create (a|an|\w+|\d+|X) (?:.+? )?tokens?.*$""", RegexOption.IGNORE_CASE) to listOf("701.7a"),
         Regex("""^you gain (\d+) life for each .+$""", RegexOption.IGNORE_CASE) to listOf("119.3"),
-        Regex("""^regenerate (~|target .+?)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.19a"),
         Regex("""^~ deals damage equal to .+$""", RegexOption.IGNORE_CASE) to listOf("120.3"),
         Regex("""^you get \{E\}.*$""", RegexOption.IGNORE_CASE) to listOf("122.1"),
         Regex("""^it can't be regenerated\.?$""", RegexOption.IGNORE_CASE) to listOf("701.19a"),
@@ -330,11 +369,31 @@ object OracleParser {
     )
 
     private val modalRe = Regex("""^(.*?)Choose (one|two|three|any number|one or more|up to \w+)(?: or more)?(?: —|\.)?\s*((?:• .+?)+)$""", RegexOption.IGNORE_CASE)
+    private val preventNextRe = Regex("""^prevent the next (\d+) damage that would be dealt to (any target|target creature or player|target creature|target player|you|target creature or planeswalker|target permanent or player) this turn\.?$""", RegexOption.IGNORE_CASE)
+    private val preventAllTurnRe = Regex("""^prevent all (combat )?damage that would be dealt(?: to (you|any target|target creature|target creature or player|creatures you control|target player|you and permanents you control))?(?: by (.+?))? this turn\.?$""", RegexOption.IGNORE_CASE)
+    private val regenerateRe = Regex("""^regenerate (~|target .+?)\.?$""", RegexOption.IGNORE_CASE)
 
     private fun parseSentence(s: String): Effect {
         modalRe.matchEntire(s)?.let { m ->
             val modeTexts = m.groupValues[3].split("•").map { it.trim().trimEnd('.') }.filter { it.isNotEmpty() }
             return Effect.Modal(m.groupValues[2].lowercase(), modeTexts.map { parseEffect(it) }, modeTexts)
+        }
+        regenerateRe.matchEntire(s)?.let { m -> return Effect.Regenerate(if (m.groupValues[1] == "~") null else target(m.groupValues[1])) }
+        preventNextRe.matchEntire(s)?.let { m ->
+            val n = m.groupValues[1].toInt(); val to = m.groupValues[2].lowercase()
+            return if (to == "you") Effect.CreateShield(Replacement.PreventDamage(n, null, Who.YOU, false, null), null)
+            else Effect.CreateShield(Replacement.PreventDamage(n, null, null, false, null), target(to))
+        }
+        preventAllTurnRe.matchEntire(s)?.let { m ->
+            val combat = m.groupValues[1].isNotEmpty(); val to = m.groupValues[2].lowercase(); val by = m.groupValues[3]
+            val from = if (by.isEmpty()) null else parseFilter(by.removePrefix("target ").removePrefix("a ").removePrefix("an "), Kind.CREATURE).takeIf { it.verifiable } ?: return Effect.Unparsed(s)
+            return when {
+                to.isEmpty() -> Effect.CreateShield(Replacement.PreventDamage(null, null, Who.ANY_PLAYER, combat, from).copy(to = ObjFilter(setOf(Kind.PERMANENT), raw = "everything")), null)
+                to == "you" -> Effect.CreateShield(Replacement.PreventDamage(null, null, Who.YOU, combat, from), null)
+                to == "you and permanents you control" -> Effect.CreateShield(Replacement.PreventDamage(null, parseFilter("permanents you control", Kind.PERMANENT), Who.YOU, combat, from), null)
+                to.startsWith("target") || to == "any target" -> Effect.CreateShield(Replacement.PreventDamage(null, null, null, combat, from), target(to))
+                else -> Effect.CreateShield(Replacement.PreventDamage(null, parseFilter(to, Kind.CREATURE), null, combat, from), null)
+            }
         }
         selfPumpRe.matchEntire(s)?.let { return Effect.PumpSelf(it.groupValues[1].toInt(), it.groupValues[2].toInt()) }
         massPumpRe.matchEntire(s)?.let { m -> if (!m.groupValues[1].startsWith("target", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Effect.PumpAll(f, m.groupValues[2].toInt(), m.groupValues[3].toInt()) } }
