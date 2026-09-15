@@ -170,6 +170,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         state.outcomes += if (hit) "Yes: ${o.name} dealt damage to $who." else "No: ${o.name} dealt no damage to $who${if (blocked) " (it was blocked, and a blocked creature stays blocked even if its blocker leaves combat; without trample it assigns no damage to the player, 509.1h)" else ""}."
                     }
                     "playerSurvive", "playerDie", "playerWin" -> state.outcomes += playerAnswer(e.to, state.player(e.player ?: o.controller), state)
+                    "pt" -> state.outcomes += if (o.isOnBattlefield() && o.def.isCreature) "${o.name} is ${state.describePt(o)}." else if (!o.isOnBattlefield()) "${o.name} isn't on the battlefield." else "${o.name} isn't a creature."
                     "tapped" -> state.outcomes += if (o.tapped == true) "${o.name} is tapped." else "${o.name} is untapped${if (state.hasKeyword(o, "vigilance") && state.trace.steps.any { it.text.startsWith("${o.name} attacks") || it.text.contains("attack with ${o.name}") }) " (vigilance: attacking didn't tap it)" else ""}."
                     "survive", "die" -> {
                         val where = when (o.zone) { mtg.judge.engine.Zone.GRAVEYARD -> "the graveyard"; mtg.judge.engine.Zone.EXILE -> "exile"; mtg.judge.engine.Zone.HAND -> "its owner's hand"; mtg.judge.engine.Zone.LIBRARY -> "its owner's library"; mtg.judge.engine.Zone.COMMAND -> "the command zone"; else -> o.zone.name.lowercase() }

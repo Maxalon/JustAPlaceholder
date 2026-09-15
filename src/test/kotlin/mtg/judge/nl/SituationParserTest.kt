@@ -237,4 +237,17 @@ class SituationParserTest {
         assertEquals("opp", u.situation.objects.first { it.card.name == "Sol Ring" }.controller); assertEquals(false, u.situation.objects.first { it.card.name == "Sol Ring" }.summoningSick)
         assertEquals(4, u.situation.players.first { it.id == "me" }.mana); assertEquals("me", u.situation.events.first { it.verb == "attack" }.player); assertTrue(u.unread.isEmpty(), u.unread.toString())
     }
+
+    @Test
+    fun `graveyard contents, library sizes mid-sentence, stats questions, and same-named blockers`() {
+        val p = parser.parse("My opponent controls Sol Ring. They have an instant and two creatures in their graveyard. What are its stats?")
+        val gy = p.situation.objects.filter { it.zone == "graveyard" }; assertEquals(3, gy.size); assertTrue(gy.all { it.controller == "opp" }); assertEquals(listOf("an instant", "a creature", "a creature"), gy.map { it.card.name })
+        assertEquals("pt", p.situation.events.last { it.verb == "ask" }.to); assertEquals("sol_ring", p.situation.events.last { it.verb == "ask" }.obj)
+        val q = parser.parse("I cast Stifle with 1 card in my library. Do I lose?")
+        assertEquals(1, q.situation.players.first { it.id == "me" }.librarySize); assertTrue(q.unread.isEmpty(), q.unread.toString())
+        val r = parser.parse("My opponent attacks me with Sol Ring. I block with Sol Ring.")
+        val block = r.situation.events.first { it.verb == "block" }; assertEquals("me", block.player); assertEquals("me", r.situation.objects.first { it.id == block.obj }.controller); assertEquals(2, r.situation.objects.size)
+        val t = parser.parse("My opponent has 8 cards in hand at their cleanup step.")
+        assertEquals(8, t.situation.players.first { it.id == "opp" }.handSize); assertEquals("cleanup", t.situation.events.first { it.verb == "step" }.to)
+    }
 }

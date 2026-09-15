@@ -37,6 +37,9 @@ object Generic {
             "creature", "creature spell" -> "Creature"
             "artifact", "artifact spell" -> "Artifact"
             "enchantment", "enchantment spell" -> "Enchantment"
+            "planeswalker", "planeswalker card" -> "Planeswalker"
+            "battle", "battle card" -> "Battle"
+            "instant card" -> "Instant"; "sorcery card" -> "Sorcery"; "creature card" -> "Creature"; "artifact card" -> "Artifact"; "enchantment card" -> "Enchantment"; "land card" -> "Land"
             else -> return null
         }
         return OracleParser.parse("generic-$n", "a $n", typeLine, "{1}", 1.0, "", if (typeLine == "Creature") "1" else null, if (typeLine == "Creature") "1" else null, emptyList(), "")

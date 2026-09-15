@@ -3235,5 +3235,97 @@
     "cite": [
       "701.24a"
     ]
+  },
+  {
+    "id": "tarmogoyf-bolt-grows-in-time",
+    "text": "I cast Lightning Bolt targeting my opponent's Tarmogoyf. They have a land and a creature in their graveyard.",
+    "expect": [
+      "Tarmogoyf has 3 damage marked"
+    ],
+    "notExpect": [
+      "Tarmogoyf: the battlefield",
+      "Not understood"
+    ],
+    "cite": [
+      "120.3e"
+    ]
+  },
+  {
+    "id": "tarmogoyf-bolt-dies-with-instant-already",
+    "text": "I cast Lightning Bolt targeting my opponent's Tarmogoyf. They have an instant and a creature in their graveyard.",
+    "expect": [
+      "Tarmogoyf: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "rancor-fizzles-no-return",
+    "text": "I control Grizzly Bears and cast Rancor on it. My opponent casts Doom Blade on the Bears in response. What happens to Rancor?",
+    "expect": [
+      "Rancor doesn't resolve (all targets illegal)"
+    ],
+    "notExpect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "cite": [
+      "603.6c",
+      "608.2b"
+    ]
+  },
+  {
+    "id": "block-with-same-named-creature",
+    "text": "My opponent attacks me with Grizzly Bears. I block with Grizzly Bears and cast Shock on their Bears after blockers.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "can't block (tapped)"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "kird-ape-stats",
+    "text": "I have Kird Ape and control a Forest. What are its stats?",
+    "expect": [
+      "Kird Ape is 2/3 (1/1 base, +1/+2 from its own ability (condition met))"
+    ],
+    "cite": []
+  },
+  {
+    "id": "cleanup-eight-cards",
+    "text": "My opponent has 8 cards in hand at their cleanup step. What happens?",
+    "expect": [
+      "opponent discards 1 card to hand size"
+    ],
+    "cite": [
+      "514.1"
+    ]
+  },
+  {
+    "id": "brainstorm-one-card-library",
+    "text": "I cast Brainstorm with 1 card in my library. Do I lose?",
+    "expect": [
+      "Yes: You have lost the game"
+    ],
+    "cite": [
+      "704.5b"
+    ]
+  },
+  {
+    "id": "sensei-top-in-response",
+    "text": "I control Sensei's Divining Top. Can I activate it in response to my opponent's Counterspell?",
+    "expect": [
+      "You activate Sensei's Divining Top"
+    ],
+    "notExpect": [
+      "which one?"
+    ],
+    "cite": [
+      "602.2a"
+    ]
   }
 ]

@@ -184,11 +184,13 @@ class Engine(val state: GameState) {
             state.outcomes += "${obj.name}'s ability can't be activated (${lock.name})."; return null
         }
         if (abilities.isEmpty()) { state.unsupported += Unsupported(obj.name, "No activated ability was recognised on ${obj.name}."); return null }
-        if (abilities.size > 1 && abilityIndex == null) {
-            state.clarifications += Clarification("${obj.name}'s ability", "${obj.name} has ${abilities.size} activated abilities; which one? " + abilities.mapIndexed { i, a -> "[$i] ${a.text}" }.joinToString(" "))
-            return null
-        }
-        val ability = abilities[abilityIndex ?: 0]
+        val pickedIndex = abilityIndex ?: if (abilities.size > 1) {
+            // Nothing said which: take the first that isn't a mana ability, and say so.
+            val first = abilities.indexOfFirst { a -> !(a.effect is Effect.AddMana || (a.effect as? Effect.Seq)?.effects?.any { it is Effect.AddMana } == true) }.takeIf { it >= 0 } ?: 0
+            state.assumptions += "${obj.name} has ${abilities.size} activated abilities and none was named; assuming \"${abilities[first].text.replace("~", obj.name)}\"${abilities.withIndex().filter { it.index != first }.joinToString("") { " (not \"${it.value.text.replace("~", obj.name)}\")" }}."
+            first
+        } else 0
+        val ability = abilities[pickedIndex]
         if (!paySacrificeCosts(playerId, obj, ability, choice)) return null
         val isMana = ability.effect is Effect.AddMana || (ability.effect is Effect.Seq && (ability.effect as Effect.Seq).effects.firstOrNull() is Effect.AddMana)
         if (!isMana) state.stack.firstOrNull { it.kind == StackKind.SPELL && it.source.def.has("split second") }?.let { ss ->
@@ -354,6 +356,10 @@ class Engine(val state: GameState) {
         }
         if (step == "cleanup") {
             state.activePlayer = activePlayer; state.step = step; state.phase = "ending"
+            state.player(activePlayer).let { ap -> ap.handSize?.let { hand ->
+                if (hand > 7) { trace.step("${ap.subject} ${ap.v("has", "have")} $hand cards in hand and a maximum hand size of seven, so ${ap.subject.lowercase()} ${ap.v("discards", "discard")} ${hand - 7} card${if (hand - 7 == 1) "" else "s"} of ${ap.possessive} choice first.", "514.1", "402.2"); ap.handSize = 7; state.outcomes += "${ap.subject} ${ap.v("discards", "discard")} ${hand - 7} card${if (hand - 7 == 1) "" else "s"} to hand size." }
+                else trace.step("${ap.subject} ${ap.v("has", "have")} $hand card${if (hand == 1) "" else "s"} in hand, no more than the maximum hand size of seven, so nothing is discarded.", "514.1", "402.2")
+            } }
             val affected = state.objects.values.filter { it.isOnBattlefield() && (it.pumps.isNotEmpty() || it.tempKeywords.isNotEmpty() || it.damage > 0 || it.basePt != null) }
             trace.step("The cleanup step: all damage marked on permanents is removed and all \"until end of turn\" effects end, simultaneously.", "514.2")
             for (o in affected) { o.pumps.clear(); o.tempKeywords.clear(); o.basePt = null; o.damage = 0; trace.step("${o.name} is back to ${if (o.def.isCreature) state.describePt(o) else "normal"} with no damage.", "514.2"); state.outcomes += "${o.name}'s until-end-of-turn effects and damage are gone (cleanup)." }
@@ -383,6 +389,7 @@ class Engine(val state: GameState) {
                     (if (item.kind == StackKind.SPELL) " and put into its owner's graveyard" else "") + ".", "608.2b")
                 state.outcomes += "${item.describe} doesn't resolve (all targets illegal)."
                 if (item.kind == StackKind.SPELL) item.source.zone = Zone.GRAVEYARD
+                if (item.kind == StackKind.SPELL && item.source.def.abilities.any { it is TriggeredAbility && (it.trigger is Trigger.ThisDies || it.trigger is Trigger.ThisLeavesBattlefield) }) trace.step("${item.source.name} goes to the graveyard from the stack, not from the battlefield, so its \"${item.source.def.abilities.filterIsInstance<TriggeredAbility>().first { it.trigger is Trigger.ThisDies || it.trigger is Trigger.ThisLeavesBattlefield }.text.replace("~", item.source.name)}\" ability doesn't trigger.", "603.6c", "608.2b")
                 afterResolution(); return
             } else if (illegalCount > 0) {
                 trace.step("Some targets of ${item.describe} are illegal (${legal.filter { !it.second }.joinToString("; ") { whyIllegal(item, it.first) }}); it resolves but won't affect them.", "608.2b")
@@ -967,7 +974,7 @@ class Engine(val state: GameState) {
                 resolvePlayers(effect.who, item).forEach { p -> p.life = p.life?.minus(n); trace.step("${p.subject} ${p.v("loses", "lose")} $n life (that much)${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} $n life." }
             }
             is Effect.PumpAllCount -> {
-                val x = when (val c = effect.count) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }; is CountExpr.Unknown -> null }
+                val x = when (val c = effect.count) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }; is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size; is CountExpr.Unknown -> null }
                 if (x == null) { state.unsupported += Unsupported(item.describe, "Couldn't count X."); return }
                 trace.step("X is $x (counted as the effect resolves).", "608.2h")
                 applyEffect(Effect.PumpAll(effect.filter, x, x, effect.keywords), item)
@@ -976,7 +983,7 @@ class Engine(val state: GameState) {
             is Effect.CreateToken -> {
                 val who = resolveWho(effect.who, item) ?: run { state.unsupported += Unsupported(item.describe, "Couldn't work out who creates the token."); return }
                 val def = Generic.token(effect.token) ?: run { state.unsupported += Unsupported(item.describe, "Couldn't read the token \"${effect.token}\"."); return }
-                var n = effect.countBy?.let { c -> when (c) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }.also { trace.step("X is $it: the number of ${c.filter.raw} ${who.subject.lowercase()} ${who.v("controls", "control")} as the ability resolves.", "608.2h") }; is CountExpr.Unknown -> { state.clarifications += Clarification("${item.describe}'s X", "X is \"${c.text}\", which isn't tracked; assuming 0."); 0 } } } ?: effect.count
+                var n = effect.countBy?.let { c -> when (c) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }.also { trace.step("X is $it: the number of ${c.filter.raw} ${who.subject.lowercase()} ${who.v("controls", "control")} as the ability resolves.", "608.2h") }; is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size; is CountExpr.Unknown -> { state.clarifications += Clarification("${item.describe}'s X", "X is \"${c.text}\", which isn't tracked; assuming 0."); 0 } } } ?: effect.count
                 state.objects.values.filter { it.isOnBattlefield() && it.controller == who.id }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.TokenMultiplier }.map { o to it } }
                     .forEach { (o, m) -> trace.step("${o.name} replaces the token creation: ${n * m.factor} tokens instead of $n.", "614.1a", "614.6"); n *= m.factor }
                 repeat(n) {
@@ -1541,6 +1548,8 @@ class Engine(val state: GameState) {
     }
 
     private fun isTargetLegal(item: StackItem, ref: Ref): Boolean {
+        // An object target that changed zones is a new object and never legal, whatever the spell says about it (608.2b, 400.7).
+        if (ref is Ref.Obj) { val o = state.objects[ref.id] ?: return false; val z = item.targetZones[ref.id]; if (z != null && o.zone != z) return false }
         val spec = specFor(item, ref) ?: return true
         return when (ref) {
             is Ref.Player -> !state.player(ref.id).lost

@@ -332,6 +332,7 @@ object OracleParser {
             return listOf(StaticEffect.KeywordGrant(ObjFilter(setOf(Kind.PERMANENT), raw = "~"), kws).let { StaticEffect.PtModify(it.filter, 0, 0, self = true, condition = cond) }).let { listOf(it[0], StaticEffect.KeywordGrant(ObjFilter(setOf(Kind.PERMANENT), raw = "~"), kws)) }
         }
         Regex("""^~'s power and toughness are each equal to (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> val c = parseCount(m.groupValues[1]); return listOf(StaticEffect.PtCda(c, c)) }
+        Regex("""^~'s power is equal to (.+?) and its toughness is equal to that number plus (\d+)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> val c = parseCount(m.groupValues[1]); return listOf(StaticEffect.PtCda(c, c, 0, m.groupValues[2].toInt())) }
         Regex("""^~'s power is equal to (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.PtCda(parseCount(m.groupValues[1]), null)) }
         Regex("""^~'s toughness is equal to (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.PtCda(null, parseCount(m.groupValues[1]))) }
         if (Regex("""^(As ~ enters, choose (a|an) .+|As ~ enters, .+)$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("614.1c")))
@@ -394,6 +395,7 @@ object OracleParser {
             val f = parseFilter(m.groupValues[1], Kind.PERMANENT).copy(controller = Who.YOU)
             return if (f.verifiable) CountExpr.Permanents(f) else CountExpr.Unknown(t)
         }
+        if (Regex("""^the number of card types among cards in all graveyards$""", RegexOption.IGNORE_CASE).matches(t)) return CountExpr.CardTypesInGraveyards
         Regex("""^the number of (.+?) on the battlefield$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m ->
             val f = parseFilter(m.groupValues[1], Kind.PERMANENT)
             return if (f.verifiable) CountExpr.Permanents(f) else CountExpr.Unknown(t)

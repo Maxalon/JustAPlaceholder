@@ -28,6 +28,8 @@ class BatchThirteenTest {
     private val urzasSaga = card("Urza's Saga", "Enchantment Land — Urza's Saga", "(As this Saga enters and after your draw step, add a lore counter.)\nI — Urza's Saga gains \"{T}: Add {C}.\"\nII — Urza's Saga gains \"{2}, {T}: Create a 0/0 colorless Construct artifact creature token with 'This creature gets +1/+1 for each artifact you control.'\"\nIII — Search your library for an artifact card with mana cost {0} or {1}, put it onto the battlefield, then shuffle.", "", "")
     private val stonySilence = card("Stony Silence", "Enchantment", "Activated abilities of artifacts can't be activated.", "{1}{W}", "W")
     private val solRing = card("Sol Ring", "Artifact", "{T}: Add {C}{C}.", "{1}", "")
+    private val goyf = card("Tarmogoyf", "Creature — Lhurgoyf", "Tarmogoyf's power is equal to the number of card types among cards in all graveyards and its toughness is equal to that number plus 1.", "{1}{G}", "G", "*", "1+*")
+    private val rancor = card("Rancor", "Enchantment — Aura", "Enchant creature\nEnchanted creature gets +2/+0 and has trample.\nWhen Rancor is put into a graveyard from the battlefield, return Rancor to its owner's hand.", "{G}", "G")
     private val serra = card("Serra Angel", "Creature — Angel", "Flying, vigilance", "{3}{W}{W}", "W", "4", "4", "Flying", "Vigilance")
     private val viper = card("Ambush Viper", "Creature — Snake", "Flash\nDeathtouch", "{1}{G}", "G", "2", "1", "Flash", "Deathtouch")
     private val krenko = card("Krenko, Mob Boss", "Legendary Creature — Goblin Warrior", "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.", "{2}{R}{R}", "R", "3", "3")
@@ -334,6 +336,29 @@ class BatchThirteenTest {
         e.beginDeclaringAttackers(); e.declareAttacker("me", "bears", Ref.Player("opp")); e.finishDeclaringAttackers()
         assertTrue(e.cast("me", giantGrowth, emptyList()) != null); e.resolveAll()
         assertEquals(5, s.obj("bears").power); assertEquals(4, s.obj("serra").power); assertTrue(s.assumptions.any { it.contains("in combat") }, s.assumptions.toString())
+    }
+
+    @Test
+    fun `tarmogoyf grows when the bolt that hit it reaches the graveyard`() {
+        val s = state(); s.put("goyf", goyf, "opp"); s.put("gy_creature", bears, "opp", Zone.GRAVEYARD); s.put("gy_land", card("Forest", "Basic Land — Forest", "", "", ""), "me", Zone.GRAVEYARD); val e = Engine(s)
+        assertEquals(2, s.obj("goyf").power); assertEquals(3, s.obj("goyf").toughness)
+        e.cast("me", bolt, listOf(Ref.Obj("goyf"))); e.resolveAll()
+        assertEquals(Zone.BATTLEFIELD, s.obj("goyf").zone, "the Bolt is in the graveyard by the time state-based actions look: 3/4 with 3 damage")
+        assertEquals(3, s.obj("goyf").power); assertEquals(4, s.obj("goyf").toughness)
+    }
+
+    @Test
+    fun `a fizzled aura goes to the graveyard from the stack, so its dies trigger stays quiet`() {
+        val s = state(); s.put("bears", bears, "me"); val e = Engine(s)
+        e.cast("me", rancor, listOf(Ref.Obj("bears"))); e.cast("opp", bolt, listOf(Ref.Obj("bears"))); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("bears").zone); assertTrue(s.trace.steps.any { it.text.contains("not from the battlefield") && "603.6c" in it.rules }, s.trace.steps.joinToString("\n") { it.text })
+        assertTrue(s.objects.values.first { it.def.name == "Rancor" }.zone == Zone.GRAVEYARD)
+    }
+
+    @Test
+    fun `cleanup discards down to seven`() {
+        val s = state(); s.player("me").handSize = 9; val e = Engine(s)
+        e.beginStep("cleanup", "me"); assertEquals(7, s.player("me").handSize); assertTrue("514.1" in s.cited()); assertTrue(s.outcomes.any { it.contains("discard 2 cards to hand size") }, s.outcomes.toString())
     }
 
     @Test

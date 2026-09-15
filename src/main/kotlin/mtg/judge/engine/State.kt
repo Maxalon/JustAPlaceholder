@@ -199,12 +199,15 @@ class GameState(
     private fun cdaValue(obj: GameObject, expr: CountExpr?): Int? = when (expr) {
         null -> null
         is CountExpr.Permanents -> objects.values.count { matches(expr.filter, it, obj.controller, obj) }
+        is CountExpr.CardTypesInGraveyards -> cardTypesInGraveyards().size
         is CountExpr.Unknown -> null
     }
+    /** The card types among cards in every graveyard (Tarmogoyf); tokens are not cards, and a Kindred card counts its type. */
+    fun cardTypesInGraveyards(): Set<String> = objects.values.filter { it.zone == Zone.GRAVEYARD && !it.token }.flatMap { o -> o.def.types.filter { it in setOf("Artifact", "Battle", "Creature", "Enchantment", "Instant", "Kindred", "Tribal", "Land", "Planeswalker", "Sorcery") }.map { if (it == "Tribal") "Kindred" else it } }.toSet()
     fun cdaOf(obj: GameObject): StaticEffect.PtCda? = obj.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.PtCda>().firstOrNull()
 
     private fun basePower(obj: GameObject): Int? = obj.basePt?.first ?: cdaOf(obj)?.let { c -> if (c.power != null) cdaValue(obj, c.power)?.plus(c.plus) else obj.def.power } ?: obj.def.power
-    private fun baseToughness(obj: GameObject): Int? = obj.basePt?.second ?: cdaOf(obj)?.let { c -> if (c.toughness != null) cdaValue(obj, c.toughness)?.plus(c.plus) else obj.def.toughness } ?: obj.def.toughness
+    private fun baseToughness(obj: GameObject): Int? = obj.basePt?.second ?: cdaOf(obj)?.let { c -> if (c.toughness != null) cdaValue(obj, c.toughness)?.plus(c.toughnessPlus ?: c.plus) else obj.def.toughness } ?: obj.def.toughness
 
     fun powerOf(obj: GameObject): Int? = basePower(obj)?.let { base ->
         base + staticEffectsOn(obj).sumOf { (_, e) -> (e as? StaticEffect.PtModify)?.power ?: 0 } + obj.pumps.sumOf { it.first } + (obj.counters["+1/+1"] ?: 0) - (obj.counters["-1/-1"] ?: 0)
@@ -250,7 +253,7 @@ class GameState(
         val p = obj.power ?: return "no power/toughness"
         val t = obj.toughness ?: return "no power/toughness"
         val parts = mutableListOf<String>()
-        cdaOf(obj)?.let { c -> parts += "base set by its own ability (layer 7a)" }
+        cdaOf(obj)?.let { c -> parts += "base set by its own ability (layer 7a${if (c.power is CountExpr.CardTypesInGraveyards || c.toughness is CountExpr.CardTypesInGraveyards) ": ${cardTypesInGraveyards().size} card type${if (cardTypesInGraveyards().size == 1) "" else "s"} in graveyards${cardTypesInGraveyards().takeIf { it.isNotEmpty() }?.let { t -> " (" + t.sorted().joinToString(", ") + ")" } ?: ""}" else ""})" }
         val statics = staticEffectsOn(obj).filter { it.second is StaticEffect.PtModify && !((it.second as StaticEffect.PtModify).power == 0 && (it.second as StaticEffect.PtModify).toughness == 0) }
         for ((src, e) in statics) { e as StaticEffect.PtModify; parts += "${sign(e.power)}/${sign(e.toughness)} from ${if (src === obj) "its own ability" + (e.condition?.let { " (condition met)" } ?: "") else src.name}" }
         if (obj.pumps.isNotEmpty()) parts += "${sign(obj.pumps.sumOf { it.first })}/${sign(obj.pumps.sumOf { it.second })} until end of turn"

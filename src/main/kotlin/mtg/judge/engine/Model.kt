@@ -223,6 +223,8 @@ sealed interface Condition {
 /** How a characteristic-defining ability computes a number (604.3, 613.4a). */
 sealed interface CountExpr {
     data class Permanents(val filter: ObjFilter) : CountExpr
+    /** Tarmogoyf: "the number of card types among cards in all graveyards". */
+    data object CardTypesInGraveyards : CountExpr
     data class Unknown(val text: String) : CountExpr
 }
 
@@ -230,7 +232,7 @@ sealed interface StaticEffect {
     /** Layer 7c: "[filter] get +N/+N". `self` = "~ gets"; `condition` = "as long as …". */
     data class PtModify(val filter: ObjFilter, val power: Int, val toughness: Int, val self: Boolean = false, val condition: Condition? = null) : StaticEffect
     /** Layer 7a: "~'s power and toughness are each equal to the number of …" (604.3). */
-    data class PtCda(val power: CountExpr?, val toughness: CountExpr?, val plus: Int = 0) : StaticEffect
+    data class PtCda(val power: CountExpr?, val toughness: CountExpr?, val plus: Int = 0, val toughnessPlus: Int? = null) : StaticEffect
     /** Layer 6: "[filter] have [keywords]". */
     data class KeywordGrant(val filter: ObjFilter, val keywords: Set<String>) : StaticEffect
     /** "~ enters tapped" (614.1c replacement on entering). */
