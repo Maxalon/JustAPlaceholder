@@ -79,7 +79,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         val cited = state.trace.steps.flatMap { it.rules }.distinct()
         val citations = cited.associateWith { n -> rules?.rule(n)?.text ?: "" }.filterValues { it.isNotEmpty() }
         return Answer(
-            outcome = if (state.outcomes.isEmpty()) listOf("Nothing changes.") else state.outcomes.distinct(),
+            outcome = if (state.outcomes.isEmpty()) listOf("Nothing changes.") else state.outcomes.groupingBy { it }.eachCount().let { counts -> state.outcomes.distinct().map { o -> if (counts.getValue(o) > 1) "$o (×${counts.getValue(o)})" else o } },
             trace = state.trace.steps.map { TraceLine(it.text, it.rules) },
             assumptions = state.assumptions.distinct(),
             clarifications = state.clarifications.distinct().map { "${it.about}: ${it.why}" },
@@ -103,7 +103,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "regenerate" -> { val o = state.obj(e.obj ?: throw JudgeException("regenerate needs an object")); state.shields += mtg.judge.engine.Shield(mtg.judge.engine.Replacement.Regenerate, o.id, null, 1, "a regeneration effect") }
             "pay" -> {
                 val who = e.player ?: throw JudgeException("pay needs a player")
-                if (e.to == "no") state.willPay.remove(who) else state.willPay += who
+                if (e.to == "no") { state.willPay.remove(who); state.wontPay += who } else { state.wontPay.remove(who); state.willPay += who }
             }
             "activate" -> {
                 val objId = e.obj ?: throw JudgeException("activate needs an object")
@@ -152,7 +152,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "attackall" -> "${who ?: "you"} attack${if (who == null || who == "you") "" else "s"} with every creature$tg"
             "block" -> "${who ?: "opponent"} block${if (who == null || who == "you") "" else "s"} with ${state.objects[e.obj]?.name ?: e.obj}$tg"
             "combatdamage" -> "combat damage is dealt"
-            "step", "beginstep" -> "${who ?: "the active player"}'s ${e.to ?: "upkeep"} begins"
+            "step", "beginstep" -> "${when (who) { null -> "the active player's"; "you" -> "your"; else -> "$who's" }} ${(e.to ?: "upkeep").replace('_', ' ')} begins"
             else -> e.verb
         }
     }
@@ -190,33 +190,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         throw JudgeException("Can't tell what '$s' refers to (not an object id, player id, stack id, or id:trigger)")
     }
 
-    /** "a spell", "an instant", "a creature spell": a stand-in card with no rules text, for "my opponent casts three spells". */
-    private fun genericDef(name: String): CardDef? {
-        val n = name.lowercase().removePrefix("a ").removePrefix("an ").trim()
-        // "5/5 zombie token", "2/2 zombie creature token", "treasure token", "1/1 white soldier token"
-        Regex("""^(?:(\d+)/(\d+) )?((?:white |blue |black |red |green |colorless )*)((?:[a-z]+ )*?)(?:creature |artifact )?tokens?$""").matchEntire(n)?.let { m ->
-            val colorMap = mapOf("white" to "W", "blue" to "U", "black" to "B", "red" to "R", "green" to "G")
-            val colors = m.groupValues[3].trim().split(' ').filter { it.isNotEmpty() }.mapNotNull { colorMap[it] }.joinToString("")
-            val subs = m.groupValues[4].trim().split(' ').filter { it.isNotEmpty() }.joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
-            val creature = m.groupValues[1].isNotEmpty()
-            val artifactToken = subs.equals("Treasure", true) || subs.equals("Food", true) || subs.equals("Clue", true)
-            val typeLine = if (creature) "Token Creature — $subs" else if (artifactToken) "Token Artifact — $subs" else "Token — $subs"
-            val text = when (subs) { "Treasure" -> "{T}, Sacrifice this token: Add one mana of any color."; "Food" -> "{2}, {T}, Sacrifice this token: You gain 3 life."; "Clue" -> "{2}, Sacrifice this token: Draw a card."; else -> "" }
-            return OracleParser.parse("generic-token-$n", if (subs.isEmpty()) "token" else "$subs token", typeLine, null, 0.0, colors, m.groupValues[1].ifEmpty { null }, m.groupValues[2].ifEmpty { null }, emptyList(), text)
-        }
-        val typeLine = when (n) {
-            "spell", "instant", "instant spell", "noncreature spell" -> "Instant"
-            "sorcery", "sorcery spell" -> "Sorcery"
-            "creature", "creature spell" -> "Creature"
-            "artifact", "artifact spell" -> "Artifact"
-            "enchantment", "enchantment spell" -> "Enchantment"
-            else -> return null
-        }
-        return OracleParser.parse("generic-$n", "a $n", typeLine, "{1}", 1.0, "", if (typeLine == "Creature") "1" else null, if (typeLine == "Creature") "1" else null, emptyList(), "")
-    }
-
     private fun cardDef(ref: CardRef, state: GameState): CardDef? {
-        ref.name?.let { n -> if (ref.oracleId == null) genericDef(n)?.let { return it } }
+        ref.name?.let { n -> if (ref.oracleId == null) (mtg.judge.engine.Generic.token(n) ?: mtg.judge.engine.Generic.spell(n))?.let { return it } }
         val card: Card? = ref.oracleId?.let { cards.byOracleId(it) } ?: ref.name?.let { n ->
             val r = cards.resolve(n)
             val m = r.best

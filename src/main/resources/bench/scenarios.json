@@ -713,5 +713,115 @@
     "cite": [
       "605.3b"
     ]
+  },
+  {
+    "id": "aetherflux",
+    "text": "I have Aetherflux Reservoir and 51 life. I activate it targeting my opponent who is at 40.",
+    "expect": [
+      "You pay 50 life",
+      "opponent takes 50 damage",
+      "opponent loses the game"
+    ],
+    "cite": [
+      "119.4",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "zulaport-damnation",
+    "text": "I control Zulaport Cutthroat and my opponent casts Damnation. I have three creatures.",
+    "expect": [
+      "opponent loses 1 life. (×4)"
+    ],
+    "cite": [
+      "603.10a",
+      "701.8a"
+    ]
+  },
+  {
+    "id": "propaganda-no-pay",
+    "text": "My opponent has Propaganda. I attack with Grizzly Bears and don't pay.",
+    "expect": [
+      "Grizzly Bears can't attack (Propaganda's cost not paid)"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "beast-within",
+    "text": "I cast Beast Within on my own Sol Ring.",
+    "expect": [
+      "Sol Ring: the battlefield → your graveyard",
+      "You get a Beast token"
+    ],
+    "cite": [
+      "701.7a"
+    ]
+  },
+  {
+    "id": "panharmonicon-mulldrifter",
+    "text": "I control Panharmonicon and cast Mulldrifter.",
+    "expect": [
+      "You draw 2 cards. (×2)"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "token-attacks",
+    "text": "I attack with a 4/4 Angel token with flying. Opponent blocks with Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears can't block Angel token (flying)",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "702.9b"
+    ]
+  },
+  {
+    "id": "sulfuric-vortex-upkeep",
+    "text": "It's my turn and I'm at 1 life. My opponent controls Sulfuric Vortex. What happens at my upkeep?",
+    "expect": [
+      "You take 2 damage",
+      "You lose the game"
+    ],
+    "cite": [
+      "503.1",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "grave-pact",
+    "text": "Opponent has Grave Pact. I cast Murder on their Grizzly Bears while I control Llanowar Elves.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard",
+      "Llanowar Elves: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "701.21a"
+    ]
+  },
+  {
+    "id": "greaves-shroud",
+    "text": "I equip Lightning Greaves to Grizzly Bears and my opponent tries to Murder it.",
+    "expect": [
+      "Lightning Greaves is attached to Grizzly Bears",
+      "Murder can't target Grizzly Bears"
+    ],
+    "cite": [
+      "702.18a"
+    ]
+  },
+  {
+    "id": "rhystic-creature-spell-pays",
+    "text": "I have Rhystic Study and my opponent casts a creature spell. They pay the 1.",
+    "expect": [
+      "opponent pays {1}; Rhystic Study's triggered ability has no further effect"
+    ],
+    "cite": [
+      "608.2g"
+    ]
   }
 ]

@@ -95,6 +95,12 @@ sealed interface Effect {
     data class Damage(val amount: Int, val target: TargetSpec) : Effect
     data class Counter(val target: TargetSpec) : Effect
     data class Destroy(val target: TargetSpec, val noRegen: Boolean = false) : Effect
+    /** "~ deals N damage to that player / each opponent / each player / you". */
+    data class DamagePlayer(val who: Who, val amount: Int) : Effect
+    /** "Create a 3/3 green Beast creature token" / "Its controller creates …": [who] gets [count] tokens described by [token]. */
+    data class CreateToken(val who: Who, val count: Int, val token: String) : Effect
+    /** "Each other player sacrifices a creature of their choice." */
+    data class SacrificeEach(val who: Who, val filter: ObjFilter) : Effect
     /** "Return target X to its owner's hand" (null target = ~). */
     data class Bounce(val target: TargetSpec?) : Effect
     /** "Its controller gains life equal to its power" (uses last known information after a zone change). */
@@ -146,7 +152,7 @@ sealed interface Effect {
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
-        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList()
+        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is DamagePlayer -> emptyList()
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
@@ -189,6 +195,10 @@ sealed interface StaticEffect {
     /** "~ enters with N +1/+1 counters on it" (614.1c). count null = X. */
     data class EntersWithCounters(val kind: String, val count: Int?) : StaticEffect
     /** "~ can't block" / "~ can't attack" / "~ can't be countered" / "~ can't be blocked". */
+    /** Panharmonicon: artifacts and creatures entering make your triggered abilities trigger an additional time. */
+    data object ExtraEtbTrigger : StaticEffect
+    /** Propaganda / Ghostly Prison: "Creatures can't attack you unless their controller pays [cost] for each creature …". */
+    data class AttackTax(val cost: String) : StaticEffect
     /** "Creatures entering the battlefield (or dying) don't cause abilities to trigger." (Torpor Orb, Hushbringer) */
     data class NoEtbTriggers(val alsoDies: Boolean) : StaticEffect
     /** "~ can't attack" / "~ can't be blocked by [filter]" (`by` restricts which blockers the rule applies to). */
@@ -212,9 +222,11 @@ sealed interface Replacement {
     /** "If a source (you control) would deal damage …, it deals double that damage instead." */
     data class DamageMultiplier(val factor: Int, val sourceControl: Who?) : Replacement
     /** "If you would gain life, you gain twice that much life instead." */
-    data class LifeGainMultiplier(val factor: Int) : Replacement
+    data class LifeGainMultiplier(val factor: Int, val anyPlayer: Boolean = false) : Replacement
     /** "If an effect would place one or more counters on a permanent you control, it places twice that many instead." (Doubling Season) */
     data class CounterMultiplier(val factor: Int) : Replacement
+    /** "If an effect would create one or more tokens under your control, it creates twice that many instead." */
+    data class TokenMultiplier(val factor: Int) : Replacement
     /** Regeneration shield: the next time it would be destroyed this turn (701.19a). */
     data object Regenerate : Replacement
 }
