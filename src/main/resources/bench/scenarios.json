@@ -1447,5 +1447,97 @@
     "cite": [
       "615.6"
     ]
+  },
+  {
+    "id": "rift-end-step",
+    "text": "I control Grizzly Bears and Serra Angel. My opponent casts Cyclonic Rift overloaded during my end step. Do I get them back?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your hand",
+      "Serra Angel: the battlefield → your hand"
+    ],
+    "cite": [
+      "702.96a",
+      "513.1"
+    ]
+  },
+  {
+    "id": "force-of-will-counterspell",
+    "text": "I cast Ponder and my opponent casts Counterspell on it. I respond with Force of Will pitching a blue card.",
+    "expect": [
+      "Counterspell is countered",
+      "You draw 1 card"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "baneslayer-vs-nighthawk",
+    "text": "Opponent attacks with Baneslayer Angel. I block with Vampire Nighthawk.",
+    "expect": [
+      "Vampire Nighthawk: the battlefield → your graveyard",
+      "opponent gains 5 life"
+    ],
+    "cite": [
+      "702.7b",
+      "702.15b"
+    ]
+  },
+  {
+    "id": "skullclamp-elf",
+    "text": "I cast Skullclamp and equip it to a 1/1 Elf token.",
+    "expect": [
+      "Skullclamp is attached to Elf token",
+      "Elf token: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5f",
+      "702.6a"
+    ]
+  },
+  {
+    "id": "naturalize-pacifism-attack",
+    "text": "My opponent controls Grizzly Bears with a Pacifism on it. I cast Naturalize on Pacifism and then they attack with the Bears.",
+    "expect": [
+      "Pacifism: the battlefield → opponent's graveyard",
+      "You take 2 damage"
+    ],
+    "cite": [
+      "701.8a"
+    ]
+  },
+  {
+    "id": "blightsteel-block",
+    "text": "I have 3 poison counters. My opponent attacks with Blightsteel Colossus and I block with Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears has 2 -1/-1 counter(s)",
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "702.90c"
+    ]
+  },
+  {
+    "id": "craterhoof-under-norn",
+    "text": "My opponent has Elesh Norn, Grand Cenobite. I cast Craterhoof Behemoth with two Llanowar Elves in play.",
+    "expect": [
+      "Llanowar Elves: the battlefield → your graveyard. (×2)",
+      "Craterhoof Behemoth is 4/4 until end of turn"
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "swords-after-damage",
+    "text": "I attack with Grizzly Bears. Opponent blocks with Wall of Omens and then casts Swords to Plowshares on my Bears after damage.",
+    "expect": [
+      "Wall of Omens has 2 damage marked",
+      "Grizzly Bears: the battlefield → exile"
+    ],
+    "cite": [
+      "510.2",
+      "701.13a"
+    ]
   }
 ]
