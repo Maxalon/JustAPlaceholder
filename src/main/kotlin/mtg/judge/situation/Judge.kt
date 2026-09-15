@@ -131,10 +131,12 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 // "+1" / "-3" names a loyalty ability by its cost.
                 val idx = e.abilityIndex
                     ?: e.to?.takeIf { it == "mana" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> a.effect is Effect.AddMana || (a.effect as? Effect.Seq)?.effects?.firstOrNull() is Effect.AddMana }.takeIf { it >= 0 } }
+                    ?: e.to?.takeIf { it == "ultimate" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().withIndex().filter { (_, a) -> Regex("""^[\u2212-]\d+$""").matches(a.cost) }.minByOrNull { (_, a) -> a.cost.replace('\u2212', '-').toInt() }?.index }
                     ?: e.to?.let { cost -> obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { it.cost.replace('\u2212', '-') == cost.replace('\u2212', '-') }.takeIf { it >= 0 } }
                 engine.activate(e.player ?: obj.controller, objId, idx, targets, choice = e.to?.takeIf { it.startsWith("color:") || it.startsWith("put:") }?.substringAfter(':'))
             }
             "trigger" -> engine.assertTrigger(e.obj ?: throw JudgeException("trigger needs an object"), e.abilityIndex, targets)
+            "choose" -> { val objId = e.obj ?: throw JudgeException("choose needs an object"); state.pendingChoices[objId] = e.to?.substringAfter(':') ?: throw JudgeException("choose needs a choice") }
             "resolve" -> engine.resolveTop()
             "resolveall" -> engine.resolveAll()
             "pass" -> engine.resolveTop()
@@ -157,8 +159,9 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         return when (e.verb.lowercase()) {
             "cast" -> { val land = e.card?.let { c -> runCatching { cardDef(c, state) }.getOrNull() }?.let { "Land" in it.types && !it.isInstantOrSorcery } == true
                 "${who ?: "you"} ${if (land) (if (who == null || who == "you") "play" else "plays") else (if (who == null || who == "you") "cast" else "casts")} ${e.card ?: state.objects[e.obj]?.name ?: e.obj}${if (e.to == "overload") " overloaded" else if (e.to == "kicked") " kicked" else if (e.to == "evoke") " for its evoke cost" else ""}$tg" }
-            "activate" -> "${who ?: "controller"} ${if (who == "you") "activate" else "activates"} ${state.objects[e.obj]?.name ?: e.obj}${e.to?.takeIf { e.abilityIndex == null && Regex("""^[+\u2212-]?\d+$""").matches(it) }?.let { " ($it)" } ?: ""}$tg"
+            "activate" -> "${who ?: "controller"} ${if (who == "you") "activate" else "activates"} ${state.objects[e.obj]?.name ?: e.obj}${e.to?.takeIf { e.abilityIndex == null && (it == "ultimate" || Regex("""^[+\u2212-]?\d+$""").matches(it)) }?.let { " ($it)" } ?: ""}$tg"
             "trigger" -> "${state.objects[e.obj]?.name ?: e.obj}'s ability triggers$tg"
+            "choose" -> "${who ?: "controller"} ${if (who == "you") "choose" else "chooses"} ${e.to?.substringAfter(':')?.let { state.objects[it]?.name ?: it } ?: "?"} for ${state.objects[e.obj]?.name ?: e.obj}'s ability"
             "regenerate" -> "${state.objects[e.obj]?.name ?: e.obj} has a regeneration shield"
             "sacrifice" -> "${who ?: "controller"} ${if (who == "you") "sacrifice" else "sacrifices"} ${state.objects[e.obj]?.name ?: e.obj}"
             "gainlife" -> "${who ?: "the player"} ${if (who == "you") "gain" else "gains"} ${e.amount ?: 1} life"

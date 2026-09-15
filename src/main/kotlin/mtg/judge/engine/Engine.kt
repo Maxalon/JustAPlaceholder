@@ -53,6 +53,13 @@ class Engine(val state: GameState) {
             return null
         }
         obj.zone = Zone.STACK
+        if ("Instant" !in card.types) {
+            val offTiming = state.phase == "combat" || state.stack.isNotEmpty() || (state.activePlayer != null && state.activePlayer != playerId)
+            val kind = card.types.firstOrNull { it in setOf("Creature", "Sorcery", "Enchantment", "Artifact", "Planeswalker", "Battle") } ?: "permanent"
+            val timingRule = mapOf("Creature" to "302.1", "Sorcery" to "307.1", "Enchantment" to "303.1", "Artifact" to "301.1", "Planeswalker" to "306.1", "Battle" to "310.1")[kind]
+            if (offTiming && card.has("flash")) trace.step("${card.name} has flash, so it can be cast any time its controller could cast an instant, including now.", "702.8a")
+            else if (offTiming && timingRule != null) { trace.step("A ${kind.lowercase()} spell can normally be cast only during its controller's main phase with an empty stack; ${card.name} doesn't have flash. Assuming an effect allows it, as described.", timingRule); state.assumptions += "${card.name} is cast at a time a ${kind.lowercase()} spell normally can't be (no flash); assuming something allows it." }
+        }
         // A modal spell's targets belong to the chosen mode (700.2c): validate against that mode's needs.
         val modal = effect as? Effect.Modal
         val modeEffect = modal?.let { m -> modes.mapNotNull { i -> m.modes.getOrNull(i - 1) }.let { if (it.isEmpty()) null else Effect.Seq(it) } }
@@ -749,7 +756,8 @@ class Engine(val state: GameState) {
                     trace.step("${payer.subject} ${payer.v("pays", "pay")} ${effect.cost}, so ${item.describe} does nothing more.", "608.2g")
                     state.outcomes += "${payer.subject} ${payer.v("pays", "pay")} ${effect.cost}; ${item.describe} has no further effect."
                 } else {
-                    state.assumptions += "${payer?.subject ?: "The player"} ${payer?.v("does", "do") ?: "does"} not pay ${effect.cost} for ${item.describe}."
+                    if (payer != null && payer.id in state.wontPay) trace.step("${payer.subject} ${payer.v("declines", "decline")} to pay ${effect.cost}.", "608.2g")
+                    else state.assumptions += "${payer?.subject ?: "The player"} ${payer?.v("does", "do") ?: "does"} not pay ${effect.cost} for ${item.describe}."
                     applyEffect(effect.effect, item)
                 }
             }
@@ -862,8 +870,8 @@ class Engine(val state: GameState) {
             }
             is Effect.PutFromHand -> {
                 val you = state.player(item.controller)
-                val chosen = item.choice?.let { c -> state.objects[c] } ?: state.objects.values.firstOrNull { it.zone == Zone.HAND && it.controller == item.controller && state.matches(effect.filter, it, item.controller, anyZone = true) }
-                if (chosen == null) { state.clarifications += Clarification("${item.source.name}'s card", "${item.source.name} puts a ${effect.filter.raw} from ${you.possessive} hand onto the battlefield; which card? (none was named, so nothing is put)"); trace.step("No ${effect.filter.raw} in hand was named for ${item.source.name}; nothing is put onto the battlefield.") }
+                val chosen = (item.choice ?: state.pendingChoices.remove(item.source.id))?.let { c -> state.objects[c] } ?: state.objects.values.firstOrNull { it.zone == Zone.HAND && it.controller == item.controller && state.matches(effect.filter, it, item.controller, anyZone = true) }
+                if (chosen == null) { state.clarifications += Clarification("${item.source.name}'s card", "${item.source.name} puts ${withArticle(effect.filter.raw)} from ${you.possessive} hand onto the battlefield; which card? (none was named, so nothing is put)"); trace.step("No ${effect.filter.raw} in hand was named for ${item.source.name}; nothing is put onto the battlefield.") }
                 else if (chosen.zone != Zone.HAND) trace.step("${chosen.name} isn't in ${you.possessive} hand, so ${item.source.name} can't put it onto the battlefield.", "608.2b")
                 else if (!state.matches(effect.filter, chosen, item.controller, anyZone = true)) { trace.step("${chosen.name} isn't a ${effect.filter.raw}, so ${item.source.name} can't put it onto the battlefield.", "608.2b"); state.outcomes += "${chosen.name} stays in hand." }
                 else {
@@ -872,6 +880,12 @@ class Engine(val state: GameState) {
                     else {
                         trace.step("${you.subject} ${you.v("puts", "put")} ${chosen.name} from ${you.possessive} hand onto the battlefield${if (counters != null) " (its mana value ${chosen.def.manaValue.toInt()} matches the $counters counters)" else ""}. It's put there directly rather than cast, so it never was a spell: it can't be countered and 'whenever you cast' abilities don't trigger.", "608.2c", *(if (counters != null) arrayOf("202.3") else emptyArray()))
                         enter(chosen.id); state.outcomes += "${chosen.name} enters the battlefield."
+                        if (effect.tapped) { chosen.tapped = true; trace.step("${chosen.name} enters tapped, as the effect says.", "614.1c") }
+                        if (effect.attacking) {
+                            val defender = item.source.attacking ?: state.opponentsOf(item.controller).singleOrNull()?.let { Ref.Player(it.id) }
+                            if (defender != null && state.phase == "combat") { chosen.attacking = defender; trace.step("${chosen.name} is put onto the battlefield attacking ${state.nameOf(defender)}. It was never declared as an attacker, so \"whenever ~ attacks\" abilities don't trigger and it isn't affected by attack costs or restrictions; it will deal combat damage as an attacking creature.", "508.4"); state.outcomes += "${chosen.name} is attacking ${state.nameOf(defender)}." }
+                            else trace.step("${chosen.name} would enter attacking, but there's no combat going on, so it simply enters the battlefield.", "508.4")
+                        }
                     }
                 }
             }
@@ -1364,7 +1378,7 @@ class Engine(val state: GameState) {
         is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
         is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
-        is Effect.CreateToken -> "create ${effect.count} ${effect.token} token${if (effect.count > 1) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put a ${effect.filter.raw} from your hand onto the battlefield"
+        is Effect.CreateToken -> "create ${effect.count} ${effect.token} token${if (effect.count > 1) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your hand onto the battlefield"
         is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"
         is Effect.Tap -> "tap ${effect.target.raw}"; is Effect.Untap -> "untap ${effect.target.raw}"
         is Effect.Pump -> "${effect.target.raw} gets ${signed(effect.power)}/${signed(effect.toughness)}"
@@ -1387,6 +1401,7 @@ class Engine(val state: GameState) {
     }
     private fun unparsedText(e: Effect): String = when (e) { is Effect.Unparsed -> e.text; is Effect.May -> unparsedText(e.effect); is Effect.UnlessPays -> unparsedText(e.effect); is Effect.Seq -> e.effects.filter { it.hasUnparsed() }.joinToString(" | ") { unparsedText(it) }; is Effect.Modal -> e.modes.filter { it.hasUnparsed() }.joinToString(" | ") { "mode \"" + unparsedText(it) + "\"" }; else -> "" }
     private fun signed(n: Int) = if (n >= 0) "+$n" else "$n"
+    private fun withArticle(s: String) = (if (s.firstOrNull()?.lowercaseChar() in setOf('a', 'e', 'i', 'o', 'u')) "an " else "a ") + s
     private fun freshObjectId(name: String): String { val base = name.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_'); var id = base; var i = 2; while (state.objects.containsKey(id)) id = "${base}_${i++}"; return id }
     private fun zoneName(z: Zone, obj: GameObject?) = when (z) {
         Zone.BATTLEFIELD -> "the battlefield"; Zone.GRAVEYARD -> "${obj?.let { state.player(it.owner).possessive } ?: "its owner's"} graveyard"; Zone.HAND -> "${obj?.let { state.player(it.owner).possessive } ?: "its owner's"} hand"

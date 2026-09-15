@@ -93,6 +93,8 @@ object OracleParser {
         var s = line.replace(name, "~")
         val shortName = name.substringBefore(",")
         if (shortName != name) s = s.replace(shortName, "~")
+        // Legendary names shortened in their own text: "Kaalia of the Vast" -> "Kaalia", "Ezuri the Claw" -> "Ezuri", "Arcades, the Strategist" already handled.
+        Regex("""^([A-Z][\w'-]+) (?:of|the|,)\b""").find(name)?.groupValues?.get(1)?.let { first -> if (first.length >= 4) s = s.replace(Regex("""\b${Regex.escape(first)}\b(?! (?:of|the))"""), "~") }
         s = s.replace(Regex("""\b[Tt]his (creature|permanent|artifact|enchantment|land|planeswalker|spell|card|Aura|Equipment|Vehicle|token|battle|Saga|Class|Room)\b"""), "~")
         return s
     }
@@ -234,7 +236,7 @@ object OracleParser {
         if (Regex("""^~ enters(?: the battlefield)?$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisEnters
         if (Regex("""^~ dies$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisDies
         if (Regex("""^~ leaves the battlefield$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisLeavesBattlefield
-        if (Regex("""^~ attacks$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisAttacks
+        if (Regex("""^~ attacks(?: an opponent| a player)?$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisAttacks
         return Trigger.Unknown(c)
     }
 
@@ -581,8 +583,8 @@ object OracleParser {
             return Effect.SacrificeThatMany(Who.THAT_PLAYER, parseFilter(m.groupValues[1].removeSuffix("s"), Kind.PERMANENT))
         }
         Regex("""^~ deals damage equal to the sacrificed (?:creature|permanent)'s power to (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.Damage(0, target(m.groupValues[1]), sacrificedPower = true) }
-        Regex("""^put a (creature|land|artifact|permanent|enchantment) card(?: with mana value equal to the number of (charge|\w+) counters on ~)? from your hand onto the battlefield\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
-            return Effect.PutFromHand(parseFilter(m.groupValues[1], Kind.PERMANENT), m.groupValues[2].ifEmpty { null })
+        Regex("""^put (?:a|an) ((?:[A-Z][a-z]+, )*(?:[A-Z][a-z]+,? or [A-Z][a-z]+ )?(?:creature|land|artifact|permanent|enchantment)) card(?: with mana value equal to the number of (charge|\w+) counters on ~)? from your hand onto the battlefield( tapped)?( and attacking(?: that opponent| that player)?)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            return Effect.PutFromHand(parseFilter(m.groupValues[1], Kind.PERMANENT), m.groupValues[2].ifEmpty { null }, tapped = m.groupValues[3].isNotEmpty(), attacking = m.groupValues[4].isNotEmpty())
         }
         for ((re, rules) in narratedRes) if (re.matches(s)) return Effect.Narrated(s.trimEnd('.'), rules)
         // "You draw a card and you lose 1 life." / "Each opponent loses 1 life and you gain 1 life.": two effects joined by "and".

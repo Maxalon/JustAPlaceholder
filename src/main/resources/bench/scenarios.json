@@ -1839,5 +1839,84 @@
     "cite": [
       "704.5m"
     ]
+  },
+  {
+    "id": "nighthawk-block-with-it-next-turn",
+    "text": "My opponent has Grizzly Bears with a +1/+1 counter. I cast Vampire Nighthawk and block the Bears with it next turn.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard",
+      "Vampire Nighthawk: the battlefield → your graveyard",
+      "You gain 2 life"
+    ],
+    "cite": [
+      "702.2b",
+      "702.15b"
+    ]
+  },
+  {
+    "id": "rhystic-three-spells-none-paid",
+    "text": "I have Rhystic Study and my opponent casts three spells this turn, paying for none of them.",
+    "expect": [
+      "You draw 1 card. (×3)"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "counterspell-uncast-wrath",
+    "text": "I cast Counterspell on my opponent's Wrath of God.",
+    "expect": [
+      "Wrath of God is countered"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "jace-ultimate-doubling-season",
+    "text": "I have Doubling Season and cast Jace, the Mind Sculptor. Can I ultimate him right away?",
+    "expect": [
+      "Jace, the Mind Sculptor has 6 loyalty",
+      "-12 ability can't be activated (not enough loyalty)"
+    ],
+    "cite": [
+      "606.6"
+    ]
+  },
+  {
+    "id": "ambush-viper-flash-block",
+    "text": "It's my turn. I attack with Grizzly Bears and my opponent flashes in Ambush Viper to block it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Ambush Viper: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "702.8a"
+    ]
+  },
+  {
+    "id": "kaalia-baneslayer",
+    "text": "I attack with Kaalia of the Vast and put Baneslayer Angel onto the battlefield with Kaalia's trigger. My opponent has no blockers.",
+    "expect": [
+      "Baneslayer Angel is attacking opponent",
+      "opponent takes 5 damage",
+      "You gain 5 life",
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "508.4",
+      "702.15b"
+    ]
+  },
+  {
+    "id": "creature-cast-in-response-no-flash",
+    "text": "My opponent casts Lightning Bolt at me. I respond by casting Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears doesn't have flash"
+    ],
+    "cite": [
+      "302.1"
+    ]
   }
 ]

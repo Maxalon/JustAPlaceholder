@@ -115,7 +115,7 @@ sealed interface Effect {
     /** "That player sacrifices that many permanents" (Phyrexian Obliterator): as many as the causing amount, their choice. */
     data class SacrificeThatMany(val who: Who, val filter: ObjFilter) : Effect
     /** "Put a creature card from your hand onto the battlefield" (Aether Vial: with mana value equal to its charge counters). */
-    data class PutFromHand(val filter: ObjFilter, val mvEqualsCounters: String? = null) : Effect
+    data class PutFromHand(val filter: ObjFilter, val mvEqualsCounters: String? = null, val tapped: Boolean = false, val attacking: Boolean = false) : Effect
     /** "Return target X to its owner's hand" (null target = ~). */
     data class Bounce(val target: TargetSpec?) : Effect
     /** "Its controller gains life equal to its power" (uses last known information after a zone change). */

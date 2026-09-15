@@ -135,6 +135,8 @@ class GameState(
     val assumptions = mutableListOf<String>()
     /** Players who said they will pay the next "unless … pays" cost asked of them (Rhystic Study, Mana Leak…). */
     val willPay = mutableSetOf<String>()
+    /** Choices announced for a permanent's next triggered ability, by source object id ("put Rakdos with Kaalia's trigger"): an object id. */
+    val pendingChoices = mutableMapOf<String, String>()
     /** Players who said they will not pay the next optional cost asked of them. */
     val wontPay = mutableSetOf<String>()
     val clarifications = mutableListOf<Clarification>()

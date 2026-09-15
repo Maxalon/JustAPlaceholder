@@ -122,4 +122,20 @@ class SituationParserTest {
         val u = parser.parse("I cast Sol Ring with evoke.")
         assertEquals("evoke", u.situation.events.first().to)
     }
+
+    @Test
+    fun `flash-in blockers, ultimates, trigger choices, uncast spell targets and declined payments`() {
+        val p = parser.parse("I attack with Sol Ring and my opponent flashes in Time Vault to block it.")
+        assertEquals(listOf("attack", "cast", "resolveAll", "block", "resolveAll"), p.situation.events.map { it.verb })
+        assertEquals("time_vault", p.situation.events[3].obj); assertEquals(listOf("sol_ring"), p.situation.events[3].targets)
+        val q = parser.parse("I cast Time Vault. Can I ultimate it right away?")
+        assertEquals("ultimate", q.situation.events.first { it.verb == "activate" }.to); assertTrue(q.unread.isEmpty(), "unread: ${q.unread}")
+        val r = parser.parse("I attack with Sol Ring and put Time Vault onto the battlefield with Sol Ring's trigger.")
+        assertEquals(listOf("choose", "attack"), r.situation.events.take(2).map { it.verb })
+        assertEquals("put:time_vault", r.situation.events[0].to); assertEquals("hand", r.situation.objects.first { it.card.name == "Time Vault" }.zone)
+        val t = parser.parse("I cast Stifle on my opponent's Fire // Ice.")
+        assertEquals(listOf("cast", "cast", "resolveAll"), t.situation.events.map { it.verb }); assertEquals("opp", t.situation.events[0].player)
+        val u = parser.parse("I have Rhystic Study and my opponent casts two spells this turn, paying for none of them.")
+        assertEquals(listOf("cast", "cast", "pay", "resolveAll"), u.situation.events.map { it.verb }); assertEquals("no", u.situation.events[2].to)
+    }
 }

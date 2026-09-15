@@ -21,6 +21,9 @@ class BatchThirteenTest {
     private val platinum = card("Platinum Angel", "Artifact Creature — Angel", "Flying\nYou can't lose the game and your opponents can't win the game.", "{7}", "", "4", "4", "Flying")
     private val vial = card("Aether Vial", "Artifact", "At the beginning of your upkeep, you may put a charge counter on Aether Vial.\n{T}: You may put a creature card with mana value equal to the number of charge counters on Aether Vial from your hand onto the battlefield.", "{1}")
     private val jace = card("Jace Beleren", "Legendary Planeswalker — Jace", "+2: Each player draws a card.\n−1: Target player draws a card.\n−10: Target player mills twenty cards.", "{1}{U}{U}", "U")
+    private val kaalia = card("Kaalia of the Vast", "Legendary Creature — Human Cleric", "Flying\nWhenever Kaalia attacks an opponent, you may put an Angel, Demon, or Dragon creature card from your hand onto the battlefield tapped and attacking that opponent.", "{1}{R}{W}{B}", "RWB", "2", "2", "Flying")
+    private val serra = card("Serra Angel", "Creature — Angel", "Flying, vigilance", "{3}{W}{W}", "W", "4", "4", "Flying", "Vigilance")
+    private val viper = card("Ambush Viper", "Creature — Snake", "Flash\nDeathtouch", "{1}{G}", "G", "2", "1", "Flash", "Deathtouch")
     private val sakura = card("Sakura-Tribe Elder", "Creature — Snake Shaman", "Sacrifice Sakura-Tribe Elder: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.", "{1}{G}", "G", "1", "1")
 
     private fun state() = GameState(listOf(Player("me", "me", 20), Player("opp", "opp", 20)), LinkedHashMap(), activePlayer = "me")
@@ -112,5 +115,24 @@ class BatchThirteenTest {
         val idx = jace.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { it.cost.replace('−', '-') == "-1" }
         e.activate("me", "jace", idx, listOf(Ref.Player("opp"))); e.resolveAll()
         assertEquals(1, s.player("opp").drew); assertTrue(s.clarifications.isEmpty(), "clarifications: ${s.clarifications}")
+    }
+
+    @Test
+    fun `kaalia puts the announced angel onto the battlefield tapped and attacking`() {
+        val s = state(); s.put("kaalia", kaalia, "me"); s.put("serra", serra, "me", Zone.HAND); val e = Engine(s)
+        assertTrue(kaalia.abilities.filterIsInstance<TriggeredAbility>().single().trigger == Trigger.ThisAttacks, "the short self-reference is understood")
+        s.pendingChoices["kaalia"] = "serra"
+        e.beginDeclaringAttackers(); e.declareAttacker("me", "kaalia", Ref.Player("opp")); e.finishDeclaringAttackers(); e.resolveAll()
+        assertEquals(Zone.BATTLEFIELD, s.obj("serra").zone); assertEquals(true, s.obj("serra").tapped); assertEquals(Ref.Player("opp"), s.obj("serra").attacking)
+        assertTrue("508.4" in s.cited())
+        e.combatDamage(); assertEquals(14, s.player("opp").life)
+    }
+
+    @Test
+    fun `flash is noted at instant speed and a creature without it gets a timing assumption`() {
+        val s = state(); s.put("bears", bears, "me"); val e = Engine(s)
+        e.beginDeclaringAttackers(); e.declareAttacker("me", "bears", Ref.Player("opp")); e.finishDeclaringAttackers()
+        e.cast("opp", viper, emptyList()); assertTrue("702.8a" in s.cited()); assertTrue(s.assumptions.none { "normally can't" in it })
+        e.cast("opp", serra, emptyList()); assertTrue("302.1" in s.cited()); assertTrue(s.assumptions.any { "normally can't" in it })
     }
 }
