@@ -68,7 +68,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
             "bolt" to "lightning bolt", "bears" to "grizzly bears", "swords" to "swords to plowshares", "path" to "path to exile",
             "rhystic" to "rhystic study", "tithe" to "smothering tithe", "sol" to "sol ring", "wrath" to "wrath of god", "damnation" to "damnation",
             "cyc rift" to "cyclonic rift", "rift" to "cyclonic rift", "tutor" to "demonic tutor", "demonic" to "demonic tutor", "vamp tutor" to "vampiric tutor",
-            "mana crypt" to "mana crypt", "crypt" to "mana crypt", "vault" to "mana vault", "top" to "sensei s divining top", "sdt" to "sensei s divining top",
+            "mana crypt" to "mana crypt", "crypt" to "mana crypt", "vault" to "mana vault", "sdt" to "sensei s divining top", "divining top" to "sensei s divining top",
             "farewell" to "farewell", "teferi s protection" to "teferi s protection", "tefprot" to "teferi s protection",
             "fow" to "force of will", "force" to "force of will", "fon" to "force of negation", "mana drain" to "mana drain", "drain" to "mana drain",
             "counterspell" to "counterspell", "negate" to "negate", "swan song" to "swan song", "arcane denial" to "arcane denial",
@@ -85,7 +85,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
             "life", "death", "damage", "counter", "target", "attack", "block", "draw", "hand", "deck", "library", "graveyard", "exile", "battlefield", "stack", "response", "trigger", "ability", "poison", "commander", "cards", "card",
             "they", "them", "he", "she", "we", "you", "i", "me", "re", "ve", "ll", "m", "s", "d", "t", "don", "doesn", "can", "won", "isn", "aren")
         private val stopWords = setOf(
-            "counter", "target", "turn", "attack", "block", "cast", "play", "draw", "damage", "life", "control", "survive", "survives", "dead", "alive", "die", "dies", "grow", "resolve", "experience", "energy", "storm", "overload", "overloaded", "kick", "kicked", "evoke", "convoke", "cycle", "flashback", "recast", "replay",
+            "counter", "target", "turn", "attack", "block", "cast", "play", "draw", "damage", "life", "control", "survive", "survives", "dead", "alive", "die", "dies", "grow", "resolve", "experience", "energy", "storm", "sacrifice", "sacrificed", "top", "bottom", "overload", "overloaded", "kick", "kicked", "evoke", "convoke", "cycle", "flashback", "recast", "replay",
             "creature", "spell", "ability", "trigger", "stack", "response", "resolve", "resolves", "tap", "untap", "exile", "destroy", "sacrifice",
             "discard", "hand", "library", "graveyard", "battlefield", "token", "copy", "end", "step", "upkeep", "combat", "main", "phase", "pay",
             "mana", "land", "player", "opponent", "me", "my", "i", "you", "they", "it", "the", "a", "an",

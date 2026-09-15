@@ -50,6 +50,7 @@ class GameObject(
     var attachedTo: String? = null
     var attacking: Ref? = null            // what this creature is attacking
     var blocking: String? = null          // id of the attacker this creature blocks
+    var wasBlocked = false                // declared blocked this combat: stays blocked even if the blocker leaves (509.1h)
     var dealtDeathtouchDamage = false     // for 704.5h
     /** Power as it last was on the battlefield (last known information, 113.7a) for "equal to its power" after a zone change. */
     var lkiPower: Int? = null

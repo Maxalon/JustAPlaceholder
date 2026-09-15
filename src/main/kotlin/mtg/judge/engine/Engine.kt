@@ -553,7 +553,7 @@ class Engine(val state: GameState) {
         }
         if (a.has("flying") && !(b.has("flying") || b.has("reach"))) { trace.step("${a.name} has flying and ${b.name} has neither flying nor reach, so ${b.name} can't block it.", "702.9b"); state.outcomes += "${b.name} can't block ${a.name} (flying)."; return }
         val firstBlocker = blockersOf(a).isEmpty()
-        b.blocking = a.id
+        b.blocking = a.id; a.wasBlocked = true
         if (firstBlocker) onEvent(GameEvent.BecomesBlocked(a))
         onEvent(GameEvent.Blocks(b))
         trace.step("${p.subject} ${p.v("blocks", "block")} ${a.name} with ${b.name} (${state.describePt(b)}). ${a.name} is now a blocked creature and stays blocked even if ${b.name} leaves combat.", "509.1a", "509.1g", "509.1h")
@@ -567,7 +567,7 @@ class Engine(val state: GameState) {
         // Menace: a single blocker is not a legal block.
         for (a in attackers) if (a.has("menace")) {
             val bs = blockersOf(a)
-            if (bs.size == 1) { trace.step("${a.name} has menace and can't be blocked except by two or more creatures; blocking it with only ${bs[0].name} isn't a legal block, so ${a.name} is unblocked.", "702.111b", "509.1a"); bs[0].blocking = null }
+            if (bs.size == 1) { trace.step("${a.name} has menace and can't be blocked except by two or more creatures; blocking it with only ${bs[0].name} isn't a legal block, so ${a.name} is unblocked.", "702.111b", "509.1a"); bs[0].blocking = null; a.wasBlocked = false }
         }
         val strikers = (attackers + attackers.flatMap { blockersOf(it) }).filter { it.has("first strike") || it.has("double strike") }
         if (strikers.isNotEmpty()) {
@@ -593,6 +593,10 @@ class Engine(val state: GameState) {
             if (deals(a)) {
                 val power = a.power ?: 0
                 if (power <= 0) trace.step("${a.name} has power $power and assigns no combat damage.", "510.1a")
+                else if (blockers.isEmpty() && a.wasBlocked) {
+                    if (a.has("trample")) { trace.step("${a.name} was blocked but its blocker is gone; it has trample, so it assigns all $power damage to ${state.nameOf(a.attacking!!)}.", "702.19d"); hits += Hit(a, a.attacking!!, power) }
+                    else trace.step("${a.name} was blocked and its blocker has left combat. A blocked creature stays blocked, and without trample it assigns no combat damage at all.", "509.1h", "510.1c")
+                }
                 else if (blockers.isEmpty()) { trace.step("${a.name} is unblocked and assigns $power damage to ${state.nameOf(a.attacking!!)}.", "510.1b"); hits += Hit(a, a.attacking!!, power) }
                 else if (blockers.size == 1) {
                     val b = blockers[0]
@@ -1146,7 +1150,7 @@ class Engine(val state: GameState) {
                 else { o.tapped = true; trace.step("${o.name} enters tapped (a replacement effect on how it enters${if (e.unless != null) "; its condition isn't met" else ""}).", "614.1c", "614.12") }
             }
             is StaticEffect.EntersWithCounters -> if (e.count != null) { val n = countersPlaced(o, e.count, e.kind); o.counters[e.kind] = (o.counters[e.kind] ?: 0) + n; trace.step("${o.name} enters with $n ${e.kind} counter${if (n > 1) "s" else ""} on it.", "614.1c", "122.6") }
-                else if (o.x != null) { val n = countersPlaced(o, o.x!!, e.kind); o.counters[e.kind] = (o.counters[e.kind] ?: 0) + n; trace.step("${o.name} enters with $n ${e.kind} counter${if (n == 1) "" else "s"} on it (X was ${o.x}).", "614.1c", "107.3a") }
+                else if (o.x != null) { val n = countersPlaced(o, o.x!!, e.kind); o.counters[e.kind] = (o.counters[e.kind] ?: 0) + n; trace.step("${o.name} enters with $n ${e.kind} counter${if (n == 1) "" else "s"} on it (X was ${o.x}).", "614.1c", "107.3a"); state.outcomes += "${o.name} enters with $n ${e.kind} counter${if (n == 1) "" else "s"}." }
                 else { state.clarifications += Clarification("${o.name}'s X", "${o.name} enters with X ${e.kind} counters; what was X?") }
             else -> {}
         }

@@ -2706,5 +2706,75 @@
     "cite": [
       "603.2"
     ]
+  },
+  {
+    "id": "path-the-blocker-no-damage",
+    "text": "I attack with Grizzly Bears and my opponent blocks with Hill Giant. Before damage I cast Path to Exile on the Giant. Does the Bears deal damage to my opponent?",
+    "expect": [
+      "Hill Giant: the battlefield → exile",
+      "No: Grizzly Bears dealt no damage to opponent (it was blocked"
+    ],
+    "notExpect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "trample-blocker-bounced",
+    "text": "I attack with a 5/5 trample and my opponent blocks with a 2/2. They then bounce their blocker with Unsummon.",
+    "expect": [
+      "a 2/2 creature: the battlefield → opponent's hand",
+      "opponent takes 5 damage"
+    ],
+    "cite": [
+      "702.19d"
+    ]
+  },
+  {
+    "id": "hangarback-doubling-season",
+    "text": "I have Doubling Season and cast Hangarback Walker for X=2. How many counters does it enter with?",
+    "expect": [
+      "Hangarback Walker enters with 4 +1/+1 counters"
+    ],
+    "cite": [
+      "614.6",
+      "107.3a"
+    ]
+  },
+  {
+    "id": "ensnaring-bridge-two-described",
+    "text": "My opponent controls Ensnaring Bridge and has 2 cards in hand. I attack with a 3/3 and a 2/2.",
+    "expect": [
+      "a 3/3 creature can't attack (Ensnaring Bridge)",
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "settle-during-declare-blockers",
+    "text": "My opponent attacks me with Serra Angel and I have Settle the Wreckage. I cast it during the declare blockers step.",
+    "expect": [
+      "Serra Angel: the battlefield → exile"
+    ],
+    "notExpect": [
+      "You take 4 damage"
+    ],
+    "cite": [
+      "701.13a"
+    ]
+  },
+  {
+    "id": "dismember-counters",
+    "text": "I have Grizzly Bears with two +1/+1 counters and my opponent casts Dismember on it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5f"
+    ]
   }
 ]

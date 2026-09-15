@@ -42,6 +42,8 @@ class BatchThirteenTest {
     private val rift = card("Cyclonic Rift", "Instant", "Return target nonland permanent you don't control to its owner's hand.\nOverload {6}{U}", "{1}{U}", "U", null, null, "Overload")
     private val avenger = card("Serra Avenger", "Creature — Angel", "You can't cast Serra Avenger during your first, second, or third turns of the game.\nFlying\nVigilance", "{W}{W}", "W", "3", "3", "Flying", "Vigilance")
     private val deluge = card("Toxic Deluge", "Sorcery", "As an additional cost to cast this spell, pay X life.\nAll creatures get -X/-X until end of turn.", "{2}{B}", "B")
+    private val trampler = card("Rampaging Baloths", "Creature — Beast", "Trample", "{4}{G}{G}", "G", "6", "6", "Trample")
+    private val unsummon = card("Unsummon", "Instant", "Return target creature to its owner's hand.", "{U}", "U")
     private val sakura = card("Sakura-Tribe Elder", "Creature — Snake Shaman", "Sacrifice Sakura-Tribe Elder: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.", "{1}{G}", "G", "1", "1")
 
     private fun state() = GameState(listOf(Player("me", "me", 20), Player("opp", "opp", 20)), LinkedHashMap(), activePlayer = "me")
@@ -282,5 +284,17 @@ class BatchThirteenTest {
         val s2 = state(); s2.put("bears", bears, "opp"); s2.put("serra", serra, "opp"); val e2 = Engine(s2)
         e2.cast("me", deluge, emptyList(), x = 3); e2.resolveAll()
         assertEquals(Zone.GRAVEYARD, s2.obj("bears").zone); assertEquals(Zone.BATTLEFIELD, s2.obj("serra").zone); assertEquals(1, s2.obj("serra").power)
+    }
+
+    @Test
+    fun `a blocked creature stays blocked when its blocker leaves, unless it has trample`() {
+        val s = state(); s.put("bears", bears, "me"); s.put("giant", serra, "opp"); val e = Engine(s)
+        e.beginDeclaringAttackers(); e.declareAttacker("me", "bears", Ref.Player("opp")); e.finishDeclaringAttackers(); e.declareBlocker("opp", "giant", "bears")
+        e.cast("me", unsummon, listOf(Ref.Obj("giant"))); e.resolveAll(); e.combatDamage()
+        assertEquals(20, s.player("opp").life); assertTrue("509.1h" in s.cited())
+        val s2 = state(); s2.put("baloth", trampler, "me"); s2.put("giant", serra, "opp"); val e2 = Engine(s2)
+        e2.beginDeclaringAttackers(); e2.declareAttacker("me", "baloth", Ref.Player("opp")); e2.finishDeclaringAttackers(); e2.declareBlocker("opp", "giant", "baloth")
+        e2.cast("me", unsummon, listOf(Ref.Obj("giant"))); e2.resolveAll(); e2.combatDamage()
+        assertEquals(14, s2.player("opp").life); assertTrue("702.19d" in s2.cited())
     }
 }
