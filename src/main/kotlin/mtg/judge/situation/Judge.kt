@@ -25,7 +25,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
     fun answer(sit: Situation): Answer {
         val understood = mutableListOf<String>()
-        val state = GameState(sit.players.map { ps -> Player(ps.id, ps.name, ps.life).also { it.poison = ps.poison ?: 0; it.handSize = ps.handSize; it.librarySize = ps.librarySize; it.commanderDamage.putAll(ps.commanderDamage) } }, LinkedHashMap(), activePlayer = sit.turn.activePlayer, phase = sit.turn.phase, step = sit.turn.step)
+        val state = GameState(sit.players.map { ps -> Player(ps.id, ps.name, ps.life).also { it.poison = ps.poison ?: 0; it.handSize = ps.handSize; it.librarySize = ps.librarySize; it.commanderDamage.putAll(ps.commanderDamage); it.mana = ps.mana } }, LinkedHashMap(), activePlayer = sit.turn.activePlayer, phase = sit.turn.phase, step = sit.turn.step)
         val engine = Engine(state)
 
         for (o in sit.objects) {
@@ -135,7 +135,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 val obj = state.obj(objId)
                 // "+1" / "-3" names a loyalty ability by its cost.
                 val idx = e.abilityIndex
-                    ?: e.to?.takeIf { it == "mana" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> a.effect is Effect.AddMana || (a.effect as? Effect.Seq)?.effects?.firstOrNull() is Effect.AddMana }.takeIf { it >= 0 } }
+                    ?: e.to?.takeIf { it == "mana" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> a.effect is Effect.AddMana || (a.effect as? Effect.Seq)?.effects?.any { it is Effect.AddMana } == true }.takeIf { it >= 0 } }
                     ?: e.to?.takeIf { it == "ultimate" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().withIndex().filter { (_, a) -> Regex("""^[\u2212-]\d+$""").matches(a.cost) }.minByOrNull { (_, a) -> a.cost.replace('\u2212', '-').toInt() }?.index }
                     ?: e.to?.let { cost -> obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { it.cost.replace('\u2212', '-') == cost.replace('\u2212', '-') }.takeIf { it >= 0 } }
                 engine.activate(e.player ?: obj.controller, objId, idx, targets, choice = e.to?.takeIf { it.startsWith("color:") || it.startsWith("put:") }?.substringAfter(':'))

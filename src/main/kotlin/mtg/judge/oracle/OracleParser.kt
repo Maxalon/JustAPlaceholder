@@ -340,6 +340,12 @@ object OracleParser {
         if (Regex("""^If ~ is in your opening hand, you may begin the game with it on the battlefield\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("103.6")))
         if (Regex("""^(?:Combat )?damage that would be dealt by (?:creatures|sources) you control can't be prevented\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("615.12")))
         if (Regex("""^Each opponent can cast spells only any time they could cast a sorcery\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsSorcerySpeed)
+        if (Regex("""^During your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsLockedOnYourTurn)
+        Regex("""^(Noncreature spells|Creature spells|Instant and sorcery spells|Spells|Artifact spells|Enchantment spells)(?: your opponents cast| you cast)? cost \{(\d+)\} (more|less) to cast\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val f = when (m.groupValues[1].lowercase()) { "noncreature spells" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE), raw = "noncreature spell"); "creature spells" -> ObjFilter(setOf(Kind.CREATURE), raw = "creature spell"); "instant and sorcery spells" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE, Kind.ARTIFACT, Kind.ENCHANTMENT, Kind.PLANESWALKER, Kind.LAND), raw = "instant or sorcery spell"); "artifact spells" -> ObjFilter(setOf(Kind.ARTIFACT), raw = "artifact spell"); "enchantment spells" -> ObjFilter(setOf(Kind.ENCHANTMENT), raw = "enchantment spell"); else -> ObjFilter(setOf(Kind.SPELL), raw = "spell") }
+            val whose = when { line.contains("your opponents cast", true) -> Who.OPPONENT; line.contains("you cast", true) -> Who.YOU; else -> null }
+            return listOf(StaticEffect.CostTax(f, m.groupValues[2].toInt() * (if (m.groupValues[3].lowercase() == "less") -1 else 1), whose))
+        }
         if (Regex("""^Counters can't be put on artifacts, creatures, enchantments, or lands\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Replace(Replacement.CounterMultiplier(0, anyPlayer = true)))
         if (Regex("""^Players can't get counters\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("122.1")))
         if (Regex("""^You may look at the top card of your library any time\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("401.5")))
@@ -538,6 +544,7 @@ object OracleParser {
     private val regenerateRe = Regex("""^regenerate (~|target .+?)\.?$""", RegexOption.IGNORE_CASE)
 
     private fun parseSentence(s: String): Effect {
+        manaRe.matchEntire(s.trimEnd('.'))?.let { return Effect.AddMana(it.groupValues[1]) }
         if (Regex("""^target player reveals their hand\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.NarratedTargeted(target("player"), "reveals their hand", listOf("701.20a"))
         modalRe.matchEntire(s)?.let { m ->
             val modeTexts = m.groupValues[3].split("•").map { it.trim().trimEnd('.') }.filter { it.isNotEmpty() }

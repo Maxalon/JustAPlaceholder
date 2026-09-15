@@ -8,6 +8,8 @@ class Player(val id: String, val name: String, var life: Int?) {
     var poison = 0
     /** Cards in hand, when the situation said so (Ensnaring Bridge). */
     var handSize: Int? = null
+    /** Mana available right now, when the situation said so ("only has one Mountain untapped"). */
+    var mana: Int? = null
     /** Cards in library, when the situation said so (empty-library draws, 704.5b). */
     var librarySize: Int? = null
     /** Tried to draw from an empty library since state-based actions were last checked (121.4). */

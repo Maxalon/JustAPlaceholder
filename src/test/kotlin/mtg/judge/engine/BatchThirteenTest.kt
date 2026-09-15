@@ -34,6 +34,8 @@ class BatchThirteenTest {
     private val approach = card("Approach of the Second Sun", "Sorcery", "If Approach of the Second Sun was cast from your hand and you've cast another spell named Approach of the Second Sun this game, you win the game. Otherwise, put Approach of the Second Sun into its owner's library seventh from the top and you gain 7 life.", "{6}{W}", "W")
     private val solemnity = card("Solemnity", "Enchantment", "Players can't get counters.\nCounters can't be put on artifacts, creatures, enchantments, or lands.", "{2}{W}", "W")
     private val ballista = card("Walking Ballista", "Artifact Creature — Construct", "Walking Ballista enters the battlefield with X +1/+1 counters on it.\n{4}: Put a +1/+1 counter on Walking Ballista.\nRemove a +1/+1 counter from Walking Ballista: It deals 1 damage to any target.", "{X}{X}", "", "0", "0")
+    private val abolisher = card("Grand Abolisher", "Creature — Human Cleric", "During your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments.", "{W}{W}", "W", "2", "2")
+    private val thalia = card("Thalia, Guardian of Thraben", "Legendary Creature — Human Soldier", "First strike\nNoncreature spells cost {1} more to cast.", "{1}{W}", "W", "2", "1", "First strike")
     private val sakura = card("Sakura-Tribe Elder", "Creature — Snake Shaman", "Sacrifice Sakura-Tribe Elder: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.", "{1}{G}", "G", "1", "1")
 
     private fun state() = GameState(listOf(Player("me", "me", 20), Player("opp", "opp", 20)), LinkedHashMap(), activePlayer = "me")
@@ -219,5 +221,20 @@ class BatchThirteenTest {
         val s2 = state(); s2.put("sol", solemnity, "opp"); val e2 = Engine(s2)
         e2.cast("me", ballista, emptyList(), x = 2); e2.resolveAll()
         assertEquals(Zone.GRAVEYARD, s2.objects.values.first { it.name == "Walking Ballista" }.zone); assertTrue("122.1" in s2.cited())
+    }
+
+    @Test
+    fun `grand abolisher locks opponents out on its controller's turn only`() {
+        val s = state(); s.put("ab", abolisher, "opp"); s.activePlayer = "opp"; val e = Engine(s)
+        assertTrue(e.cast("me", bolt, listOf(Ref.Player("opp"))) == null); assertTrue("101.2" in s.cited())
+        s.activePlayer = "me"; assertTrue(e.cast("me", bolt, listOf(Ref.Player("opp"))) != null)
+    }
+
+    @Test
+    fun `thalia's tax is checked against the mana the situation gave`() {
+        val s = state(); s.put("thalia", thalia, "me"); s.player("opp").mana = 1; val e = Engine(s)
+        assertTrue(e.cast("opp", bolt, listOf(Ref.Player("me"))) == null); assertTrue("601.2h" in s.cited())
+        s.player("opp").mana = 2; assertTrue(e.cast("opp", bolt, listOf(Ref.Player("me"))) != null)
+        s.player("opp").mana = 2; assertTrue(e.cast("opp", bears, emptyList()) != null, "creature spells aren't taxed")
     }
 }

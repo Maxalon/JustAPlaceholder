@@ -2304,5 +2304,83 @@
       "704.5f",
       "122.1"
     ]
+  },
+  {
+    "id": "grand-abolisher-their-turn",
+    "text": "My opponent controls Grand Abolisher. Can I cast Lightning Bolt during their turn?",
+    "expect": [
+      "Lightning Bolt can't be cast (Grand Abolisher: not during opponent's turn)"
+    ],
+    "cite": [
+      "101.2"
+    ]
+  },
+  {
+    "id": "thalia-one-mountain",
+    "text": "I control Thalia, Guardian of Thraben. My opponent casts Lightning Bolt and only has one Mountain untapped.",
+    "expect": [
+      "Lightning Bolt can't be cast (costs 2, only 1 mana available)"
+    ],
+    "cite": [
+      "601.2f",
+      "601.2h"
+    ]
+  },
+  {
+    "id": "thalia-counterspell-two-lands",
+    "text": "I control Thalia, Guardian of Thraben and my opponent has 2 lands untapped. They cast Counterspell on my Grizzly Bears.",
+    "expect": [
+      "Counterspell can't be cast (costs 3, only 2 mana available)",
+      "Grizzly Bears enters the battlefield"
+    ],
+    "cite": [
+      "601.2h"
+    ]
+  },
+  {
+    "id": "ruric-thar-counterspell",
+    "text": "I have Rhystic Study and my opponent has Ruric Thar, the Unbowed. They cast Counterspell.",
+    "expect": [
+      "opponent takes 6 damage",
+      "You draw 1 card"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "deathrite-tap-for-mana",
+    "text": "I control Deathrite Shaman. Can I tap it for mana?",
+    "expect": [
+      "Exile target land card from a graveyard"
+    ],
+    "notExpect": [
+      "which one?"
+    ],
+    "cite": [
+      "605.1a"
+    ]
+  },
+  {
+    "id": "reach-blocks-one-angel",
+    "text": "I attack with two 4/4 Angel tokens with flying. My opponent has a 2/2 with reach and blocks one.",
+    "expect": [
+      "a 2/2 creature with reach: the battlefield → opponent's graveyard",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "509.1a"
+    ]
+  },
+  {
+    "id": "fog-after-blocks",
+    "text": "I attack with Grizzly Bears and Hill Giant. My opponent blocks the Giant with Serra Angel and then casts Fog.",
+    "expect": [
+      "Damage to opponent from Grizzly Bears is prevented",
+      "Damage to Serra Angel from Hill Giant is prevented"
+    ],
+    "cite": [
+      "615.1"
+    ]
   }
 ]

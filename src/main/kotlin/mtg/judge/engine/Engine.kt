@@ -28,6 +28,18 @@ class Engine(val state: GameState) {
                 state.outcomes += "${card.name} can't be cast (${teferi.name}: sorcery speed only)."; return null
             }
         }
+        state.objects.values.firstOrNull { it.isOnBattlefield() && it.controller != playerId && it.controller == state.activePlayer && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { s -> s is StaticEffect.OpponentsLockedOnYourTurn } }?.let { ab ->
+            trace.step("It's ${state.player(ab.controller).possessive} turn and ${ab.name} says ${state.player(ab.controller).possessive} opponents can't cast spells during it. ${card.name} can't be cast now; it could be cast on ${state.player(playerId).possessive} own turn (or another opponent's).", "101.2")
+            state.outcomes += "${card.name} can't be cast (${ab.name}: not during ${state.player(ab.controller).possessive} turn)."; return null
+        }
+        // Cost taxes (Thalia) against the mana the situation said is available.
+        run {
+            val taxes = state.objects.values.filter { it.isOnBattlefield() }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CostTax>().filter { t -> (t.whose == null || (t.whose == Who.YOU) == (o.controller == playerId)) && spellMatches(t.filter, card) }.map { o to it } }
+            val tax = taxes.sumOf { it.second.amount }
+            val cost = card.manaValue.toInt() + (x ?: 0) * maxOf(0, Regex("""\{X\}""").findAll(card.manaCost ?: "").count() - 1) + tax
+            if (taxes.isNotEmpty()) trace.step("${taxes.joinToString(" and ") { "${it.first.name} makes ${card.name} cost {${kotlin.math.abs(it.second.amount)}} ${if (it.second.amount < 0) "less" else "more"}" }}: its total cost is ${card.manaCost ?: "?"} plus {${tax}}${if (tax > 0) "" else ""} (${cost} mana in all).", "601.2f", "118.7")
+            player.mana?.let { avail -> if (cost > avail) { trace.step("${player.subject} ${player.v("has", "have")} only $avail mana available and ${card.name} costs $cost, so it can't be cast: the total cost can't be paid.", "601.2h", "601.2f"); state.outcomes += "${card.name} can't be cast (costs $cost, only $avail mana available)."; return null } else if (taxes.isNotEmpty()) trace.step("${player.subject} ${player.v("has", "have")} $avail mana available, enough for the $cost.", "601.2h") }
+        }
         if (overload) return castOverloaded(playerId, card, obj)
         if ("Land" in card.types && !card.isInstantOrSorcery) {
             // Lands aren't cast: playing one is a special action that doesn't use the stack.
@@ -261,6 +273,12 @@ class Engine(val state: GameState) {
         is Effect.CreateToken -> e.who == Who.TARGET_PLAYER; is Effect.Mill -> e.who == Who.TARGET_PLAYER; is Effect.SacrificeEach -> e.who == Who.TARGET_PLAYER; is Effect.LoseLifeThatMuch -> e.who == Who.TARGET_PLAYER
         is Effect.Seq -> e.effects.any { targetsAPlayer(it) }; is Effect.May -> targetsAPlayer(e.effect); is Effect.UnlessPays -> targetsAPlayer(e.effect); is Effect.Modal -> e.modes.any { targetsAPlayer(it) }
         is Effect.Narrated -> e.text.startsWith("target player", ignoreCase = true); else -> false
+    }
+    /** Whether a spell being cast matches a spell filter (for cost taxes and "whenever you cast" checks). */
+    private fun spellMatches(f: ObjFilter, card: CardDef): Boolean {
+        val typeOk = f.kinds.any { k -> when (k) { Kind.SPELL -> true; Kind.CREATURE -> card.isCreature; Kind.ARTIFACT -> "Artifact" in card.types; Kind.ENCHANTMENT -> "Enchantment" in card.types; Kind.PLANESWALKER -> card.isPlaneswalker; else -> false } }
+        val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> card.isCreature; Kind.ARTIFACT -> "Artifact" in card.types; Kind.ENCHANTMENT -> "Enchantment" in card.types; Kind.PLANESWALKER -> card.isPlaneswalker; Kind.LAND -> "Land" in card.types; else -> false } }
+        return typeOk && notOk
     }
     private fun usesX(e: Effect): Boolean = when (e) { is Effect.Damage -> e.x; is Effect.Draw -> e.x; is Effect.Seq -> e.effects.any { usesX(it) }; is Effect.May -> usesX(e.effect); is Effect.Modal -> e.modes.any { usesX(it) }; else -> false }
 

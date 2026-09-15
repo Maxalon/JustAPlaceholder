@@ -31,7 +31,9 @@ data class Situation(
 @Serializable
 data class PlayerSpec(val id: String, val name: String = id, val life: Int? = null, val poison: Int? = null, val handSize: Int? = null, val librarySize: Int? = null,
                       /** Combat damage already taken from each commander this game, by object id (903.10a). */
-                      val commanderDamage: Map<String, Int> = emptyMap())
+                      val commanderDamage: Map<String, Int> = emptyMap(),
+                      /** Mana available right now, when stated ("only has one Mountain untapped"). */
+                      val mana: Int? = null)
 
 @Serializable
 data class TurnSpec(val activePlayer: String? = null, val phase: String? = null, val step: String? = null)

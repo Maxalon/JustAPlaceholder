@@ -244,6 +244,10 @@ sealed interface StaticEffect {
     data class Cant(val what: String, val by: ObjFilter? = null, val applies: ObjFilter? = null, val powerAboveHand: Boolean = false) : StaticEffect
     /** Teferi, Time Raveler: "Each opponent can cast spells only any time they could cast a sorcery." */
     data object OpponentsSorcerySpeed : StaticEffect
+    /** Grand Abolisher: "During your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments." */
+    data object OpponentsLockedOnYourTurn : StaticEffect
+    /** Thalia: "Noncreature spells cost {1} more to cast." (a tax on spells matching the filter; `yours` limits it to the controller's / opponents' spells) */
+    data class CostTax(val filter: ObjFilter, val amount: Int, val whose: Who? = null) : StaticEffect
     /** Cost modifiers and additional costs: narrated when the spell is cast (601.2b, 601.2f). */
     data class CostText(val text: String) : StaticEffect
     /** "~ attacks each combat if able." (508.1d) */
