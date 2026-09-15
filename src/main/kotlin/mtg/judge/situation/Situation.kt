@@ -70,6 +70,8 @@ data class ObjectSpec(
     val damage: Int = 0,
     val token: Boolean = false,
     val attachedTo: String? = null,
+    /** An until-end-of-turn modification already applied, e.g. "+3/+3". */
+    val pump: String? = null,
 )
 
 @Serializable

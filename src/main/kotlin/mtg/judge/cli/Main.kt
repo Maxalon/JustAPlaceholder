@@ -182,12 +182,17 @@ private fun showRule(rules: RulesRepo, query: String) {
     hits.forEach { println("  ${it.number}  ${it.text.take(120).replace('\n', ' ')}") }
 }
 
+private val flagOptions = setOf("debug", "short", "show-situation", "json", "show")
+
 private fun parseArgs(args: List<String>): Pair<List<String>, Map<String, String>> {
     val pos = mutableListOf<String>(); val opts = mutableMapOf<String, String>()
     var i = 0
     while (i < args.size) {
         val a = args[i]
-        if (a.startsWith("--")) { opts[a.removePrefix("--")] = args.getOrNull(i + 1) ?: ""; i += 2 } else { pos += a; i++ }
+        if (a.startsWith("--")) {
+            val next = args.getOrNull(i + 1)
+            if (next == null || next.startsWith("--") || a.removePrefix("--") in flagOptions) { opts[a.removePrefix("--")] = ""; i++ } else { opts[a.removePrefix("--")] = next; i += 2 }
+        } else { pos += a; i++ }
     }
     return pos to opts
 }

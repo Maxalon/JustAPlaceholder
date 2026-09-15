@@ -823,5 +823,109 @@
     "cite": [
       "608.2g"
     ]
+  },
+  {
+    "id": "craterhoof-alpha-strike",
+    "text": "I have Craterhoof Behemoth in hand and five 1/1 Elf tokens. I cast Craterhoof and swing with everything. Opponent is at 30 with no blockers.",
+    "expect": [
+      "opponent loses the game"
+    ],
+    "cite": [
+      "608.2h",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "blasphemous-act-token",
+    "text": "My opponent casts Blasphemous Act. I control Grizzly Bears, Serra Angel and a 7/7 token.",
+    "expect": [
+      "token: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "tithe-pays-for-one",
+    "text": "I control Smothering Tithe and my opponent draws two cards from Brainstorm and pays for one.",
+    "expect": [
+      "opponent pays {2}; Smothering Tithe's triggered ability has no further effect",
+      "You get a Treasure token"
+    ],
+    "cite": [
+      "608.2g",
+      "701.7a"
+    ]
+  },
+  {
+    "id": "mixed-counters-shock",
+    "text": "My Bears has two -1/-1 counters and one +1/+1 counter. Opponent casts Shock on it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "swords-attacker-growth",
+    "text": "I cast Swords to Plowshares on Colossal Dreadmaw while it's attacking me. Opponent responds with Giant Growth.",
+    "expect": [
+      "Colossal Dreadmaw: the battlefield → exile",
+      "opponent gains 9 life"
+    ],
+    "cite": [
+      "608.2h"
+    ]
+  },
+  {
+    "id": "sanguine-bond-lifelink",
+    "text": "My opponent controls Sanguine Bond and gains 5 life from Lifelink.",
+    "expect": [
+      "You lose 5 life"
+    ],
+    "cite": [
+      "119.3"
+    ]
+  },
+  {
+    "id": "end-step-pump",
+    "text": "It is the end step. I have Grizzly Bears with a +3/+3 pump from Giant Growth. Does it wear off?",
+    "expect": [
+      "Until-end-of-turn effects still apply during the end step; they end in the cleanup step"
+    ],
+    "cite": [
+      "514.2"
+    ]
+  },
+  {
+    "id": "chaos-warp-own",
+    "text": "I cast Chaos Warp targeting my own Sol Ring.",
+    "expect": [
+      "Sol Ring: the battlefield → your library"
+    ],
+    "cite": [
+      "701.24a"
+    ]
+  },
+  {
+    "id": "rip-vs-blood-artist",
+    "text": "I control Rest in Peace. My opponent's Grizzly Bears dies and they have Blood Artist.",
+    "expect": [
+      "Grizzly Bears: the battlefield → exile (replaced by Rest in Peace)"
+    ],
+    "cite": [
+      "614.6"
+    ]
+  },
+  {
+    "id": "bolt-face-guttersnipe",
+    "text": "They cast Lightning Bolt at my face with Guttersnipe out.",
+    "expect": [
+      "You take 3 damage"
+    ],
+    "cite": [
+      "120.3a"
+    ]
   }
 ]

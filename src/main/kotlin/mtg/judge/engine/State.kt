@@ -75,6 +75,8 @@ class StackItem(
     val modes: List<Int> = emptyList(),
     /** For triggered abilities: the player whose action caused the trigger ("that player"). */
     val causedBy: String? = null,
+    /** For triggered abilities: the amount in the causing event ("that much life", "that much damage"). */
+    val causedAmount: Int? = null,
 ) {
     val describe: String get() = when (kind) {
         StackKind.SPELL -> source.name

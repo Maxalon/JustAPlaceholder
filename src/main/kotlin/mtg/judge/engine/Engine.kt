@@ -84,6 +84,10 @@ class Engine(val state: GameState) {
         stateBasedActions()
     }
 
+    /** "I gain 5 life (from lifelink)": life gain as a given, with its triggers. */
+    fun gainLifeEvent(playerId: String, amount: Int) { gainLife(state.player(playerId), amount); stateBasedActions() }
+    fun loseLifeEvent(playerId: String, amount: Int) { val p = state.player(playerId); p.life = p.life?.minus(amount); trace.step("${p.subject} ${p.v("loses", "lose")} $amount life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} $amount life."; stateBasedActions() }
+
     /** A player draws cards outside any effect ("my opponent draws a card"): each draw is an event triggers can see. */
     fun draw(playerId: String, count: Int) {
         val who = state.player(playerId)
@@ -209,10 +213,22 @@ class Engine(val state: GameState) {
 
     fun beginStep(step: String, activePlayer: String) {
         emptyStackFirst("the ${step.replace('_', ' ')} step")
+        if (step == "cleanup") {
+            state.activePlayer = activePlayer; state.step = step; state.phase = "ending"
+            val affected = state.objects.values.filter { it.isOnBattlefield() && (it.pumps.isNotEmpty() || it.tempKeywords.isNotEmpty() || it.damage > 0) }
+            trace.step("The cleanup step: all damage marked on permanents is removed and all \"until end of turn\" effects end, simultaneously.", "514.2")
+            for (o in affected) { o.pumps.clear(); o.tempKeywords.clear(); o.damage = 0; trace.step("${o.name} is back to ${if (o.def.isCreature) state.describePt(o) else "normal"} with no damage.", "514.2"); state.outcomes += "${o.name}'s until-end-of-turn effects and damage are gone (cleanup)." }
+            state.shields.clear()
+            return
+        }
         state.activePlayer = activePlayer
         state.step = step
         state.phase = when (step) { "untap", "upkeep", "draw" -> "beginning"; "precombat_main" -> "precombat_main"; "postcombat_main" -> "postcombat_main"; "end", "cleanup" -> "ending"; else -> "combat" }
         trace.step("${state.player(activePlayer).possessive.replaceFirstChar { it.uppercase() }} ${step.replace('_', ' ')} begins.", when (step) { "upkeep" -> "503.1"; "end" -> "513.1"; "draw" -> "504.1"; else -> "500.1" })
+        if (step == "end" && state.objects.values.any { it.isOnBattlefield() && (it.pumps.isNotEmpty() || it.tempKeywords.isNotEmpty()) }) {
+            trace.step("\"Until end of turn\" effects don't end in the end step: \"at the beginning of the end step\" abilities trigger now, and the effects last until the cleanup step that follows.", "513.1", "514.2")
+            state.outcomes += "Until-end-of-turn effects still apply during the end step; they end in the cleanup step."
+        }
         onEvent(GameEvent.StepBegins(step, activePlayer))
     }
 
@@ -552,7 +568,8 @@ class Engine(val state: GameState) {
                 is GameEvent.EntersBattlefield -> event.obj.controller; is GameEvent.Dies -> event.obj.controller; is GameEvent.LeavesBattlefield -> event.obj.controller
                 is GameEvent.CreaturesDealtCombatDamageToPlayer -> event.playerId; else -> null
             }
-            putTriggerOnStack(obj, ability, emptyList(), causedBy)
+            val causedAmount = when (event) { is GameEvent.LifeGained -> event.amount; is GameEvent.DamageDealt -> event.amount; else -> null }
+            putTriggerOnStack(obj, ability, emptyList(), causedBy, causedAmount)
         }
         if (ordered.size > 1) trace.step("Multiple abilities triggered at once; they are put on the stack in APNAP order, each player choosing the order among their own.", "603.3b")
     }
@@ -597,7 +614,7 @@ class Engine(val state: GameState) {
         try { return state.matches(f, o, controller) } finally { o.zone = z }
     }
 
-    private fun putTriggerOnStack(obj: GameObject, ability: TriggeredAbility, targets: List<Ref>, causedBy: String? = null): StackItem? {
+    private fun putTriggerOnStack(obj: GameObject, ability: TriggeredAbility, targets: List<Ref>, causedBy: String? = null, causedAmount: Int? = null): StackItem? {
         val needed = ability.effect.targets()
         var targets = targets
         if (needed.size == 1 && targets.isEmpty()) {
@@ -616,7 +633,7 @@ class Engine(val state: GameState) {
             if (state.clarifications.none { it.about == "${obj.name}'s triggered ability's target" }) state.clarifications += Clarification("${obj.name}'s trigger target", "${obj.name}'s triggered ability needs a target (${needed.joinToString("; ") { it.raw }}); which? (603.3d)")
             return null
         }
-        val item = StackItem(state.newStackId(), StackKind.TRIGGERED, obj.controller, obj, ability.effect, targets, zonesOf(targets), ability.text, causedBy = causedBy)
+        val item = StackItem(state.newStackId(), StackKind.TRIGGERED, obj.controller, obj, ability.effect, targets, zonesOf(targets), ability.text, causedBy = causedBy, causedAmount = causedAmount)
         state.stack += item
         state.player(obj.controller).let { p -> trace.step("${p.subject} ${p.v("puts", "put")} ${obj.name}'s triggered ability on the stack${if (state.stack.size > 1) ", above ${state.stack[state.stack.size - 2].describe}" else ""}.", "603.3", "603.3a") }
         if (ability.effect.hasUnparsed()) state.unsupported += Unsupported(obj.name, "Part of the triggered ability is not modeled: " + unparsedText(ability.effect))
@@ -672,6 +689,17 @@ class Engine(val state: GameState) {
                 else forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let(bounce) }
             }
             is Effect.DamagePlayer -> for (p in resolvePlayers(effect.who, item)) applyDamage(item.source.name, Ref.Player(p.id), effect.amount, item.source)
+            is Effect.LoseLifeThatMuch -> {
+                val n = item.causedAmount ?: run { state.unsupported += Unsupported(item.describe, "\"That much\" refers to an amount the engine didn't record."); return }
+                resolvePlayers(effect.who, item).forEach { p -> p.life = p.life?.minus(n); trace.step("${p.subject} ${p.v("loses", "lose")} $n life (that much)${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} $n life." }
+            }
+            is Effect.PumpAllCount -> {
+                val x = when (val c = effect.count) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }; is CountExpr.Unknown -> null }
+                if (x == null) { state.unsupported += Unsupported(item.describe, "Couldn't count X."); return }
+                trace.step("X is $x (counted as the effect resolves).", "608.2h")
+                applyEffect(Effect.PumpAll(effect.filter, x, x, effect.keywords), item)
+            }
+            is Effect.ShuffleIntoLibrary -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o -> move(o, Zone.LIBRARY, "${o.name} is shuffled into its owner's library.", "701.24a", "400.7") } }
             is Effect.CreateToken -> {
                 val who = resolveWho(effect.who, item) ?: run { state.unsupported += Unsupported(item.describe, "Couldn't work out who creates the token."); return }
                 val def = Generic.token(effect.token) ?: run { state.unsupported += Unsupported(item.describe, "Couldn't read the token \"${effect.token}\"."); return }
@@ -1127,6 +1155,7 @@ class Engine(val state: GameState) {
         is Effect.Draw -> "draw ${effect.count} card${if (effect.count > 1) "s" else ""}"
         is Effect.Damage -> "deal ${effect.amount} damage to ${effect.target.raw}"
         is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
+        is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
         is Effect.CreateToken -> "create ${effect.count} ${effect.token} token${if (effect.count > 1) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"
         is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"

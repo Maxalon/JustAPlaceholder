@@ -115,6 +115,12 @@ sealed interface Effect {
     data class GainKeywords(val target: TargetSpec, val keywords: Set<String>) : Effect
     data class GainLife(val who: Who, val amount: Int) : Effect
     data class LoseLife(val who: Who, val amount: Int) : Effect
+    /** "Target opponent loses that much life" after "whenever you gain life": the amount of the causing event. */
+    data class LoseLifeThatMuch(val who: Who) : Effect
+    /** "Creatures you control get +X/+X (and gain trample) until end of turn, where X is the number of [count]." */
+    data class PumpAllCount(val filter: ObjFilter, val count: CountExpr, val keywords: List<String>) : Effect
+    /** "The owner of target permanent shuffles it into their library." */
+    data class ShuffleIntoLibrary(val target: TargetSpec) : Effect
     /** "~ gets +N/+N until end of turn" (no target). */
     data class PumpSelf(val power: Int, val toughness: Int) : Effect
     /** "[filter] get +N/+N until end of turn": affects the objects present when it resolves (611.2c). */
@@ -152,7 +158,7 @@ sealed interface Effect {
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
-        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is DamagePlayer -> emptyList()
+        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
