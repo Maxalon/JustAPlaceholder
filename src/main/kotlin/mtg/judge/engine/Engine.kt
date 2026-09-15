@@ -60,7 +60,7 @@ class Engine(val state: GameState) {
         val needed = effect?.targets() ?: emptyList()
         var asked = false
         var noLegalTarget = false
-        var targets = if (targets.isEmpty() && needed.size == 1) inferTarget(card.name, needed[0], playerId, harmful = isHarmful(effect), source = obj).also { asked = it == null && state.clarifications.any { c -> c.about == "${card.name}'s target" }; noLegalTarget = it != null && it.isEmpty() } ?: targets else targets
+        var targets = if (targets.isEmpty() && needed.size == 1) inferTarget(card.name, needed[0], playerId, harmful = isHarmful(effect), source = obj, beneficial = isBeneficial(effect)).also { asked = it == null && state.clarifications.any { c -> c.about == "${card.name}'s target" }; noLegalTarget = it != null && it.isEmpty() } ?: targets else targets
         if (noLegalTarget) { trace.step("${card.name} needs a target (${needed[0].raw}) and nothing can legally be chosen, so it can't be cast.", "601.2c", "115.1"); state.outcomes += "${card.name} can't be cast: no legal target."; return null }
         if (!card.isInstantOrSorcery && card.abilities.none { it is TriggeredAbility || it is ActivatedAbility || it is StaticAbility } && card.abilities.isNotEmpty()) {
             state.unsupported += Unsupported(card.name, "Rules text not modeled: " + card.abilities.filterIsInstance<UnparsedAbility>().joinToString(" | ") { it.text })
@@ -178,6 +178,11 @@ class Engine(val state: GameState) {
             if (obj.tapped == true) { trace.step("${obj.name} is already tapped, so it can't be tapped for mana.", "602.5a"); state.outcomes += "${obj.name} can't be tapped (already tapped)."; return null }
             tap(obj); trace.step("${p.subject} ${p.v("taps", "tap")} ${obj.name} for {R}; that's the only mana it can make under ${moon.name}.", "605.1a", "605.3b"); state.outcomes += "${obj.name} adds {R} (only), because of ${moon.name}."; return null
         }
+        state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { e -> e is StaticEffect.CantActivate && (!e.opponentsOnly || it.controller != playerId) && state.matches(e.filter, obj, it.controller, it) } }?.let { lock ->
+            val e = lock.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.filterIsInstance<StaticEffect.CantActivate>().first { state.matches(it.filter, obj, lock.controller, lock) }
+            trace.step("${lock.name} says activated abilities of ${e.filter.raw} can't be activated, and ${obj.name} is ${withArticle(e.filter.raw)}, so ${state.player(playerId).subject.lowercase()} can't begin to activate its ability${if (abilities.any { a -> a.effect is Effect.AddMana || (a.effect as? Effect.Seq)?.effects?.any { it is Effect.AddMana } == true }) " (mana abilities included: they are activated abilities too)" else ""}.", "602.5", "604.2", "101.2")
+            state.outcomes += "${obj.name}'s ability can't be activated (${lock.name})."; return null
+        }
         if (abilities.isEmpty()) { state.unsupported += Unsupported(obj.name, "No activated ability was recognised on ${obj.name}."); return null }
         if (abilities.size > 1 && abilityIndex == null) {
             state.clarifications += Clarification("${obj.name}'s ability", "${obj.name} has ${abilities.size} activated abilities; which one? " + abilities.mapIndexed { i, a -> "[$i] ${a.text}" }.joinToString(" "))
@@ -284,6 +289,8 @@ class Engine(val state: GameState) {
         return item
     }
 
+    /** Pumps, keyword grants, shields, +1/+1 counters: aimed at your own things when an opponent's also qualify. */
+    private fun isBeneficial(e: Effect?): Boolean = when (e) { is Effect.Pump, is Effect.GainKeywords, is Effect.CreateShield, is Effect.Regenerate, is Effect.Untap -> true; is Effect.PutCounters -> e.kind.let { it == "+1/+1" || it.startsWith("+") }; is Effect.Seq -> e.effects.isNotEmpty() && e.effects.all { isBeneficial(it) || it is Effect.Narrated }; is Effect.May -> isBeneficial(e.effect); else -> false }
     private fun isHarmful(e: Effect?): Boolean = when (e) { is Effect.Destroy, is Effect.Exile, is Effect.Damage, is Effect.Bounce, is Effect.Tap, is Effect.Counter, is Effect.ShuffleIntoLibrary, is Effect.GainControl -> true; is Effect.Seq -> e.effects.any { isHarmful(it) }; is Effect.May -> isHarmful(e.effect); is Effect.UnlessPays -> isHarmful(e.effect); else -> false }
     /** Effects phrased "target player …" whose player is carried by a [Who] rather than a TargetSpec. */
     private fun targetsAPlayer(e: Effect): Boolean = when (e) {
@@ -1481,7 +1488,7 @@ class Engine(val state: GameState) {
      * When the user didn't say what a one-target spell targets, and exactly one thing in the
      * situation is a legal target, use it and say so. Several candidates: ask instead.
      */
-    private fun inferTarget(what: String, spec: TargetSpec, controller: String, harmful: Boolean = false, source: GameObject? = null): List<Ref>? {
+    private fun inferTarget(what: String, spec: TargetSpec, controller: String, harmful: Boolean = false, source: GameObject? = null, beneficial: Boolean = false): List<Ref>? {
         if (!spec.filter.verifiable) return null
         val candidates = mutableListOf<Ref>()
         for (o in state.objects.values) if (o.zone == Zone.BATTLEFIELD || o.zone == Zone.STACK) { val r = Ref.Obj(o.id); if (filterMatches(spec.filter, r, controller)) candidates += r }
@@ -1497,6 +1504,13 @@ class Engine(val state: GameState) {
                 if (distinct.isEmpty()) { trace.step("${untargetable.joinToString("; ") { (r, why, _) -> "${state.nameOf(r)} fits \"${spec.raw}\" but can't be targeted: $why" }}. There is no legal target for $what.", "115.1", *rules); return emptyList() }
                 trace.step("${untargetable.joinToString("; ") { (r, why, _) -> "${state.nameOf(r)} fits \"${spec.raw}\" but can't be targeted: $why" }}, so it isn't a candidate.", *rules)
             }
+        }
+        // Pumping, protecting, untapping: aimed at your own things when an opponent's also qualify; in combat, at the one that's fighting.
+        if (beneficial && !harmful && distinct.size > 1) {
+            val mine = distinct.filter { r -> r is Ref.Obj && state.objects[r.id]?.controller == controller }
+            if (mine.isNotEmpty() && mine.size < distinct.size) distinct = mine
+            if (distinct.size > 1) { val fighting = distinct.filter { r -> r is Ref.Obj && state.objects[r.id]?.let { it.attacking != null || it.blocking != null } == true }; if (fighting.size == 1) distinct = fighting }
+            if (distinct.size == 1) { state.assumptions += "$what targets ${state.nameOf(distinct[0])}: of the legal targets, it's the one ${state.player(controller).subject.lowercase()} would help (own creature${if (state.objects[(distinct[0] as Ref.Obj).id]?.let { it.attacking != null || it.blocking != null } == true) ", in combat" else ""}); say so if it's another."; return distinct }
         }
         // Destroying, exiling or damaging: nobody aims that at their own things when an opponent's qualify.
         if (harmful && distinct.size > 1) {

@@ -26,6 +26,8 @@ class BatchThirteenTest {
     private val hailfire = card("Torment of Hailfire", "Sorcery", "Repeat the following process X times. Each opponent loses 3 life unless that player sacrifices a nonland permanent of their choice or discards a card.", "{X}{B}{B}", "B")
     private val bloodMoon = card("Blood Moon", "Enchantment", "Nonbasic lands are Mountains.", "{2}{R}", "R")
     private val urzasSaga = card("Urza's Saga", "Enchantment Land — Urza's Saga", "(As this Saga enters and after your draw step, add a lore counter.)\nI — Urza's Saga gains \"{T}: Add {C}.\"\nII — Urza's Saga gains \"{2}, {T}: Create a 0/0 colorless Construct artifact creature token with 'This creature gets +1/+1 for each artifact you control.'\"\nIII — Search your library for an artifact card with mana cost {0} or {1}, put it onto the battlefield, then shuffle.", "", "")
+    private val stonySilence = card("Stony Silence", "Enchantment", "Activated abilities of artifacts can't be activated.", "{1}{W}", "W")
+    private val solRing = card("Sol Ring", "Artifact", "{T}: Add {C}{C}.", "{1}", "")
     private val serra = card("Serra Angel", "Creature — Angel", "Flying, vigilance", "{3}{W}{W}", "W", "4", "4", "Flying", "Vigilance")
     private val viper = card("Ambush Viper", "Creature — Snake", "Flash\nDeathtouch", "{1}{G}", "G", "2", "1", "Flash", "Deathtouch")
     private val krenko = card("Krenko, Mob Boss", "Legendary Creature — Goblin Warrior", "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.", "{2}{R}{R}", "R", "3", "3")
@@ -316,6 +318,22 @@ class BatchThirteenTest {
         e.narrateLandTypeSetters()
         assertTrue(s.trace.steps.any { it.text.contains("chapter abilities included") && "714.4" in it.rules && "305.7" in it.rules }, s.trace.steps.joinToString("\n") { it.text })
         assertTrue(s.outcomes.any { it.startsWith("Urza's Saga is a Mountain") })
+    }
+
+    @Test
+    fun `stony silence stops artifact abilities, mana abilities included`() {
+        val s = state(); s.put("silence", stonySilence, "me"); s.put("ring", solRing, "opp"); val e = Engine(s)
+        assertTrue(e.activate("opp", "ring", 0, emptyList()) == null); assertTrue(s.outcomes.any { it.contains("can't be activated (Stony Silence)") }); assertTrue("602.5" in s.cited())
+        val s2 = state(); s2.put("ring", solRing, "opp"); val e2 = Engine(s2)
+        assertTrue(e2.activate("opp", "ring", 0, emptyList()) == null, "a mana ability resolves at once and leaves nothing on the stack"); assertTrue(s2.outcomes.any { it.contains("add {C}{C}") }, s2.outcomes.toString())
+    }
+
+    @Test
+    fun `a pump with no target named goes to your own creature, the one in combat first`() {
+        val s = state(); s.put("bears", bears, "me"); s.put("serra", serra, "me"); s.put("wall", trampler, "opp"); val e = Engine(s)
+        e.beginDeclaringAttackers(); e.declareAttacker("me", "bears", Ref.Player("opp")); e.finishDeclaringAttackers()
+        assertTrue(e.cast("me", giantGrowth, emptyList()) != null); e.resolveAll()
+        assertEquals(5, s.obj("bears").power); assertEquals(4, s.obj("serra").power); assertTrue(s.assumptions.any { it.contains("in combat") }, s.assumptions.toString())
     }
 
     @Test

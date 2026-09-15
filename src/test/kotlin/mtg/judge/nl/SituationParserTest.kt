@@ -233,5 +233,8 @@ class SituationParserTest {
         assertEquals(1, r.situation.players.first { it.id == "me" }.life); assertTrue(r.situation.events.any { it.verb == "attack" && it.obj == "sol_ring" }); assertTrue(r.unread.isEmpty(), r.unread.toString())
         val t = parser.parse("I attack with Sol Ring. After damage, does Sol Ring untap?")
         assertEquals("tapped", t.situation.events.last { it.verb == "ask" }.to); assertEquals("sol_ring", t.situation.events.last { it.verb == "ask" }.obj); assertTrue(t.unread.isEmpty(), t.unread.toString())
+        val u = parser.parse("My opponent cast Sol Ring last turn. I have 4 lands and attack with Time Vault.")
+        assertEquals("opp", u.situation.objects.first { it.card.name == "Sol Ring" }.controller); assertEquals(false, u.situation.objects.first { it.card.name == "Sol Ring" }.summoningSick)
+        assertEquals(4, u.situation.players.first { it.id == "me" }.mana); assertEquals("me", u.situation.events.first { it.verb == "attack" }.player); assertTrue(u.unread.isEmpty(), u.unread.toString())
     }
 }

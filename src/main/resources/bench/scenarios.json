@@ -3181,5 +3181,59 @@
     "cite": [
       "702.20b"
     ]
+  },
+  {
+    "id": "stony-silence-sol-ring",
+    "text": "My opponent cast Sol Ring last turn. I control Stony Silence. Can they tap it for mana?",
+    "expect": [
+      "Sol Ring's ability can't be activated (Stony Silence)"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "602.5"
+    ]
+  },
+  {
+    "id": "ghostly-prison-four-lands-three-attackers",
+    "text": "My opponent has Ghostly Prison. I have 4 lands and attack with three creatures.",
+    "expect": [
+      "opponent takes 1 damage. (×2)"
+    ],
+    "notExpect": [
+      "Not understood",
+      "You take"
+    ],
+    "cite": [
+      "508.1a"
+    ]
+  },
+  {
+    "id": "giant-growth-after-no-block-picks-attacker",
+    "text": "I attack with Grizzly Bears into an untapped Wall of Omens. They don't block. I cast Giant Growth after blockers.",
+    "expect": [
+      "Grizzly Bears is 5/5 until end of turn",
+      "opponent takes 5 damage"
+    ],
+    "notExpect": [
+      "Which?"
+    ],
+    "cite": [
+      "611.2a"
+    ]
+  },
+  {
+    "id": "ponder-do-i-shuffle",
+    "text": "I cast Ponder. Do I shuffle?",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "701.24a"
+    ]
   }
 ]

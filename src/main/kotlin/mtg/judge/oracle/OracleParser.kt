@@ -340,6 +340,10 @@ object OracleParser {
         if (Regex("""^If ~ is in your opening hand, you may begin the game with it on the battlefield\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("103.6")))
         if (Regex("""^(?:Combat )?damage that would be dealt by (?:creatures|sources) you control can't be prevented\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("615.12")))
         if (Regex("""^Each opponent can cast spells only any time they could cast a sorcery\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsSorcerySpeed)
+        // "Activated abilities of artifacts can't be activated." / "Activated abilities of creatures your opponents control can't be activated."
+        Regex("""^Activated abilities of (.+?) can't be activated\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val f = parseFilter(m.groupValues[1], Kind.PERMANENT); if (f.verifiable) return listOf(StaticEffect.CantActivate(f))
+        }
         if (Regex("""^During your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsLockedOnYourTurn)
         Regex("""^You can't cast ~ during your first(?:, second)?(?:, or third| or second)? turns? of the game\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.CantCastBeforeTurn(if (line.contains("third")) 4 else if (line.contains("second")) 3 else 2)) }
         Regex("""^(Noncreature spells|Creature spells|Instant and sorcery spells|Spells|Artifact spells|Enchantment spells)(?: your opponents cast| you cast)? cost \{(\d+)\} (more|less) to cast\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->

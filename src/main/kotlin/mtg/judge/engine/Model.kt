@@ -257,6 +257,8 @@ sealed interface StaticEffect {
     data class Cant(val what: String, val by: ObjFilter? = null, val applies: ObjFilter? = null, val powerAboveHand: Boolean = false) : StaticEffect
     /** Teferi, Time Raveler: "Each opponent can cast spells only any time they could cast a sorcery." */
     data object OpponentsSorcerySpeed : StaticEffect
+    /** Stony Silence, Linvala: "Activated abilities of [filter] can't be activated." ([mana] restricts it to mana abilities, as Damping Sphere-style text does not). */
+    data class CantActivate(val filter: ObjFilter, val manaOnly: Boolean = false, val opponentsOnly: Boolean = false) : StaticEffect
     /** Grand Abolisher: "During your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments." */
     data object OpponentsLockedOnYourTurn : StaticEffect
     /** Serra Avenger: "You can't cast this spell during your first, second, or third turns of the game." */
