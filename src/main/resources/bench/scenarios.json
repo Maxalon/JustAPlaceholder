@@ -2776,5 +2776,102 @@
     "cite": [
       "704.5f"
     ]
+  },
+  {
+    "id": "fog-named-third-player",
+    "text": "Alice attacks Bob with Serra Angel. Carol casts Fog. Does Bob take damage?",
+    "expect": [
+      "Damage to Bob from Serra Angel is prevented",
+      "No: Bob takes no damage"
+    ],
+    "cite": [
+      "615.1"
+    ]
+  },
+  {
+    "id": "control-magic-disenchant",
+    "text": "I control Grizzly Bears and my opponent casts Control Magic on it. Then I cast Disenchant on Control Magic. Do I get the Bears back?",
+    "expect": [
+      "opponent controls Grizzly Bears",
+      "You control Grizzly Bears again"
+    ],
+    "cite": [
+      "611.2b"
+    ]
+  },
+  {
+    "id": "they-block-bolt-the-wall",
+    "text": "My opponent has Wall of Omens and I have Lightning Bolt. I attack with Grizzly Bears, they block, and I bolt the Wall in response to nothing.",
+    "expect": [
+      "opponent blocks with Wall of Omens",
+      "Wall of Omens: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "reb-on-counterspell",
+    "text": "I cast Lightning Bolt at my opponent and they respond with Counterspell. I respond with Red Elemental Blast on Counterspell.",
+    "expect": [
+      "Counterspell is countered",
+      "opponent takes 3 damage"
+    ],
+    "notExpect": [
+      "needs 0 targets"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "overrun-attack-with-both",
+    "text": "I have two Grizzly Bears and cast Overrun. I attack with both. My opponent blocks one with a 1/1.",
+    "expect": [
+      "Grizzly Bears is 5/5 until end of turn. (×2)",
+      "opponent takes 4 damage",
+      "opponent takes 5 damage"
+    ],
+    "cite": [
+      "702.19b"
+    ]
+  },
+  {
+    "id": "platinum-angel-poison",
+    "text": "My opponent has Platinum Angel and I attack with Blightsteel Colossus. They already have 10 poison.",
+    "expect": [
+      "opponent stays in the game: Platinum Angel keeps opponent from losing",
+      "opponent has 21 poison counters"
+    ],
+    "cite": [
+      "104.3b"
+    ]
+  },
+  {
+    "id": "flash-it-in-end-step",
+    "text": "It's my end step and my opponent has Vendilion Clique in hand. Can they flash it in on my end step?",
+    "expect": [
+      "Vendilion Clique enters the battlefield"
+    ],
+    "cite": [
+      "702.8a"
+    ]
+  },
+  {
+    "id": "rhystic-pays-then-doesnt",
+    "text": "I control Rhystic Study. My opponent casts Sol Ring and pays the 1. Then they cast Arcane Signet and don't pay.",
+    "expect": [
+      "opponent pays {1}; Rhystic Study's triggered ability has no further effect",
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "normally can't be"
+    ],
+    "cite": [
+      "608.2g"
+    ]
   }
 ]

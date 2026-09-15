@@ -66,7 +66,7 @@ class Engine(val state: GameState) {
             trace.step("${card.name} itself doesn't target anything as a spell; ${describeTargets(targets).removePrefix(" targeting ")} will be the target of its enters-the-battlefield trigger when it's put on the stack.", "603.3d", "601.2c")
             emptyList()
         } else targets
-        if (needed.size != targets.size && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && effect != null && targetsAPlayer(effect))) {
+        if (needed.size != targets.size && effect !is Effect.Modal && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && effect != null && targetsAPlayer(effect))) {
             if (!asked) state.clarifications += Clarification("${card.name}'s target${if (needed.size == 1) "" else "s"}",
                 "${card.name} needs ${needed.size} target${if (needed.size == 1) "" else "s"} (${needed.joinToString("; ") { it.raw }}) but ${targets.size} ${if (targets.size == 1) "was" else "were"} given (601.2c).")
             if (needed.size > targets.size) return null
@@ -89,10 +89,15 @@ class Engine(val state: GameState) {
             val kind = card.types.firstOrNull { it in setOf("Creature", "Sorcery", "Enchantment", "Artifact", "Planeswalker", "Battle") } ?: "permanent"
             val timingRule = mapOf("Creature" to "302.1", "Sorcery" to "307.1", "Enchantment" to "303.1", "Artifact" to "301.1", "Planeswalker" to "306.1", "Battle" to "310.1")[kind]
             if (offTiming && card.has("flash")) trace.step("${card.name} has flash, so it can be cast any time its controller could cast an instant, including now.", "702.8a")
-            else if (offTiming && timingRule != null) { trace.step("A ${kind.lowercase()} spell can normally be cast only during its controller's main phase with an empty stack; ${card.name} doesn't have flash. Assuming an effect allows it, as described.", timingRule); state.assumptions += "${card.name} is cast at a time a ${kind.lowercase()} spell normally can't be (no flash); assuming something allows it." }
+            else if (offTiming && timingRule != null) { trace.step("${withArticle(kind.lowercase()).replaceFirstChar { c -> c.uppercase() }} spell can normally be cast only during its controller's main phase with an empty stack; ${card.name} doesn't have flash. Assuming an effect allows it, as described.", timingRule); state.assumptions += "${card.name} is cast at a time ${withArticle(kind.lowercase())} spell normally can't be (no flash); assuming something allows it." }
         }
         // A modal spell's targets belong to the chosen mode (700.2c): validate against that mode's needs.
         val modal = effect as? Effect.Modal
+        // A modal spell with a target but no mode named: the mode whose target the given target fits ("Red Elemental Blast on Counterspell").
+        val modes = if (modal != null && modes.isEmpty() && targets.size == 1) {
+            val fits = modal.modes.withIndex().filter { (_, m) -> m.targets().size == 1 && m.targets()[0].filter.let { f -> when (val t = targets[0]) { is Ref.Stack -> Kind.SPELL in f.kinds || Kind.ABILITY in f.kinds; is Ref.Obj -> Kind.SPELL !in f.kinds && (!f.verifiable || filterMatches(f, t, playerId)); is Ref.Player -> Kind.PLAYER in f.kinds } } }
+            if (fits.size == 1) { state.assumptions += "${card.name}'s mode: \"${modal.modeTexts.getOrNull(fits[0].index) ?: "?"}\" (the one the target fits)."; listOf(fits[0].index + 1) } else modes
+        } else modes
         val modeEffect = modal?.let { m -> modes.mapNotNull { i -> m.modes.getOrNull(i - 1) }.let { if (it.isEmpty()) null else Effect.Seq(it) } }
         val item = StackItem(state.newStackId(), StackKind.SPELL, playerId, obj, effect, targets, zonesOf(targets), card.oracleText, modes, x = x, kicked = kicked, evoked = evoked && card.has("evoke"), choice = choice)
         state.stack += item

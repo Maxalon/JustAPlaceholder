@@ -86,10 +86,10 @@ class SituationParserTest {
         assertEquals("alice", p.situation.turn.activePlayer)
         assertEquals("bob", p.situation.objects.first { it.card.name == "Rhystic Study" }.controller)
         val verbs = p.situation.events.map { it.verb }
-        assertEquals(listOf("cast", "pay", "attack", "attack", "resolveAll"), verbs)
+        assertEquals(listOf("cast", "pay", "resolveAll", "attack", "attack", "resolveAll"), verbs)
         assertEquals("alice", p.situation.events[0].player); assertEquals("no", p.situation.events[1].to)
-        assertEquals(listOf("alice"), p.situation.events[2].targets); assertEquals(listOf("carol"), p.situation.events[3].targets)
-        assertEquals("bob", p.situation.events[3].player)
+        assertEquals(listOf("alice"), p.situation.events[3].targets); assertEquals(listOf("carol"), p.situation.events[4].targets)
+        assertEquals("bob", p.situation.events[4].player)
         assertTrue(p.unread.isEmpty(), "unread: ${p.unread}")
         // "they" after a named actor is that player; "me" joins the table as a player.
         val q = parser.parse("Bob casts Sol Ring targeting me. They respond with Stifle on it.")
@@ -184,5 +184,15 @@ class SituationParserTest {
         val ask = p.situation.events.last(); assertEquals("ask", ask.verb); assertEquals("playerSurvive", ask.to); assertEquals("me", ask.player)
         val q = parser.parse("I have Stifle in hand. I cast it paying 3 life.")
         assertEquals(listOf("loseLife", "cast", "resolveAll"), q.situation.events.map { it.verb }); assertEquals(3, q.situation.events[1].amount)
+    }
+
+    @Test
+    fun `verbs never become short names, bare blocks pick the defender's creature, and attack-with-both`() {
+        val p = parser.parse("I control Sol Ring and my opponent casts Rhystic Study on it. I have two Time Vault and attack with both. They block.")
+        assertEquals("opp", p.situation.events.first { it.verb == "cast" }.player)
+        assertEquals(listOf("sol_ring"), p.situation.events.first { it.verb == "cast" }.targets)
+        assertTrue(p.situation.events.any { it.verb == "attackAll" && it.player == "me" })
+        val block = p.situation.events.first { it.verb == "block" }
+        assertEquals("opp", block.player); assertEquals("rhystic_study", block.obj)
     }
 }

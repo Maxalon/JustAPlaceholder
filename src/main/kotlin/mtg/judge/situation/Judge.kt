@@ -66,8 +66,10 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         engine.stateBasedActions()
         var attackBatchEnd = -1
         val deferredAsks = mutableListOf<Pair<Int, EventSpec>>()
+        var lastStep: EventSpec? = null
         for ((i, e) in sit.events.withIndex()) {
             if (e.verb == "ask") { deferredAsks += i to e; continue }   // answered once combat damage has been dealt
+            if (e.verb == "step") { if (lastStep?.let { it.to == e.to && it.player == e.player } == true) continue; lastStep = e } else if (e.verb != "resolveAll") lastStep = null
             // Consecutive attack events are one declaration: "attacks alone", exalted and "whenever you attack" need the whole set.
             if ((e.verb == "attack" || e.verb == "attackAll") && i > attackBatchEnd) {
                 attackBatchEnd = i; while (attackBatchEnd + 1 < sit.events.size && sit.events[attackBatchEnd + 1].verb in setOf("attack", "attackAll") && sit.events[attackBatchEnd + 1].player == e.player) attackBatchEnd++
@@ -153,6 +155,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "resolve" -> engine.resolveTop()
             "resolveall" -> engine.resolveAll()
             "ask" -> {
+                if (e.to == "playerDamage") { val p = state.player(e.player ?: throw JudgeException("ask needs a player")); val name = if (p.you) "you" else p.name; val hit = state.trace.steps.any { Regex("""deals \d+ (?:combat )?damage to ${Regex.escape(name)}\b""").containsMatchIn(it.text) }; val prevented = state.trace.steps.any { it.text.contains("to $name") && it.text.contains("prevented") }; state.outcomes += if (hit) "Yes: $name ${p.v("takes", "take")} damage." else "No: $name ${p.v("takes", "take")} no damage${if (prevented) " (it's prevented)" else ""}."; return }
                 if (e.to == "playerSurvive") { val p = state.player(e.player ?: throw JudgeException("ask needs a player")); state.outcomes += if (p.lost) "No: ${p.subject} ${p.v("has", "have")} lost the game." else "Yes: ${p.subject} ${p.v("is", "are")} still in the game${p.life?.let { " at $it life" } ?: ""}."; return }
                 val o = state.obj(e.obj ?: throw JudgeException("ask needs an object"))
                 when (e.to) {
@@ -201,7 +204,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "pay" -> "${who ?: "the player"} ${if (e.to == "no") "${if (who == "you") "don't" else "doesn't"} pay" else "${if (who == "you") "pay" else "pays"}"}"
             "resolve", "pass" -> "the top of the stack resolves"
             "resolveall" -> "everything on the stack resolves"
-            "ask" -> if (e.to == "playerSurvive") "question: ${if (who == "you") "do you" else "does $who"} survive?" else "question: ${if (e.to == "block" || e.to == "attack") "can" else "does"} ${state.objects[e.obj]?.name ?: e.obj} ${if (e.to == "damage") "deal damage to ${e.targets.firstOrNull()?.let { t -> state.players.firstOrNull { it.id == t }?.let { if (it.you) "you" else it.name } } ?: "the player"}" else e.to}?"
+            "ask" -> if (e.to == "playerSurvive") "question: ${if (who == "you") "do you" else "does $who"} survive?" else if (e.to == "playerDamage") "question: ${if (who == "you") "do you" else "does $who"} take damage?" else "question: ${if (e.to == "block" || e.to == "attack") "can" else "does"} ${state.objects[e.obj]?.name ?: e.obj} ${if (e.to == "damage") "deal damage to ${e.targets.firstOrNull()?.let { t -> state.players.firstOrNull { it.id == t }?.let { if (it.you) "you" else it.name } } ?: "the player"}" else e.to}?"
             "enter" -> "${state.objects[e.obj]?.name ?: e.obj} enters the battlefield"
             "leave" -> "${state.objects[e.obj]?.name ?: e.obj} goes to ${e.to}"
             "damage" -> "${e.source} deals ${e.amount} damage$tg"
