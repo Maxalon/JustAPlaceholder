@@ -411,6 +411,9 @@ object OracleParser {
                     val cost = payRe.matchEntire(choice)?.groupValues?.get(1)
                     out += Effect.IfYouDo(if (cost != null) Effect.Narrated("pay $cost", listOf("608.2g")) else parseSentence(choice.replaceFirstChar { it.uppercase() }), parseSentence(next.removePrefix("If you do, ").removePrefix("if you do, ").replaceFirstChar { it.uppercase() }), cost)
                     i += 2
+                } else if (Regex("""^If (?:this spell|~) was kicked, it deals (\d+) damage instead\.?$""", RegexOption.IGNORE_CASE).matches(cur) && out.lastOrNull() is Effect.Damage) {
+                    val n = Regex("""(\d+)""").find(cur)!!.groupValues[1].toInt()
+                    out[out.lastIndex] = (out.last() as Effect.Damage).copy(kickedAmount = n); i++
                 } else if (Regex("""^(?:It|They) can't be regenerated\.?$""", RegexOption.IGNORE_CASE).matches(cur) && out.isNotEmpty()) {
                     val prev = out.removeAt(out.lastIndex)
                     out += when (prev) { is Effect.Destroy -> prev.copy(noRegen = true); is Effect.ForAll -> prev.copy(noRegen = true); else -> Effect.Seq(listOf(prev, Effect.Narrated("it can't be regenerated", listOf("701.19c")))) }
@@ -578,7 +581,11 @@ object OracleParser {
             val payer = when (m.groupValues[2].lowercase()) { "you" -> Who.YOU; "an opponent" -> Who.OPPONENT; "target player" -> Who.TARGET_PLAYER; "its controller" -> Who.CONTROLLER_OF_TARGET; else -> Who.THAT_PLAYER }
             return Effect.UnlessPays(parseSentence(m.groupValues[1]), payer, m.groupValues[3].replace(Regex(""", where X is (.+)$"""), " (X = $1)"))
         }
-        mayRe.matchEntire(s)?.let { return Effect.May(parseSentence(it.groupValues[1])) }
+        mayRe.matchEntire(s)?.let { m ->
+            val inner = parseSentence(m.groupValues[1])
+            // "You may gain 1 life": the imperative reads as "You gain 1 life".
+            return Effect.May(if (inner is Effect.Unparsed) parseSentence("You " + m.groupValues[1]).let { if (it is Effect.Unparsed) inner else it } else inner)
+        }
         drawRe.matchEntire(s)?.let { m ->
             val who = when (m.groupValues[1].trim().lowercase()) { "target player" -> Who.TARGET_PLAYER; "that player" -> Who.THAT_PLAYER; "each player" -> Who.EACH_PLAYER; else -> Who.YOU }
             return Effect.Draw(who, number(m.groupValues[2]) ?: return Effect.Unparsed(s))

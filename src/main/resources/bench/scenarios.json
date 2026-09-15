@@ -1118,5 +1118,99 @@
     "cite": [
       "121.1"
     ]
+  },
+  {
+    "id": "dismember-indestructible",
+    "text": "My opponent's Darksteel Colossus is indestructible. I cast Dismember on it.",
+    "expect": [
+      "Darksteel Colossus is 6/6 until end of turn"
+    ],
+    "cite": [
+      "611.2a"
+    ]
+  },
+  {
+    "id": "menace-single-blocker",
+    "text": "I attack with Boggart Brute. My opponent has only one untapped creature, Grizzly Bears, and tries to block.",
+    "expect": [
+      "opponent takes 3 damage"
+    ],
+    "cite": [
+      "702.111b"
+    ]
+  },
+  {
+    "id": "ward-unpaid",
+    "text": "I cast Lightning Bolt targeting Tomakul Honor Guard and I don't pay for ward.",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "cite": [
+      "702.21a"
+    ]
+  },
+  {
+    "id": "chupacabra-etb-target",
+    "text": "I cast Ravenous Chupacabra targeting their Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "603.3d",
+      "701.8a"
+    ]
+  },
+  {
+    "id": "kor-firewalker",
+    "text": "I have Kor Firewalker. My opponent casts Lightning Bolt at me.",
+    "expect": [
+      "You gain 1 life",
+      "You take 3 damage"
+    ],
+    "cite": [
+      "119.3",
+      "120.3a"
+    ]
+  },
+  {
+    "id": "kicked-burst-lightning",
+    "text": "I cast Burst Lightning kicked at their Serra Angel.",
+    "expect": [
+      "Serra Angel: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "702.33d"
+    ]
+  },
+  {
+    "id": "two-bears-block-one",
+    "text": "My opponent attacks with two Grizzly Bears. I block one with Hill Giant.",
+    "expect": [
+      "You take 2 damage",
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "510.1c"
+    ]
+  },
+  {
+    "id": "caryatid-hexproof",
+    "text": "I cast Lightning Bolt on my opponent's Sylvan Caryatid.",
+    "expect": [
+      "Lightning Bolt can't target Sylvan Caryatid"
+    ],
+    "cite": [
+      "702.11b"
+    ]
+  },
+  {
+    "id": "black-knight-protection",
+    "text": "My opponent controls Black Knight. I cast Swords to Plowshares on it.",
+    "expect": [
+      "Swords to Plowshares can't target Black Knight"
+    ],
+    "cite": [
+      "702.16b"
+    ]
   }
 ]

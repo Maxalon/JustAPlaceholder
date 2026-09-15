@@ -31,6 +31,8 @@ class GameObject(
     val token: Boolean = false,
     /** A commander (Commander format): its combat damage is tracked per player (903.10a). */
     var commander: Boolean = false,
+    /** Targets named for a permanent spell that itself targets nothing: they go to its enters-the-battlefield trigger (603.3d). */
+    var etbTargets: List<Ref>? = null,
 ) {
     /** Until-end-of-turn power/toughness modifications from resolved effects (611.2a). */
     val pumps = mutableListOf<Pair<Int, Int>>()
@@ -87,6 +89,8 @@ class StackItem(
     val causedObject: String? = null,
     /** The value chosen for X when this was cast or activated (107.3a). */
     val x: Int? = null,
+    /** Whether the kicker cost was paid (702.33d). */
+    val kicked: Boolean = false,
 ) {
     val describe: String get() = when (kind) {
         StackKind.SPELL -> source.name
