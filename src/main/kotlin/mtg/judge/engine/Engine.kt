@@ -244,7 +244,7 @@ class Engine(val state: GameState) {
     /** Effects phrased "target player …" whose player is carried by a [Who] rather than a TargetSpec. */
     private fun targetsAPlayer(e: Effect): Boolean = when (e) {
         is Effect.Draw -> e.who == Who.TARGET_PLAYER; is Effect.GainLife -> e.who == Who.TARGET_PLAYER; is Effect.LoseLife -> e.who == Who.TARGET_PLAYER; is Effect.DamagePlayer -> e.who == Who.TARGET_PLAYER
-        is Effect.CreateToken -> e.who == Who.TARGET_PLAYER; is Effect.SacrificeEach -> e.who == Who.TARGET_PLAYER; is Effect.LoseLifeThatMuch -> e.who == Who.TARGET_PLAYER
+        is Effect.CreateToken -> e.who == Who.TARGET_PLAYER; is Effect.Mill -> e.who == Who.TARGET_PLAYER; is Effect.SacrificeEach -> e.who == Who.TARGET_PLAYER; is Effect.LoseLifeThatMuch -> e.who == Who.TARGET_PLAYER
         is Effect.Seq -> e.effects.any { targetsAPlayer(it) }; is Effect.May -> targetsAPlayer(e.effect); is Effect.UnlessPays -> targetsAPlayer(e.effect); is Effect.Modal -> e.modes.any { targetsAPlayer(it) }
         is Effect.Narrated -> e.text.startsWith("target player", ignoreCase = true); else -> false
     }
@@ -795,6 +795,7 @@ class Engine(val state: GameState) {
                     "destroy" -> destroy(o, "${o.name} is destroyed.", "701.8a")
                     "exile" -> move(o, Zone.EXILE, "${o.name} is exiled.", "701.13a")
                     "bounce" -> move(o, Zone.HAND, "${o.name} is returned to its owner's hand.", "400.7")
+                    "tuck" -> move(o, Zone.LIBRARY, "${o.name} is put on the bottom of its owner's library. It isn't destroyed, so indestructible doesn't help, and it isn't a death, so \"when this dies\" abilities don't trigger.", "400.7")
                     "tap" -> { o.tapped = true; trace.step("${o.name} becomes tapped.", "701.26a"); state.outcomes += "${o.name} is tapped." }
                     else -> state.unsupported += Unsupported(item.describe, "Unknown action ${effect.action}")
                 } } finally { leavingTogether = emptySet() }
@@ -837,7 +838,7 @@ class Engine(val state: GameState) {
             is Effect.CreateToken -> {
                 val who = resolveWho(effect.who, item) ?: run { state.unsupported += Unsupported(item.describe, "Couldn't work out who creates the token."); return }
                 val def = Generic.token(effect.token) ?: run { state.unsupported += Unsupported(item.describe, "Couldn't read the token \"${effect.token}\"."); return }
-                var n = effect.count
+                var n = effect.countBy?.let { c -> when (c) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }.also { trace.step("X is $it: the number of ${c.filter.raw} ${who.subject.lowercase()} ${who.v("controls", "control")} as the ability resolves.", "608.2h") }; is CountExpr.Unknown -> { state.clarifications += Clarification("${item.describe}'s X", "X is \"${c.text}\", which isn't tracked; assuming 0."); 0 } } } ?: effect.count
                 state.objects.values.filter { it.isOnBattlefield() && it.controller == who.id }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.TokenMultiplier }.map { o to it } }
                     .forEach { (o, m) -> trace.step("${o.name} replaces the token creation: ${n * m.factor} tokens instead of $n.", "614.1a", "614.6"); n *= m.factor }
                 repeat(n) {
@@ -851,6 +852,14 @@ class Engine(val state: GameState) {
                 val o = item.source; val p = state.player(o.controller)
                 if (!o.isOnBattlefield()) trace.step("${o.name} is no longer on the battlefield, so there's nothing to sacrifice.", "701.21a")
                 else { move(o, Zone.GRAVEYARD, "${p.subject} ${p.v("sacrifices", "sacrifice")} ${o.name}: it goes to its owner's graveyard. Sacrificing isn't destroying, so indestructible and regeneration don't help.", "701.21a"); state.outcomes += "${o.name} is sacrificed." }
+            }
+            is Effect.Mill -> for (p in resolvePlayers(effect.who, item)) {
+                val lib = p.librarySize
+                val n = if (lib != null && lib < effect.count) lib else effect.count
+                if (lib != null && lib < effect.count) trace.step("${p.subject} ${p.v("has", "have")} only $lib card${if (lib == 1) "" else "s"} in ${p.possessive} library, so ${p.subject.lowercase()} ${p.v("mills", "mill")} as many as possible: $n. (Milling from a too-small library doesn't make a player lose; only drawing does.)", "701.17b", "704.5b")
+                trace.step("${p.subject} ${p.v("mills", "mill")} $n card${if (n == 1) "" else "s"}: the top $n card${if (n == 1) "" else "s"} of ${p.possessive} library ${if (n == 1) "goes" else "go"} into ${p.possessive} graveyard${if (lib != null) "; ${lib - n} left" else ""}.", "701.17a")
+                if (lib != null) p.librarySize = lib - n
+                state.outcomes += "${p.subject} ${p.v("mills", "mill")} $n card${if (n == 1) "" else "s"}${if (lib != null) " (${lib - n} left in library)" else ""}."
             }
             is Effect.SacrificeThatMany -> {
                 val p = resolveWho(effect.who, item); val n = item.causedAmount ?: 0
@@ -987,11 +996,12 @@ class Engine(val state: GameState) {
                 val affected = state.objects.values.filter { state.matches(effect.filter, it, item.controller) }
                 if (affected.isEmpty()) trace.step("Nothing matches \"${effect.filter.raw}\", so ${effect.action} affects nothing.")
                 // Everything leaves at once: abilities of permanents leaving simultaneously still see the others go (603.10a).
-                if (effect.action in setOf("destroy", "exile", "bounce") && affected.size > 1) { leavingTogether = affected.map { it.id }.toSet(); trace.step("All of them leave the battlefield simultaneously, so abilities that trigger on creatures dying or leaving look back and see every one of them.", "603.10a") }
+                if (effect.action in setOf("destroy", "exile", "bounce", "tuck") && affected.size > 1) { leavingTogether = affected.map { it.id }.toSet(); trace.step("All of them leave the battlefield simultaneously, so abilities that trigger on creatures dying or leaving look back and see every one of them.", "603.10a") }
                 try { for (o in affected) when (effect.action) {
                     "destroy" -> destroy(o, "${o.name} is destroyed.", "701.8a", canRegenerate = !effect.noRegen)
                     "exile" -> move(o, Zone.EXILE, "${o.name} is exiled.", "701.13a")
                     "bounce" -> move(o, Zone.HAND, "${o.name} is returned to its owner's hand.", "400.7")
+                    "tuck" -> move(o, Zone.LIBRARY, "${o.name} is put on the bottom of its owner's library. It isn't destroyed, so indestructible doesn't help, and it isn't a death, so \"when this dies\" abilities don't trigger.", "400.7")
                     "tap" -> { o.tapped = true; trace.step("${o.name} becomes tapped.", "701.26a"); state.outcomes += "${o.name} is tapped." }
                     "untap" -> { o.tapped = false; trace.step("${o.name} becomes untapped.", "701.26b") }
                     "damage" -> applyDamage(item.source.name, Ref.Obj(o.id), effect.amount, item.source)
@@ -1378,7 +1388,7 @@ class Engine(val state: GameState) {
         is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
         is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
-        is Effect.CreateToken -> "create ${effect.count} ${effect.token} token${if (effect.count > 1) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your hand onto the battlefield"
+        is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your hand onto the battlefield"
         is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"
         is Effect.Tap -> "tap ${effect.target.raw}"; is Effect.Untap -> "untap ${effect.target.raw}"
         is Effect.Pump -> "${effect.target.raw} gets ${signed(effect.power)}/${signed(effect.toughness)}"

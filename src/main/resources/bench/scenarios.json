@@ -1918,5 +1918,93 @@
     "cite": [
       "302.1"
     ]
+  },
+  {
+    "id": "three-three-blocked-by-two-two-twos",
+    "text": "I attack with a 3/3 and my opponent blocks with two 2/2s. How do I assign damage?",
+    "expect": [
+      "a 3/3 creature: the battlefield → your graveyard",
+      "a 2/2 creature: the battlefield → opponent's graveyard",
+      "2 to a 2/2 creature, 1 to a 2/2 creature"
+    ],
+    "cite": [
+      "510.1c"
+    ]
+  },
+  {
+    "id": "ensnaring-bridge-empty-hand-fragment",
+    "text": "My opponent has Ensnaring Bridge and 0 cards in hand. I attack with Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears can't attack (Ensnaring Bridge)"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "wrath-vs-regeneration-from-ezuri",
+    "text": "I cast Wrath of God. I have Grizzly Bears with regeneration from Ezuri.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "701.19c"
+    ]
+  },
+  {
+    "id": "glimpse-small-library",
+    "text": "My opponent mills me with Glimpse the Unthinkable. I have 5 cards in library.",
+    "expect": [
+      "You mill 5 cards (0 left in library)"
+    ],
+    "notExpect": [
+      "lose the game"
+    ],
+    "cite": [
+      "701.17a",
+      "701.17b"
+    ]
+  },
+  {
+    "id": "krenko-three-goblins",
+    "text": "I control Krenko, Mob Boss and 3 other goblins. I tap Krenko.",
+    "expect": [
+      "You get a Goblin token. (×4)"
+    ],
+    "cite": [
+      "608.2h",
+      "701.7a"
+    ]
+  },
+  {
+    "id": "terminus-indestructible-counter",
+    "text": "I cast Terminus. My opponent has Grizzly Bears with an indestructible counter.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's library"
+    ],
+    "cite": [
+      "400.7"
+    ]
+  },
+  {
+    "id": "wrath-vs-indestructible-counter",
+    "text": "My opponent casts Wrath of God. I have Grizzly Bears with an indestructible counter.",
+    "expect": [
+      "Grizzly Bears is indestructible and isn't destroyed"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "pyroclasm-described-creatures",
+    "text": "I have two 2/2 zombies and a 4/4 with flying. My opponent casts Pyroclasm.",
+    "expect": [
+      "a 2/2 zombie creature: the battlefield → your graveyard. (×2)",
+      "a 4/4 creature with flying has 2 damage marked"
+    ],
+    "cite": [
+      "704.5g"
+    ]
   }
 ]

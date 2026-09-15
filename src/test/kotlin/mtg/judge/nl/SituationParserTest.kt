@@ -138,4 +138,18 @@ class SituationParserTest {
         val u = parser.parse("I have Rhystic Study and my opponent casts two spells this turn, paying for none of them.")
         assertEquals(listOf("cast", "cast", "pay", "resolveAll"), u.situation.events.map { it.verb }); assertEquals("no", u.situation.events[2].to)
     }
+
+    @Test
+    fun `described creatures attack and block, mills target a player, and bare hand sizes stick to the last owner`() {
+        val p = parser.parse("I attack with a 3/3 and my opponent blocks with two 2/2s. How do I assign damage?")
+        assertEquals(listOf("attack", "block", "block", "resolveAll"), p.situation.events.map { it.verb })
+        assertEquals(listOf("a 3/3 creature", "a 2/2 creature", "a 2/2 creature"), p.situation.objects.map { it.card.name })
+        assertTrue(p.unread.isEmpty(), "unread: ${p.unread}")
+        val q = parser.parse("My opponent has Sol Ring and 0 cards in hand. I control Rhystic Study and 3 other goblins.")
+        assertEquals(0, q.situation.players.first { it.id == "opp" }.handSize)
+        assertEquals(3, q.situation.objects.count { it.card.name == "a goblin creature" && it.controller == "me" })
+        val r = parser.parse("My opponent mills me with Stifle. I have 5 cards in library.")
+        assertEquals(listOf("me"), r.situation.events.first().targets); assertEquals("opp", r.situation.events.first().player)
+        assertEquals(5, r.situation.players.first { it.id == "me" }.librarySize)
+    }
 }

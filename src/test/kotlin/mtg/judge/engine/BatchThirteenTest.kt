@@ -24,6 +24,10 @@ class BatchThirteenTest {
     private val kaalia = card("Kaalia of the Vast", "Legendary Creature — Human Cleric", "Flying\nWhenever Kaalia attacks an opponent, you may put an Angel, Demon, or Dragon creature card from your hand onto the battlefield tapped and attacking that opponent.", "{1}{R}{W}{B}", "RWB", "2", "2", "Flying")
     private val serra = card("Serra Angel", "Creature — Angel", "Flying, vigilance", "{3}{W}{W}", "W", "4", "4", "Flying", "Vigilance")
     private val viper = card("Ambush Viper", "Creature — Snake", "Flash\nDeathtouch", "{1}{G}", "G", "2", "1", "Flash", "Deathtouch")
+    private val krenko = card("Krenko, Mob Boss", "Legendary Creature — Goblin Warrior", "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.", "{2}{R}{R}", "R", "3", "3")
+    private val glimpse = card("Glimpse the Unthinkable", "Sorcery", "Target player mills ten cards.", "{U}{B}", "UB")
+    private val terminus = card("Terminus", "Sorcery", "Put all creatures on the bottom of their owners' libraries.\nMiracle {W}", "{4}{W}{W}", "W")
+    private val wrath = card("Wrath of God", "Sorcery", "Destroy all creatures. They can't be regenerated.", "{2}{W}{W}", "W")
     private val sakura = card("Sakura-Tribe Elder", "Creature — Snake Shaman", "Sacrifice Sakura-Tribe Elder: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.", "{1}{G}", "G", "1", "1")
 
     private fun state() = GameState(listOf(Player("me", "me", 20), Player("opp", "opp", 20)), LinkedHashMap(), activePlayer = "me")
@@ -134,5 +138,34 @@ class BatchThirteenTest {
         e.beginDeclaringAttackers(); e.declareAttacker("me", "bears", Ref.Player("opp")); e.finishDeclaringAttackers()
         e.cast("opp", viper, emptyList()); assertTrue("702.8a" in s.cited()); assertTrue(s.assumptions.none { "normally can't" in it })
         e.cast("opp", serra, emptyList()); assertTrue("302.1" in s.cited()); assertTrue(s.assumptions.any { "normally can't" in it })
+    }
+
+    @Test
+    fun `krenko counts goblins as the ability resolves`() {
+        val s = state(); s.put("krenko", krenko, "me"); s.put("g1", Generic.creature("goblin creature")!!, "me"); s.put("g2", Generic.creature("2/2 goblin creature")!!, "me"); val e = Engine(s)
+        e.activate("me", "krenko", null, emptyList()); e.resolveAll()
+        assertEquals(3, s.objects.values.count { it.token }); assertTrue("608.2h" in s.cited())
+    }
+
+    @Test
+    fun `milling is capped by the library and never loses the game by itself`() {
+        val s = state(); s.player("me").librarySize = 4; val e = Engine(s)
+        e.cast("opp", glimpse, listOf(Ref.Player("me"))); e.resolveAll()
+        assertEquals(0, s.player("me").librarySize); assertTrue(!s.player("me").lost); assertTrue("701.17b" in s.cited())
+    }
+
+    @Test
+    fun `terminus tucks indestructible creatures and wrath does not destroy one with an indestructible counter`() {
+        val s = state(); s.put("bears", bears, "opp").counters["indestructible"] = 1; val e = Engine(s)
+        e.cast("opp", wrath, emptyList()); e.resolveAll(); assertEquals(Zone.BATTLEFIELD, s.obj("bears").zone)
+        e.cast("me", terminus, emptyList()); e.resolveAll(); assertEquals(Zone.LIBRARY, s.obj("bears").zone)
+    }
+
+    @Test
+    fun `described creatures get their stats and keywords`() {
+        val d = Generic.creature("4/4 creature with flying")!!
+        assertEquals(4, d.power); assertEquals(4, d.toughness); assertTrue(d.has("flying"))
+        val z = Generic.spell("a 2/2 zombie creature")!!
+        assertTrue("Zombie" in z.subtypes); assertTrue(Generic.creature("creature") == null)
     }
 }

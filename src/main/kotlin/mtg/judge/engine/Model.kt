@@ -107,7 +107,9 @@ sealed interface Effect {
     /** "~ deals N damage to that player / each opponent / each player / you". */
     data class DamagePlayer(val who: Who, val amount: Int) : Effect
     /** "Create a 3/3 green Beast creature token" / "Its controller creates …": [who] gets [count] tokens described by [token]. */
-    data class CreateToken(val who: Who, val count: Int, val token: String) : Effect
+    data class CreateToken(val who: Who, val count: Int, val token: String, val countBy: CountExpr? = null) : Effect
+    /** "Target player mills N cards" (701.17a). */
+    data class Mill(val who: Who, val count: Int) : Effect
     /** "Each other player sacrifices a creature of their choice." */
     data class SacrificeEach(val who: Who, val filter: ObjFilter) : Effect
     /** "Sacrifice this permanent" (evoke's trigger, "sacrifice ~"). */
@@ -175,7 +177,7 @@ sealed interface Effect {
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
-        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
+        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked

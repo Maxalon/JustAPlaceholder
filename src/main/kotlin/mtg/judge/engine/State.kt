@@ -191,9 +191,13 @@ class GameState(
     fun toughnessOf(obj: GameObject): Int? = baseToughness(obj)?.let { base ->
         base + staticEffectsOn(obj).sumOf { (_, e) -> (e as? StaticEffect.PtModify)?.toughness ?: 0 } + obj.pumps.sumOf { it.second } + (obj.counters["+1/+1"] ?: 0) - (obj.counters["-1/-1"] ?: 0)
     }
+    /** Keywords a keyword counter can be (122.1b). */
+    val keywordCounters = setOf("flying", "first strike", "double strike", "deathtouch", "decayed", "exalted", "haste", "hexproof", "indestructible", "lifelink", "menace", "reach", "shadow", "trample", "vigilance")
+
     fun hasKeyword(obj: GameObject, keyword: String): Boolean {
         val k = keyword.lowercase()
         if (obj.def.has(k) || k in obj.tempKeywords) return true
+        if (k in keywordCounters && (obj.counters[k] ?: 0) > 0) return true   // 122.1b: a keyword counter grants the keyword
         return staticEffectsOn(obj).any { (src, e) -> e is StaticEffect.KeywordGrant && k in e.keywords && (e.filter.raw != "~" || src === obj) && conditionalKeywordOk(src, e) }
     }
 

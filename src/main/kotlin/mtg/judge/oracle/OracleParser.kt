@@ -460,6 +460,7 @@ object OracleParser {
     private val gainControlRe = Regex("""^gain control of target (.+?)( until end of turn)?\.?$""", RegexOption.IGNORE_CASE)
     private val countersOnRe = Regex("""^put (a|an|\w+|\d+|X) ([+-]\d/[+-]\d|\w+) counters? on (~|target .+?|each .+?)\.?$""", RegexOption.IGNORE_CASE)
     private val forAllRe = Regex("""^(destroy|exile|tap|untap) (?:all|each) (.+?)\.?$""", RegexOption.IGNORE_CASE)
+    private val tuckAllRe = Regex("""^put (?:all|each) (.+?) on the bottom of (?:their|its) owners?' librar(?:y|ies)(?: in a random order)?\.?$""", RegexOption.IGNORE_CASE)
     private val damageEachRe = Regex("""^(?:~|it) deals (\d+) damage to each (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val narratedRes: List<Pair<Regex, List<String>>> = listOf(
         Regex("""^(?:then )?reveals? the top card of (?:their|your) library\.?$""", RegexOption.IGNORE_CASE) to listOf("701.20a"),
@@ -577,6 +578,18 @@ object OracleParser {
             }
         }
         forAllRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[2], Kind.PERMANENT); if (f.verifiable) return Effect.ForAll(f, m.groupValues[1].lowercase()) }
+        tuckAllRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[1], Kind.PERMANENT); if (f.verifiable) return Effect.ForAll(f, "tuck") }
+        Regex("""^(you |target player |that player |each player |each opponent )?mills? (\w+|\d+) cards?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val who = when (m.groupValues[1].trim().lowercase()) { "target player" -> Who.TARGET_PLAYER; "that player" -> Who.THAT_PLAYER; "each player" -> Who.EACH_PLAYER; "each opponent" -> Who.EACH_OPPONENT; else -> Who.YOU }
+            number(m.groupValues[2])?.let { return Effect.Mill(who, it) }
+        }
+        // "Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control."
+        Regex("""^(?:(you|that player|target player) )?creates? X (.+? tokens?), where X is the number of (.+?)(?: you control)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val who = when (m.groupValues[1].lowercase().trim()) { "that player" -> Who.THAT_PLAYER; "target player" -> Who.TARGET_PLAYER; else -> Who.YOU }
+            val desc = m.groupValues[2].trim().removeSuffix("s").let { if (it.endsWith(" token")) it else "$it token" }
+            val f = parseFilter(m.groupValues[3], Kind.PERMANENT).let { if (s.contains("you control", true)) it.copy(controller = Who.YOU, raw = it.raw + " you control") else it }
+            if (Generic.token(desc) != null && f.verifiable) return Effect.CreateToken(who, 0, desc, CountExpr.Permanents(f))
+        }
         damageEachRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[2], Kind.CREATURE); if (f.verifiable) return Effect.ForAll(f, "damage", m.groupValues[1].toInt()) }
         if (Regex("""^sacrifice ~\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.SacrificeSource
         Regex("""^(?:that source's controller|that player|that creature's controller) sacrifices that many (permanents?|creatures?|lands?|artifacts?)(?: of (?:their|his or her) choice)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->

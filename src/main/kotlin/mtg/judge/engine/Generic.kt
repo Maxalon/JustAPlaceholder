@@ -26,6 +26,7 @@ object Generic {
     /** "a spell", "an instant", "a creature spell", "a creature" (an unnamed 1/1 whose stats are assumed). */
     fun spell(name: String): CardDef? {
         val n = name.lowercase().removePrefix("a ").removePrefix("an ").trim()
+        creature(n)?.let { return it }
         val typeLine = when (n) {
             "spell", "instant", "instant spell", "noncreature spell" -> "Instant"
             "sorcery", "sorcery spell" -> "Sorcery"
@@ -35,6 +36,21 @@ object Generic {
             else -> return null
         }
         return OracleParser.parse("generic-$n", "a $n", typeLine, "{1}", 1.0, "", if (typeLine == "Creature") "1" else null, if (typeLine == "Creature") "1" else null, emptyList(), "")
+    }
+
+    private val creatureRe = Regex("""^(?:(\d+)/(\d+) )?((?:[a-z]+ )*?)creature(?: with (.+))?$""")
+
+    /** "3/3 creature", "2/2 goblin creature", "4/4 creature with flying": an unnamed creature card (not a token). */
+    fun creature(desc: String): CardDef? {
+        val n = desc.lowercase().removePrefix("a ").removePrefix("an ").trim()
+        val m = creatureRe.matchEntire(n) ?: return null
+        if (m.groupValues[1].isEmpty() && m.groupValues[3].isEmpty() && m.groupValues[4].isEmpty()) return null
+        val subs = m.groupValues[3].trim().split(' ').filter { it.isNotEmpty() && it !in colorMap.keys }.joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+        val colors = m.groupValues[3].trim().split(' ').mapNotNull { colorMap[it] }.joinToString("")
+        val keywords = m.groupValues[4].split(Regex("""\s*,\s*|\s+and\s+""")).map { it.trim() }.filter { it.isNotEmpty() }
+        val kwLine = keywords.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
+        return OracleParser.parse("generic-$n", "a $n", "Creature" + (if (subs.isEmpty()) "" else " — $subs"), "{1}", 1.0, colors,
+            m.groupValues[1].ifEmpty { "1" }, m.groupValues[2].ifEmpty { "1" }, keywords, kwLine)
     }
 
     fun isGeneric(def: CardDef) = def.oracleId.startsWith("generic-")
