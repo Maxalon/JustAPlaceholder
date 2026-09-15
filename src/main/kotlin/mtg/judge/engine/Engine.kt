@@ -17,6 +17,13 @@ class Engine(val state: GameState) {
     fun cast(playerId: String, card: CardDef, targets: List<Ref>, objectId: String? = null, modes: List<Int> = emptyList()): StackItem? {
         val player = state.player(playerId)
         val obj = objectId?.let { state.objects[it] } ?: state.add(GameObject(objectId ?: freshObjectId(card.name), card, Zone.HAND, playerId))
+        if ("Land" in card.types && !card.isInstantOrSorcery) {
+            // Lands aren't cast: playing one is a special action that doesn't use the stack.
+            emptyStackFirst("playing a land")
+            trace.step("${player.subject} ${player.v("plays", "play")} ${card.name}. Playing a land is a special action: it doesn't use the stack, can't be responded to, and is only possible during ${player.possessive} own main phase with an empty stack, once per turn unless an effect allows more.", "305.1", "116.2a", "305.2")
+            obj.controller = playerId; enter(obj.id); stateBasedActions(); state.outcomes += "${card.name} enters the battlefield."
+            return null
+        }
         val effect = card.spellEffect ?: card.enchant?.takeIf { card.isAura }?.let { Effect.Attach(TargetSpec(it, "enchant ${it.raw}")) }
         val needed = effect?.targets() ?: emptyList()
         var asked = false
@@ -280,6 +287,7 @@ class Engine(val state: GameState) {
         if (b.tapped == true) { trace.step("${b.name} is tapped, so it can't block.", "509.1a"); state.outcomes += "${b.name} can't block (tapped)."; return }
         if (cant(b, "block")) { trace.step("${b.name} can't block (its own rules text says so).", "509.1b"); state.outcomes += "${b.name} can't block."; return }
         if (cant(a, "be blocked")) { trace.step("${a.name} can't be blocked.", "509.1b"); state.outcomes += "${b.name} can't block ${a.name}."; return }
+        cantBeBlockedBy(a, b)?.let { r -> trace.step("${a.name} can't be blocked by ${r.by!!.raw}, and ${b.name} is one, so it can't block ${a.name}.", "509.1b"); state.outcomes += "${b.name} can't block ${a.name}."; return }
         state.protections(a).takeIf { it.isNotEmpty() }?.let { prots ->
             val bq = qualitiesOf(b.def)
             prots.firstOrNull { it == "everything" || it in bq }?.let { q -> trace.step("${a.name} has protection from $q, so ${b.name} can't block it.", "702.16f"); state.outcomes += "${b.name} can't block ${a.name} (protection)."; return }
@@ -469,6 +477,7 @@ class Engine(val state: GameState) {
         Trigger.YouAttack -> event is GameEvent.PlayerAttacks && event.playerId == obj.controller && obj.isOnBattlefield()
         Trigger.YouGainLife -> event is GameEvent.LifeGained && event.playerId == obj.controller && obj.isOnBattlefield()
         Trigger.YouDraw -> event is GameEvent.Drew && event.playerId == obj.controller && obj.isOnBattlefield()
+        is Trigger.YouDrawNth -> event is GameEvent.Drew && event.playerId == obj.controller && obj.isOnBattlefield() && state.player(event.playerId).drew == trigger.n
         Trigger.ThisIsDealtDamage -> event is GameEvent.DamageDealt && (event.target as? Ref.Obj)?.id == obj.id
         Trigger.ThisBecomesBlocked -> event is GameEvent.BecomesBlocked && event.obj === obj
         Trigger.ThisBlocks -> event is GameEvent.Blocks && event.obj === obj
@@ -526,10 +535,9 @@ class Engine(val state: GameState) {
                 val players = resolvePlayers(effect.who, item)
                 if (players.isEmpty()) { state.unsupported += Unsupported(item.describe, "Couldn't work out who draws."); return }
                 for (who in players) {
-                    who.drew += effect.count
                     trace.step("${who.subject} ${who.v("draws", "draw")} ${effect.count} card${if (effect.count > 1) "s" else ""}${if (effect.count > 1) " (one at a time)" else ""}.", "121.1", *(if (effect.count > 1) arrayOf("121.2") else emptyArray()))
                     state.outcomes += "${who.subject} ${who.v("draws", "draw")} ${effect.count} card${if (effect.count > 1) "s" else ""}."
-                    repeat(effect.count) { onEvent(GameEvent.Drew(who.id)) }
+                    repeat(effect.count) { who.drew += 1; onEvent(GameEvent.Drew(who.id)) }
                 }
             }
             is Effect.Damage -> forEachLegalTarget(item, effect.target) { applyDamage(item.source.name, it, effect.amount) }
@@ -570,13 +578,14 @@ class Engine(val state: GameState) {
             is Effect.PumpSelf -> { val o = item.source; if (o.isOnBattlefield()) { o.pumps += effect.power to effect.toughness; trace.step("${o.name} gets ${signed(effect.power)}/${signed(effect.toughness)} until end of turn; it's now ${o.power}/${o.toughness}.", "611.2a"); state.outcomes += "${o.name} is ${o.power}/${o.toughness} until end of turn." } else trace.step("${o.name} isn't on the battlefield, so there's nothing for the effect to modify.", "611.2c") }
             is Effect.PumpAll -> {
                 val affected = state.objects.values.filter { state.matches(effect.filter, it, item.controller) }
-                affected.forEach { it.pumps += effect.power to effect.toughness }
-                trace.step("${if (affected.isEmpty()) "No permanents match \"${effect.filter.raw}\"" else affected.joinToString(", ") { "${it.name} (now ${it.power}/${it.toughness})" }} ${if (affected.size == 1) "gets" else "get"} ${signed(effect.power)}/${signed(effect.toughness)} until end of turn. Only permanents present now are affected.", "611.2a", "611.2c")
+                affected.forEach { it.pumps += effect.power to effect.toughness; it.tempKeywords += effect.keywords }
+                trace.step("${if (affected.isEmpty()) "No permanents match \"${effect.filter.raw}\"" else affected.joinToString(", ") { "${it.name} (now ${it.power}/${it.toughness})" }} ${if (affected.size == 1) "gets" else "get"} ${signed(effect.power)}/${signed(effect.toughness)}${if (effect.keywords.isEmpty()) "" else " and ${if (affected.size == 1) "gains" else "gain"} ${effect.keywords.joinToString(" and ")}"} until end of turn. Only permanents present now are affected.", "611.2a", "611.2c")
                 affected.forEach { state.outcomes += "${it.name} is ${it.power}/${it.toughness} until end of turn." }
             }
             is Effect.PutCounters -> {
                 val put: (GameObject) -> Unit = { o -> o.counters[effect.kind] = (o.counters[effect.kind] ?: 0) + effect.count; trace.step("${effect.count} ${effect.kind} counter${if (effect.count > 1) "s are" else " is"} put on ${o.name}${if (o.def.isCreature) "; it's now ${o.power}/${o.toughness}" else ""}.", "122.1a", "122.6"); state.outcomes += "${o.name} has ${o.counters[effect.kind]} ${effect.kind} counter${if (o.counters[effect.kind]!! > 1) "s" else ""}." }
-                if (effect.target == null) { if (item.source.isOnBattlefield()) put(item.source) else trace.step("${item.source.name} isn't on the battlefield, so no counters are put on it.", "122.6") }
+                if (effect.all != null) { val affected = state.objects.values.filter { state.matches(effect.all, it, item.controller, item.source) }; if (affected.isEmpty()) trace.step("No permanents match \"${effect.all.raw}\", so no counters are put anywhere.", "122.6") else affected.forEach(put) }
+                else if (effect.target == null) { if (item.source.isOnBattlefield()) put(item.source) else trace.step("${item.source.name} isn't on the battlefield, so no counters are put on it.", "122.6") }
                 else forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let(put) }
                 if (effect.kind == "+1/+1" || effect.kind == "-1/-1") stateBasedActions()
             }
@@ -591,6 +600,12 @@ class Engine(val state: GameState) {
                 state.assumptions += "${you.subject} ${you.v("chooses", "choose")} to ${describe(effect.choice, item)} for ${item.describe}."
                 applyEffect(effect.choice, item); applyEffect(effect.then, item)
             }
+            is Effect.GainControl -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o ->
+                val was = state.player(o.controller); o.controller = item.controller
+                trace.step("${state.player(item.controller).subject} ${state.player(item.controller).v("gains", "gain")} control of ${o.name}${if (effect.untilEndOfTurn) " until end of turn" else ""} (it was ${was.possessive}). A control-changing effect applies in layer 2; the permanent doesn't change zones, so it isn't summoning sick only if it has haste or has been under its new controller's control since the turn began.", "613.1b", "611.2a", "302.6")
+                if (o.def.isCreature) o.summoningSick = true
+                state.outcomes += "${state.player(item.controller).subject} ${state.player(item.controller).v("controls", "control")} ${o.name}${if (effect.untilEndOfTurn) " until end of turn" else ""}."
+            } }
             is Effect.GainKeywordsSelf -> { val o = item.source; if (o.isOnBattlefield()) { o.tempKeywords += effect.keywords; trace.step("${o.name} gains ${effect.keywords.joinToString(" and ")} until end of turn.", "611.2a"); state.outcomes += "${o.name} has ${effect.keywords.joinToString(" and ")} until end of turn." } }
             is Effect.Modal -> {
                 val chosen = item.modes
@@ -621,7 +636,10 @@ class Engine(val state: GameState) {
     private fun applyEntersReplacements(o: GameObject) {
         if (o.def.isPlaneswalker && o.def.loyalty != null) { o.counters["loyalty"] = o.def.loyalty; trace.step("${o.name} enters with ${o.def.loyalty} loyalty counters.", "306.5b") }
         for (e in o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }) when (e) {
-            StaticEffect.EntersTapped -> { o.tapped = true; trace.step("${o.name} enters tapped (a replacement effect on how it enters).", "614.1c", "614.12") }
+            is StaticEffect.EntersTapped -> {
+                if (e.unless != null && state.conditionHolds(e.unless, o)) trace.step("${o.name} would enter tapped unless its condition is met; it is, so it enters untapped.", "614.1c", "614.12")
+                else { o.tapped = true; trace.step("${o.name} enters tapped (a replacement effect on how it enters${if (e.unless != null) "; its condition isn't met" else ""}).", "614.1c", "614.12") }
+            }
             is StaticEffect.EntersWithCounters -> if (e.count != null) { o.counters[e.kind] = (o.counters[e.kind] ?: 0) + e.count; trace.step("${o.name} enters with ${e.count} ${e.kind} counter${if (e.count > 1) "s" else ""} on it.", "614.1c", "122.6") }
                 else { state.clarifications += Clarification("${o.name}'s X", "${o.name} enters with X ${e.kind} counters; what was X?") }
             else -> {}
@@ -649,7 +667,9 @@ class Engine(val state: GameState) {
         return false
     }
 
-    private fun cant(o: GameObject, what: String) = o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.Cant && (it.what == what || it.what == "attack or block" && (what == "attack" || what == "block")) }
+    private fun cant(o: GameObject, what: String) = o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.Cant && it.by == null && (it.what == what || it.what == "attack or block" && (what == "attack" || what == "block")) }
+    /** "~ can't be blocked by [filter]": the restriction that forbids this particular blocker, if any. */
+    private fun cantBeBlockedBy(a: GameObject, b: GameObject): StaticEffect.Cant? = a.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.Cant>().firstOrNull { it.what == "be blocked" && it.by != null && state.matches(it.by, b, b.controller) }
 
     private fun describeManaEffect(e: Effect): String = when (e) { is Effect.AddMana -> "add ${e.text}"; is Effect.Seq -> e.effects.joinToString(", then ") { describeManaEffect(it) }; else -> e.toString().lowercase() }
     /** "~" -> the source's name; first letter lowercased for use after a subject. */
@@ -716,7 +736,9 @@ class Engine(val state: GameState) {
         when (target) {
             is Ref.Player -> { val p = state.player(target.id)
                 if (infect) { p.poison += amount; trace.step("$sourceName has infect, so instead of losing life ${if (p.you) "you get" else p.name + " gets"} $amount poison counter${if (amount > 1) "s" else ""} (${p.poison} total).", "702.90b", "120.3b"); state.outcomes += "${p.subject} ${p.v("has", "have")} ${p.poison} poison counter${if (p.poison > 1) "s" else ""}." }
-                else { p.life = p.life?.minus(amount); trace.step("$sourceName deals $amount damage to ${if (p.you) "you" else p.name}, ${if (p.you) "and you lose" else "who loses"} $amount life${p.life?.let { " ($it)" } ?: ""}.", "120.3a"); state.outcomes += "${p.subject} ${p.v("takes", "take")} $amount damage." } }
+                else { p.life = p.life?.minus(amount); trace.step("$sourceName deals $amount damage to ${if (p.you) "you" else p.name}, ${if (p.you) "and you lose" else "who loses"} $amount life${p.life?.let { " ($it)" } ?: ""}.", "120.3a"); state.outcomes += "${p.subject} ${p.v("takes", "take")} $amount damage." }
+                val toxic = source?.takeIf { inCombatDamage }?.let { src -> Regex("""\bToxic (\d+)""").findAll(src.def.oracleText).sumOf { it.groupValues[1].toInt() } } ?: 0
+                if (toxic > 0) { p.poison += toxic; trace.step("$sourceName has toxic $toxic, so ${if (p.you) "you also get" else p.name + " also gets"} $toxic poison counter${if (toxic > 1) "s" else ""} (${p.poison} total).", "702.164c", "120.3g"); state.outcomes += "${p.subject} ${p.v("has", "have")} ${p.poison} poison counter${if (p.poison > 1) "s" else ""}." } }
             is Ref.Obj -> { val o = state.obj(target.id)
                 if (o.def.isPlaneswalker) { val before = o.counters["loyalty"] ?: 0; o.counters["loyalty"] = maxOf(0, before - amount); trace.step("$sourceName deals $amount damage to ${o.name}, so $amount loyalty counters are removed from it (${o.counters["loyalty"]} left).", "306.8", "120.3c"); state.outcomes += "${o.name} has ${o.counters["loyalty"]} loyalty." }
                 else if (infect || wither) { o.counters["-1/-1"] = (o.counters["-1/-1"] ?: 0) + amount; trace.step("$sourceName has ${if (infect) "infect" else "wither"}, so the $amount damage to ${o.name} is dealt as $amount -1/-1 counter${if (amount > 1) "s" else ""}; it's now ${o.power}/${o.toughness}.", if (infect) "702.90c" else "702.80a", "120.3d"); state.outcomes += "${o.name} has ${o.counters["-1/-1"]} -1/-1 counter(s)." }
@@ -933,6 +955,7 @@ class Engine(val state: GameState) {
         is Effect.Tap -> "tap ${effect.target.raw}"; is Effect.Untap -> "untap ${effect.target.raw}"
         is Effect.Pump -> "${effect.target.raw} gets ${signed(effect.power)}/${signed(effect.toughness)}"
         is Effect.GainKeywords -> "${effect.target.raw} gains ${effect.keywords.joinToString(" and ")}"
+        is Effect.GainControl -> "gain control of ${effect.target.raw}${if (effect.untilEndOfTurn) " until end of turn" else ""}"
         is Effect.PumpSelf -> "${item.source.name} gets ${signed(effect.power)}/${signed(effect.toughness)}"
         is Effect.PumpAll -> "${effect.filter.raw} get ${signed(effect.power)}/${signed(effect.toughness)}"
         is Effect.PutCounters -> "put ${effect.count} ${effect.kind} counter(s) on ${effect.target?.raw ?: item.source.name}"

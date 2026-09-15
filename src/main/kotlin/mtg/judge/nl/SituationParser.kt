@@ -157,10 +157,15 @@ class SituationParser(private val names: NameIndex) {
         val rawWords = sentence.split(Regex("\\s+")).filter { it.isNotEmpty() }
         // Normalize per word so word indices line up with the original words.
         val normWords = rawWords.map { w -> Names.normalize(stripPossessive(w)).ifEmpty { "_" } }
-        // A single word that is both a card name and the short form of a card named in full ("Jace" the token vs. Jace Beleren) means the named card.
-        val full = names.findAll(normWords).map { f -> if (f.end - f.start == 1) short[normWords[f.start]]?.let { f.copy(entry = it) } ?: f else f }
+        // Names that themselves contain "'s" ("Titania's Boon", "Sensei's Divining Top") are matched with the possessive kept…
+        val normKept = rawWords.map { w -> Names.normalize(w.trimEnd(',', '.', ';', '!', '?')).ifEmpty { "_" } }
+        val kept = names.findAll(normKept).filter { f -> (f.start until f.end).any { normKept[it] != normWords[it] } }
+        val keptCovered = kept.flatMap { it.start until it.end }.toSet()
+        // …then the rest with it stripped. A single word that is both a card name and the short form of a card named in full ("Jace" the token vs. Jace Beleren) means the named card.
+        val full = kept + names.findAll(normWords).filter { f -> (f.start until f.end).none { it in keptCovered } }.map { f -> if (f.end - f.start == 1) short[normWords[f.start]]?.let { f.copy(entry = it) } ?: f else f }
         val covered = full.flatMap { it.start until it.end }.toSet()
-        val found = full + normWords.indices.filter { it !in covered }.mapNotNull { i -> short[normWords[i]]?.let { NameIndex.Found(i, i + 1, it) } }
+        val found = (full + normWords.indices.filter { it !in covered }.mapNotNull { i -> short[normWords[i]]?.let { NameIndex.Found(i, i + 1, it) } }).sortedBy { it.start }
+        val keptSpans = kept.map { it.start to it.end }.toSet()
         val cards = LinkedHashMap<String, NameIndex.Entry>()
         val players = LinkedHashMap<String, String>()
         val out = StringBuilder()
@@ -174,7 +179,7 @@ class SituationParser(private val names: NameIndex) {
                 val lastRaw = rawWords[f.end - 1]
                 val trailing = lastRaw.takeLastWhile { it in ",.;!?" }
                 val core = lastRaw.dropLast(trailing.length)
-                val possessive = core.endsWith("'s") || core.endsWith("\u2019s")
+                val possessive = (core.endsWith("'s") || core.endsWith("\u2019s")) && (f.start to f.end) !in keptSpans
                 out.append(' ').append(ph).append(if (possessive) "'s" else "").append(trailing)
                 i = f.end
             } else if (named.containsKey(normWords[i])) {
@@ -412,8 +417,9 @@ class SituationParser(private val names: NameIndex) {
         // Combat: "attack with c1", "swing with c1 (at them)", "block (it) with c2".
         Regex("""^(?:attacks?|attacking|swings?|swinging) with (?:it|that|him|her|them)$""").find(c)?.let {
             val who = actor ?: subject ?: "me"
-            val id = ctx.lastMentioned?.takeIf { !it.startsWith("cast:") } ?: return false
-            ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(ctx.other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"; return true
+            // "it" after a spell means what that spell targeted ("I cast Act of Treason on their Giant and attack with it").
+            val id = ctx.lastMentioned?.takeIf { !it.startsWith("cast:") } ?: ctx.events.lastOrNull { it.verb == "cast" }?.targets?.firstOrNull { it in ctx.objects } ?: return false
+            ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(ctx.other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
         }
         // "attack Jace with Hill Giant", "attacks their planeswalker with c2": the defender comes first.
         Regex("""^(?:attacks?|attacking|swings? at|swinging at)\s+((?:an? |the |my |their |@\w+'s )?(?:c\d+|me|them|him|her|my opponent|the opponent|opponent|@\w+))\s+with\s+(?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->
@@ -491,7 +497,7 @@ class SituationParser(private val names: NameIndex) {
             if (card.display in ctx.castCards) { out += slug(card.display) + ":spell"; return out }
             // A permanent mentioned for the first time as a target: assume it's on the battlefield under the other player.
             val owner = when { seg.contains("my ") -> "me"; Regex("""@(\w+)'s""").containsMatchIn(seg) -> Regex("""@(\w+)'s""").find(seg)!!.groupValues[1].also { ctx.players.putIfAbsent(it, m.players[it] ?: it) }; seg.contains("their ") -> pronounPlayer(ctx, "their"); else -> ctx.other(ctx.lastActor) ?: "me" }
-            out += addObject(card, owner, false, ctx)
+            out += addObject(card, owner, seg.contains("tapped") && !seg.contains("untapped"), ctx)
             ctx.notes += "${card.display} wasn't mentioned before; assuming it's on the battlefield under ${when (owner) { "me" -> "your"; "opp" -> "your opponent's"; else -> (ctx.players[owner] ?: owner) + "'s" }} control."
             return out
         }

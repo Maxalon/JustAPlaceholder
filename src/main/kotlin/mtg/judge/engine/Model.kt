@@ -29,6 +29,11 @@ data class ObjFilter(
     val other: Boolean = false,
     /** "enchanted creature" / "equipped creature": only the object the source is attached to. */
     val attachedToSource: Boolean = false,
+    /** "with power N or greater" / "with power N or less". */
+    val minPower: Int? = null,
+    val maxPower: Int? = null,
+    /** "a Plains or an Island": any one of [subtypes] suffices instead of all of them. */
+    val subtypesAny: Boolean = false,
 ) {
     val verifiable get() = unknownWords.isEmpty()
 }
@@ -57,6 +62,8 @@ sealed interface Trigger {
     data class PermanentDies(val filter: ObjFilter, val other: Boolean) : Trigger
     /** "Whenever you draw a card". */
     data object YouDraw : Trigger
+    /** "Whenever you draw your second card each turn". */
+    data class YouDrawNth(val n: Int) : Trigger
     /** "Whenever ~ is dealt damage". */
     data object ThisIsDealtDamage : Trigger
     /** "Whenever ~ becomes blocked". */
@@ -94,9 +101,12 @@ sealed interface Effect {
     /** "~ gets +N/+N until end of turn" (no target). */
     data class PumpSelf(val power: Int, val toughness: Int) : Effect
     /** "[filter] get +N/+N until end of turn": affects the objects present when it resolves (611.2c). */
-    data class PumpAll(val filter: ObjFilter, val power: Int, val toughness: Int) : Effect
+    data class PumpAll(val filter: ObjFilter, val power: Int, val toughness: Int, val keywords: List<String> = emptyList()) : Effect
+    /** "Gain control of target creature (until end of turn)". */
+    data class GainControl(val target: TargetSpec, val untilEndOfTurn: Boolean) : Effect
     /** "Put N [kind] counters on target …" / "… on ~" (target null = self). */
-    data class PutCounters(val target: TargetSpec?, val kind: String, val count: Int) : Effect
+    /** `target` = "target …"; null = on ~; `all` = "on each …". */
+    data class PutCounters(val target: TargetSpec?, val kind: String, val count: Int, val all: ObjFilter? = null) : Effect
     /** Mana abilities: "Add {G}", "Add one mana of any color". Doesn't use the stack (605.3b). */
     data class AddMana(val text: String) : Effect
     /** Effects the engine understands well enough to narrate with rule citations but doesn't track state for (libraries, hands). */
@@ -124,7 +134,7 @@ sealed interface Effect {
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
-        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target)
+        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
@@ -162,11 +172,13 @@ sealed interface StaticEffect {
     /** Layer 6: "[filter] have [keywords]". */
     data class KeywordGrant(val filter: ObjFilter, val keywords: Set<String>) : StaticEffect
     /** "~ enters tapped" (614.1c replacement on entering). */
-    data object EntersTapped : StaticEffect
+    /** "~ enters tapped" / "~ enters tapped unless [condition]". */
+    data class EntersTapped(val unless: Condition? = null) : StaticEffect
     /** "~ enters with N +1/+1 counters on it" (614.1c). count null = X. */
     data class EntersWithCounters(val kind: String, val count: Int?) : StaticEffect
     /** "~ can't block" / "~ can't attack" / "~ can't be countered" / "~ can't be blocked". */
-    data class Cant(val what: String) : StaticEffect
+    /** "~ can't attack" / "~ can't be blocked by [filter]" (`by` restricts which blockers the rule applies to). */
+    data class Cant(val what: String, val by: ObjFilter? = null) : StaticEffect
     /** Cost modifiers and additional costs: narrated when the spell is cast (601.2b, 601.2f). */
     data class CostText(val text: String) : StaticEffect
     /** "~ attacks each combat if able." (508.1d) */

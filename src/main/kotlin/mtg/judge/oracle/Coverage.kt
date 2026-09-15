@@ -21,7 +21,8 @@ object Coverage {
         "indestructible", "hexproof", "shroud", "defender", "flash", "protection", "ward", "enchant",
         // cited with their rule when the spell is cast, or converted to abilities by the parser
         "kicker", "flashback", "madness", "convoke", "affinity", "suspend", "morph", "improvise", "cumulative upkeep", "devoid", "changeling", "partner", "evoke", "echo", "foretell", "infect", "wither", "fear", "intimidate", "horsemanship", "shadow", "skulk",
-        "cascade", "bestow", "disguise", "escape", "mutate", "companion", "split second", "buyback", "overload", "surge", "emerge", "spectacle", "jump-start", "retrace", "delve", "prototype", "casualty", "offspring", "gift", "impending", "harmonize", "level up", "cycling", "equip", "prowess", "unearth", "crew")
+        "cascade", "bestow", "disguise", "escape", "mutate", "companion", "split second", "buyback", "overload", "surge", "emerge", "spectacle", "jump-start", "retrace", "delve", "prototype", "casualty", "offspring", "gift", "impending", "harmonize", "level up", "cycling", "equip", "prowess", "unearth", "crew",
+        "toxic", "landwalk", "swampwalk", "islandwalk", "forestwalk", "mountainwalk", "plainswalk")
 
     data class Stats(var cards: Int = 0, var fully: Int = 0, var partly: Int = 0, var none: Int = 0, var noText: Int = 0, var abilities: Int = 0, var modeledAbilities: Int = 0)
 

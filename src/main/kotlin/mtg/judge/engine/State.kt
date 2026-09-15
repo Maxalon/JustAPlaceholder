@@ -212,12 +212,14 @@ class GameState(
         } }
         val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> o.def.isCreature; Kind.LAND -> "Land" in o.def.types; Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types; else -> false } }
         val ctrlOk = when (f.controller) { null -> true; Who.YOU -> o.controller == controller; Who.OPPONENT -> o.controller != controller; else -> true }
-        val subOk = f.subtypes.all { st -> o.def.subtypes.any { it.equals(st, true) } || (o.def.changeling && o.def.isCreature) }
+        val subOk = if (f.subtypesAny && f.subtypes.isNotEmpty()) f.subtypes.any { st -> o.def.subtypes.any { it.equals(st, true) } || (o.def.changeling && o.def.isCreature) }
+                    else f.subtypes.all { st -> o.def.subtypes.any { it.equals(st, true) } || (o.def.changeling && o.def.isCreature) }
         val kwOk = f.keywords.all { hasKeyword(o, it) }
         val tokenOk = f.token == null || f.token == o.token
         val legOk = f.legendary == null || f.legendary == ("Legendary" in o.def.supertypes)
         val stateOk = (f.tapped == null || o.tapped == f.tapped) && (f.attacking == null || (o.attacking != null) == f.attacking)
-        return typeOk && notOk && ctrlOk && subOk && kwOk && tokenOk && legOk && stateOk
+        val powerOk = (f.minPower == null || (o.power ?: 0) >= f.minPower) && (f.maxPower == null || (o.power ?: 0) <= f.maxPower)
+        return typeOk && notOk && ctrlOk && subOk && kwOk && tokenOk && legOk && stateOk && powerOk
     }
 
     fun player(id: String): Player = players.firstOrNull { it.id == id } ?: throw JudgeException("Unknown player '$id'")

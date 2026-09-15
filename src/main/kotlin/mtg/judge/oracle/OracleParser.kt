@@ -130,7 +130,11 @@ object OracleParser {
         val m = triggerRe.matchEntire(line) ?: return UnparsedAbility(line)
         val cond = m.groupValues[2].trim().replace(Regex("""^Landfall — """), "")
         val trigger = parseTrigger(cond)
-        return TriggeredAbility(trigger, parseEffect(m.groupValues[3]), line)
+        // "Whenever ~ attacks, it gets +1/+1" / "…, put a +1/+1 counter on it": in a self-trigger, a leading "it" is ~.
+        val selfTrigger = trigger is Trigger.ThisAttacks || trigger is Trigger.ThisEnters || trigger is Trigger.ThisDealsDamage || trigger is Trigger.ThisBecomesBlocked || trigger is Trigger.ThisBlocks ||
+            trigger is Trigger.ThisBecomesTarget || trigger is Trigger.ThisBecomesTapped || trigger is Trigger.ThisIsDealtDamage || trigger is Trigger.ThisCast
+        val effText = if (selfTrigger) m.groupValues[3].replace(Regex("""^it (gets|gains) """), "~ $1 ").replace(Regex("""^(put (?:a|an|\w+|\d+|X) [+-]\d/[+-]\d counters? on) it\b"""), "$1 ~") else m.groupValues[3]
+        return TriggeredAbility(trigger, parseEffect(effText), line)
     }
 
     /** "Whenever ~ enters or attacks, …" is two triggered abilities with the same effect. */
@@ -179,6 +183,7 @@ object OracleParser {
         Regex("""^(.+?) deals combat damage to a player$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m -> if (!m.groupValues[1].equals("~", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Trigger.PermanentDealsCombatDamageToPlayer(f) } }
         if (Regex("""^you gain life$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.YouGainLife
         if (Regex("""^you draw a card$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.YouDraw
+        Regex("""^you draw your (first|second|third) card each turn$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { return Trigger.YouDrawNth(mapOf("first" to 1, "second" to 2, "third" to 3).getValue(it.groupValues[1].lowercase())) }
         Regex("""^~ or another (.+?) enters(?: the battlefield)?(?: under your control)?$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
             val f = parseFilter(m.groupValues[1], Kind.CREATURE).let { if (c.contains("under your control", true) || it.controller == null) it.copy(controller = Who.YOU) else it }
             if (f.verifiable) return Trigger.PermanentEnters(f, false)
@@ -257,7 +262,15 @@ object OracleParser {
     /** "Creatures you control get +1/+1", "Other Elf creatures you control get +1/+1 and have trample", "Creatures you control have haste". */
     fun parseStatic(line: String): List<StaticEffect> {
         parseReplacementStatic(line)?.let { return listOf(it) }
-        Regex("""^~ enters(?: the battlefield)? tapped\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.EntersTapped) }
+        Regex("""^~ enters(?: the battlefield)? tapped\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.EntersTapped()) }
+        Regex("""^~ enters(?: the battlefield)? tapped unless (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val cond = parseCondition(m.groupValues[1]) ?: return emptyList()
+            return listOf(StaticEffect.EntersTapped(cond))
+        }
+        Regex("""^~ can't be blocked by (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val f = parseFilter(m.groupValues[1], Kind.CREATURE)
+            return if (f.verifiable) listOf(StaticEffect.Cant("be blocked", f)) else emptyList()
+        }
         Regex("""^~ enters(?: the battlefield)? with (a|an|X|\w+) ([+-]\d/[+-]\d|\w+) counters? on it\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val n = if (m.groupValues[1].equals("x", true)) null else (number(m.groupValues[1]) ?: return emptyList())
             return listOf(StaticEffect.EntersWithCounters(m.groupValues[2], n))
@@ -308,7 +321,9 @@ object OracleParser {
         if (Regex("""^it's not your turn$""", RegexOption.IGNORE_CASE).matches(t)) return Condition.NotYourTurn
         Regex("""^you control (?:a|an|another|(one|two|three|four|five|six|seven|\d+) or more) (.+?)$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m ->
             val n = m.groupValues[1].takeIf { it.isNotEmpty() }?.let { number(it) } ?: 1
-            val f = parseFilter(m.groupValues[2], Kind.PERMANENT).let { it.copy(controller = Who.YOU) }
+            // "a Plains or an Island": either land type counts.
+            val what = m.groupValues[2].replace(Regex("""\s+or\s+an?\s+""", RegexOption.IGNORE_CASE), " or ")
+            val f = parseFilter(what, Kind.PERMANENT).let { it.copy(controller = Who.YOU) }
             return if (f.verifiable) Condition.ControlsMatching(f, n) else null
         }
         return null
@@ -348,7 +363,8 @@ object OracleParser {
             while (i < sentences.size) {
                 val cur0 = sentences[i]; val next = sentences.getOrNull(i + 1)
                 // Pronoun continuations: "It gets +1/+1 until end of turn." / "Put a +1/+1 counter on it." refer to the previous target.
-                val cur = if (lastTarget != null) cur0.replace(Regex("""^It (gets|gains) """), "Target ${lastTarget.raw} $1 ").replace(Regex("""(?i) on it\.?$"""), " on target ${lastTarget.raw}.") else cur0
+                val cur = if (lastTarget != null) cur0.replace(Regex("""^(?:It|That (?:creature|permanent|artifact|enchantment|land)) (gets|gains) """), "Target ${lastTarget.raw} $1 ").replace(Regex("""(?i) on (?:it|that (?:creature|permanent))\.?$"""), " on target ${lastTarget.raw}.")
+                    .replace(Regex("""^(Untap|Tap|Destroy|Exile|Sacrifice) (?:it|that (?:creature|permanent|artifact|enchantment|land))\.?$"""), "$1 target ${lastTarget.raw}.") else cur0
                 if (cur.startsWith("You may ", true) && next != null && next.startsWith("If you do, ", true)) {
                     val choice = cur.removePrefix("You may ").removePrefix("you may ").trimEnd('.')
                     val cost = payRe.matchEntire(choice)?.groupValues?.get(1)
@@ -380,6 +396,8 @@ object OracleParser {
 
     private val selfPumpRe = Regex("""^~ gets ([+-]\d+)/([+-]\d+) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val massPumpRe = Regex("""^(?:all |each )?(.+?) (?:get|gets) ([+-]\d+)/([+-]\d+) until end of turn\.?$""", RegexOption.IGNORE_CASE)
+    private val massPumpGainRe = Regex("""^(?:all |each )?(.+?) (?:get|gets) ([+-]\d+)/([+-]\d+) and (?:gain|gains) (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
+    private val gainControlRe = Regex("""^gain control of target (.+?)( until end of turn)?\.?$""", RegexOption.IGNORE_CASE)
     private val countersOnRe = Regex("""^put (a|an|\w+|\d+|X) ([+-]\d/[+-]\d|\w+) counters? on (~|target .+?|each .+?)\.?$""", RegexOption.IGNORE_CASE)
     private val forAllRe = Regex("""^(destroy|exile|tap|untap) (?:all|each) (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val damageEachRe = Regex("""^(?:~|it) deals (\d+) damage to each (.+?)\.?$""", RegexOption.IGNORE_CASE)
@@ -471,12 +489,15 @@ object OracleParser {
         }
         selfPumpRe.matchEntire(s)?.let { return Effect.PumpSelf(it.groupValues[1].toInt(), it.groupValues[2].toInt()) }
         massPumpRe.matchEntire(s)?.let { m -> if (!m.groupValues[1].startsWith("target", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Effect.PumpAll(f, m.groupValues[2].toInt(), m.groupValues[3].toInt()) } }
+        massPumpGainRe.matchEntire(s)?.let { m -> if (!m.groupValues[1].startsWith("target", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); val kws = keywordsIn(m.groupValues[4]); if (f.verifiable && kws != null) return Effect.PumpAll(f, m.groupValues[2].toInt(), m.groupValues[3].toInt(), kws.toList()) } }
+        gainControlRe.matchEntire(s)?.let { m -> return Effect.GainControl(target("target " + m.groupValues[1]), m.groupValues[2].isNotEmpty()) }
         countersOnRe.matchEntire(s)?.let { m ->
             val n = number(m.groupValues[1]) ?: return Effect.Unparsed(s)
             val where = m.groupValues[3]
             return when {
                 where == "~" -> Effect.PutCounters(null, m.groupValues[2], n)
                 where.startsWith("target", true) -> Effect.PutCounters(target(where), m.groupValues[2], n)
+                where.startsWith("each ", true) -> { val f = parseFilter(where.substring(5), Kind.CREATURE); if (f.verifiable) Effect.PutCounters(null, m.groupValues[2], n, all = f) else Effect.Unparsed(s) }
                 else -> Effect.Unparsed(s)
             }
         }
@@ -554,10 +575,16 @@ object OracleParser {
         val subtypes = mutableSetOf<String>(); val keywords = mutableSetOf<String>()
         var attacking: Boolean? = null; var tapped: Boolean? = null; var token: Boolean? = null; var legendary: Boolean? = null; var attachedToSource = false
         // "with flying" / "with reach or flying" -> keyword requirements
+        var minPower: Int? = null; var maxPower: Int? = null
+        Regex("""\s+with power (\d+) or (greater|less)$""").find(core)?.let { m ->
+            if (m.groupValues[2] == "greater") minPower = m.groupValues[1].toInt() else maxPower = m.groupValues[1].toInt()
+            core = core.removeRange(m.range)
+        }
         Regex("""\s+with ([a-z ]+)$""").find(core)?.let { m ->
             val kws = m.groupValues[1].split(Regex("""\s*,\s*|\s+or\s+|\s+and\s+""")).map { it.trim() }.filter { it.isNotEmpty() }
             if (kws.all { it in keywordList }) { keywords += kws; core = core.removeRange(m.range) }
         }
+        val subtypesAny = Regex("""\bor\b""").containsMatchIn(core)
         for (w in core.split(Regex("""[\s,]+|\bor\b""")).map { it.trim() }.filter { it.isNotEmpty() }) {
             when {
                 w in kindWords -> kinds += kindWords.getValue(w)
@@ -581,6 +608,6 @@ object OracleParser {
         if (kinds.isEmpty() && subtypes.isNotEmpty()) kinds += if (subtypes.all { it in landTypes }) Kind.LAND else Kind.CREATURE
         if (kinds.isEmpty() && notKinds.isNotEmpty()) kinds += defaultKind ?: Kind.PERMANENT
         if (kinds.isEmpty() && defaultKind != null) kinds += defaultKind
-        return ObjFilter(kinds, notKinds, controller, attacking, tapped, unknown, desc, subtypes, keywords, token, legendary, attachedToSource = attachedToSource)
+        return ObjFilter(kinds, notKinds, controller, attacking, tapped, unknown, desc, subtypes, keywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1)
     }
 }

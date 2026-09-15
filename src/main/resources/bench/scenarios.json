@@ -430,5 +430,60 @@
     "cite": [
       "608.2g"
     ]
+  },
+  {
+    "id": "land-enters-tapped-unless",
+    "text": "I control a Plains. I play Glacial Fortress.",
+    "expect": [
+      "Glacial Fortress enters the battlefield"
+    ],
+    "cite": [
+      "305.1",
+      "614.12"
+    ]
+  },
+  {
+    "id": "possessive-card-name",
+    "text": "I cast Titania's Boon. I control Grizzly Bears and Hill Giant.",
+    "expect": [
+      "Grizzly Bears has 1 +1/+1 counter",
+      "Hill Giant has 1 +1/+1 counter"
+    ],
+    "cite": [
+      "122.6"
+    ]
+  },
+  {
+    "id": "toxic",
+    "text": "My opponent attacks me with Tyrranax Atrocity. I'm at 20 life.",
+    "expect": [
+      "You have 3 poison counters",
+      "You go from 20 to 16 life"
+    ],
+    "cite": [
+      "702.164c"
+    ]
+  },
+  {
+    "id": "cant-be-blocked-by-power",
+    "text": "I have Lydia Frye. Opponent has Hill Giant and Grizzly Bears. I attack with Lydia Frye and they block with Hill Giant.",
+    "expect": [
+      "Hill Giant can't block Lydia Frye",
+      "opponent takes 3 damage"
+    ],
+    "cite": [
+      "509.1b"
+    ]
+  },
+  {
+    "id": "act-of-treason",
+    "text": "I cast Act of Treason targeting their tapped Hill Giant. I attack with it.",
+    "expect": [
+      "You control Hill Giant until end of turn",
+      "opponent takes 3 damage"
+    ],
+    "cite": [
+      "613.1b"
+    ]
   }
 ]
