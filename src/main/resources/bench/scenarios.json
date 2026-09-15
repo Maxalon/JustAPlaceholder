@@ -3139,5 +3139,47 @@
     "cite": [
       "702.11b"
     ]
+  },
+  {
+    "id": "torment-of-hailfire-x3",
+    "text": "I cast Torment of Hailfire with X=3. My opponent has no cards in hand and controls Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard",
+      "opponent loses 3 life. (×2)"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "701.21a",
+      "119.3"
+    ]
+  },
+  {
+    "id": "blood-moon-urzas-saga",
+    "text": "My opponent controls Blood Moon. I control Urza's Saga. What happens?",
+    "expect": [
+      "Urza's Saga is a Mountain with no abilities (Blood Moon)"
+    ],
+    "notExpect": [
+      "Rules text not modeled"
+    ],
+    "cite": [
+      "305.7",
+      "714.4"
+    ]
+  },
+  {
+    "id": "serra-angel-untaps-question",
+    "text": "I attack with Serra Angel and my opponent blocks with Grizzly Bears. After damage, does Serra Angel untap?",
+    "expect": [
+      "Serra Angel is untapped (vigilance: attacking didn't tap it)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.20b"
+    ]
   }
 ]

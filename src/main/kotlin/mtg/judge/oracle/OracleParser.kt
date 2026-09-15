@@ -427,7 +427,11 @@ object OracleParser {
                 // "That player may pay {2}. If they don't, you create a Treasure token." is an "unless they pay" effect.
                 val mayPay = Regex("""^(That player|Its controller|Target player|Each opponent|You) may pay (\{[^}]+\}(?:\{[^}]+\})*|\d+ life)\.?$""", RegexOption.IGNORE_CASE).matchEntire(cur)
                 val ifNot = Regex("""^If (?:they|that player|the player|you) (?:don't|doesn't|do not|does not), (.+)$""", RegexOption.IGNORE_CASE)
-                if (mayPay != null && next != null && ifNot.containsMatchIn(next)) {
+                val repeatRe = Regex("""^Repeat the following process (X|\d+|\w+) times?\.?$""", RegexOption.IGNORE_CASE)
+                if (repeatRe.matches(cur) && next != null) {
+                    val w = repeatRe.find(cur)!!.groupValues[1]
+                    out += Effect.Repeat(parseSentence(next), if (w.equals("X", true)) 0 else (w.toIntOrNull() ?: number(w) ?: 1), x = w.equals("X", true)); i += 2
+                } else if (mayPay != null && next != null && ifNot.containsMatchIn(next)) {
                     val payer = when (mayPay.groupValues[1].lowercase()) { "you" -> Who.YOU; "its controller" -> Who.CONTROLLER_OF_TARGET; "target player" -> Who.TARGET_PLAYER; "each opponent" -> Who.EACH_OPPONENT; else -> Who.THAT_PLAYER }
                     out += Effect.UnlessPays(parseSentence(ifNot.find(next)!!.groupValues[1].replaceFirstChar { it.uppercase() }), payer, mayPay.groupValues[2])
                     i += 2
@@ -571,6 +575,12 @@ object OracleParser {
             }
         }
         selfPumpRe.matchEntire(s)?.let { return Effect.PumpSelf(it.groupValues[1].toInt(), it.groupValues[2].toInt()) }
+        // "Each opponent loses 3 life unless that player sacrifices a nonland permanent of their choice or discards a card."
+        Regex("""^(each opponent|each player|target player|that player) loses (\d+) life unless (?:that player|they) (?:sacrifices? (?:an? |two )?(.+?)(?: of (?:their|his or her) choice)?)?(?:(?: or )?discards? a card)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val who = when (m.groupValues[1].lowercase()) { "each opponent" -> Who.EACH_OPPONENT; "each player" -> Who.EACH_PLAYER; "target player" -> Who.TARGET_PLAYER; else -> Who.THAT_PLAYER }
+            val filter = m.groupValues[3].takeIf { it.isNotEmpty() }?.let { parseFilter(it, Kind.PERMANENT) }
+            if (filter == null || filter.verifiable) return Effect.LoseLifeUnlessSacOrDiscard(who, m.groupValues[2].toInt(), filter, discard = s.contains("discard", true))
+        }
         // "Until end of turn, creatures you control have base power and toughness X/X and gain all creature types." (Mirror Entity)
         Regex("""^(?:until end of turn, )?(?:all |each )?(.+?) (?:have|has) base power and toughness (X|\d+)/(X|\d+)((?: and gain all creature types)?)(?: until end of turn)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             if (!m.groupValues[1].startsWith("target", true) && m.groupValues[1] != "~") { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Effect.SetBasePtAll(f, m.groupValues[2].toIntOrNull() ?: 0, m.groupValues[3].toIntOrNull() ?: 0, x = m.groupValues[2].equals("X", true), allCreatureTypes = m.groupValues[4].isNotEmpty()) }

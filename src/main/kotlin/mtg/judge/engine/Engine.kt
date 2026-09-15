@@ -325,7 +325,7 @@ class Engine(val state: GameState) {
         val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> card.isCreature; Kind.ARTIFACT -> "Artifact" in card.types; Kind.ENCHANTMENT -> "Enchantment" in card.types; Kind.PLANESWALKER -> card.isPlaneswalker; Kind.LAND -> "Land" in card.types; else -> false } }
         return typeOk && notOk
     }
-    private fun usesX(e: Effect): Boolean = when (e) { is Effect.Damage -> e.x; is Effect.Draw -> e.x; is Effect.PumpAll -> e.x; is Effect.SetBasePtAll -> e.x; is Effect.Seq -> e.effects.any { usesX(it) }; is Effect.May -> usesX(e.effect); is Effect.Modal -> e.modes.any { usesX(it) }; else -> false }
+    private fun usesX(e: Effect): Boolean = when (e) { is Effect.Damage -> e.x; is Effect.Draw -> e.x; is Effect.PumpAll -> e.x; is Effect.SetBasePtAll -> e.x; is Effect.Repeat -> e.x || usesX(e.body); is Effect.Seq -> e.effects.any { usesX(it) }; is Effect.May -> usesX(e.effect); is Effect.Modal -> e.modes.any { usesX(it) }; else -> false }
 
     /** Steps and combat can't begin while something is on the stack: everything pending resolves first (500.2). */
     private fun emptyStackFirst(what: String) {
@@ -402,6 +402,7 @@ class Engine(val state: GameState) {
                     trace.step("${def.name} resolves and enters the battlefield under ${state.player(item.controller).possessive} control${if (def.isCreature) " as a ${state.describePt(item.source)}" else ""}${if (item.source.tapped == true) ", tapped" else ""}.", "608.3a")
                     if (def.abilities.any { it is StaticAbility && it.effects.isNotEmpty() }) trace.step("${def.name}'s static ability starts applying to the permanents it describes.", "604.2", "613.1")
                     state.outcomes += "${def.name} enters the battlefield."
+                    narrateLandTypeSetters(item.source)
                     onEvent(GameEvent.EntersBattlefield(item.source))
                     if (item.evoked) onEvokeEntered(item.source)
                 }
@@ -1053,6 +1054,34 @@ class Engine(val state: GameState) {
                     }
                 }
             }
+            is Effect.Repeat -> {
+                val n = if (effect.x) (item.x ?: 0) else effect.times
+                if (effect.x && item.x == null) state.clarifications += Clarification("${item.source.name}'s X", "${item.source.name} repeats its process X times; what was X? (assuming 0)")
+                trace.step("The process is repeated $n time${if (n == 1) "" else "s"}, each repetition done in full before the next.", "608.2c")
+                repeat(n) { k -> trace.step("Repetition ${k + 1} of $n:", "608.2c"); applyEffect(effect.body, item) }
+            }
+            is Effect.LoseLifeUnlessSacOrDiscard -> for (p in resolvePlayers(effect.who, item)) {
+                val mine = effect.filter?.let { f -> state.objects.values.filter { it.isOnBattlefield() && it.controller == p.id && state.matches(f, it, p.id) } } ?: emptyList()
+                val hand = p.handSize
+                when {
+                    mine.isNotEmpty() -> {
+                        val pick = if (mine.size == 1) mine[0] else mine.minWith(compareBy({ if (it.def.isCreature) 1 else 0 }, { it.def.manaValue }, { it.power ?: 0 }))
+                        if (mine.size > 1) state.assumptions += "${p.subject} ${p.v("sacrifices", "sacrifice")} ${pick.name} rather than losing ${effect.amount} life (${p.subject.lowercase()} ${p.v("chooses", "choose")} which ${effect.filter!!.raw}; assuming the least valuable)."
+                        else state.assumptions += "${p.subject} ${p.v("sacrifices", "sacrifice")} ${pick.name} rather than losing ${effect.amount} life (${p.possessive} choice; assuming ${p.subject.lowercase()} ${p.v("keeps", "keep")} the life)."
+                        move(pick, Zone.GRAVEYARD, "${p.subject} ${p.v("sacrifices", "sacrifice")} ${pick.name} instead of losing ${effect.amount} life.", "701.21a")
+                    }
+                    effect.discard && hand != null && hand > 0 -> {
+                        p.handSize = hand - 1
+                        state.assumptions += "${p.subject} ${p.v("discards", "discard")} a card rather than losing ${effect.amount} life (${p.possessive} choice)."
+                        trace.step("${p.subject} ${p.v("has", "have")} no ${effect.filter?.raw ?: "permanent"} to sacrifice, so ${p.subject.lowercase()} ${p.v("discards", "discard")} a card instead of losing ${effect.amount} life (${p.handSize} left in hand).", "701.9a"); state.outcomes += "${p.subject} ${p.v("discards", "discard")} a card."
+                    }
+                    else -> {
+                        if (effect.discard && hand == null) state.clarifications += Clarification("${p.possessive} hand", "${item.source.name} lets ${p.subject.lowercase()} discard a card instead of losing life; how many cards ${p.v("does", "do")} ${p.subject.lowercase()} have in hand? (assuming none)")
+                        p.life = p.life?.minus(effect.amount)
+                        trace.step("${p.subject} ${p.v("has", "have")} ${if (effect.filter != null) "no ${effect.filter.raw} to sacrifice" else "nothing to sacrifice"}${if (effect.discard) " and no card to discard" else ""}, so ${p.subject.lowercase()} ${p.v("loses", "lose")} ${effect.amount} life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} ${effect.amount} life."
+                    }
+                }
+            }
             is Effect.SacrificeEach -> for (p in resolvePlayers(effect.who, item)) {
                 val mine = state.objects.values.filter { it.isOnBattlefield() && it.controller == p.id && state.matches(effect.filter, it, p.id) }
                 when {
@@ -1368,6 +1397,17 @@ class Engine(val state: GameState) {
         return null
     }
 
+    /** What a "nonbasic lands are Mountains" permanent (Blood Moon) does to the nonbasic lands on the battlefield, said once. */
+    fun narrateLandTypeSetters(only: GameObject? = null) {
+        val moons = state.objects.values.filter { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.NonbasicLandsAreMountains } && (only == null || it === only) }
+        for (moon in moons) for (land in state.objects.values.filter { it.isOnBattlefield() && "Land" in it.def.types && "Basic" !in it.def.supertypes }) {
+            val saga = "Saga" in land.def.subtypes
+            trace.step("${moon.name} makes ${land.name} a Mountain: it loses its other land types and every ability from its rules text${if (saga) ", chapter abilities included," else ""} and has only \"{T}: Add {R}\" (a type-changing effect, layer 4).${if (saga) " It's still an enchantment and a Saga; its lore counters stay, and with no chapter abilities it is neither sacrificed nor able to do anything." else ""}", "613.1d", "305.7", *(if (saga) arrayOf("714.4") else emptyArray()))
+            state.outcomes += "${land.name} is a Mountain with no abilities (${moon.name})."
+            state.unsupported.removeAll { it.what == land.name }
+        }
+    }
+
     private fun move(obj: GameObject, to: Zone, text: String, vararg rules: String) {
         if (to == Zone.GRAVEYARD) graveyardReplacement(obj, obj.zone)?.let { (zone, by) ->
             val from = obj.zone
@@ -1592,7 +1632,7 @@ class Engine(val state: GameState) {
         is Effect.Modal -> "choose ${effect.count}: " + effect.modeTexts.joinToString(" / ")
         is Effect.CreateShield -> "prevent ${effect.replacement.amount?.toString() ?: "all"} damage" + (effect.target?.let { " to ${it.raw}" } ?: "") + " this turn"
         is Effect.Regenerate -> "regenerate ${effect.target?.raw ?: item.source.name}"
-        is Effect.GainLife -> "gain ${effect.amount} life"; is Effect.LoseLife -> "lose ${effect.amount} life"
+        is Effect.GainLife -> "gain ${effect.amount} life"; is Effect.LoseLife -> "lose ${effect.amount} life"; is Effect.Repeat -> "repeat ${if (effect.x) "X" else effect.times.toString()} times: ${describe(effect.body, item)}"; is Effect.LoseLifeUnlessSacOrDiscard -> "${when (effect.who) { Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }} loses ${effect.amount} life unless they sacrifice ${effect.filter?.let { withArticle(it.raw) } ?: "a permanent"}${if (effect.discard) " or discard a card" else ""}"
         is Effect.May -> "may " + describe(effect.effect, item); is Effect.UnlessPays -> describe(effect.effect, item) + " unless ${effect.cost} is paid"
         is Effect.Seq -> effect.effects.joinToString(", then ") { describe(it, item) }; is Effect.Unparsed -> "\"${effect.text}\""
     }

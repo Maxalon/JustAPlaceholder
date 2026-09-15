@@ -118,6 +118,10 @@ sealed interface Effect {
     data class Mill(val who: Who, val count: Int) : Effect
     /** "Each other player sacrifices a creature of their choice." */
     data class SacrificeEach(val who: Who, val filter: ObjFilter) : Effect
+    /** "Repeat the following process X times." followed by the process. */
+    data class Repeat(val body: Effect, val times: Int, val x: Boolean) : Effect
+    /** "Each opponent loses N life unless that player sacrifices a [filter] of their choice or discards a card." (Torment of Hailfire) */
+    data class LoseLifeUnlessSacOrDiscard(val who: Who, val amount: Int, val filter: ObjFilter?, val discard: Boolean) : Effect
     /** "Sacrifice this permanent" (evoke's trigger, "sacrifice ~"). */
     object SacrificeSource : Effect
     /** "That player sacrifices that many permanents" (Phyrexian Obliterator): as many as the causing amount, their choice. */
@@ -192,6 +196,8 @@ sealed interface Effect {
         is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is GainLifePerSpellThisTurn -> emptyList(); is WinIfDevotionCoversLibrary -> emptyList(); is CopySpell -> listOf(target); is PreventCombatToAndBy -> listOf(target); is WinIfCastBefore -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
+        is Repeat -> body.targets()
+        is LoseLifeUnlessSacOrDiscard -> emptyList()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
         is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
     }
@@ -199,6 +205,7 @@ sealed interface Effect {
     fun hasUnparsed(): Boolean = when (this) {
         is Unparsed -> true; is May -> effect.hasUnparsed(); is UnlessPays -> effect.hasUnparsed(); is Seq -> effects.any { it.hasUnparsed() }
         is IfYouDo -> choice.hasUnparsed() || then.hasUnparsed()
+        is Repeat -> body.hasUnparsed()
         is Modal -> modes.any { it.hasUnparsed() }
         else -> false
     }

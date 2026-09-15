@@ -231,5 +231,7 @@ class SituationParserTest {
         val cast = q.situation.events.last { it.verb == "cast" }; assertEquals("me", cast.player); assertEquals("Stifle", cast.card?.name); assertEquals(listOf("sol_ring"), cast.targets)
         val r = parser.parse("My opponent attacks me with Sol Ring and I'm at 1 life. I cast Stifle.")
         assertEquals(1, r.situation.players.first { it.id == "me" }.life); assertTrue(r.situation.events.any { it.verb == "attack" && it.obj == "sol_ring" }); assertTrue(r.unread.isEmpty(), r.unread.toString())
+        val t = parser.parse("I attack with Sol Ring. After damage, does Sol Ring untap?")
+        assertEquals("tapped", t.situation.events.last { it.verb == "ask" }.to); assertEquals("sol_ring", t.situation.events.last { it.verb == "ask" }.obj); assertTrue(t.unread.isEmpty(), t.unread.toString())
     }
 }

@@ -23,6 +23,9 @@ class BatchThirteenTest {
     private val jace = card("Jace Beleren", "Legendary Planeswalker — Jace", "+2: Each player draws a card.\n−1: Target player draws a card.\n−10: Target player mills twenty cards.", "{1}{U}{U}", "U")
     private val kaalia = card("Kaalia of the Vast", "Legendary Creature — Human Cleric", "Flying\nWhenever Kaalia attacks an opponent, you may put an Angel, Demon, or Dragon creature card from your hand onto the battlefield tapped and attacking that opponent.", "{1}{R}{W}{B}", "RWB", "2", "2", "Flying")
     private val mirrorEntity = card("Mirror Entity", "Creature — Shapeshifter", "Changeling\n{X}: Until end of turn, creatures you control have base power and toughness X/X and gain all creature types.", "{2}{W}", "W", "1", "1", "Changeling")
+    private val hailfire = card("Torment of Hailfire", "Sorcery", "Repeat the following process X times. Each opponent loses 3 life unless that player sacrifices a nonland permanent of their choice or discards a card.", "{X}{B}{B}", "B")
+    private val bloodMoon = card("Blood Moon", "Enchantment", "Nonbasic lands are Mountains.", "{2}{R}", "R")
+    private val urzasSaga = card("Urza's Saga", "Enchantment Land — Urza's Saga", "(As this Saga enters and after your draw step, add a lore counter.)\nI — Urza's Saga gains \"{T}: Add {C}.\"\nII — Urza's Saga gains \"{2}, {T}: Create a 0/0 colorless Construct artifact creature token with 'This creature gets +1/+1 for each artifact you control.'\"\nIII — Search your library for an artifact card with mana cost {0} or {1}, put it onto the battlefield, then shuffle.", "", "")
     private val serra = card("Serra Angel", "Creature — Angel", "Flying, vigilance", "{3}{W}{W}", "W", "4", "4", "Flying", "Vigilance")
     private val viper = card("Ambush Viper", "Creature — Snake", "Flash\nDeathtouch", "{1}{G}", "G", "2", "1", "Flash", "Deathtouch")
     private val krenko = card("Krenko, Mob Boss", "Legendary Creature — Goblin Warrior", "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.", "{2}{R}{R}", "R", "3", "3")
@@ -296,6 +299,23 @@ class BatchThirteenTest {
         assertTrue("613.4b" in s.cited())
         e.cast("me", giantGrowth, listOf(Ref.Obj("bears"))); e.resolveAll(); assertEquals(8, s.obj("bears").power, "a pump applies above the new base")
         e.beginStep("cleanup", "me"); assertEquals(3, s.obj("bears").power, "base 2 plus the counter once the effect ends"); assertEquals(1, s.obj("mirror").power)
+    }
+
+    @Test
+    fun `torment of hailfire repeats and takes a permanent, then a card, then life`() {
+        assertTrue(hailfire.spellEffect is Effect.Repeat, hailfire.spellEffect.toString())
+        val s = state(); s.put("bears", bears, "opp"); s.player("opp").handSize = 1; val e = Engine(s)
+        e.cast("me", hailfire, emptyList(), x = 3); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("bears").zone); assertEquals(0, s.player("opp").handSize); assertEquals(17, s.player("opp").life)
+        assertTrue("701.21a" in s.cited() && "701.9a" in s.cited() && "119.3" in s.cited())
+    }
+
+    @Test
+    fun `blood moon turns urza's saga into a mountain that does nothing`() {
+        val s = state(); s.put("moon", bloodMoon, "opp"); s.put("saga", urzasSaga, "me"); val e = Engine(s)
+        e.narrateLandTypeSetters()
+        assertTrue(s.trace.steps.any { it.text.contains("chapter abilities included") && "714.4" in it.rules && "305.7" in it.rules }, s.trace.steps.joinToString("\n") { it.text })
+        assertTrue(s.outcomes.any { it.startsWith("Urza's Saga is a Mountain") })
     }
 
     @Test
