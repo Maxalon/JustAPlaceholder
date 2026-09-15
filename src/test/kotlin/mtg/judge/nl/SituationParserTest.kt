@@ -152,4 +152,16 @@ class SituationParserTest {
         assertEquals(listOf("me"), r.situation.events.first().targets); assertEquals("opp", r.situation.events.first().player)
         assertEquals(5, r.situation.players.first { it.id == "me" }.librarySize)
     }
+
+    @Test
+    fun `attachments by has-on, token fragments, commander damage and hit-with attacks`() {
+        val p = parser.parse("My opponent has Sol Ring on Time Vault and a Treasure token. My commander Rhystic Study has dealt 18 damage to my opponent already. I hit them with Rhystic Study again unblocked.")
+        val ring = p.situation.objects.first { it.card.name == "Sol Ring" }
+        assertEquals("time_vault", ring.attachedTo); assertEquals("opp", ring.controller)
+        assertTrue(p.situation.objects.any { it.card.name.equals("treasure token", ignoreCase = true) && it.token && it.controller == "opp" })
+        assertEquals(mapOf("rhystic_study" to 18), p.situation.players.first { it.id == "opp" }.commanderDamage)
+        assertTrue(p.situation.objects.first { it.card.name == "Rhystic Study" }.commander)
+        val attack = p.situation.events.first { it.verb == "attack" }
+        assertEquals("rhystic_study", attack.obj); assertEquals(listOf("opp"), attack.targets); assertTrue(p.unread.isEmpty(), "unread: ${p.unread}")
+    }
 }

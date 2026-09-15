@@ -25,7 +25,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
     fun answer(sit: Situation): Answer {
         val understood = mutableListOf<String>()
-        val state = GameState(sit.players.map { ps -> Player(ps.id, ps.name, ps.life).also { it.poison = ps.poison ?: 0; it.handSize = ps.handSize; it.librarySize = ps.librarySize } }, LinkedHashMap(), activePlayer = sit.turn.activePlayer, phase = sit.turn.phase, step = sit.turn.step)
+        val state = GameState(sit.players.map { ps -> Player(ps.id, ps.name, ps.life).also { it.poison = ps.poison ?: 0; it.handSize = ps.handSize; it.librarySize = ps.librarySize; it.commanderDamage.putAll(ps.commanderDamage) } }, LinkedHashMap(), activePlayer = sit.turn.activePlayer, phase = sit.turn.phase, step = sit.turn.step)
         val engine = Engine(state)
 
         for (o in sit.objects) {
@@ -117,7 +117,12 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke")
             }
             "draw" -> engine.draw(e.player ?: throw JudgeException("draw needs a player"), e.amount ?: 1)
-            "sacrifice" -> { val objId = e.obj ?: throw JudgeException("sacrifice needs an object"); engine.sacrifice(e.player ?: state.obj(objId).controller, objId) }
+            "sacrifice" -> {
+                val objId = e.obj ?: throw JudgeException("sacrifice needs an object"); val o = state.obj(objId)
+                // "I sacrifice Sakura-Tribe Elder": sacrificing a permanent that has a "Sacrifice this: …" ability means activating it.
+                val sacAbility = o.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> Regex("""(?i)\bsacrifice (?:~|this\b|${Regex.escape(o.name)}\b)""").containsMatchIn(a.cost) }
+                if (sacAbility >= 0 && o.isOnBattlefield()) engine.activate(e.player ?: o.controller, objId, sacAbility, targets) else engine.sacrifice(e.player ?: o.controller, objId)
+            }
             "gainlife" -> engine.gainLifeEvent(e.player ?: throw JudgeException("gainLife needs a player"), e.amount ?: 1)
             "loselife" -> engine.loseLifeEvent(e.player ?: throw JudgeException("loseLife needs a player"), e.amount ?: 1)
             "regenerate" -> { val o = state.obj(e.obj ?: throw JudgeException("regenerate needs an object")); state.shields += mtg.judge.engine.Shield(mtg.judge.engine.Replacement.Regenerate, o.id, null, 1, "a regeneration effect") }

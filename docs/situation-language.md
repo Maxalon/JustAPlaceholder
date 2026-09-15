@@ -34,7 +34,7 @@ Design rules:
 ## Player
 
 ```json
-{ "id": "me", "name": "me", "life": 40, "poison": 0, "handSize": 3, "librarySize": 0 }
+{ "id": "me", "name": "me", "life": 40, "poison": 0, "handSize": 3, "librarySize": 0, "commanderDamage": { "atraxa": 18 } }
 ```
 
 `id` is a short handle used everywhere else (`me`, `opp`, `opp2`, or a name). `poison`, `handSize` and

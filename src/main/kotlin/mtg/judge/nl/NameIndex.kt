@@ -7,8 +7,10 @@ import java.sql.Connection
  * In-memory index of every card name (full and face) for longest-match detection in free text.
  * Tokens are the words of the normalized name; a name is found when a run of input words matches.
  */
-class NameIndex private constructor(private val byNorm: Map<String, Entry>, val maxWords: Int) {
-    data class Entry(val display: String, val oracleId: String, val isCard: Boolean, val kind: String, val typeLine: String = "") {
+class NameIndex private constructor(private val byNorm: Map<String, Entry>, val maxWords: Int, private val heads: Map<String, List<Entry>> = emptyMap()) {
+    data class Entry(val display: String, val oracleId: String, val isCard: Boolean, val kind: String, val typeLine: String = "",
+                     /** Other cards this word could have meant ("Atraxa": Praetors' Voice or Grand Unifier). */
+                     val alternatives: List<String> = emptyList()) {
         /** An instant or sorcery: it lives in hand or on the stack, never on the battlefield. */
         val isSpellOnly: Boolean get() = (typeLine.contains("Instant") || typeLine.contains("Sorcery")) && !typeLine.contains("Land")
     }
@@ -27,7 +29,10 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
                 val key = span.joinToString(" ")
                 val sing = singularize(span)
                 // Exact name, then nickname, then singularized forms; a nickname beats a token that happens to share the word ("bears" -> Grizzly Bears, not a Bear token).
-                val e = byNorm[key] ?: alias(key) ?: sing?.let { alias(it) } ?: sing?.let { byNorm[it] }
+                val e0 = byNorm[key] ?: alias(key) ?: sing?.let { alias(it) } ?: sing?.let { byNorm[it] }
+                // A first name shared by several legendary creatures ("Sheoldred", "Atraxa"): the front face of a transforming card
+                // that happens to carry it ("Sheoldred // The True Scriptures") doesn't win over them.
+                val e = if (len == 1 && key !in aliases && (e0 == null || e0.kind != "full" || !e0.isCard) && heads[key] != null) heads.getValue(key).let { hs -> hs.first().copy(alternatives = hs.drop(1).map { it.display } + listOfNotNull(e0?.display)) } else e0
                 // A name made only of everyday words ("The End", "Turn Aside" no, "Wear // Tear" yes) is table talk unless it's a nickname.
                 val ordinary = span.flatMap { it.split(' ') }.all { it in commonWords || it.removeSuffix("s") in commonWords } && key !in aliases && sing !in aliases
                 if (e != null && !ordinary && (len > 1 || isSafeSingleWord(key, e) || key in aliases || sing in aliases)) { hit = Found(i, i + len, e); break }
@@ -48,7 +53,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
      * Single common English words are also card names ("Fog", "Counter", "Opt", "Growth", "Study", "Turn").
      * Only accept them when they're not everyday words the situation grammar uses.
      */
-    private fun isSafeSingleWord(key: String, e: Entry): Boolean = key !in stopWords && (key.length <= 3 || key.removeSuffix("s") !in stopWords) && e.isCard
+    private fun isSafeSingleWord(key: String, e: Entry): Boolean = (key !in stopWords && (key.length <= 3 || key.removeSuffix("s") !in stopWords) && e.isCard) || key in heads
 
     /** Table-talk nicknames. The value is the real card name (normalized). */
     private fun alias(key: String): Entry? = aliases[key]?.let { byNorm[it] }
@@ -72,7 +77,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
         )
 
         /** Everyday words: a card name made only of these is not read as a card ("The End", "Wear", "Attacking"). */
-        private val commonWords = setOf("the", "a", "an", "of", "end", "start", "beginning", "turn", "step", "phase", "time", "game", "play", "attacking", "blocking", "wear", "tear", "begin",
+        private val commonWords = setOf("the", "a", "an", "of", "end", "start", "beginning", "turn", "step", "phase", "time", "game", "play", "attacking", "blocking", "wear", "tear", "begin", "hit", "run", "swing", "bolt",
             "my", "your", "their", "our", "it", "its", "this", "that", "and", "or", "not", "no", "yes", "in", "on", "at", "to", "for", "with", "from", "by", "as", "is", "are", "was", "be",
             "one", "two", "three", "first", "second", "last", "next", "new", "old", "big", "small", "up", "down", "out", "off", "over", "under", "back", "again", "now", "then", "here", "there",
             "life", "death", "damage", "counter", "target", "attack", "block", "draw", "hand", "deck", "library", "graveyard", "exile", "battlefield", "stack", "response", "trigger", "ability", "poison", "commander", "cards", "card",
@@ -104,7 +109,15 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
                     maxWords = maxOf(maxWords, norm.count { it == ' ' } + 1)
                 }
             }
-            return NameIndex(map, minOf(maxWords, 12))
+            // Legendary creatures are called by their first name: "Atraxa", "Sheoldred", "Kaalia". Ambiguous first names keep the alternatives.
+            val heads = HashMap<String, MutableList<Entry>>()
+            for (e in map.values) {
+                if (e.kind != "full" || !e.isCard || !e.typeLine.contains("Legendary")) continue
+                val head = if (e.display.contains(",")) Names.normalize(e.display.substringBefore(",")) else Regex("""^([A-Z][\w'-]+) (?:of|the)\b""").find(e.display)?.groupValues?.get(1)?.let { Names.normalize(it) } ?: continue
+                if (head.contains(' ') || head.length < 4 || head in commonWords || head in stopWords || map[head]?.let { it.kind == "full" && it.isCard } == true) continue
+                heads.getOrPut(head) { mutableListOf() }.let { l -> if (l.none { it.oracleId == e.oracleId }) l += e }
+            }
+            return NameIndex(map, minOf(maxWords, 12), heads.mapValues { (_, l) -> l.sortedBy { it.display.lowercase() } })
         }
 
         fun tokenize(text: String): List<String> = Names.normalize(text).split(' ').filter { it.isNotEmpty() }

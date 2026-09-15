@@ -169,6 +169,11 @@ class Engine(val state: GameState) {
         if (ability.cost.contains("{T}") && obj.def.isCreature && obj.summoningSick == true && !obj.has("haste")) { trace.step("${obj.name} hasn't been under ${state.player(playerId).possessive} control since the turn began and doesn't have haste, so its {T} ability can't be activated.", "302.6"); state.outcomes += "${obj.name}'s {T} ability can't be activated (summoning sickness)."; return null }
         if (ability.cost.contains("{T}")) tap(obj)
         if (ability.cost.contains("discard this card", true)) onEvent(GameEvent.Cycled(obj))
+        if (Regex("""(?i)\bsacrifice (?:~|this\b|${Regex.escape(obj.name)}\b)""").containsMatchIn(ability.cost)) {
+            if (!obj.isOnBattlefield()) { trace.step("${obj.name} isn't on the battlefield, so it can't be sacrificed to pay the cost.", "602.2b", "701.21a"); return null }
+            obj.lkiPower = obj.power; state.lastSacrificed = obj
+            move(obj, Zone.GRAVEYARD, "${state.player(playerId).subject} ${state.player(playerId).v("sacrifices", "sacrifice")} ${obj.name} as the cost. Costs are paid as the ability is activated, so once it's on the stack the ability resolves even if something is done in response: the sacrifice can't be responded to.", "701.21a", "602.2b", "601.2h", "113.7a")
+        }
         val needed = ability.effect.targets()
         if (needed.size != targets.size && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && targetsAPlayer(ability.effect))) {
             state.clarifications += Clarification("${obj.name}'s ability target", "The ability needs ${needed.size} target(s) (${needed.joinToString("; ") { it.raw }}) but ${targets.size} given (602.2b, 601.2c).")

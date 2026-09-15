@@ -2006,5 +2006,113 @@
     "cite": [
       "704.5g"
     ]
+  },
+  {
+    "id": "sheoldred-wheel",
+    "text": "I control Sheoldred, the Apocalypse and my opponent casts Wheel of Fortune.",
+    "expect": [
+      "opponent loses 2 life. (×7)",
+      "You gain 2 life. (×7)"
+    ],
+    "cite": [
+      "121.1"
+    ]
+  },
+  {
+    "id": "greaves-on-bears-has-form",
+    "text": "My opponent has Lightning Greaves on Grizzly Bears. Can I bolt the Bears?",
+    "expect": [
+      "Lightning Bolt can't target Grizzly Bears"
+    ],
+    "cite": [
+      "702.18a"
+    ]
+  },
+  {
+    "id": "rift-overloaded-treasure",
+    "text": "I cast Cyclonic Rift overloaded. My opponent has two Forests, Grizzly Bears and a Treasure token.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's hand",
+      "Treasure token: the battlefield → opponent's hand"
+    ],
+    "notExpect": [
+      "Forest: the battlefield"
+    ],
+    "cite": [
+      "702.96a"
+    ]
+  },
+  {
+    "id": "questing-beast-token-block",
+    "text": "I attack with Questing Beast. My opponent blocks with a 1/1 Soldier token and is at 3 life.",
+    "expect": [
+      "Soldier token can't block Questing Beast",
+      "opponent loses the game"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "elder-in-response-targeting-it",
+    "text": "I sacrifice Sakura-Tribe Elder in response to Lightning Bolt targeting it.",
+    "expect": [
+      "Lightning Bolt doesn't resolve (all targets illegal)",
+      "Search your library for a basic land card"
+    ],
+    "cite": [
+      "602.2b",
+      "608.2b"
+    ]
+  },
+  {
+    "id": "commander-damage-first-name",
+    "text": "My commander Atraxa has dealt 18 damage to my opponent already. I hit them with Atraxa again unblocked.",
+    "expect": [
+      "opponent loses the game (commander damage)"
+    ],
+    "cite": [
+      "903.10a"
+    ]
+  },
+  {
+    "id": "sheoldred-first-name",
+    "text": "I have Sheoldred and my opponent draws a card.",
+    "expect": [
+      "opponent loses 2 life"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "kaalia-first-name-her-trigger",
+    "text": "Kaalia attacks and I put Rakdos onto the battlefield with her trigger.",
+    "expect": [
+      "is attacking opponent"
+    ],
+    "cite": [
+      "508.4"
+    ]
+  },
+  {
+    "id": "jace-short-after-full",
+    "text": "I have Jace, the Mind Sculptor. I activate Jace's +2.",
+    "expect": [
+      "you activate Jace, the Mind Sculptor (+2)"
+    ],
+    "cite": [
+      "606.3"
+    ]
+  },
+  {
+    "id": "ghostly-prison-named-two-creatures",
+    "text": "Bob has Ghostly Prison. I attack Bob with two creatures but only have 2 mana.",
+    "expect": [
+      "Bob takes 1 damage. (×2)"
+    ],
+    "cite": [
+      "508.1c"
+    ]
   }
 ]
