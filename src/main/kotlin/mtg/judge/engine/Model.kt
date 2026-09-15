@@ -55,6 +55,8 @@ sealed interface Trigger {
     data object YouGainLife : Trigger
     /** "Whenever a [filter] dies". */
     data class PermanentDies(val filter: ObjFilter, val other: Boolean) : Trigger
+    /** "Whenever you draw a card". */
+    data object YouDraw : Trigger
     /** "Whenever ~ is dealt damage". */
     data object ThisIsDealtDamage : Trigger
     /** "Whenever ~ becomes blocked". */
@@ -123,7 +125,7 @@ sealed interface Effect {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
         is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target)
-        is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }
+        is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
         is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is AddMana, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
@@ -138,9 +140,25 @@ sealed interface Effect {
 }
 
 /** Continuous effects from static abilities (604), applied in the layer system (613). */
+/** A condition on a static ability: "as long as you control a Swamp", "as long as it's your turn". */
+sealed interface Condition {
+    data class ControlsMatching(val filter: ObjFilter, val atLeast: Int = 1) : Condition
+    data object YourTurn : Condition
+    data object NotYourTurn : Condition
+    data class Unknown(val text: String) : Condition
+}
+
+/** How a characteristic-defining ability computes a number (604.3, 613.4a). */
+sealed interface CountExpr {
+    data class Permanents(val filter: ObjFilter) : CountExpr
+    data class Unknown(val text: String) : CountExpr
+}
+
 sealed interface StaticEffect {
-    /** Layer 7c: "[filter] get +N/+N". */
-    data class PtModify(val filter: ObjFilter, val power: Int, val toughness: Int) : StaticEffect
+    /** Layer 7c: "[filter] get +N/+N". `self` = "~ gets"; `condition` = "as long as …". */
+    data class PtModify(val filter: ObjFilter, val power: Int, val toughness: Int, val self: Boolean = false, val condition: Condition? = null) : StaticEffect
+    /** Layer 7a: "~'s power and toughness are each equal to the number of …" (604.3). */
+    data class PtCda(val power: CountExpr?, val toughness: CountExpr?, val plus: Int = 0) : StaticEffect
     /** Layer 6: "[filter] have [keywords]". */
     data class KeywordGrant(val filter: ObjFilter, val keywords: Set<String>) : StaticEffect
     /** "~ enters tapped" (614.1c replacement on entering). */

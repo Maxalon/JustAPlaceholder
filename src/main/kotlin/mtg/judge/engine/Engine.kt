@@ -261,6 +261,18 @@ class Engine(val state: GameState) {
             val bq = qualitiesOf(b.def)
             prots.firstOrNull { it == "everything" || it in bq }?.let { q -> trace.step("${a.name} has protection from $q, so ${b.name} can't block it.", "702.16f"); state.outcomes += "${b.name} can't block ${a.name} (protection)."; return }
         }
+        if (a.has("fear") && !(b.has("fear") || "Artifact" in b.def.types || 'B' in b.def.colors)) { trace.step("${a.name} has fear and can't be blocked except by artifact creatures and/or black creatures.", "702.36b"); state.outcomes += "${b.name} can't block ${a.name} (fear)."; return }
+        if (a.has("intimidate") && !("Artifact" in b.def.types || b.def.colors.intersect(a.def.colors).isNotEmpty())) { trace.step("${a.name} has intimidate and can't be blocked except by artifact creatures and/or creatures that share a color with it.", "702.13b"); state.outcomes += "${b.name} can't block ${a.name} (intimidate)."; return }
+        if (a.has("horsemanship") && !b.has("horsemanship")) { trace.step("${a.name} has horsemanship and can't be blocked except by creatures with horsemanship.", "702.31b"); return }
+        if (a.has("shadow") != b.has("shadow")) { trace.step("${a.name} ${if (a.has("shadow")) "has" else "doesn't have"} shadow and ${b.name} ${if (b.has("shadow")) "has" else "doesn't have"}; creatures with shadow can only block and be blocked by creatures with shadow.", "702.28b"); return }
+        if (a.has("skulk") && (b.power ?: 0) > (a.power ?: 0)) { trace.step("${a.name} has skulk and can't be blocked by creatures with greater power.", "702.118b"); return }
+        a.def.keywords.firstOrNull { it.endsWith("walk") }?.let { walk ->
+            val landType = walk.removeSuffix("walk").replaceFirstChar { it.uppercase() }
+            val defender = state.player(b.controller)
+            if (state.objects.values.any { it.isOnBattlefield() && it.controller == defender.id && "Land" in it.def.types && (it.def.subtypes.any { st -> st.equals(landType, true) } || it.def.name.equals(landType, true)) }) {
+                trace.step("${a.name} has $walk and ${defender.subject.lowercase()} ${defender.v("controls", "control")} a $landType, so it can't be blocked.", "702.14c"); state.outcomes += "${b.name} can't block ${a.name} ($walk)."; return
+            }
+        }
         if (a.has("flying") && !(b.has("flying") || b.has("reach"))) { trace.step("${a.name} has flying and ${b.name} has neither flying nor reach, so ${b.name} can't block it.", "702.9b"); state.outcomes += "${b.name} can't block ${a.name} (flying)."; return }
         val firstBlocker = blockersOf(a).isEmpty()
         b.blocking = a.id
@@ -361,6 +373,7 @@ class Engine(val state: GameState) {
         data class BecomesTarget(val obj: GameObject) : GameEvent
         data class BecomesTapped(val obj: GameObject) : GameEvent
         data class Cycled(val obj: GameObject) : GameEvent
+        data class Drew(val playerId: String) : GameEvent
         data class CreaturesDealtCombatDamageToPlayer(val playerId: String) : GameEvent
     }
 
@@ -399,6 +412,7 @@ class Engine(val state: GameState) {
                 is GameEvent.BecomesTarget -> "${event.obj.name} becoming the target of a spell or ability"
                 is GameEvent.BecomesTapped -> "${event.obj.name} becoming tapped"
                 is GameEvent.Cycled -> "${event.obj.name} being cycled"
+                is GameEvent.Drew -> "${state.player(event.playerId).subject.lowercase()} drawing a card"
                 is GameEvent.CreaturesDealtCombatDamageToPlayer -> "${state.player(event.playerId).possessive} creatures dealing combat damage to a player"
             }
             trace.step("${obj.name}'s ability triggers on $cause.", "603.2", *(if (event is GameEvent.EntersBattlefield) arrayOf("603.6a") else emptyArray()))
@@ -426,6 +440,7 @@ class Engine(val state: GameState) {
         is Trigger.PermanentDies -> event is GameEvent.Dies && (obj.isOnBattlefield() || event.obj === obj) && !(trigger.other && event.obj === obj) && matchesLki(trigger.filter, event.obj, obj.controller)
         Trigger.YouAttack -> event is GameEvent.PlayerAttacks && event.playerId == obj.controller && obj.isOnBattlefield()
         Trigger.YouGainLife -> event is GameEvent.LifeGained && event.playerId == obj.controller && obj.isOnBattlefield()
+        Trigger.YouDraw -> event is GameEvent.Drew && event.playerId == obj.controller && obj.isOnBattlefield()
         Trigger.ThisIsDealtDamage -> event is GameEvent.DamageDealt && (event.target as? Ref.Obj)?.id == obj.id
         Trigger.ThisBecomesBlocked -> event is GameEvent.BecomesBlocked && event.obj === obj
         Trigger.ThisBlocks -> event is GameEvent.Blocks && event.obj === obj
@@ -478,8 +493,9 @@ class Engine(val state: GameState) {
                 val who = resolveWho(effect.who, item)
                 if (who == null) { state.unsupported += Unsupported(item.describe, "Couldn't work out who draws."); return }
                 who.drew += effect.count
-                trace.step("${who.subject} ${who.v("draws", "draw")} ${effect.count} card${if (effect.count > 1) "s" else ""}.", "121.1")
+                trace.step("${who.subject} ${who.v("draws", "draw")} ${effect.count} card${if (effect.count > 1) "s" else ""}${if (effect.count > 1) " (one at a time)" else ""}.", "121.1", *(if (effect.count > 1) arrayOf("121.2") else emptyArray()))
                 state.outcomes += "${who.subject} ${who.v("draws", "draw")} ${effect.count} card${if (effect.count > 1) "s" else ""}."
+                repeat(effect.count) { onEvent(GameEvent.Drew(who.id)) }
             }
             is Effect.Damage -> forEachLegalTarget(item, effect.target) { applyDamage(item.source.name, it, effect.amount) }
             is Effect.Counter -> forEachLegalTarget(item, effect.target) { ref ->
@@ -748,8 +764,8 @@ class Engine(val state: GameState) {
         return null
     }
 
-    private val castingKeywordRules = mapOf("kicker" to "702.33a", "flashback" to "702.34a", "madness" to "702.35a", "convoke" to "702.51a", "affinity" to "702.41a", "suspend" to "702.62a", "morph" to "702.37a", "improvise" to "702.126a", "cumulative upkeep" to "702.24a", "devoid" to "702.114a", "changeling" to "702.73a", "partner" to "702.124a", "evoke" to "702.74a", "echo" to "702.30a", "foretell" to "702.143a")
-    private val castingKeywordNotes = mapOf("kicker" to "its controller may pay the kicker cost as an additional cost while casting", "flashback" to "it may be cast from the graveyard for its flashback cost, then is exiled", "madness" to "it may be cast for its madness cost as it's discarded", "convoke" to "creatures may be tapped to help pay for it", "affinity" to "it costs less for each matching permanent", "suspend" to "it may be exiled with time counters instead of cast", "morph" to "it may be cast face down as a 2/2 for {3}", "improvise" to "artifacts may be tapped to help pay for it", "cumulative upkeep" to "at the beginning of its controller's upkeep an age counter is added and the cost paid per counter or it's sacrificed", "devoid" to "it is colorless", "changeling" to "it is every creature type", "partner" to "a deck can have two commanders with partner", "evoke" to "it may be cast for its evoke cost, then sacrificed when it enters", "echo" to "at the beginning of its controller's next upkeep they pay the echo cost or sacrifice it", "foretell" to "it may have been exiled face down for {2} earlier and cast later for its foretell cost")
+    private val castingKeywordRules = mapOf("kicker" to "702.33a", "flashback" to "702.34a", "madness" to "702.35a", "convoke" to "702.51a", "affinity" to "702.41a", "suspend" to "702.62a", "morph" to "702.37a", "improvise" to "702.126a", "cumulative upkeep" to "702.24a", "devoid" to "702.114a", "changeling" to "702.73a", "partner" to "702.124a", "evoke" to "702.74a", "echo" to "702.30a", "foretell" to "702.143a", "cascade" to "702.85a", "bestow" to "702.103a", "disguise" to "702.168a", "escape" to "702.138a", "mutate" to "702.140a", "companion" to "702.139a", "split second" to "702.61a", "buyback" to "702.27a", "overload" to "702.96a", "surge" to "702.117a", "emerge" to "702.119a", "spectacle" to "702.137a", "jump-start" to "702.133a", "retrace" to "702.81a", "delve" to "702.66a", "prototype" to "702.160a", "casualty" to "702.153a", "offspring" to "702.175a", "gift" to "702.174a", "impending" to "702.176a", "harmonize" to "702.180a")
+    private val castingKeywordNotes = mapOf("kicker" to "its controller may pay the kicker cost as an additional cost while casting", "flashback" to "it may be cast from the graveyard for its flashback cost, then is exiled", "madness" to "it may be cast for its madness cost as it's discarded", "convoke" to "creatures may be tapped to help pay for it", "affinity" to "it costs less for each matching permanent", "suspend" to "it may be exiled with time counters instead of cast", "morph" to "it may be cast face down as a 2/2 for {3}", "improvise" to "artifacts may be tapped to help pay for it", "cumulative upkeep" to "at the beginning of its controller's upkeep an age counter is added and the cost paid per counter or it's sacrificed", "devoid" to "it is colorless", "changeling" to "it is every creature type", "partner" to "a deck can have two commanders with partner", "evoke" to "it may be cast for its evoke cost, then sacrificed when it enters", "echo" to "at the beginning of its controller's next upkeep they pay the echo cost or sacrifice it", "foretell" to "it may have been exiled face down for {2} earlier and cast later for its foretell cost", "cascade" to "when cast, exile cards from the top of the library until a cheaper nonland card is found and it may be cast free", "bestow" to "it may be cast as an Aura for its bestow cost", "disguise" to "it may be cast face down as a 2/2 with ward {2} for {3}", "escape" to "it may be cast from the graveyard by paying its escape cost", "mutate" to "it may be cast for its mutate cost to merge with a non-Human creature", "companion" to "it may start outside the game and be put into hand for {3}", "split second" to "while it's on the stack players can't cast spells or activate non-mana abilities", "buyback" to "its buyback cost may be paid to return it to hand as it resolves", "overload" to "it may be cast for its overload cost, changing 'target' to 'each'", "surge" to "it costs its surge cost if another spell was cast this turn", "emerge" to "it may be cast by sacrificing a creature for a reduced cost", "spectacle" to "it may be cast for its spectacle cost if an opponent lost life this turn", "jump-start" to "it may be cast from the graveyard by discarding a card", "retrace" to "it may be cast from the graveyard by discarding a land", "delve" to "cards may be exiled from the graveyard to pay generic mana", "prototype" to "it may be cast smaller for its prototype cost", "casualty" to "a creature may be sacrificed as it's cast to copy it", "offspring" to "its offspring cost may be paid to create a 1/1 token copy", "gift" to "a gift may be promised to an opponent as it's cast", "impending" to "it may be cast for its impending cost as a non-creature with time counters", "harmonize" to "it may be cast from the graveyard, tapping a creature to reduce the cost")
 
     /** Ward: targeting an opponent's warded permanent triggers "counter unless you pay [cost]" (702.21a). */
     private fun wardTriggers(item: StackItem) {

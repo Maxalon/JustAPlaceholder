@@ -121,22 +121,51 @@ class GameState(
             for (ab in src.def.abilities.filterIsInstance<StaticAbility>()) for (eff in ab.effects) {
                 val filter = when (eff) { is StaticEffect.PtModify -> eff.filter; is StaticEffect.KeywordGrant -> eff.filter; else -> continue }
                 if (filter.other && src === obj) continue
+                if (eff is StaticEffect.PtModify && eff.self) { if (src === obj && conditionHolds(eff.condition, src)) out += src to eff; continue }
+                if (filter.raw == "~") { if (src === obj) out += src to eff; continue }
                 if (matches(filter, obj, src.controller, src)) out += src to eff
             }
         }
         return out
     }
 
-    fun powerOf(obj: GameObject): Int? = obj.def.power?.let { base ->
+    /** Whether a static ability's condition currently holds for its source. */
+    fun conditionHolds(c: Condition?, src: GameObject): Boolean = when (c) {
+        null -> true
+        Condition.YourTurn -> activePlayer == src.controller
+        Condition.NotYourTurn -> activePlayer != null && activePlayer != src.controller
+        is Condition.ControlsMatching -> objects.values.count { it !== src && matches(c.filter, it, src.controller, src) || (it === src && matches(c.filter, it, src.controller, src)) } >= c.atLeast
+        is Condition.Unknown -> false
+    }
+
+    /** Layer 7a: a characteristic-defining ability's value, or null when it depends on something the situation doesn't say. */
+    private fun cdaValue(obj: GameObject, expr: CountExpr?): Int? = when (expr) {
+        null -> null
+        is CountExpr.Permanents -> objects.values.count { matches(expr.filter, it, obj.controller, obj) }
+        is CountExpr.Unknown -> null
+    }
+    fun cdaOf(obj: GameObject): StaticEffect.PtCda? = obj.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.PtCda>().firstOrNull()
+
+    private fun basePower(obj: GameObject): Int? = cdaOf(obj)?.let { c -> if (c.power != null) cdaValue(obj, c.power)?.plus(c.plus) else obj.def.power } ?: obj.def.power
+    private fun baseToughness(obj: GameObject): Int? = cdaOf(obj)?.let { c -> if (c.toughness != null) cdaValue(obj, c.toughness)?.plus(c.plus) else obj.def.toughness } ?: obj.def.toughness
+
+    fun powerOf(obj: GameObject): Int? = basePower(obj)?.let { base ->
         base + staticEffectsOn(obj).sumOf { (_, e) -> (e as? StaticEffect.PtModify)?.power ?: 0 } + obj.pumps.sumOf { it.first } + (obj.counters["+1/+1"] ?: 0) - (obj.counters["-1/-1"] ?: 0)
     }
-    fun toughnessOf(obj: GameObject): Int? = obj.def.toughness?.let { base ->
+    fun toughnessOf(obj: GameObject): Int? = baseToughness(obj)?.let { base ->
         base + staticEffectsOn(obj).sumOf { (_, e) -> (e as? StaticEffect.PtModify)?.toughness ?: 0 } + obj.pumps.sumOf { it.second } + (obj.counters["+1/+1"] ?: 0) - (obj.counters["-1/-1"] ?: 0)
     }
     fun hasKeyword(obj: GameObject, keyword: String): Boolean {
         val k = keyword.lowercase()
         if (obj.def.has(k) || k in obj.tempKeywords) return true
-        return staticEffectsOn(obj).any { (_, e) -> e is StaticEffect.KeywordGrant && k in e.keywords }
+        return staticEffectsOn(obj).any { (src, e) -> e is StaticEffect.KeywordGrant && k in e.keywords && (e.filter.raw != "~" || src === obj) && conditionalKeywordOk(src, e) }
+    }
+
+    /** A "~ has X as long as …" grant is parsed as a zero PtModify carrying the condition plus a KeywordGrant on "~"; honour the condition. */
+    private fun conditionalKeywordOk(src: GameObject, e: StaticEffect.KeywordGrant): Boolean {
+        if (e.filter.raw != "~") return true
+        val cond = src.def.abilities.filterIsInstance<StaticAbility>().firstOrNull { it.effects.contains(e) }?.effects?.filterIsInstance<StaticEffect.PtModify>()?.firstOrNull { it.self }?.condition
+        return conditionHolds(cond, src)
     }
 
     /** Qualities an object has protection from ("red", "everything", "creatures"), lowercase. */
@@ -160,12 +189,13 @@ class GameState(
         val p = obj.power ?: return "no power/toughness"
         val t = obj.toughness ?: return "no power/toughness"
         val parts = mutableListOf<String>()
-        val statics = staticEffectsOn(obj).filter { it.second is StaticEffect.PtModify }
-        for ((src, e) in statics) { e as StaticEffect.PtModify; parts += "${sign(e.power)}/${sign(e.toughness)} from ${src.name}" }
+        cdaOf(obj)?.let { c -> parts += "base set by its own ability (layer 7a)" }
+        val statics = staticEffectsOn(obj).filter { it.second is StaticEffect.PtModify && !((it.second as StaticEffect.PtModify).power == 0 && (it.second as StaticEffect.PtModify).toughness == 0) }
+        for ((src, e) in statics) { e as StaticEffect.PtModify; parts += "${sign(e.power)}/${sign(e.toughness)} from ${if (src === obj) "its own ability" + (e.condition?.let { " (condition met)" } ?: "") else src.name}" }
         if (obj.pumps.isNotEmpty()) parts += "${sign(obj.pumps.sumOf { it.first })}/${sign(obj.pumps.sumOf { it.second })} until end of turn"
         (obj.counters["+1/+1"] ?: 0).let { if (it > 0) parts += "$it +1/+1 counter${if (it > 1) "s" else ""}" }
         (obj.counters["-1/-1"] ?: 0).let { if (it > 0) parts += "$it -1/-1 counter${if (it > 1) "s" else ""}" }
-        return if (parts.isEmpty()) "$p/$t" else "$p/$t (${obj.def.power}/${obj.def.toughness} base, ${parts.joinToString(", ")})"
+        return if (parts.isEmpty()) "$p/$t" else "$p/$t (${basePower(obj)}/${baseToughness(obj)} base, ${parts.joinToString(", ")})"
     }
     private fun sign(n: Int) = if (n >= 0) "+$n" else "$n"
 

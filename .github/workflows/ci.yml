@@ -16,4 +16,15 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v4
+      - name: Fetch the latest database (for the rule-citation check)
+        run: |
+          set -euo pipefail
+          if git fetch --depth=1 origin data 2>/dev/null; then
+            parts=$(git ls-tree --name-only origin/data | grep -E '^judge\.db\.xz(\.part[0-9]+)?$' | sort || true)
+            if [ -n "$parts" ]; then
+              for p in $parts; do git show "origin/data:$p"; done > "$RUNNER_TEMP/judge.db.xz"
+              xz -d "$RUNNER_TEMP/judge.db.xz"
+              echo "MTG_JUDGE_DB=$RUNNER_TEMP/judge.db" >> "$GITHUB_ENV"
+            fi
+          fi
       - run: ./gradlew test --no-daemon
