@@ -38,6 +38,8 @@ class BatchThirteenTest {
     private val thalia = card("Thalia, Guardian of Thraben", "Legendary Creature — Human Soldier", "First strike\nNoncreature spells cost {1} more to cast.", "{1}{W}", "W", "2", "1", "First strike")
     private val reservoir = card("Aetherflux Reservoir", "Artifact", "Whenever you cast a spell, you gain 1 life for each spell you've cast this turn.\nPay 50 life: Aetherflux Reservoir deals 50 damage to any target.", "{4}")
     private val kci = card("Krark-Clan Ironworks", "Artifact", "Sacrifice an artifact: Add {C}{C}.", "{4}")
+    private val guttersnipe = card("Guttersnipe", "Creature — Goblin Shaman", "Whenever you cast an instant or sorcery spell, Guttersnipe deals 2 damage to each opponent.", "{2}{R}", "R", "2", "2")
+    private val rift = card("Cyclonic Rift", "Instant", "Return target nonland permanent you don't control to its owner's hand.\nOverload {6}{U}", "{1}{U}", "U", null, null, "Overload")
     private val sakura = card("Sakura-Tribe Elder", "Creature — Snake Shaman", "Sacrifice Sakura-Tribe Elder: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.", "{1}{G}", "G", "1", "1")
 
     private fun state() = GameState(listOf(Player("me", "me", 20), Player("opp", "opp", 20)), LinkedHashMap(), activePlayer = "me")
@@ -253,5 +255,20 @@ class BatchThirteenTest {
         e.activate("me", "kci", null, emptyList(), choice = "sacrifice:t1")
         assertEquals(Zone.GRAVEYARD, s.obj("t1").zone); assertTrue("701.21a" in s.cited())
         assertTrue(e.activate("me", "kci", null, emptyList()) == null, "nothing left to sacrifice"); assertTrue(s.outcomes.any { "nothing to sacrifice" in it })
+    }
+
+    @Test
+    fun `guttersnipe triggers on instants only and hits each opponent`() {
+        val s = state(); s.put("snipe", guttersnipe, "me"); val e = Engine(s)
+        e.cast("me", bears, emptyList()); e.resolveAll(); assertEquals(20, s.player("opp").life, "a creature spell doesn't trigger it")
+        e.cast("me", bolt, listOf(Ref.Player("opp"))); e.resolveAll(); assertEquals(15, s.player("opp").life, "2 from the trigger, 3 from the Bolt")
+    }
+
+    @Test
+    fun `a target that doesn't fit the spell's filter is refused at casting`() {
+        val s = state(); s.put("bears", bears, "me"); val e = Engine(s)
+        assertTrue(e.cast("me", rift, listOf(Ref.Obj("bears"))) == null); assertTrue(s.outcomes.any { "can't target" in it })
+        val s2 = state(); s2.put("bears", bears, "opp"); val e2 = Engine(s2)
+        assertTrue(e2.cast("me", rift, listOf(Ref.Obj("bears"))) != null)
     }
 }

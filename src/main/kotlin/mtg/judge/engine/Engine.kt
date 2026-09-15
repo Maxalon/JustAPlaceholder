@@ -71,6 +71,10 @@ class Engine(val state: GameState) {
             state.outcomes += "${card.name} can't target ${state.nameOf(ref)}."
             return null
         }
+        for ((i, ref) in targets.withIndex()) { val spec = needed.getOrNull(i) ?: continue; if (ref is Ref.Obj && spec.filter.verifiable && state.objects[ref.id]?.isOnBattlefield() == true && !filterMatches(spec.filter, ref, playerId)) {
+            trace.step("${state.nameOf(ref)} isn't a legal target for ${card.name}: it needs \"${spec.raw}\"${if (spec.filter.controller == Who.OPPONENT) ", and ${state.nameOf(ref)} is ${state.player(playerId).possessive} own" else ""}. A spell can't be cast without a legal target for each of its targets.", "601.2c", "115.1a")
+            state.outcomes += "${card.name} can't target ${state.nameOf(ref)} (not ${withArticle(spec.raw)})."; return null
+        } }
         obj.zone = Zone.STACK
         obj.x = x
         state.spellsCast[card.name] = (state.spellsCast[card.name] ?: 0) + 1
@@ -273,6 +277,13 @@ class Engine(val state: GameState) {
     }
 
     /** Sacrifice costs of an activated ability ("Sacrifice ~:", "Sacrifice an artifact:"), paid as it's activated. False if they can't be paid. */
+    /** Why a creature can't attack or block right now (the permanent forbidding it), or null if it can. */
+    fun cantWhy(objectId: String, what: String): String? {
+        val o = state.obj(objectId)
+        if (!cant(o, what)) return null
+        return cantSource(o, what) ?: o.name
+    }
+
     private fun paySacrificeCosts(playerId: String, obj: GameObject, ability: ActivatedAbility, choice: String?): Boolean {
         Regex("""(?i)\bsacrifice (?:an?|another|two|three) (.+?)(?::|$)""").find(ability.cost)?.takeIf { !Regex("""(?i)\bsacrifice (?:~|this\b|${Regex.escape(obj.name)}\b)""").containsMatchIn(ability.cost) }?.let { sc ->
             val what = sc.groupValues[1].trim()
@@ -465,6 +476,11 @@ class Engine(val state: GameState) {
             when {
                 state.wontPay.remove(playerId) -> { trace.step("${src.name} says creatures can't attack ${state.nameOf(Ref.Player(defendingPlayer!!))} unless their controller pays ${tax.cost} for each; ${p.subject.lowercase()} ${p.v("doesn't", "don't")} pay, so ${a.name} can't attack.", "508.1c"); state.outcomes += "${a.name} can't attack (${src.name}'s cost not paid)."; return }
                 state.willPay.remove(playerId) -> trace.step("${p.subject} ${p.v("pays", "pay")} ${tax.cost} for ${src.name} so that ${a.name} can attack.", "508.1c")
+                p.mana != null -> {
+                    val n = Regex("""\{(\d+)\}""").find(tax.cost)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                    if (p.mana!! >= n) { p.mana = p.mana!! - n; trace.step("${src.name} says creatures can't attack ${state.nameOf(Ref.Player(defendingPlayer!!))} unless their controller pays ${tax.cost} for each. ${p.subject} ${p.v("has", "have")} the mana, so ${p.subject.lowercase()} ${p.v("pays", "pay")} ${tax.cost} for ${src.name} and ${a.name} attacks (${p.mana} mana left).", "508.1c"); state.outcomes += "${p.subject} ${p.v("pays", "pay")} ${tax.cost} for ${src.name} (${a.name} attacks)." }
+                    else { trace.step("${src.name} says creatures can't attack ${state.nameOf(Ref.Player(defendingPlayer!!))} unless their controller pays ${tax.cost} for each; ${p.subject.lowercase()} ${p.v("has", "have")} only ${p.mana} mana left, so ${a.name} can't attack.", "508.1c"); state.outcomes += "${a.name} can't attack (can't pay ${tax.cost} for ${src.name})."; return }
+                }
                 else -> { trace.step("${src.name} says creatures can't attack ${state.nameOf(Ref.Player(defendingPlayer!!))} unless their controller pays ${tax.cost} for each; since ${a.name} attacks, ${p.subject.lowercase()} must be paying.", "508.1c"); state.assumptions += "${p.subject} ${p.v("pays", "pay")} ${tax.cost} for ${src.name} (otherwise ${a.name} couldn't attack)." }
             }
         }
@@ -1457,8 +1473,10 @@ class Engine(val state: GameState) {
         val d = s.source.def
         val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> d.isCreature; Kind.ARTIFACT -> "Artifact" in d.types; Kind.ENCHANTMENT -> "Enchantment" in d.types; Kind.LAND -> "Land" in d.types; else -> false } }
         val kindOk = Kind.SPELL in f.kinds || f.kinds.any { k -> when (k) { Kind.CREATURE -> d.isCreature; Kind.ARTIFACT -> "Artifact" in d.types; Kind.ENCHANTMENT -> "Enchantment" in d.types; else -> false } }
+        val spellTypes = f.subtypes.filter { it in setOf("instant", "sorcery") }
+        val spellTypeOk = spellTypes.isEmpty() || spellTypes.any { t -> d.types.any { it.equals(t, true) } }
         val ctrlOk = when (f.controller) { Who.YOU -> s.controller == controller; Who.OPPONENT -> s.controller != controller; else -> true }
-        return notOk && kindOk && ctrlOk
+        return notOk && kindOk && spellTypeOk && ctrlOk
     }
 
     // ---- helpers ---------------------------------------------------------------------------

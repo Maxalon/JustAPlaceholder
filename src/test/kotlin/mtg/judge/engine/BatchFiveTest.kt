@@ -74,9 +74,9 @@ class BatchFiveTest {
         val spec = doomBlade.spellEffect!!.targets().single()
         assertTrue(spec.filter.verifiable); assertEquals(setOf('B'), spec.filter.notColors)
         val s = state(); s.put("knight", blackKnight, "opp"); s.put("bears", bears, "opp"); val e = Engine(s)
-        // An illegal target is noted at casting and the spell fizzles on resolution (608.2b); the Knight survives.
+        // A black creature isn't a legal target, so the spell can't be cast at it (601.2c); the Knight survives.
         e.cast("me", doomBlade, listOf(Ref.Obj("knight"))); e.resolveAll()
-        assertEquals(Zone.BATTLEFIELD, s.obj("knight").zone); assertTrue(s.outcomes.any { "doesn't resolve" in it })
+        assertEquals(Zone.BATTLEFIELD, s.obj("knight").zone); assertTrue(s.outcomes.any { "can't target" in it })
         e.cast("me", doomBlade, listOf(Ref.Obj("bears"))); e.resolveAll(); assertEquals(Zone.GRAVEYARD, s.obj("bears").zone)
     }
 }

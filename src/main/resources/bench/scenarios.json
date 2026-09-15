@@ -2462,5 +2462,93 @@
     "cite": [
       "608.2b"
     ]
+  },
+  {
+    "id": "propaganda-pay-for-two",
+    "text": "My opponent has Propaganda and I attack with three creatures but can only pay for two.",
+    "expect": [
+      "opponent takes 1 damage. (×2)"
+    ],
+    "cite": [
+      "508.1c"
+    ],
+    "notExpect": [
+      "(×3)"
+    ]
+  },
+  {
+    "id": "tutor-get-bolt",
+    "text": "I cast Demonic Tutor and get Lightning Bolt. Then I bolt my opponent's Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "701.23a"
+    ]
+  },
+  {
+    "id": "pacifism-can-i-block",
+    "text": "I have Grizzly Bears and my opponent casts Pacifism on it. Can I still block with it?",
+    "expect": [
+      "No: Grizzly Bears can't block (Pacifism says so)"
+    ],
+    "cite": [
+      "303.4"
+    ]
+  },
+  {
+    "id": "ghostly-prison-six-lands",
+    "text": "My opponent has Ghostly Prison and I have Grizzly Bears and 6 lands. I attack with the Bears.",
+    "expect": [
+      "You pay {2} for Ghostly Prison (Grizzly Bears attacks)",
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "guttersnipe-lethal",
+    "text": "My opponent has 2 life and I control Guttersnipe. I cast Lightning Bolt targeting their Grizzly Bears.",
+    "expect": [
+      "opponent takes 2 damage",
+      "opponent loses the game"
+    ],
+    "cite": [
+      "603.2",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "ashnods-altar-sac-to-it",
+    "text": "I have Ashnod's Altar and sacrifice Grizzly Bears to it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Ashnod's Altar's mana ability: add {C}{C}"
+    ],
+    "cite": [
+      "701.21a",
+      "605.1a"
+    ]
+  },
+  {
+    "id": "rift-own-creature-illegal",
+    "text": "I cast Cyclonic Rift on my own Grizzly Bears.",
+    "expect": [
+      "Cyclonic Rift can't target Grizzly Bears (not a nonland permanent you don't control)"
+    ],
+    "cite": [
+      "601.2c"
+    ]
+  },
+  {
+    "id": "can-it-attack",
+    "text": "I have Grizzly Bears. Can it attack this turn?",
+    "expect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "508.1a"
+    ]
   }
 ]

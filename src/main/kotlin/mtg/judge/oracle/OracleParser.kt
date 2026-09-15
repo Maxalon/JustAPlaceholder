@@ -618,7 +618,10 @@ object OracleParser {
             val f = parseFilter(m.groupValues[3], Kind.PERMANENT).let { if (s.contains("you control", true)) it.copy(controller = Who.YOU, raw = it.raw + " you control") else it }
             if (Generic.token(desc) != null && f.verifiable) return Effect.CreateToken(who, 0, desc, CountExpr.Permanents(f))
         }
-        damageEachRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[2], Kind.CREATURE); if (f.verifiable) return Effect.ForAll(f, "damage", m.groupValues[1].toInt()) }
+        damageEachRe.matchEntire(s)?.let { m ->
+            when (m.groupValues[2].lowercase().trim()) { "opponent" -> return Effect.DamagePlayer(Who.EACH_OPPONENT, m.groupValues[1].toInt()); "player" -> return Effect.DamagePlayer(Who.EACH_PLAYER, m.groupValues[1].toInt()) }
+            val f = parseFilter(m.groupValues[2], Kind.CREATURE); if (f.verifiable) return Effect.ForAll(f, "damage", m.groupValues[1].toInt())
+        }
         if (Regex("""^sacrifice ~\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.SacrificeSource
         Regex("""^(?:that source's controller|that player|that creature's controller) sacrifices that many (permanents?|creatures?|lands?|artifacts?)(?: of (?:their|his or her) choice)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             return Effect.SacrificeThatMany(Who.THAT_PLAYER, parseFilter(m.groupValues[1].removeSuffix("s"), Kind.PERMANENT))
@@ -775,7 +778,7 @@ object OracleParser {
             }
         }
         // A subtype word alone implies creature ("Elves you control"), or land for land types ("Islands you control").
-        if (kinds.isEmpty() && subtypes.isNotEmpty()) kinds += if (subtypes.all { it in landTypes }) Kind.LAND else Kind.CREATURE
+        if (kinds.isEmpty() && subtypes.isNotEmpty()) kinds += if (subtypes.all { it in landTypes }) Kind.LAND else if (subtypes.all { it in setOf("instant", "sorcery") }) Kind.SPELL else Kind.CREATURE
         if (kinds.isEmpty() && notKinds.isNotEmpty()) kinds += defaultKind ?: Kind.PERMANENT
         if (kinds.isEmpty() && defaultKind != null) kinds += defaultKind
         return ObjFilter(kinds, notKinds, controller, attacking, tapped, unknown, desc, subtypes, keywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1, colors = colors, notColors = notColors)
