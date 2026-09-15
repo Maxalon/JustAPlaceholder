@@ -112,7 +112,7 @@ class GameState(
         for (src in objects.values) {
             if (!src.isOnBattlefield()) continue
             for (ab in src.def.abilities.filterIsInstance<StaticAbility>()) for (eff in ab.effects) {
-                val filter = when (eff) { is StaticEffect.PtModify -> eff.filter; is StaticEffect.KeywordGrant -> eff.filter }
+                val filter = when (eff) { is StaticEffect.PtModify -> eff.filter; is StaticEffect.KeywordGrant -> eff.filter; else -> continue }
                 if (filter.other && src === obj) continue
                 if (matches(filter, obj, src.controller)) out += src to eff
             }

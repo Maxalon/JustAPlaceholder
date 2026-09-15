@@ -37,9 +37,12 @@ object OracleParser {
             val selfRef = selfReference(line, name)
             val statics = parseStatic(selfRef)
             when {
-                isKeywordLine(selfRef, keywords) -> selfRef.split(',', ';').map { it.trim() }.filter { it.isNotEmpty() }.forEach { abilities += StaticAbility(it, it.substringBefore(' ').lowercase()) }
+                isKeywordLine(selfRef, keywords) -> selfRef.split(',', ';').map { it.trim() }.filter { it.isNotEmpty() }.forEach { part ->
+                    val kw = keywords.map { it.lowercase() }.filter { part.lowercase() == it || part.lowercase().startsWith("$it ") }.maxByOrNull { it.length } ?: part.substringBefore(' ').lowercase()
+                    abilities += StaticAbility(part, kw)
+                }
                 statics.isNotEmpty() -> abilities += StaticAbility(selfRef, null, statics)
-                selfRef.startsWith("When ", true) || selfRef.startsWith("Whenever ", true) || selfRef.startsWith("At ", true) -> abilities += parseTriggered(selfRef)
+                selfRef.startsWith("When ", true) || selfRef.startsWith("Whenever ", true) || selfRef.startsWith("At ", true) || Regex("""^(Landfall|Constellation|Magecraft|Heroic|Raid|Enrage|Battalion|Alliance|Coven)\s+—\s+(When|Whenever|At)\b""").containsMatchIn(selfRef) -> abilities += parseTriggeredAll(selfRef)
                 isActivated(selfRef) -> abilities += parseActivated(selfRef)
                 isSpell -> spellLines += selfRef
                 else -> abilities += UnparsedAbility(selfRef)
@@ -55,7 +58,7 @@ object OracleParser {
         var s = line.replace(name, "~")
         val shortName = name.substringBefore(",")
         if (shortName != name) s = s.replace(shortName, "~")
-        s = s.replace(Regex("""\b[Tt]his (creature|permanent|artifact|enchantment|land|planeswalker|spell|card)\b"""), "~")
+        s = s.replace(Regex("""\b[Tt]his (creature|permanent|artifact|enchantment|land|planeswalker|spell|card|Aura|Equipment|Vehicle|token|battle|Saga|Class|Room)\b"""), "~")
         return s
     }
 
@@ -72,24 +75,70 @@ object OracleParser {
         return cost.contains('{') || cost.contains("Sacrifice", true) || cost.contains("Discard", true) || cost.contains("Pay", true) || cost.contains("Tap ", true) || cost.contains("Remove", true) || cost.contains("Exile", true)
     }
 
+    private val manaRe = Regex("""^Add (\{[^}]+\}(?:\{[^}]+\})*(?:(?:, | or | and )\{[^}]+\}(?:\{[^}]+\})*)*|(?:one|two|three|four|five|N|X) mana (?:of any (?:one )?color|in any combination of colors|of any color(?: or type)?)|an amount of mana .+)\.?$""", RegexOption.IGNORE_CASE)
+
     private fun parseActivated(line: String): Ability {
         val colon = line.indexOf(':')
-        return ActivatedAbility(line.substring(0, colon).trim(), parseEffect(line.substring(colon + 1).trim()), line)
+        val effText = line.substring(colon + 1).trim()
+        val effect = manaRe.matchEntire(effText.substringBefore(". ").trimEnd('.'))?.let { Effect.AddMana(it.groupValues[1]) }?.let { mana ->
+            val rest = effText.substringAfter(". ", "").trim()
+            if (rest.isEmpty()) mana else Effect.Seq(listOf(mana, parseEffect(rest)))
+        } ?: parseEffect(effText)
+        return ActivatedAbility(line.substring(0, colon).trim(), effect, line)
     }
 
     private val triggerRe = Regex("""^(When|Whenever|At)\s+(.+?),\s+(.+)$""", RegexOption.IGNORE_CASE)
 
     private fun parseTriggered(line: String): Ability {
         val m = triggerRe.matchEntire(line) ?: return UnparsedAbility(line)
-        val cond = m.groupValues[2].trim()
+        val cond = m.groupValues[2].trim().replace(Regex("""^Landfall — """), "")
         val trigger = parseTrigger(cond)
         return TriggeredAbility(trigger, parseEffect(m.groupValues[3]), line)
     }
 
+    /** "Whenever ~ enters or attacks, …" is two triggered abilities with the same effect. */
+    private fun parseTriggeredAll(line: String): List<Ability> {
+        val m = triggerRe.matchEntire(line.replace(Regex("""^(Landfall|Constellation|Magecraft|Heroic|Raid|Enrage|Battalion|Alliance|Coven)\s+—\s+"""), "")) ?: return listOf(UnparsedAbility(line))
+        val cond = m.groupValues[2].trim()
+        Regex("""^~ enters or attacks$""", RegexOption.IGNORE_CASE).matchEntire(cond)?.let {
+            val eff = parseEffect(m.groupValues[3]); return listOf(TriggeredAbility(Trigger.ThisEnters, eff, line), TriggeredAbility(Trigger.ThisAttacks, eff, line))
+        }
+        return listOf(parseTriggered(m.groupValues[1] + " " + cond + ", " + m.groupValues[3]))
+    }
+
     private val spellCastRe = Regex("""^(an opponent|you|a player|another player|each player) casts? (a|an|your first|their first) (.+?)(?: spell)?$""", RegexOption.IGNORE_CASE)
+
+    private val stepNames = mapOf("upkeep" to "upkeep", "draw step" to "draw", "precombat main phase" to "precombat_main", "first main phase" to "precombat_main", "combat" to "combat",
+        "end step" to "end", "next end step" to "end", "postcombat main phase" to "postcombat_main", "second main phase" to "postcombat_main", "untap step" to "untap", "end of combat step" to "end_of_combat", "turn" to "upkeep")
 
     fun parseTrigger(cond: String): Trigger {
         val c = cond.trim().trimEnd(',')
+        Regex("""^the beginning of (your|each player's|each|an opponent's|each opponent's|the) (upkeep|draw step|precombat main phase|first main phase|combat on your turn|combat|end step|next end step|postcombat main phase|second main phase|untap step|end of combat step|turn)$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
+            val whose = when (m.groupValues[1].lowercase()) { "your" -> Who.YOU; "an opponent's", "each opponent's" -> Who.OPPONENT; else -> Who.ANY_PLAYER }
+            val stepKey = m.groupValues[2].lowercase().removeSuffix(" on your turn")
+            val whose2 = if (m.groupValues[2].lowercase().endsWith("on your turn")) Who.YOU else whose
+            return Trigger.BeginningOfStep(stepNames[stepKey] ?: stepKey, whose2)
+        }
+        Regex("""^~ deals (combat )?damage to (a player|an opponent|a creature|a player or planeswalker|a permanent or player)$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
+            return Trigger.ThisDealsDamage(m.groupValues[1].isNotEmpty(), when (m.groupValues[2].lowercase()) { "a player", "an opponent", "a player or planeswalker" -> true; "a creature" -> false; else -> null })
+        }
+        if (Regex("""^~ deals (combat )?damage$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisDealsDamage(c.contains("combat", true), null)
+        if (Regex("""^you attack( with one or more creatures)?$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.YouAttack
+        if (Regex("""^you gain life$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.YouGainLife
+        if (Regex("""^you cast ~$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisCast
+        Regex("""^(?:Landfall — )?(?:whenever )?(another |one or more |a |an )?(.+?) (?:enters|enter)(?: the battlefield)?(?: under your control)?$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
+            if (m.groupValues[2].equals("~", true)) return Trigger.ThisEnters
+            val underYou = c.contains("under your control", true)
+            val f = parseFilter(m.groupValues[2], Kind.PERMANENT).let { if (underYou && it.controller == null) it.copy(controller = Who.YOU) else it }
+            if (!f.verifiable) return Trigger.Unknown(c)
+            return Trigger.PermanentEnters(f, m.groupValues[1].trim().equals("another", true))
+        }
+        Regex("""^(another |a |an )?(.+?) dies$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
+            if (m.groupValues[2].equals("~", true)) return Trigger.ThisDies
+            val f = parseFilter(m.groupValues[2], Kind.CREATURE)
+            if (!f.verifiable) return Trigger.Unknown(c)
+            return Trigger.PermanentDies(f, m.groupValues[1].trim().equals("another", true))
+        }
         spellCastRe.matchEntire(c)?.let { m ->
             val who = when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "an opponent" -> Who.OPPONENT; else -> Who.ANY_PLAYER }
             val what = m.groupValues[3].trim().lowercase()
@@ -111,6 +160,13 @@ object OracleParser {
 
     /** "Creatures you control get +1/+1", "Other Elf creatures you control get +1/+1 and have trample", "Creatures you control have haste". */
     fun parseStatic(line: String): List<StaticEffect> {
+        Regex("""^~ enters(?: the battlefield)? tapped\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.EntersTapped) }
+        Regex("""^~ enters(?: the battlefield)? with (a|an|X|\w+) ([+-]\d/[+-]\d|\w+) counters? on it\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val n = if (m.groupValues[1].equals("x", true)) null else (number(m.groupValues[1]) ?: return emptyList())
+            return listOf(StaticEffect.EntersWithCounters(m.groupValues[2], n))
+        }
+        Regex("""^~ can't (block|attack|be countered|be blocked|attack or block)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.Cant(it.groupValues[1].lowercase())) }
+        if (Regex("""^(As an additional cost to cast ~|~ costs \{[^}]+\} (less|more) to cast|You may cast ~ )""", RegexOption.IGNORE_CASE).containsMatchIn(line)) return listOf(StaticEffect.CostText(line))
         if (line.contains("until end of turn", true) || line.startsWith("~", true) || line.contains(" as long as ", true) || line.contains(" for each ", true) || line.contains(" where ", true)) return emptyList()
         anthemRe.matchEntire(line)?.let { m ->
             val filter = parseFilter(m.groupValues[2], Kind.CREATURE).let { if (m.groupValues[1].trim().equals("other", true)) it.copy(other = true) else it }
@@ -159,7 +215,46 @@ object OracleParser {
     private val gainLifeRe = Regex("""^(you|target player|that player) gains? (\d+) life\.?$""", RegexOption.IGNORE_CASE)
     private val loseLifeRe = Regex("""^(you|target player|that player|each opponent) loses? (\d+) life\.?$""", RegexOption.IGNORE_CASE)
 
+    private val selfPumpRe = Regex("""^~ gets ([+-]\d+)/([+-]\d+) until end of turn\.?$""", RegexOption.IGNORE_CASE)
+    private val massPumpRe = Regex("""^(?:all |each )?(.+?) (?:get|gets) ([+-]\d+)/([+-]\d+) until end of turn\.?$""", RegexOption.IGNORE_CASE)
+    private val countersOnRe = Regex("""^put (a|an|\w+|\d+|X) ([+-]\d/[+-]\d|\w+) counters? on (~|target .+?|each .+?)\.?$""", RegexOption.IGNORE_CASE)
+    private val forAllRe = Regex("""^(destroy|exile|tap|untap) (?:all|each) (.+?)\.?$""", RegexOption.IGNORE_CASE)
+    private val damageEachRe = Regex("""^(?:~|it) deals (\d+) damage to each (.+?)\.?$""", RegexOption.IGNORE_CASE)
+    private val narratedRes: List<Pair<Regex, List<String>>> = listOf(
+        Regex("""^scry (\d+)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.22a"),
+        Regex("""^surveil (\d+)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.25a"),
+        Regex("""^(?:you |target player |each player )?mills? (\w+|\d+) cards?\.?$""", RegexOption.IGNORE_CASE) to listOf("701.17a"),
+        Regex("""^look at the top (\w+|\d+) cards? of your library.*$""", RegexOption.IGNORE_CASE) to listOf("701.22a"),
+        Regex("""^search your library for (?:a|an|up to \w+) .+?(?:, then shuffle|\. Then shuffle|then shuffle)?\.?$""", RegexOption.IGNORE_CASE) to listOf("701.23a", "701.24a"),
+        Regex("""^shuffle\.?$""", RegexOption.IGNORE_CASE) to listOf("701.24a"),
+        Regex("""^(?:you |target player |each player )?discards? (a|an|\w+|\d+) cards?(?: at random)?\.?$""", RegexOption.IGNORE_CASE) to listOf("701.9a"),
+        Regex("""^draw (a|\w+) cards?, then discard (a|\w+) cards?\.?$""", RegexOption.IGNORE_CASE) to listOf("121.1", "701.9a"),
+        Regex("""^return target (.+?) card from your graveyard to your hand\.?$""", RegexOption.IGNORE_CASE) to listOf("400.7"),
+        Regex("""^return (~|target .+?) to its owner's hand\.?$""", RegexOption.IGNORE_CASE) to listOf("400.7"),
+        Regex("""^sacrifice (~|a|an|\w+) .*$""", RegexOption.IGNORE_CASE) to listOf("701.21a"),
+        Regex("""^sacrifice ~\.?$""", RegexOption.IGNORE_CASE) to listOf("701.21a"),
+        Regex("""^create (a|an|\w+|\d+|X) .+? tokens?.*$""", RegexOption.IGNORE_CASE) to listOf("701.7a"),
+        Regex("""^you gain (\d+) life for each .+$""", RegexOption.IGNORE_CASE) to listOf("119.3"),
+        Regex("""^regenerate (~|target .+?)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.19a"),
+        Regex("""^~ deals damage equal to .+$""", RegexOption.IGNORE_CASE) to listOf("120.3"),
+        Regex("""^you get \{E\}.*$""", RegexOption.IGNORE_CASE) to listOf("122.1"),
+    )
+
     private fun parseSentence(s: String): Effect {
+        selfPumpRe.matchEntire(s)?.let { return Effect.PumpSelf(it.groupValues[1].toInt(), it.groupValues[2].toInt()) }
+        massPumpRe.matchEntire(s)?.let { m -> if (!m.groupValues[1].startsWith("target", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Effect.PumpAll(f, m.groupValues[2].toInt(), m.groupValues[3].toInt()) } }
+        countersOnRe.matchEntire(s)?.let { m ->
+            val n = number(m.groupValues[1]) ?: return Effect.Unparsed(s)
+            val where = m.groupValues[3]
+            return when {
+                where == "~" -> Effect.PutCounters(null, m.groupValues[2], n)
+                where.startsWith("target", true) -> Effect.PutCounters(target(where), m.groupValues[2], n)
+                else -> Effect.Unparsed(s)
+            }
+        }
+        forAllRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[2], Kind.PERMANENT); if (f.verifiable) return Effect.ForAll(f, m.groupValues[1].lowercase()) }
+        damageEachRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[2], Kind.CREATURE); if (f.verifiable) return Effect.ForAll(f, "damage", m.groupValues[1].toInt()) }
+        for ((re, rules) in narratedRes) if (re.matches(s)) return Effect.Narrated(s.trimEnd('.'), rules)
         unlessRe.matchEntire(s)?.let { m ->
             val payer = when (m.groupValues[2].lowercase()) { "you" -> Who.YOU; "an opponent" -> Who.OPPONENT; "target player" -> Who.TARGET_PLAYER; "its controller" -> Who.CONTROLLER_OF_TARGET; else -> Who.THAT_PLAYER }
             return Effect.UnlessPays(parseSentence(m.groupValues[1]), payer, m.groupValues[3])

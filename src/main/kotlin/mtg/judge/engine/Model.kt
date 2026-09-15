@@ -39,6 +39,20 @@ sealed interface Trigger {
     data object ThisDies : Trigger
     data object ThisLeavesBattlefield : Trigger
     data object ThisAttacks : Trigger
+    /** "When you cast ~" */
+    data object ThisCast : Trigger
+    /** "At the beginning of [whose] [step]" (603.2b). step: upkeep | draw | precombat_main | combat | declare_attackers | end | ... */
+    data class BeginningOfStep(val step: String, val whose: Who) : Trigger
+    /** "Whenever ~ deals combat damage to a player" (toPlayer) / "deals damage to a creature" etc. */
+    data class ThisDealsDamage(val combatOnly: Boolean, val toPlayer: Boolean?) : Trigger
+    /** "Whenever a [filter] enters (the battlefield under your control)" incl. landfall. */
+    data class PermanentEnters(val filter: ObjFilter, val other: Boolean) : Trigger
+    /** "Whenever you attack" / "Whenever you attack with one or more creatures". */
+    data object YouAttack : Trigger
+    /** "Whenever you gain life". */
+    data object YouGainLife : Trigger
+    /** "Whenever a [filter] dies". */
+    data class PermanentDies(val filter: ObjFilter, val other: Boolean) : Trigger
     data class Unknown(val text: String) : Trigger
 }
 
@@ -55,6 +69,18 @@ sealed interface Effect {
     data class GainKeywords(val target: TargetSpec, val keywords: Set<String>) : Effect
     data class GainLife(val who: Who, val amount: Int) : Effect
     data class LoseLife(val who: Who, val amount: Int) : Effect
+    /** "~ gets +N/+N until end of turn" (no target). */
+    data class PumpSelf(val power: Int, val toughness: Int) : Effect
+    /** "[filter] get +N/+N until end of turn": affects the objects present when it resolves (611.2c). */
+    data class PumpAll(val filter: ObjFilter, val power: Int, val toughness: Int) : Effect
+    /** "Put N [kind] counters on target …" / "… on ~" (target null = self). */
+    data class PutCounters(val target: TargetSpec?, val kind: String, val count: Int) : Effect
+    /** Mana abilities: "Add {G}", "Add one mana of any color". Doesn't use the stack (605.3b). */
+    data class AddMana(val text: String) : Effect
+    /** Effects the engine understands well enough to narrate with rule citations but doesn't track state for (libraries, hands). */
+    data class Narrated(val text: String, val rules: List<String>) : Effect
+    /** "Destroy all [filter]" / "Exile all …" / "~ deals N damage to each [filter]". */
+    data class ForAll(val filter: ObjFilter, val action: String, val amount: Int = 0) : Effect
     data class May(val effect: Effect) : Effect
     data class UnlessPays(val effect: Effect, val payer: Who, val cost: String) : Effect
     data class Seq(val effects: List<Effect>) : Effect
@@ -64,8 +90,9 @@ sealed interface Effect {
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
+        is PutCounters -> listOfNotNull(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }
-        is Draw, is GainLife, is LoseLife, is Unparsed -> emptyList()
+        is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is AddMana, is Narrated, is ForAll -> emptyList()
     }
 
     fun hasUnparsed(): Boolean = when (this) {
@@ -80,6 +107,14 @@ sealed interface StaticEffect {
     data class PtModify(val filter: ObjFilter, val power: Int, val toughness: Int) : StaticEffect
     /** Layer 6: "[filter] have [keywords]". */
     data class KeywordGrant(val filter: ObjFilter, val keywords: Set<String>) : StaticEffect
+    /** "~ enters tapped" (614.1c replacement on entering). */
+    data object EntersTapped : StaticEffect
+    /** "~ enters with N +1/+1 counters on it" (614.1c). count null = X. */
+    data class EntersWithCounters(val kind: String, val count: Int?) : StaticEffect
+    /** "~ can't block" / "~ can't attack" / "~ can't be countered" / "~ can't be blocked". */
+    data class Cant(val what: String) : StaticEffect
+    /** Cost modifiers and additional costs: narrated when the spell is cast (601.2b, 601.2f). */
+    data class CostText(val text: String) : StaticEffect
 }
 
 sealed interface Ability { val text: String }
