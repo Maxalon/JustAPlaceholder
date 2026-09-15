@@ -119,7 +119,11 @@ sealed interface Effect {
     /** "That player sacrifices that many permanents" (Phyrexian Obliterator): as many as the causing amount, their choice. */
     data class SacrificeThatMany(val who: Who, val filter: ObjFilter) : Effect
     /** "Put a creature card from your hand onto the battlefield" (Aether Vial: with mana value equal to its charge counters). */
-    data class PutFromHand(val filter: ObjFilter, val mvEqualsCounters: String? = null, val tapped: Boolean = false, val attacking: Boolean = false) : Effect
+    data class PutFromHand(val filter: ObjFilter, val mvEqualsCounters: String? = null, val tapped: Boolean = false, val attacking: Boolean = false, val fromLibrary: Boolean = false, val maxMv: Int? = null) : Effect
+    /** Maze of Ith: "Prevent all combat damage that would be dealt to and dealt by that creature this turn." */
+    data class PreventCombatToAndBy(val target: TargetSpec) : Effect
+    /** Approach of the Second Sun: win if another spell with this name was cast this game, else tuck it seventh from the top and gain life. */
+    data class WinIfCastBefore(val life: Int) : Effect
     /** "Return target X to its owner's hand" (null target = ~). */
     data class Bounce(val target: TargetSpec?) : Effect
     /** "Its controller gains life equal to its power" (uses last known information after a zone change). */
@@ -179,7 +183,7 @@ sealed interface Effect {
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
-        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is CopySpell -> listOf(target); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
+        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is CopySpell -> listOf(target); is PreventCombatToAndBy -> listOf(target); is WinIfCastBefore -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
@@ -261,7 +265,7 @@ sealed interface Replacement {
     /** "If you would gain life, you gain twice that much life instead." */
     data class LifeGainMultiplier(val factor: Int, val anyPlayer: Boolean = false) : Replacement
     /** "If an effect would place one or more counters on a permanent you control, it places twice that many instead." (Doubling Season) */
-    data class CounterMultiplier(val factor: Int) : Replacement
+    data class CounterMultiplier(val factor: Int, val anyPlayer: Boolean = false) : Replacement
     /** "If an effect would create one or more tokens under your control, it creates twice that many instead." */
     data class TokenMultiplier(val factor: Int) : Replacement
     /** Regeneration shield: the next time it would be destroyed this turn (701.19a). */

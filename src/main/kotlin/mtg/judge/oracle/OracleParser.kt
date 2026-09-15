@@ -94,7 +94,7 @@ object OracleParser {
         val shortName = name.substringBefore(",")
         if (shortName != name) s = s.replace(shortName, "~")
         // Legendary names shortened in their own text: "Kaalia of the Vast" -> "Kaalia", "Ezuri the Claw" -> "Ezuri", "Arcades, the Strategist" already handled.
-        Regex("""^([A-Z][\w'-]+) (?:of|the|,)\b""").find(name)?.groupValues?.get(1)?.let { first -> if (first.length >= 4) s = s.replace(Regex("""\b${Regex.escape(first)}\b(?! (?:of|the))"""), "~") }
+        Regex("""^([A-Z][\w'-]+) (?:of|the|,)\b""").find(name)?.groupValues?.get(1)?.let { first -> if (first.length >= 3) s = s.replace(Regex("""\b${Regex.escape(first)}\b(?! (?:of|the))"""), "~") }
         s = s.replace(Regex("""\b[Tt]his (creature|permanent|artifact|enchantment|land|planeswalker|spell|card|Aura|Equipment|Vehicle|token|battle|Saga|Class|Room)\b"""), "~")
         return s
     }
@@ -340,6 +340,8 @@ object OracleParser {
         if (Regex("""^If ~ is in your opening hand, you may begin the game with it on the battlefield\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("103.6")))
         if (Regex("""^(?:Combat )?damage that would be dealt by (?:creatures|sources) you control can't be prevented\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("615.12")))
         if (Regex("""^Each opponent can cast spells only any time they could cast a sorcery\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsSorcerySpeed)
+        if (Regex("""^Counters can't be put on artifacts, creatures, enchantments, or lands\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Replace(Replacement.CounterMultiplier(0, anyPlayer = true)))
+        if (Regex("""^Players can't get counters\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("122.1")))
         if (Regex("""^You may look at the top card of your library any time\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("401.5")))
         if (Regex("""^(As an additional cost to cast ~|~ costs \{[^}]+\} (less|more) to cast|You may cast ~ )""", RegexOption.IGNORE_CASE).containsMatchIn(line)) return listOf(StaticEffect.CostText(line))
         if (line.contains("until end of turn", true) || line.startsWith("~", true) || line.contains(" as long as ", true) || line.contains(" for each ", true) || line.contains(" where ", true)) return emptyList()
@@ -399,6 +401,7 @@ object OracleParser {
     private val sentenceSplit = Regex("""(?<=\.)\s+(?=[A-Z~])""")
 
     fun parseEffect(text: String): Effect {
+        if (Regex("""^If ~ was cast from your hand and you've cast another spell named ~ this game, you win the game\. Otherwise, put ~ into its owner's library seventh from the top and you gain (\d+) life\.?$""", RegexOption.IGNORE_CASE).matchEntire(text.trim())?.let { return Effect.WinIfCastBefore(it.groupValues[1].toInt()) } != null) Unit
         val t = text.trim().replace(Regex("""(?i)^(copy target [^.]+?)\. You may choose new targets for the copy\."""), "$1. you may choose new targets for the copy.").let { s ->
             Regex("""(?i)^(copy target [^.]+?)\. you may choose new targets for the copy\.$""").matchEntire(s)?.let { r -> return Effect.CopySpell(target(r.groupValues[1].removePrefix("copy target ").removePrefix("Copy target "), Kind.SPELL), true) } ?: s
         }
@@ -411,7 +414,7 @@ object OracleParser {
             while (i < sentences.size) {
                 val cur0 = sentences[i]; val next = sentences.getOrNull(i + 1)
                 // Pronoun continuations: "It gets +1/+1 until end of turn." / "Put a +1/+1 counter on it." refer to the previous target.
-                val cur = if (lastTarget != null) cur0.replace(Regex("""^(?:It|That (?:creature|permanent|artifact|enchantment|land)) (gets|gains) """), "Target ${lastTarget.raw} $1 ").replace(Regex("""(?i) on (?:it|that (?:creature|permanent))\.?$"""), " on target ${lastTarget.raw}.")
+                val cur = if (lastTarget != null) cur0.replace(Regex("""^Prevent all combat damage that would be dealt to and dealt by (?:it|that creature) this turn"""), "Prevent all combat damage that would be dealt to and dealt by target ${lastTarget.raw} this turn").replace(Regex("""^(?:It|That (?:creature|permanent|artifact|enchantment|land)) (gets|gains) """), "Target ${lastTarget.raw} $1 ").replace(Regex("""(?i) on (?:it|that (?:creature|permanent))\.?$"""), " on target ${lastTarget.raw}.")
                     .replace(Regex("""^(Untap|Tap|Destroy|Exile|Sacrifice) (?:it|that (?:creature|permanent|artifact|enchantment|land))\.?$"""), "$1 target ${lastTarget.raw}.") else cur0
                 // "That player may pay {2}. If they don't, you create a Treasure token." is an "unless they pay" effect.
                 val mayPay = Regex("""^(That player|Its controller|Target player|Each opponent|You) may pay (\{[^}]+\}(?:\{[^}]+\})*|\d+ life)\.?$""", RegexOption.IGNORE_CASE).matchEntire(cur)
@@ -463,6 +466,12 @@ object OracleParser {
     private val massPumpGainRe = Regex("""^(?:all |each )?(.+?) (?:get|gets) ([+-]\d+)/([+-]\d+) and (?:gain|gains) (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val gainControlRe = Regex("""^gain control of target (.+?)( until end of turn)?\.?$""", RegexOption.IGNORE_CASE)
     private val countersOnRe = Regex("""^put (a|an|\w+|\d+|X) ([+-]\d/[+-]\d|\w+) counters? on (~|target .+?|each .+?)\.?$""", RegexOption.IGNORE_CASE)
+    // Zur: "search your library for an enchantment card with mana value 3 or less, put it onto the battlefield, then shuffle"
+    private val zurRe = Regex("""^search your library for (an?) (.+?) card(?: with mana value (\d+) or less)?, put (?:it|that card) onto the battlefield( tapped)?( and attacking)?, then shuffle\.?$""", RegexOption.IGNORE_CASE)
+    private fun zurEffect(m: MatchResult): Effect? {
+        val f = parseFilter(m.groupValues[2], Kind.PERMANENT)
+        return if (f.verifiable) Effect.PutFromHand(f, null, tapped = m.groupValues[4].isNotEmpty(), attacking = m.groupValues[5].isNotEmpty(), fromLibrary = true, maxMv = m.groupValues[3].toIntOrNull()) else null
+    }
     private val forAllRe = Regex("""^(destroy|exile|tap|untap) (?:all|each) (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val tuckAllRe = Regex("""^put (?:all|each) (.+?) on the bottom of (?:their|its) owners?' librar(?:y|ies)(?: in a random order)?\.?$""", RegexOption.IGNORE_CASE)
     private val damageEachRe = Regex("""^(?:~|it) deals (\d+) damage to each (.+?)\.?$""", RegexOption.IGNORE_CASE)
@@ -586,6 +595,7 @@ object OracleParser {
         Regex("""^each player discards (?:their|his or her) hand, then draws (\w+|\d+) cards?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             number(m.groupValues[1])?.let { return Effect.Seq(listOf(Effect.Narrated("each player discards their hand", listOf("701.9a")), Effect.Draw(Who.EACH_PLAYER, it))) }
         }
+        Regex("""^you may (search your library for .+)$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> zurRe.matchEntire(m.groupValues[1])?.let { z -> zurEffect(z)?.let { return Effect.May(it) } } }
         Regex("""^(that player|its controller|you|target player) may search (?:their|your) library for (.+?)(?:, then shuffle)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             return Effect.May(Effect.Narrated("search ${if (m.groupValues[1].lowercase() == "you") "your" else "their"} library for ${m.groupValues[2]}, then shuffle", listOf("701.23a", "701.24a")), if (m.groupValues[1].lowercase() == "you") Who.YOU else if (m.groupValues[1].lowercase() == "target player") Who.TARGET_PLAYER else Who.THAT_PLAYER)
         }
@@ -610,6 +620,7 @@ object OracleParser {
         Regex("""^put (?:a|an) ((?:[A-Z][a-z]+, )*(?:[A-Z][a-z]+,? or [A-Z][a-z]+ )?(?:creature|land|artifact|permanent|enchantment)) card(?: with mana value equal to the number of (charge|\w+) counters on ~)? from your hand onto the battlefield( tapped)?( and attacking(?: that opponent| that player)?)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             return Effect.PutFromHand(parseFilter(m.groupValues[1], Kind.PERMANENT), m.groupValues[2].ifEmpty { null }, tapped = m.groupValues[3].isNotEmpty(), attacking = m.groupValues[4].isNotEmpty())
         }
+        zurRe.matchEntire(s)?.let { m -> zurEffect(m)?.let { return it } }
         for ((re, rules) in narratedRes) if (re.matches(s)) return Effect.Narrated(s.trimEnd('.'), rules)
         // "You draw a card and you lose 1 life." / "Each opponent loses 1 life and you gain 1 life.": two effects joined by "and".
         Regex("""^(.+?) and (you |each opponent |target player |that player |it |~ )(.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trimEnd('.'))?.let { m ->
@@ -643,6 +654,7 @@ object OracleParser {
             return Effect.Damage(n, target(m.groupValues[2]))
         }
         counterRe.matchEntire(s)?.let { return Effect.Counter(target(it.groupValues[1], Kind.SPELL)) }
+        Regex("""^prevent all combat damage that would be dealt to and (?:dealt )?by (target .+?) this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.PreventCombatToAndBy(target(it.groupValues[1].removePrefix("target "))) }
         Regex("""^copy target (.+? spell)(?:\. you may choose new targets for the copy)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.CopySpell(target(it.groupValues[1], Kind.SPELL), s.contains("new targets", true)) }
         destroyRe.matchEntire(s)?.let { return Effect.Destroy(target(it.groupValues[1])) }
         bounceRe.matchEntire(s)?.let { m -> return Effect.Bounce(if (m.groupValues[1] == "~") null else target(m.groupValues[1])) }

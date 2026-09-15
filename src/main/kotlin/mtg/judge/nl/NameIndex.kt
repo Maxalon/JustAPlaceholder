@@ -77,7 +77,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
         )
 
         /** Everyday words: a card name made only of these is not read as a card ("The End", "Wear", "Attacking"). */
-        private val commonWords = setOf("the", "a", "an", "of", "end", "start", "beginning", "turn", "step", "phase", "time", "game", "play", "attacking", "blocking", "wear", "tear", "begin", "hit", "run", "swing", "bolt",
+        private val commonWords = setOf("the", "a", "an", "of", "end", "start", "beginning", "turn", "step", "phase", "time", "game", "play", "attacking", "blocking", "wear", "tear", "begin", "hit", "run", "swing", "bolt", "away", "far", "right", "left",
             "my", "your", "their", "our", "it", "its", "this", "that", "and", "or", "not", "no", "yes", "in", "on", "at", "to", "for", "with", "from", "by", "as", "is", "are", "was", "be",
             "one", "two", "three", "first", "second", "last", "next", "new", "old", "big", "small", "up", "down", "out", "off", "over", "under", "back", "again", "now", "then", "here", "there",
             "life", "death", "damage", "counter", "target", "attack", "block", "draw", "hand", "deck", "library", "graveyard", "exile", "battlefield", "stack", "response", "trigger", "ability", "poison", "commander", "cards", "card",

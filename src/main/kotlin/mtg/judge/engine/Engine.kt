@@ -60,6 +60,8 @@ class Engine(val state: GameState) {
             return null
         }
         obj.zone = Zone.STACK
+        obj.x = x
+        state.spellsCast[card.name] = (state.spellsCast[card.name] ?: 0) + 1
         if ("Instant" !in card.types) {
             val offTiming = state.phase == "combat" || state.stack.isNotEmpty() || (state.activePlayer != null && state.activePlayer != playerId)
             val kind = card.types.firstOrNull { it in setOf("Creature", "Sorcery", "Enchantment", "Artifact", "Planeswalker", "Battle") } ?: "permanent"
@@ -663,7 +665,7 @@ class Engine(val state: GameState) {
                 is GameEvent.SpellCast -> event.item.controller; is GameEvent.Drew -> event.playerId; is GameEvent.LifeGained -> event.playerId
                 is GameEvent.PlayerAttacks -> event.playerId; is GameEvent.Attacks -> event.obj.controller; is GameEvent.StepBegins -> event.activePlayer
                 is GameEvent.EntersBattlefield -> event.obj.controller; is GameEvent.Dies -> event.obj.controller; is GameEvent.LeavesBattlefield -> event.obj.controller
-                is GameEvent.CreaturesDealtCombatDamageToPlayer -> event.playerId; is GameEvent.DamageDealt -> event.source.controller; else -> null
+                is GameEvent.CreaturesDealtCombatDamageToPlayer -> event.playerId; is GameEvent.DamageDealt -> if (ability.trigger == Trigger.ThisIsDealtDamage) event.source.controller else (event.target as? Ref.Player)?.id ?: event.source.controller; else -> null
             }
             val causedAmount = when (event) { is GameEvent.LifeGained -> event.amount; is GameEvent.DamageDealt -> event.amount; else -> null }
             val causedObject = when (event) { is GameEvent.AttacksAlone -> event.obj.id; is GameEvent.Attacks -> event.obj.id; is GameEvent.EntersBattlefield -> event.obj.id; is GameEvent.Dies -> event.obj.id; is GameEvent.BecomesTarget -> event.obj.id; else -> null }
@@ -730,6 +732,11 @@ class Engine(val state: GameState) {
         if (needed.size == 1 && targets.isEmpty()) {
             // A trigger nobody named a target for: the only legal target, or for "target player"/"target opponent" the one opponent.
             val spec = needed[0]
+            // "Whenever … deals combat damage to a player, … deals 2 damage to any target": the player it just hit is the natural target.
+            if (causedBy != null && causedBy != obj.controller && Kind.PLAYER in spec.filter.kinds && isHarmful(ability.effect) && targetingProblem(obj, obj.controller, Ref.Player(causedBy)) == null) {
+                state.assumptions += "${obj.name}'s triggered ability targets ${state.nameOf(Ref.Player(causedBy))} (\"${spec.raw}\"; assuming the player it just hit)."
+                return StackItem(state.newStackId(), StackKind.TRIGGERED, obj.controller, obj, ability.effect, listOf(Ref.Player(causedBy)), zonesOf(listOf(Ref.Player(causedBy))), ability.text, causedBy = causedBy, causedAmount = causedAmount, causedObject = causedObject).also { state.stack += it; state.player(obj.controller).let { p -> trace.step("${p.subject} ${p.v("puts", "put")} ${obj.name}'s triggered ability on the stack targeting ${state.nameOf(Ref.Player(causedBy))}.", "603.3", "603.3d") } }
+            }
             val inferred = inferTarget("${obj.name}'s triggered ability", spec, obj.controller, harmful = isHarmful(ability.effect))
                 ?: if (spec.filter.kinds == setOf(Kind.PLAYER) && state.opponentsOf(obj.controller).size == 1) {
                     state.clarifications.removeAll { it.about == "${obj.name}'s triggered ability's target" }
@@ -812,6 +819,20 @@ class Engine(val state: GameState) {
                     "tap" -> { o.tapped = true; trace.step("${o.name} becomes tapped.", "701.26a"); state.outcomes += "${o.name} is tapped." }
                     else -> state.unsupported += Unsupported(item.describe, "Unknown action ${effect.action}")
                 } } finally { leavingTogether = emptySet() }
+            }
+            is Effect.PreventCombatToAndBy -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o -> state.combatDamageMuted += o.id; trace.step("A prevention effect applies to ${o.name} for the rest of the turn: all combat damage that would be dealt to it or by it is prevented. It stays attacking (it was untapped, not removed from combat), so it's still blocked or unblocked as before, but no combat damage happens either way.", "615.1", "506.4"); state.outcomes += "${o.name}'s combat damage this turn (dealt and received) is prevented." } }
+            is Effect.WinIfCastBefore -> {
+                val you = state.player(item.controller); val times = state.spellsCast[item.source.name] ?: 1
+                if (times >= 2) {
+                    trace.step("${item.source.name} was cast from ${you.possessive} hand and another spell with that name was cast earlier this game (${times - 1} before), so ${you.subject.lowercase()} ${you.v("wins", "win")} the game.", "104.2b")
+                    state.players.filter { it.id != you.id }.forEach { it.lost = true }; state.outcomes += "${you.subject} ${you.v("wins", "win")} the game."
+                    state.assumptions += "${item.source.name} was cast from ${you.possessive} hand both times (a copy or a cast from elsewhere wouldn't count)."
+                } else {
+                    trace.step("This is the first ${item.source.name} ${you.subject.lowercase()} ${you.v("has", "have")} cast this game, so instead of going to the graveyard it's put into ${you.possessive} library seventh from the top, and ${you.subject.lowercase()} ${you.v("gains", "gain")} ${effect.life} life.", "608.2c", "119.3")
+                    item.source.zone = Zone.LIBRARY; you.librarySize?.let { you.librarySize = it + 1 }
+                    gainLife(you, effect.life)
+                    state.outcomes += "${item.source.name} goes into ${you.possessive} library seventh from the top; ${you.subject.lowercase()} ${you.v("gains", "gain")} ${effect.life} life."
+                }
             }
             is Effect.CopySpell -> forEachLegalTarget(item, effect.target) { ref ->
                 val target = (ref as? Ref.Stack)?.let { state.stackItem(it.id) } ?: (ref as? Ref.Obj)?.let { r -> state.stack.firstOrNull { it.source.id == r.id } }
@@ -912,16 +933,24 @@ class Engine(val state: GameState) {
             }
             is Effect.PutFromHand -> {
                 val you = state.player(item.controller)
-                val chosen = (item.choice ?: state.pendingChoices.remove(item.source.id))?.let { c -> state.objects[c] } ?: state.objects.values.firstOrNull { it.zone == Zone.HAND && it.controller == item.controller && state.matches(effect.filter, it, item.controller, anyZone = true) }
-                if (chosen == null) { state.clarifications += Clarification("${item.source.name}'s card", "${item.source.name} puts ${withArticle(effect.filter.raw)} from ${you.possessive} hand onto the battlefield; which card? (none was named, so nothing is put)"); trace.step("No ${effect.filter.raw} in hand was named for ${item.source.name}; nothing is put onto the battlefield.") }
-                else if (chosen.zone != Zone.HAND) trace.step("${chosen.name} isn't in ${you.possessive} hand, so ${item.source.name} can't put it onto the battlefield.", "608.2b")
+                val fromZone = if (effect.fromLibrary) Zone.LIBRARY else Zone.HAND; val zoneName = if (effect.fromLibrary) "library" else "hand"
+                val chosen = (item.choice ?: state.pendingChoices.remove(item.source.id))?.let { c -> state.objects[c] } ?: state.objects.values.firstOrNull { it.zone == fromZone && it.controller == item.controller && state.matches(effect.filter, it, item.controller, anyZone = true) }
+                    // A basic land fetched from the library: nobody needs to name it; assume one is there.
+                    ?: if (effect.fromLibrary && effect.filter.raw.contains("basic land", true)) Generic.spell("basic land")?.let { def -> state.add(GameObject(freshObjectId("basic land"), def, Zone.LIBRARY, item.controller)).also { state.assumptions += "${item.source.name} finds a basic land (${you.possessive} library has one)." } } else null
+                if (chosen == null) { state.clarifications += Clarification("${item.source.name}'s card", "${item.source.name} puts ${withArticle(effect.filter.raw)} from ${you.possessive} $zoneName onto the battlefield; which card? (none was named, so nothing is put)"); trace.step("No ${effect.filter.raw} in ${you.possessive} $zoneName was named for ${item.source.name}; nothing is put onto the battlefield${if (effect.fromLibrary) " (the library is still shuffled)" else ""}.") }
+                else if (chosen.zone != fromZone) trace.step("${chosen.name} isn't in ${you.possessive} $zoneName, so ${item.source.name} can't put it onto the battlefield.", "608.2b")
+                else if (effect.maxMv != null && chosen.def.manaValue.toInt() > effect.maxMv) { trace.step("${chosen.name} has mana value ${chosen.def.manaValue.toInt()}, more than ${effect.maxMv}, so ${item.source.name} can't find it.", "202.3"); state.outcomes += "${chosen.name} can't be put onto the battlefield (mana value too high)." }
                 else if (!state.matches(effect.filter, chosen, item.controller, anyZone = true)) { trace.step("${chosen.name} isn't a ${effect.filter.raw}, so ${item.source.name} can't put it onto the battlefield.", "608.2b"); state.outcomes += "${chosen.name} stays in hand." }
                 else {
                     val counters = effect.mvEqualsCounters?.let { item.source.counters[it] ?: 0 }
                     if (counters != null && chosen.def.manaValue.toInt() != counters) { trace.step("${item.source.name} has $counters ${effect.mvEqualsCounters} counter${if (counters == 1) "" else "s"} but ${chosen.name}'s mana value is ${chosen.def.manaValue.toInt()}, so it can't be put onto the battlefield with it.", "202.3"); state.outcomes += "${chosen.name} stays in hand (mana value ${chosen.def.manaValue.toInt()} ≠ $counters counters)." }
                     else {
                         trace.step("${you.subject} ${you.v("puts", "put")} ${chosen.name} from ${you.possessive} hand onto the battlefield${if (counters != null) " (its mana value ${chosen.def.manaValue.toInt()} matches the $counters counters)" else ""}. It's put there directly rather than cast, so it never was a spell: it can't be countered and 'whenever you cast' abilities don't trigger.", "608.2c", *(if (counters != null) arrayOf("202.3") else emptyArray()))
-                        enter(chosen.id); state.outcomes += "${chosen.name} enters the battlefield."
+                        val host = chosen.attachedTo?.let { state.objects[it] }
+                        if (chosen.def.isAura && host != null) trace.step("${chosen.name} is an Aura entering without being cast: ${you.subject.lowercase()} ${you.v("chooses", "choose")} what it enchants as it enters (it doesn't target, so hexproof and shroud don't stop it): ${host.name}.", "303.4f")
+                        else if (chosen.def.isAura) { chosen.attachedTo = null; state.clarifications += Clarification("${chosen.name}'s host", "${chosen.name} enters the battlefield without being cast; what does it enchant? (303.4f)") }
+                        enter(chosen.id); if (chosen.def.isAura && host != null) applyControlEnchanted(chosen); state.outcomes += "${chosen.name} enters the battlefield${host?.let { " attached to ${it.name}" } ?: ""}."
+                        if (effect.fromLibrary) trace.step("${you.possessive.replaceFirstChar { c -> c.uppercase() }} library is shuffled.", "701.24a")
                         if (effect.tapped) { chosen.tapped = true; trace.step("${chosen.name} enters tapped, as the effect says.", "614.1c") }
                         if (effect.attacking) {
                             val defender = item.source.attacking ?: state.opponentsOf(item.controller).singleOrNull()?.let { Ref.Player(it.id) }
@@ -1053,6 +1082,7 @@ class Engine(val state: GameState) {
                 else { o.tapped = true; trace.step("${o.name} enters tapped (a replacement effect on how it enters${if (e.unless != null) "; its condition isn't met" else ""}).", "614.1c", "614.12") }
             }
             is StaticEffect.EntersWithCounters -> if (e.count != null) { val n = countersPlaced(o, e.count, e.kind); o.counters[e.kind] = (o.counters[e.kind] ?: 0) + n; trace.step("${o.name} enters with $n ${e.kind} counter${if (n > 1) "s" else ""} on it.", "614.1c", "122.6") }
+                else if (o.x != null) { val n = countersPlaced(o, o.x!!, e.kind); o.counters[e.kind] = (o.counters[e.kind] ?: 0) + n; trace.step("${o.name} enters with $n ${e.kind} counter${if (n == 1) "" else "s"} on it (X was ${o.x}).", "614.1c", "107.3a") }
                 else { state.clarifications += Clarification("${o.name}'s X", "${o.name} enters with X ${e.kind} counters; what was X?") }
             else -> {}
         }
@@ -1144,6 +1174,11 @@ class Engine(val state: GameState) {
 
     private fun applyDamage(sourceName: String, target: Ref, amount: Int, source: GameObject? = state.objects.values.firstOrNull { it.name == sourceName }): Int {
         var amount = amount
+        if (inCombatDamage && (source?.id in state.combatDamageMuted || (target as? Ref.Obj)?.id in state.combatDamageMuted)) {
+            val who = if (source?.id in state.combatDamageMuted) source!!.name else state.nameOf(target)
+            trace.step("All combat damage dealt to and by $who is prevented this turn (Maze of Ith-style effect), so the $amount combat damage ${if (source?.id in state.combatDamageMuted) "it would deal to ${state.nameOf(target)}" else "$sourceName would deal to it"} is prevented.", "615.1", "615.6")
+            state.outcomes += "$amount combat damage ${if (source?.id in state.combatDamageMuted) "from $who" else "to $who"} is prevented."; return 0
+        }
         // Replacement effects that modify damage (614.2, 609.7): doublers from the battlefield.
         val doublers = state.objects.values.filter { it.isOnBattlefield() }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.DamageMultiplier }.filter { d -> d.sourceControl == null || source == null || (d.sourceControl == Who.YOU) == (source.controller == o.controller) }.map { o to it } }
         val prevention = preventionFor(source, target, inCombatDamage)
@@ -1190,7 +1225,11 @@ class Engine(val state: GameState) {
     /** Doubling Season and friends: how many counters actually land on [o] when [n] would be placed. */
     private fun countersPlaced(o: GameObject, n: Int, kind: String): Int {
         var out = n
-        state.objects.values.filter { it.isOnBattlefield() && it.controller == o.controller }.flatMap { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.CounterMultiplier }.map { src to it } }
+        state.objects.values.filter { it.isOnBattlefield() }.flatMap { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.CounterMultiplier }.filter { it.anyPlayer || src.controller == o.controller }.map { src to it } }
+            .forEach { (src, m) -> if (m.factor == 0) { trace.step("${src.name} says counters can't be put on ${o.name}, so the $out $kind counter${if (out == 1) "" else "s"} ${if (out == 1) "isn't" else "aren't"} placed.", "614.1a", "122.1"); out = 0 } }
+        state.objects.values.filter { false }.flatMap { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.CounterMultiplier }.map { src to it } }
+            .forEach { (src, m) -> trace.step("${src.name} replaces the counter placement: ${out * m.factor} $kind counters are put on ${o.name} instead of $out.", "614.1a", "614.6"); out *= m.factor }
+        if (out > 0) state.objects.values.filter { it.isOnBattlefield() && it.controller == o.controller }.flatMap { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.CounterMultiplier }.filter { it.factor > 1 }.map { src to it } }
             .forEach { (src, m) -> trace.step("${src.name} replaces the counter placement: ${out * m.factor} $kind counters are put on ${o.name} instead of $out.", "614.1a", "614.6"); out *= m.factor }
         return out
     }
@@ -1418,10 +1457,10 @@ class Engine(val state: GameState) {
     private fun describe(effect: Effect, item: StackItem): String = when (effect) {
         is Effect.Draw -> "draw ${if (effect.x) "X" else effect.count.toString()} card${if (effect.count > 1 || effect.x) "s" else ""}"
         is Effect.Damage -> "deal ${effect.amount} damage to ${effect.target.raw}"
-        is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
+        is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.PreventCombatToAndBy -> "prevent all combat damage dealt to and by ${effect.target.raw} this turn"; is Effect.WinIfCastBefore -> "win the game if another spell with this name was cast this game, otherwise tuck it seventh from the top and gain ${effect.life} life"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
         is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
-        is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your hand onto the battlefield"
+        is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else "hand"} onto the battlefield"
         is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"
         is Effect.Tap -> "tap ${effect.target.raw}"; is Effect.Untap -> "untap ${effect.target.raw}"
         is Effect.Pump -> "${effect.target.raw} gets ${signed(effect.power)}/${signed(effect.toughness)}"

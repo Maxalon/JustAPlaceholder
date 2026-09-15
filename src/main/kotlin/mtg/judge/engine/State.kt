@@ -37,6 +37,8 @@ class GameObject(
     var commander: Boolean = false,
     /** Targets named for a permanent spell that itself targets nothing: they go to its enters-the-battlefield trigger (603.3d). */
     var etbTargets: List<Ref>? = null,
+    /** X chosen when this was cast ("enters with X counters"). */
+    var x: Int? = null,
 ) {
     /** Until-end-of-turn power/toughness modifications from resolved effects (611.2a). */
     val pumps = mutableListOf<Pair<Int, Int>>()
@@ -127,6 +129,10 @@ class GameState(
 ) {
     val trace = Trace()
     var combatDamageDealt = false
+    /** Creatures whose combat damage, dealt and received, is prevented this turn (Maze of Ith). */
+    val combatDamageMuted = mutableSetOf<String>()
+    /** Spells cast this game by name (Approach of the Second Sun). */
+    val spellsCast = mutableMapOf<String, Int>()
     /** Prevention/regeneration shields created by resolved effects this turn (615.7, 701.19a). */
     val shields = mutableListOf<Shield>()
     val outcomes = mutableListOf<String>()
@@ -251,7 +257,7 @@ class GameState(
         val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> o.def.isCreature; Kind.LAND -> "Land" in o.def.types; Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types; else -> false } }
         val ctrlOk = when (f.controller) { null -> true; Who.YOU -> o.controller == controller; Who.OPPONENT -> o.controller != controller; else -> true }
         val subOk = if (f.subtypesAny && f.subtypes.isNotEmpty()) f.subtypes.any { st -> o.def.subtypes.any { it.equals(st, true) } || (o.def.changeling && o.def.isCreature) }
-                    else f.subtypes.all { st -> o.def.subtypes.any { it.equals(st, true) } || (o.def.changeling && o.def.isCreature) }
+                    else f.subtypes.all { st -> o.def.subtypes.any { it.equals(st, true) } || (o.def.changeling && o.def.isCreature) || (st.equals("basic", true) && o.def.supertypes.any { it.equals("Basic", true) }) || (st.equals("snow", true) && o.def.supertypes.any { it.equals("Snow", true) }) }
         val kwOk = f.keywords.all { hasKeyword(o, it) }
         val tokenOk = f.token == null || f.token == o.token
         val legOk = f.legendary == null || f.legendary == ("Legendary" in o.def.supertypes)

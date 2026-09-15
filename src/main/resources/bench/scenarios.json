@@ -2058,7 +2058,7 @@
     "text": "I sacrifice Sakura-Tribe Elder in response to Lightning Bolt targeting it.",
     "expect": [
       "Lightning Bolt doesn't resolve (all targets illegal)",
-      "Search your library for a basic land card"
+      "a basic land enters the battlefield"
     ],
     "cite": [
       "602.2b",
@@ -2212,6 +2212,97 @@
     ],
     "cite": [
       "704.5a"
+    ]
+  },
+  {
+    "id": "sword-fire-ice-red-blocker",
+    "text": "I have Grizzly Bears equipped with Sword of Fire and Ice and attack. My opponent blocks with a red creature.",
+    "expect": [
+      "a red creature can't block Grizzly Bears (protection)",
+      "opponent takes 4 damage",
+      "opponent takes 2 damage",
+      "You draw 1 card"
+    ],
+    "cite": [
+      "702.16f"
+    ]
+  },
+  {
+    "id": "maze-of-ith",
+    "text": "My opponent has Maze of Ith. I attack with Grizzly Bears and they use Maze on it.",
+    "expect": [
+      "Grizzly Bears is untapped",
+      "2 combat damage from Grizzly Bears is prevented"
+    ],
+    "notExpect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "615.1"
+    ]
+  },
+  {
+    "id": "greaves-equip-right-away",
+    "text": "I control Lightning Greaves and cast Grizzly Bears. Can I equip it right away and attack?",
+    "expect": [
+      "Lightning Greaves is attached to Grizzly Bears",
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "702.10b"
+    ]
+  },
+  {
+    "id": "approach-second-time",
+    "text": "I cast Approach of the Second Sun for the second time this game.",
+    "expect": [
+      "Approach of the Second Sun goes into your library seventh from the top",
+      "You win the game"
+    ],
+    "cite": [
+      "104.2b"
+    ]
+  },
+  {
+    "id": "krenko-summoning-sick-tap",
+    "text": "My opponent has Elesh Norn, Grand Cenobite. I cast Krenko, Mob Boss and tap it.",
+    "expect": [
+      "Krenko, Mob Boss's {T} ability can't be activated (summoning sickness)"
+    ],
+    "cite": [
+      "302.6"
+    ]
+  },
+  {
+    "id": "ulamog-cast-it-countered",
+    "text": "I have Ulamog, the Ceaseless Hunger and cast it. My opponent responds with Counterspell.",
+    "expect": [
+      "Ulamog, the Ceaseless Hunger is countered"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "zur-fetches-pacifism",
+    "text": "I control Zur the Enchanter and attack. I fetch Pacifism with Zur and put it on their Grizzly Bears.",
+    "expect": [
+      "Pacifism enters the battlefield attached to Grizzly Bears"
+    ],
+    "cite": [
+      "303.4f",
+      "701.24a"
+    ]
+  },
+  {
+    "id": "solemnity-ballista",
+    "text": "My opponent has Solemnity. I cast Walking Ballista for X=2.",
+    "expect": [
+      "Walking Ballista: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5f",
+      "122.1"
     ]
   }
 ]

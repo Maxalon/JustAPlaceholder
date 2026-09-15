@@ -30,6 +30,10 @@ class BatchThirteenTest {
     private val wrath = card("Wrath of God", "Sorcery", "Destroy all creatures. They can't be regenerated.", "{2}{W}{W}", "W")
     private val teferi = card("Teferi, Time Raveler", "Legendary Planeswalker — Teferi", "Each opponent can cast spells only any time they could cast a sorcery.\n+1: Until your next turn, you may cast sorcery spells as though they had flash.\n−3: Return up to one target artifact, creature, or enchantment to its owner's hand. Draw a card.", "{1}{W}{U}", "WU")
     private val twincast = card("Twincast", "Instant", "Copy target instant or sorcery spell. You may choose new targets for the copy.", "{U}{U}", "U")
+    private val maze = card("Maze of Ith", "Land", "{T}: Untap target attacking creature. Prevent all combat damage that would be dealt to and dealt by that creature this turn.", "")
+    private val approach = card("Approach of the Second Sun", "Sorcery", "If Approach of the Second Sun was cast from your hand and you've cast another spell named Approach of the Second Sun this game, you win the game. Otherwise, put Approach of the Second Sun into its owner's library seventh from the top and you gain 7 life.", "{6}{W}", "W")
+    private val solemnity = card("Solemnity", "Enchantment", "Players can't get counters.\nCounters can't be put on artifacts, creatures, enchantments, or lands.", "{2}{W}", "W")
+    private val ballista = card("Walking Ballista", "Artifact Creature — Construct", "Walking Ballista enters the battlefield with X +1/+1 counters on it.\n{4}: Put a +1/+1 counter on Walking Ballista.\nRemove a +1/+1 counter from Walking Ballista: It deals 1 damage to any target.", "{X}{X}", "", "0", "0")
     private val sakura = card("Sakura-Tribe Elder", "Creature — Snake Shaman", "Sacrifice Sakura-Tribe Elder: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.", "{1}{G}", "G", "1", "1")
 
     private fun state() = GameState(listOf(Player("me", "me", 20), Player("opp", "opp", 20)), LinkedHashMap(), activePlayer = "me")
@@ -188,5 +192,32 @@ class BatchThirteenTest {
         e.cast("me", twincast, listOf(Ref.Stack(boltItem.id))); e.resolveAll()
         assertEquals(17, s.player("me").life); assertEquals(17, s.player("opp").life); assertTrue("707.10c" in s.cited())
         assertTrue(s.objects.values.none { it.token && it.zone == Zone.STACK }, "the copy is gone once it resolved")
+    }
+
+    @Test
+    fun `maze of ith prevents combat damage to and by the creature`() {
+        val s = state(); s.put("bears", bears, "me"); s.put("maze", maze, "opp"); val e = Engine(s)
+        e.beginDeclaringAttackers(); e.declareAttacker("me", "bears", Ref.Player("opp")); e.finishDeclaringAttackers()
+        e.activate("opp", "maze", null, listOf(Ref.Obj("bears"))); e.resolveAll(); e.combatDamage()
+        assertEquals(20, s.player("opp").life); assertEquals(false, s.obj("bears").tapped); assertTrue("615.1" in s.cited())
+    }
+
+    @Test
+    fun `approach of the second sun wins on the second cast`() {
+        val s = state(); s.player("me").librarySize = 10; val e = Engine(s)
+        e.cast("me", approach, emptyList()); e.resolveAll()
+        assertEquals(27, s.player("me").life); assertEquals(11, s.player("me").librarySize); assertTrue(!s.player("opp").lost)
+        e.cast("me", approach, emptyList()); e.resolveAll()
+        assertTrue(s.player("opp").lost); assertTrue("104.2b" in s.cited())
+    }
+
+    @Test
+    fun `solemnity stops X counters so a ballista dies, and X is read from the cast`() {
+        val s = state(); val e = Engine(s)
+        e.cast("me", ballista, emptyList(), x = 2); e.resolveAll()
+        assertEquals(2, s.objects.values.first { it.name == "Walking Ballista" }.counters["+1/+1"])
+        val s2 = state(); s2.put("sol", solemnity, "opp"); val e2 = Engine(s2)
+        e2.cast("me", ballista, emptyList(), x = 2); e2.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s2.objects.values.first { it.name == "Walking Ballista" }.zone); assertTrue("122.1" in s2.cited())
     }
 }
