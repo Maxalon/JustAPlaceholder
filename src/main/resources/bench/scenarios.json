@@ -2382,5 +2382,85 @@
     "cite": [
       "615.1"
     ]
+  },
+  {
+    "id": "trample-five-five-vs-two-two",
+    "text": "My opponent attacks with a 5/5 trample and I block with a 2/2. How much damage do I take?",
+    "expect": [
+      "You take 3 damage",
+      "a 2/2 creature: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "702.19b"
+    ]
+  },
+  {
+    "id": "giant-growth-then-bolted",
+    "text": "My Grizzly Bears has a +1/+1 counter and my opponent casts Giant Growth on it. Then it gets Lightning Bolted.",
+    "expect": [
+      "Grizzly Bears is 6/6 until end of turn",
+      "Grizzly Bears has 3 damage marked"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield"
+    ],
+    "cite": [
+      "120.3e"
+    ]
+  },
+  {
+    "id": "aetherflux-six-spells",
+    "text": "I control Aetherflux Reservoir and cast five spells this turn. Then I cast a sixth one.",
+    "expect": [
+      "You gain 6 life"
+    ],
+    "cite": [
+      "608.2h"
+    ]
+  },
+  {
+    "id": "settle-should-i-cast-after-blockers",
+    "text": "My opponent attacks me with Grizzly Bears and I have Settle the Wreckage. Should I cast it after blockers?",
+    "expect": [
+      "Grizzly Bears: the battlefield → exile"
+    ],
+    "cite": [
+      "701.13a"
+    ]
+  },
+  {
+    "id": "kci-two-treasures",
+    "text": "I have Krark-Clan Ironworks and sacrifice two Treasure tokens to it.",
+    "expect": [
+      "Krark-Clan Ironworks's mana ability: add {C}{C}. (×2)"
+    ],
+    "cite": [
+      "605.1a",
+      "701.21a"
+    ]
+  },
+  {
+    "id": "boros-charm-indestructible-vs-damnation",
+    "text": "My opponent casts Damnation. I have Grizzly Bears and respond with Boros Charm choosing indestructible.",
+    "expect": [
+      "Grizzly Bears has indestructible until end of turn",
+      "Grizzly Bears is indestructible and isn't destroyed"
+    ],
+    "cite": [
+      "702.12b",
+      "700.2a"
+    ]
+  },
+  {
+    "id": "swords-in-response-to-giant-growth",
+    "text": "I cast Swords to Plowshares on Grizzly Bears in response to my opponent's Giant Growth on it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → exile",
+      "You gain 2 life",
+      "Giant Growth doesn't resolve (all targets illegal)"
+    ],
+    "cite": [
+      "608.2b"
+    ]
   }
 ]

@@ -133,6 +133,8 @@ class GameState(
     var combatDamageDealt = false
     /** Creatures whose combat damage, dealt and received, is prevented this turn (Maze of Ith). */
     val combatDamageMuted = mutableSetOf<String>()
+    /** Spells cast this turn, per player (storm counts, Aetherflux Reservoir). */
+    val spellsThisTurn = mutableMapOf<String, Int>()
     /** Spells cast this game by name (Approach of the Second Sun). */
     val spellsCast = mutableMapOf<String, Int>()
     /** Prevention/regeneration shields created by resolved effects this turn (615.7, 701.19a). */

@@ -36,6 +36,8 @@ class BatchThirteenTest {
     private val ballista = card("Walking Ballista", "Artifact Creature — Construct", "Walking Ballista enters the battlefield with X +1/+1 counters on it.\n{4}: Put a +1/+1 counter on Walking Ballista.\nRemove a +1/+1 counter from Walking Ballista: It deals 1 damage to any target.", "{X}{X}", "", "0", "0")
     private val abolisher = card("Grand Abolisher", "Creature — Human Cleric", "During your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments.", "{W}{W}", "W", "2", "2")
     private val thalia = card("Thalia, Guardian of Thraben", "Legendary Creature — Human Soldier", "First strike\nNoncreature spells cost {1} more to cast.", "{1}{W}", "W", "2", "1", "First strike")
+    private val reservoir = card("Aetherflux Reservoir", "Artifact", "Whenever you cast a spell, you gain 1 life for each spell you've cast this turn.\nPay 50 life: Aetherflux Reservoir deals 50 damage to any target.", "{4}")
+    private val kci = card("Krark-Clan Ironworks", "Artifact", "Sacrifice an artifact: Add {C}{C}.", "{4}")
     private val sakura = card("Sakura-Tribe Elder", "Creature — Snake Shaman", "Sacrifice Sakura-Tribe Elder: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.", "{1}{G}", "G", "1", "1")
 
     private fun state() = GameState(listOf(Player("me", "me", 20), Player("opp", "opp", 20)), LinkedHashMap(), activePlayer = "me")
@@ -236,5 +238,20 @@ class BatchThirteenTest {
         assertTrue(e.cast("opp", bolt, listOf(Ref.Player("me"))) == null); assertTrue("601.2h" in s.cited())
         s.player("opp").mana = 2; assertTrue(e.cast("opp", bolt, listOf(Ref.Player("me"))) != null)
         s.player("opp").mana = 2; assertTrue(e.cast("opp", bears, emptyList()) != null, "creature spells aren't taxed")
+    }
+
+    @Test
+    fun `aetherflux counts the spells cast this turn`() {
+        val s = state(); s.put("res", reservoir, "me"); val e = Engine(s)
+        repeat(3) { e.cast("me", bolt, listOf(Ref.Player("opp"))); e.resolveAll() }
+        assertEquals(26, s.player("me").life, "1 + 2 + 3")
+    }
+
+    @Test
+    fun `sacrifice-an-artifact costs take the named permanent, or refuse without one`() {
+        val s = state(); s.put("kci", kci, "me"); s.put("t1", Generic.token("treasure token")!!, "me"); val e = Engine(s)
+        e.activate("me", "kci", null, emptyList(), choice = "sacrifice:t1")
+        assertEquals(Zone.GRAVEYARD, s.obj("t1").zone); assertTrue("701.21a" in s.cited())
+        assertTrue(e.activate("me", "kci", null, emptyList()) == null, "nothing left to sacrifice"); assertTrue(s.outcomes.any { "nothing to sacrifice" in it })
     }
 }

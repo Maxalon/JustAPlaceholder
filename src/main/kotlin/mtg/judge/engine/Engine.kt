@@ -74,6 +74,7 @@ class Engine(val state: GameState) {
         obj.zone = Zone.STACK
         obj.x = x
         state.spellsCast[card.name] = (state.spellsCast[card.name] ?: 0) + 1
+        state.spellsThisTurn[playerId] = (state.spellsThisTurn[playerId] ?: 0) + 1
         if ("Instant" !in card.types) {
             val offTiming = state.phase == "combat" || state.stack.isNotEmpty() || (state.activePlayer != null && state.activePlayer != playerId)
             val kind = card.types.firstOrNull { it in setOf("Creature", "Sorcery", "Enchantment", "Artifact", "Planeswalker", "Battle") } ?: "permanent"
@@ -163,6 +164,7 @@ class Engine(val state: GameState) {
             return null
         }
         val ability = abilities[abilityIndex ?: 0]
+        if (!paySacrificeCosts(playerId, obj, ability, choice)) return null
         val isMana = ability.effect is Effect.AddMana || (ability.effect is Effect.Seq && (ability.effect as Effect.Seq).effects.firstOrNull() is Effect.AddMana)
         if (!isMana) state.stack.firstOrNull { it.kind == StackKind.SPELL && it.source.def.has("split second") }?.let { ss ->
             trace.step("${ss.source.name} has split second and is on the stack, so abilities that aren't mana abilities can't be activated. ${obj.name}'s ability can't be activated now.", "702.61a")
@@ -190,11 +192,6 @@ class Engine(val state: GameState) {
         if (ability.cost.contains("{T}") && obj.def.isCreature && obj.summoningSick == true && !obj.has("haste")) { trace.step("${obj.name} hasn't been under ${state.player(playerId).possessive} control since the turn began and doesn't have haste, so its {T} ability can't be activated.", "302.6"); state.outcomes += "${obj.name}'s {T} ability can't be activated (summoning sickness)."; return null }
         if (ability.cost.contains("{T}")) tap(obj)
         if (ability.cost.contains("discard this card", true)) onEvent(GameEvent.Cycled(obj))
-        if (Regex("""(?i)\bsacrifice (?:~|this\b|${Regex.escape(obj.name)}\b)""").containsMatchIn(ability.cost)) {
-            if (!obj.isOnBattlefield()) { trace.step("${obj.name} isn't on the battlefield, so it can't be sacrificed to pay the cost.", "602.2b", "701.21a"); return null }
-            obj.lkiPower = obj.power; state.lastSacrificed = obj
-            move(obj, Zone.GRAVEYARD, "${state.player(playerId).subject} ${state.player(playerId).v("sacrifices", "sacrifice")} ${obj.name} as the cost. Costs are paid as the ability is activated, so once it's on the stack the ability resolves even if something is done in response: the sacrifice can't be responded to.", "701.21a", "602.2b", "601.2h", "113.7a")
-        }
         val needed = ability.effect.targets()
         if (needed.size != targets.size && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && targetsAPlayer(ability.effect))) {
             state.clarifications += Clarification("${obj.name}'s ability target", "The ability needs ${needed.size} target(s) (${needed.joinToString("; ") { it.raw }}) but ${targets.size} given (602.2b, 601.2c).")
@@ -274,6 +271,26 @@ class Engine(val state: GameState) {
         is Effect.Seq -> e.effects.any { targetsAPlayer(it) }; is Effect.May -> targetsAPlayer(e.effect); is Effect.UnlessPays -> targetsAPlayer(e.effect); is Effect.Modal -> e.modes.any { targetsAPlayer(it) }
         is Effect.Narrated -> e.text.startsWith("target player", ignoreCase = true); else -> false
     }
+
+    /** Sacrifice costs of an activated ability ("Sacrifice ~:", "Sacrifice an artifact:"), paid as it's activated. False if they can't be paid. */
+    private fun paySacrificeCosts(playerId: String, obj: GameObject, ability: ActivatedAbility, choice: String?): Boolean {
+        Regex("""(?i)\bsacrifice (?:an?|another|two|three) (.+?)(?::|$)""").find(ability.cost)?.takeIf { !Regex("""(?i)\bsacrifice (?:~|this\b|${Regex.escape(obj.name)}\b)""").containsMatchIn(ability.cost) }?.let { sc ->
+            val what = sc.groupValues[1].trim()
+            val chosen = choice?.takeIf { it.startsWith("sacrifice:") }?.removePrefix("sacrifice:")?.let { state.objects[it] }
+                ?: state.objects.values.filter { it.isOnBattlefield() && it.controller == playerId && it !== obj && state.matches(mtg.judge.oracle.OracleParser.parseFilter(what, Kind.PERMANENT), it, playerId) }.minByOrNull { it.def.manaValue }?.also { state.assumptions += "${state.player(playerId).subject} ${state.player(playerId).v("sacrifices", "sacrifice")} ${it.name} to ${obj.name} (no ${what} was named; assuming the cheapest)." }
+            if (chosen == null) { trace.step("${obj.name}'s ability costs \"Sacrifice ${sc.groupValues[0].removePrefix("Sacrifice ").removeSuffix(":")}\" and ${state.player(playerId).subject.lowercase()} ${state.player(playerId).v("controls", "control")} no such permanent to sacrifice, so it can't be activated.", "602.2b", "701.21a"); state.outcomes += "${obj.name}'s ability can't be activated (nothing to sacrifice)."; return false }
+            if (!chosen.isOnBattlefield() || chosen.controller != playerId) { trace.step("${chosen.name} isn't a permanent ${state.player(playerId).subject.lowercase()} ${state.player(playerId).v("controls", "control")}, so it can't be sacrificed to ${obj.name}.", "701.21a"); return false }
+            chosen.lkiPower = chosen.power; state.lastSacrificed = chosen
+            move(chosen, Zone.GRAVEYARD, "${state.player(playerId).subject} ${state.player(playerId).v("sacrifices", "sacrifice")} ${chosen.name} as the cost of ${obj.name}'s ability. Costs are paid as the ability is activated, so the sacrifice can't be responded to.", "701.21a", "602.2b", "601.2h")
+        }
+        if (Regex("""(?i)\bsacrifice (?:~|this\b|${Regex.escape(obj.name)}\b)""").containsMatchIn(ability.cost)) {
+            if (!obj.isOnBattlefield()) { trace.step("${obj.name} isn't on the battlefield, so it can't be sacrificed to pay the cost.", "602.2b", "701.21a"); return false }
+            obj.lkiPower = obj.power; state.lastSacrificed = obj
+            move(obj, Zone.GRAVEYARD, "${state.player(playerId).subject} ${state.player(playerId).v("sacrifices", "sacrifice")} ${obj.name} as the cost. Costs are paid as the ability is activated, so once it's on the stack the ability resolves even if something is done in response: the sacrifice can't be responded to.", "701.21a", "602.2b", "601.2h", "113.7a")
+        }
+        return true
+    }
+
     /** Whether a spell being cast matches a spell filter (for cost taxes and "whenever you cast" checks). */
     private fun spellMatches(f: ObjFilter, card: CardDef): Boolean {
         val typeOk = f.kinds.any { k -> when (k) { Kind.SPELL -> true; Kind.CREATURE -> card.isCreature; Kind.ARTIFACT -> "Artifact" in card.types; Kind.ENCHANTMENT -> "Enchantment" in card.types; Kind.PLANESWALKER -> card.isPlaneswalker; else -> false } }
@@ -933,6 +950,12 @@ class Engine(val state: GameState) {
                 if (lib != null) p.librarySize = lib - n
                 state.outcomes += "${p.subject} ${p.v("mills", "mill")} $n card${if (n == 1) "" else "s"}${if (lib != null) " (${lib - n} left in library)" else ""}."
             }
+            is Effect.GainLifePerSpellThisTurn -> {
+                val p = resolveWho(effect.who, item) ?: state.player(item.controller)
+                val n = state.spellsThisTurn[p.id] ?: 0
+                trace.step("${p.subject} ${p.v("has", "have")} cast $n spell${if (n == 1) "" else "s"} this turn (counting the one that triggered this), so ${p.subject.lowercase()} ${p.v("gains", "gain")} ${n * effect.per} life.", "608.2h", "119.3")
+                gainLife(p, n * effect.per)
+            }
             is Effect.SacrificeThatMany -> {
                 val p = resolveWho(effect.who, item); val n = item.causedAmount ?: 0
                 if (p == null) trace.step("Nobody to sacrifice: the player this refers to isn't known.")
@@ -1478,7 +1501,7 @@ class Engine(val state: GameState) {
         is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.PreventCombatToAndBy -> "prevent all combat damage dealt to and by ${effect.target.raw} this turn"; is Effect.WinIfCastBefore -> "win the game if another spell with this name was cast this game, otherwise tuck it seventh from the top and gain ${effect.life} life"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
         is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
-        is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else "hand"} onto the battlefield"
+        is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.GainLifePerSpellThisTurn -> "gain ${effect.per} life for each spell cast this turn"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else "hand"} onto the battlefield"
         is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"
         is Effect.Tap -> "tap ${effect.target.raw}"; is Effect.Untap -> "untap ${effect.target.raw}"
         is Effect.Pump -> "${effect.target.raw} gets ${signed(effect.power)}/${signed(effect.toughness)}"

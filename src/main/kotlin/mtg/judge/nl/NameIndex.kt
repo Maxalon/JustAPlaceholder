@@ -46,6 +46,8 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
     private fun singularize(span: List<String>): String? {
         val last = span.last()
         if (last.length > 3 && last.endsWith("s") && !last.endsWith("ss")) return (span.dropLast(1) + last.dropLast(1)).joinToString(" ")
+        // "bolted", "pathed", "wrathed": a card name used as a past-tense verb.
+        if (last.length > 4 && last.endsWith("ed")) { val stem = last.dropLast(2); val stemD = last.dropLast(1); return listOf(stem, stemD).firstOrNull { st -> val k = (span.dropLast(1) + st).joinToString(" "); byNorm.containsKey(k) || aliases.containsKey(k) }?.let { st -> (span.dropLast(1) + st).joinToString(" ") } }
         return null
     }
 
@@ -77,13 +79,13 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
         )
 
         /** Everyday words: a card name made only of these is not read as a card ("The End", "Wear", "Attacking"). */
-        private val commonWords = setOf("the", "a", "an", "of", "end", "start", "beginning", "turn", "step", "phase", "time", "game", "play", "attacking", "blocking", "wear", "tear", "begin", "hit", "run", "swing", "bolt", "away", "far", "right", "left",
+        private val commonWords = setOf("the", "a", "an", "of", "end", "start", "beginning", "turn", "step", "phase", "time", "game", "play", "attacking", "blocking", "wear", "tear", "begin", "hit", "run", "swing", "bolt", "away", "far", "right", "left", "return", "never",
             "my", "your", "their", "our", "it", "its", "this", "that", "and", "or", "not", "no", "yes", "in", "on", "at", "to", "for", "with", "from", "by", "as", "is", "are", "was", "be",
             "one", "two", "three", "first", "second", "last", "next", "new", "old", "big", "small", "up", "down", "out", "off", "over", "under", "back", "again", "now", "then", "here", "there",
             "life", "death", "damage", "counter", "target", "attack", "block", "draw", "hand", "deck", "library", "graveyard", "exile", "battlefield", "stack", "response", "trigger", "ability", "poison", "commander", "cards", "card",
             "they", "them", "he", "she", "we", "you", "i", "me", "re", "ve", "ll", "m", "s", "d", "t", "don", "doesn", "can", "won", "isn", "aren")
         private val stopWords = setOf(
-            "counter", "target", "turn", "attack", "block", "cast", "play", "draw", "damage", "life", "control", "survive", "survives", "dead", "alive", "die", "dies", "grow", "resolve",
+            "counter", "target", "turn", "attack", "block", "cast", "play", "draw", "damage", "life", "control", "survive", "survives", "dead", "alive", "die", "dies", "grow", "resolve", "experience", "energy", "storm", "overload", "overloaded", "kick", "kicked", "evoke", "convoke", "cycle", "flashback", "recast", "replay",
             "creature", "spell", "ability", "trigger", "stack", "response", "resolve", "resolves", "tap", "untap", "exile", "destroy", "sacrifice",
             "discard", "hand", "library", "graveyard", "battlefield", "token", "copy", "end", "step", "upkeep", "combat", "main", "phase", "pay",
             "mana", "land", "player", "opponent", "me", "my", "i", "you", "they", "it", "the", "a", "an",
