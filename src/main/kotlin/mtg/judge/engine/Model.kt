@@ -1,7 +1,7 @@
 package mtg.judge.engine
 
 /** Who an effect or trigger refers to, relative to the ability's controller. */
-enum class Who { YOU, OPPONENT, ANY_PLAYER, THAT_PLAYER, TARGET_PLAYER, CONTROLLER_OF_TARGET }
+enum class Who { YOU, OPPONENT, ANY_PLAYER, THAT_PLAYER, TARGET_PLAYER, CONTROLLER_OF_TARGET, EACH_PLAYER, EACH_OPPONENT }
 
 /** What an object filter may match. */
 enum class Kind { CREATURE, ARTIFACT, ENCHANTMENT, LAND, PLANESWALKER, BATTLE, PERMANENT, SPELL, ABILITY, PLAYER, CARD }
@@ -193,7 +193,10 @@ sealed interface Replacement {
 
 sealed interface Ability { val text: String }
 data class TriggeredAbility(val trigger: Trigger, val effect: Effect, override val text: String) : Ability
-data class ActivatedAbility(val cost: String, val effect: Effect, override val text: String, val restriction: String? = null) : Ability
+data class ActivatedAbility(val cost: String, val effect: Effect, override val text: String, val restriction: String? = null) : Ability {
+    /** Loyalty abilities have a +N / −N / 0 cost (606.2). */
+    val loyaltyCost: Int? get() = Regex("""^([+\u2212-]?\d+)$""").matchEntire(cost.trim())?.groupValues?.get(1)?.replace('\u2212', '-')?.toIntOrNull()
+}
 data class StaticAbility(override val text: String, val keyword: String? = null, val effects: List<StaticEffect> = emptyList()) : Ability
 data class UnparsedAbility(override val text: String) : Ability
 
@@ -219,7 +222,10 @@ data class CardDef(
     val enchant: ObjFilter? = null,
     /** Changeling: every creature type (702.73a). */
     val changeling: Boolean = false,
+    /** Printed loyalty for planeswalkers (306.5a). */
+    val loyalty: Int? = null,
 ) {
+    val isPlaneswalker get() = "Planeswalker" in types
     val isAura get() = "Aura" in subtypes
     val isEquipment get() = "Equipment" in subtypes
     val isCreature get() = "Creature" in types

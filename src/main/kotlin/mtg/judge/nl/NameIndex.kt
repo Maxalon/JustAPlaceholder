@@ -43,7 +43,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
      * Single common English words are also card names ("Fog", "Counter", "Opt", "Growth", "Study", "Turn").
      * Only accept them when they're not everyday words the situation grammar uses.
      */
-    private fun isSafeSingleWord(key: String, e: Entry): Boolean = key !in stopWords && e.isCard
+    private fun isSafeSingleWord(key: String, e: Entry): Boolean = key !in stopWords && (key.length <= 3 || key.removeSuffix("s") !in stopWords) && e.isCard
 
     /** Table-talk nicknames. The value is the real card name (normalized). */
     private fun alias(key: String): Entry? = aliases[key]?.let { byNorm[it] }
@@ -74,7 +74,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
             "then", "and", "or", "with", "on", "at", "to", "in", "of", "from", "is", "are", "was", "has", "have", "had", "do", "does", "did", "what", "happens",
             "who", "which", "when", "if", "that", "this", "their", "its", "his", "her", "him", "them", "kill", "dies", "die", "gets", "get", "becomes", "put",
             "one", "two", "three", "four", "five", "first", "second", "last", "next", "now", "still", "also", "just", "only", "again", "before", "after",
-            "everything", "all", "nothing", "everyone", "nobody", "blockers", "attackers", "response", "responses",
+            "everything", "all", "nothing", "everyone", "nobody", "blockers", "attackers", "response", "responses", "counters", "loyalty", "marked",
         )
 
         fun load(conn: Connection): NameIndex {

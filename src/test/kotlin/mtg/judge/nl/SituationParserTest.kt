@@ -66,6 +66,19 @@ class SituationParserTest {
     }
 
     @Test
+    fun `short names of cards named in full, state fragments, and defender-first attacks`() {
+        val p = parser.parse("I have Smothering Tithe with 2 damage on it and two +1/+1 counters. Then my opponent attacks Tithe with Rhystic Study.")
+        val tithe = p.situation.objects.first { it.card.name == "Smothering Tithe" }
+        assertEquals(2, tithe.damage); assertEquals(mapOf("+1/+1" to 2), tithe.counters)
+        val attack = p.situation.events.first { it.verb == "attack" }
+        assertEquals("opp", attack.player); assertEquals("rhystic_study", attack.obj); assertEquals(listOf("smothering_tithe"), attack.targets)
+        assertTrue(p.unread.isEmpty(), "unread: ${p.unread}")
+        val q = parser.parse("I have Time Vault at 4 loyalty. I activate Vault's +1.")
+        assertEquals(mapOf("loyalty" to 4), q.situation.objects.first().counters)
+        assertEquals("+1", q.situation.events.first { it.verb == "activate" }.to)
+    }
+
+    @Test
     fun `nothing recognisable yields no events and the text is unread`() {
         val p = parser.parse("The weather is nice today.")
         assertTrue(p.situation.events.isEmpty() && p.situation.objects.isEmpty())

@@ -43,13 +43,15 @@ class SituationParser(private val names: NameIndex) {
     private class Marked(val text: String, val cards: Map<String, NameIndex.Entry>)
 
     /** For debugging: the sentences with card names replaced by placeholders. */
-    fun debugMark(text: String): List<String> = splitSentences(text).map { s -> val m = mark(s); m.text + "   " + m.cards.map { (k, v) -> "$k=${v.display}" } + "   clauses=" + m.text.split(clauseSplit).map { it.trim() } }
+    fun debugMark(text: String): List<String> = splitSentences(text).let { ss -> val short = shortNames(ss); ss.map { s -> val m = mark(s, short); m.text + "   " + m.cards.map { (k, v) -> "$k=${v.display}" } + "   clauses=" + m.text.split(clauseSplit).map { it.trim() } } }
     private val clauseSplit = Regex("""\s*(?:,|\band\b)\s+""")
 
     fun parse(text: String): Parsed {
         val ctx = Ctx()
-        for (sentence in splitSentences(text)) {
-            val marked = mark(sentence)
+        val sentences = splitSentences(text)
+        val short = shortNames(sentences)
+        for (sentence in sentences) {
+            val marked = mark(sentence, short)
             if (!readSentence(marked, ctx)) ctx.unread += sentence.trim()
         }
         if (ctx.events.isNotEmpty() && !ctx.explicitResolve) ctx.events += EventSpec("resolveAll")
@@ -64,11 +66,40 @@ class SituationParser(private val names: NameIndex) {
     private fun splitSentences(text: String): List<String> =
         text.split(sentenceSplit).map { it.trim().trimEnd('.', '!', '?', ';', ',') }.filter { it.isNotEmpty() }
 
-    private fun mark(sentence: String): Marked {
+    /**
+     * Once a card has been named in full, people shorten it: "Jace" for Jace Beleren, "the Giant" for Hill Giant.
+     * Collect the distinctive words of every fully named card so later sentences can use them, as long as the
+     * word points at exactly one of the mentioned cards and isn't a card name (or grammar word) in its own right.
+     */
+    private fun shortNames(sentences: List<String>): Map<String, NameIndex.Entry> {
+        val candidates = LinkedHashMap<String, MutableSet<NameIndex.Entry>>()
+        for (sentence in sentences) {
+            val words = sentence.split(Regex("\\s+")).filter { it.isNotEmpty() }.map { w -> Names.normalize(stripPossessive(w)).ifEmpty { "_" } }
+            for (f in names.findAll(words)) {
+                val display = f.entry.display
+                val head = display.substringBefore(",")   // "Jace, the Mind Sculptor" -> "Jace"
+                val nameWords = Names.normalize(display).split(' ').filter { it.isNotEmpty() }
+                val keys = LinkedHashSet<String>()
+                if (head != display) keys += Names.normalize(head)
+                if (nameWords.size > 1) { keys += nameWords.first(); keys += nameWords.last() }
+                for (k in keys) if (k.length >= 3 && k !in shortNameStop) candidates.getOrPut(k) { LinkedHashSet() } += f.entry
+            }
+        }
+        return candidates.filterValues { it.size == 1 }.mapValues { it.value.first() }
+    }
+
+    private val shortNameStop = setOf("the", "and", "with", "from", "into", "onto", "for", "that", "this", "your", "you", "all", "each", "any", "one", "two", "three", "of",
+        "lord", "king", "queen", "knight", "wizard", "elf", "goblin", "dragon", "angel", "demon", "spirit", "soldier", "warrior", "beast", "bird", "cat", "dog", "rat", "wolf", "bear", "sphinx", "giant", "elemental",
+        "study", "ring", "bolt", "counter", "spell", "creature", "land", "token", "card", "cards", "life", "turn", "step", "phase", "combat", "damage", "mana", "ability", "trigger", "top", "bottom", "first", "second", "last", "next")
+
+    private fun mark(sentence: String, short: Map<String, NameIndex.Entry> = emptyMap()): Marked {
         val rawWords = sentence.split(Regex("\\s+")).filter { it.isNotEmpty() }
         // Normalize per word so word indices line up with the original words.
         val normWords = rawWords.map { w -> Names.normalize(stripPossessive(w)).ifEmpty { "_" } }
-        val found = names.findAll(normWords)
+        // A single word that is both a card name and the short form of a card named in full ("Jace" the token vs. Jace Beleren) means the named card.
+        val full = names.findAll(normWords).map { f -> if (f.end - f.start == 1) short[normWords[f.start]]?.let { f.copy(entry = it) } ?: f else f }
+        val covered = full.flatMap { it.start until it.end }.toSet()
+        val found = full + normWords.indices.filter { it !in covered }.mapNotNull { i -> short[normWords[i]]?.let { NameIndex.Found(i, i + 1, it) } }
         val cards = LinkedHashMap<String, NameIndex.Entry>()
         val out = StringBuilder()
         var i = 0
@@ -149,13 +180,19 @@ class SituationParser(private val names: NameIndex) {
             ctx.activePlayer = who
             ctx.events += EventSpec("step", player = who, to = step); return true
         }
-        var c = clause0
+        // Leading connectives carry no information: "then my opponent…", "next, they…", "now I…", "so I…".
+        var c = clause0.replace(Regex("""^(?:then|next|now|so|after that|afterwards|later|finally|also|meanwhile)\s*,?\s+"""), "")
         var actor: String? = null
         actorOpp.find(c)?.let { actor = "opp"; c = c.removeRange(it.range).trim() }
         if (actor == null) actorMe.find(c)?.let { actor = "me"; c = c.removeRange(it.range).trim() }
         if (actor == null && c.startsWith("in response")) actor = other(ctx.lastActor)
         val subject = actor ?: ctx.lastActor
 
+        // A state fragment about the last-mentioned permanent: "… and 1 damage on it", "with three +1/+1 counters", "at 4 loyalty".
+        if (Regex("""^(?:with |has |having |it has |at |is at )?(?:\d+|\w+) (?:loyalty(?: counters?)?|(?:[+-]\d+/[+-]\d+|[a-z]+) counters?(?: on it)?|damage(?: marked)?(?: on it)?)$""").matches(c)) {
+            val id = ctx.lastMentioned?.takeIf { ctx.objects.containsKey(it) } ?: return false
+            applyStateWords(id, "with " + c.replace(Regex("""^(?:with |has |having |it has |at |is at )"""), ""), ctx); return true
+        }
         // Bare continuation: "… and Smothering Tithe" after a possession, "… and Counterspell" after a cast.
         Regex("""^(?:an? |the |my |their |another |also |(\d+|two|three|four|five) )?(c\d+)(?:'s)?(?: out| in play| on the battlefield| on board| on the field)?$""").find(c)?.let { r ->
             val card = m.cards.getValue(r.groupValues[2])
@@ -180,6 +217,7 @@ class SituationParser(private val names: NameIndex) {
                 return true
             }
             val hostId = addObject(m.cards.getValue(r.groupValues[2]), owner, tapped = rest.contains("tapped") && !rest.contains("untapped"), ctx)
+            applyStateWords(hostId, rest, ctx)
             // "… with Rancor on it", "… enchanted with X", "… equipped with X"
             Regex("""(?:enchanted with|equipped with|wearing|with) (?:an? |the )?(c\d+)""").findAll(rest).forEach { a -> val id = addObject(m.cards.getValue(a.groupValues[1]), owner, false, ctx); ctx.objects[id] = ctx.objects.getValue(id).copy(attachedTo = hostId) }
             Regex("""(c\d+)""").findAll(rest).forEach { if (ctx.objects.values.none { o -> o.card.oracleId == m.cards.getValue(it.groupValues[1]).oracleId }) addObject(m.cards.getValue(it.groupValues[1]), owner, false, ctx) }
@@ -227,6 +265,13 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(c\d+)s?\s+(?:(?:targeting|on|at)\s+)?((?:the|my|their|that|this|it|them|me|c\d+)\b.*)$""").find(c)?.let { r ->
             emitCast(subject ?: "opp", m.cards.getValue(r.groupValues[1]), " targeting " + r.groupValues[2], m, ctx); return true
         }
+        // Loyalty abilities: "activate Jace's +1", "use Jace's -3 on the Bears", "+1 Jace", "Jace -3 targeting X"
+        Regex("""^(?:(?:$activateVerbs)\s+)?(?:an? |the |their |my )?(c\d+)(?:'s)?\s+([+\u2212-]?\d+)(?: ability)?(.*)$""").find(c)?.let { r ->
+            val who = subject ?: "me"
+            val card = m.cards.getValue(r.groupValues[1])
+            val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
+            ctx.events += EventSpec("activate", player = who, obj = id, to = r.groupValues[2].replace('\u2212', '-'), targets = targetsIn(r.groupValues[3], m, ctx)); ctx.lastActor = who; ctx.lastMentioned = id; return true
+        }
         Regex("""^(?:$activateVerbs)\s+(?:an? |the |their |my )?(c\d+)(?:'s)?(?: ability)?(.*)$""").find(c)?.let { r ->
             val who = subject ?: "me"
             val card = m.cards.getValue(r.groupValues[1])
@@ -251,6 +296,14 @@ class SituationParser(private val names: NameIndex) {
             val who = actor ?: subject ?: "me"
             val id = ctx.lastMentioned?.takeIf { !it.startsWith("cast:") } ?: return false
             ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"; return true
+        }
+        // "attack Jace with Hill Giant", "attacks their planeswalker with c2": the defender comes first.
+        Regex("""^(?:attacks?|attacking|swings? at|swinging at)\s+((?:an? |the |my |their )?(?:c\d+|me|them|him|her|my opponent|the opponent|opponent))\s+with\s+(?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: "me"
+            val card = m.cards.getValue(r.groupValues[2])
+            val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
+            val defender = targetsIn("at " + r.groupValues[1], m, ctx).ifEmpty { listOf(other(who) ?: "opp") }
+            ctx.events += EventSpec("attack", player = who, obj = id, targets = defender); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
         }
         Regex("""^(?:attacks?|attacking|swings?|swinging)(?: with)?\s+(?:an? |the |my |their )?(c\d+)(.*)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
@@ -342,6 +395,22 @@ class SituationParser(private val names: NameIndex) {
         ctx.lastMentioned = id
         return id
     }
+
+    /** "with 3 loyalty", "at 5 loyalty", "with two +1/+1 counters (on it)", "with 2 damage (on it)", "that has 3 damage marked". */
+    private fun applyStateWords(id: String, rest: String, ctx: Ctx) {
+        var spec = ctx.objects.getValue(id)
+        val counters = spec.counters.toMutableMap()
+        Regex("""(?:with|at|has|having) (\d+|\w+) loyalty(?: counters?)?""").find(rest)?.let { r -> number(r.groupValues[1])?.let { counters["loyalty"] = it } }
+        Regex("""(?:with|has|having) (\d+|\w+) ([+-]\d+/[+-]\d+|[a-z]+) counters?(?: on it)?""").findAll(rest).forEach { r ->
+            val n = number(r.groupValues[1]) ?: return@forEach
+            val kind = r.groupValues[2]
+            if (kind == "loyalty") counters["loyalty"] = n else counters[kind] = (counters[kind] ?: 0) + n
+        }
+        Regex("""(?:with|has|having|and) (\d+|\w+) damage(?: marked)?(?: on it)?""").find(rest)?.let { r -> number(r.groupValues[1])?.let { spec = spec.copy(damage = it) } }
+        ctx.objects[id] = spec.copy(counters = counters)
+    }
+
+    private fun number(w: String): Int? = w.toIntOrNull() ?: numberWords[w] ?: when (w) { "a", "an", "one" -> 1; else -> null }
 
     private fun objectIdFor(card: NameIndex.Entry, ctx: Ctx): String? = ctx.objects.values.firstOrNull { it.card.oracleId == card.oracleId }?.id
     private fun other(p: String?) = when (p) { "me" -> "opp"; "opp" -> "me"; else -> null }

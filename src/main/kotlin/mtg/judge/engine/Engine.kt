@@ -74,6 +74,12 @@ class Engine(val state: GameState) {
             state.outcomes += "${obj.name}'s mana ability: ${describeManaEffect(ability.effect)}."
             return null
         }
+        ability.loyaltyCost?.let { lc ->
+            val have = obj.counters["loyalty"] ?: 0
+            if (lc < 0 && have < -lc) { trace.step("${obj.name} has $have loyalty and can't pay the ${lc} loyalty cost.", "606.6"); state.outcomes += "${obj.name}'s $lc ability can't be activated (not enough loyalty)."; return null }
+            obj.counters["loyalty"] = have + lc
+            trace.step("${state.player(playerId).subject} ${state.player(playerId).v("activates", "activate")} ${obj.name}'s ${ability.cost} loyalty ability, ${if (lc >= 0) "putting $lc loyalty counter${if (lc == 1) "" else "s"} on it" else "removing ${-lc} loyalty counter${if (lc == -1) "" else "s"} from it"} (now ${obj.counters["loyalty"]}). Loyalty abilities can be activated only at sorcery speed and once per turn per permanent.", "606.4", "606.3")
+        }
         if (ability.cost.contains("{T}") && obj.tapped == true) { trace.step("${obj.name} is already tapped, so its {T} ability can't be activated.", "602.2b", "701.26a"); return null }
         if (ability.cost.contains("{T}") && obj.def.isCreature && obj.summoningSick == true && !obj.has("haste")) { trace.step("${obj.name} hasn't been under ${state.player(playerId).possessive} control since the turn began and doesn't have haste, so its {T} ability can't be activated.", "302.6"); state.outcomes += "${obj.name}'s {T} ability can't be activated (summoning sickness)."; return null }
         if (ability.cost.contains("{T}")) tap(obj)
@@ -125,7 +131,16 @@ class Engine(val state: GameState) {
     }
 
     /** A step or phase begins (603.2b): "at the beginning of" abilities trigger. */
+    /** Steps and combat can't begin while something is on the stack: everything pending resolves first (500.2). */
+    private fun emptyStackFirst(what: String) {
+        if (state.stack.isEmpty()) return
+        trace.step("The stack isn't empty, and $what can't happen until it is and all players pass, so everything on the stack resolves first.", "500.2", "117.4")
+        state.assumptions += "Everything on the stack resolved before $what (a step can't end with objects on the stack, 500.2)."
+        resolveAll()
+    }
+
     fun beginStep(step: String, activePlayer: String) {
+        emptyStackFirst("the ${step.replace('_', ' ')} step")
         state.activePlayer = activePlayer
         state.step = step
         state.phase = when (step) { "untap", "upkeep", "draw" -> "beginning"; "precombat_main" -> "precombat_main"; "postcombat_main" -> "postcombat_main"; "end", "cleanup" -> "ending"; else -> "combat" }
@@ -203,6 +218,9 @@ class Engine(val state: GameState) {
                 }
             }
             for (obj in state.objects.values.toList()) {
+                if (obj.isOnBattlefield() && obj.def.isPlaneswalker && (obj.counters["loyalty"] ?: 0) <= 0) { move(obj, Zone.GRAVEYARD, "${obj.name} has 0 loyalty and is put into its owner's graveyard (state-based action).", "704.3", "704.5i", "306.9"); changed = true }
+            }
+            for (obj in state.objects.values.toList()) {
                 if (obj.token && !obj.isOnBattlefield() && obj.zone != Zone.STACK) { state.objects.remove(obj.id); trace.step("${obj.name} token ceases to exist.", "704.5d"); changed = true }
             }
             for (obj in state.objects.values.toList()) {
@@ -228,6 +246,7 @@ class Engine(val state: GameState) {
 
     /** Declare one attacker (508.1). `defender` is a player, or a planeswalker/battle object. */
     fun declareAttacker(playerId: String, attackerId: String, defender: Ref) {
+        emptyStackFirst("declaring attackers")
         val a = state.obj(attackerId)
         val p = state.player(playerId)
         state.phase = "combat"; state.step = "declare_attackers"
@@ -237,6 +256,7 @@ class Engine(val state: GameState) {
         if (cant(a, "attack")) { trace.step("${a.name} can't attack (its own rules text says so).", "508.1c"); state.outcomes += "${a.name} can't attack."; return }
         if (a.tapped == true) { trace.step("${a.name} is tapped, so it can't be declared as an attacker.", "508.1a"); state.outcomes += "${a.name} can't attack (tapped)."; return }
         if (a.summoningSick == true && !a.has("haste")) { trace.step("${a.name} came under ${p.possessive} control this turn and doesn't have haste, so it can't attack (\"summoning sickness\").", "508.1a", "302.6"); state.outcomes += "${a.name} can't attack (summoning sick)."; return }
+        (defender as? Ref.Obj)?.let { d -> val o = state.objects[d.id]; if (o == null || !o.isOnBattlefield() || !(o.def.isPlaneswalker || "Battle" in o.def.types)) { trace.step("${state.nameOf(defender)} isn't a player, planeswalker or battle, so it can't be attacked.", "506.3"); return } else if (o.controller == playerId) { trace.step("${o.name} is ${p.possessive} own permanent; only an opponent's planeswalker or a battle can be attacked.", "506.2", "508.1b"); return } }
         if (a.summoningSick == null && !a.has("haste")) state.assumptions += "${a.name} has been under ${p.possessive} control since the turn began (otherwise it couldn't attack, 508.1a)."
         if (a.summoningSick == true && a.has("haste")) trace.step("${a.name} has haste, so it can attack the turn it came under ${p.possessive} control.", "702.10b")
         val firstAttacker = state.objects.values.none { it.attacking != null }
@@ -495,12 +515,14 @@ class Engine(val state: GameState) {
                 applyEffect(effect.effect, item)
             }
             is Effect.Draw -> {
-                val who = resolveWho(effect.who, item)
-                if (who == null) { state.unsupported += Unsupported(item.describe, "Couldn't work out who draws."); return }
-                who.drew += effect.count
-                trace.step("${who.subject} ${who.v("draws", "draw")} ${effect.count} card${if (effect.count > 1) "s" else ""}${if (effect.count > 1) " (one at a time)" else ""}.", "121.1", *(if (effect.count > 1) arrayOf("121.2") else emptyArray()))
-                state.outcomes += "${who.subject} ${who.v("draws", "draw")} ${effect.count} card${if (effect.count > 1) "s" else ""}."
-                repeat(effect.count) { onEvent(GameEvent.Drew(who.id)) }
+                val players = resolvePlayers(effect.who, item)
+                if (players.isEmpty()) { state.unsupported += Unsupported(item.describe, "Couldn't work out who draws."); return }
+                for (who in players) {
+                    who.drew += effect.count
+                    trace.step("${who.subject} ${who.v("draws", "draw")} ${effect.count} card${if (effect.count > 1) "s" else ""}${if (effect.count > 1) " (one at a time)" else ""}.", "121.1", *(if (effect.count > 1) arrayOf("121.2") else emptyArray()))
+                    state.outcomes += "${who.subject} ${who.v("draws", "draw")} ${effect.count} card${if (effect.count > 1) "s" else ""}."
+                    repeat(effect.count) { onEvent(GameEvent.Drew(who.id)) }
+                }
             }
             is Effect.Damage -> forEachLegalTarget(item, effect.target) { applyDamage(item.source.name, it, effect.amount) }
             is Effect.Counter -> forEachLegalTarget(item, effect.target) { ref ->
@@ -535,8 +557,8 @@ class Engine(val state: GameState) {
                 trace.step("${it.name} gains ${effect.keywords.joinToString(" and ")} until end of turn.", "611.2a")
                 state.outcomes += "${it.name} has ${effect.keywords.joinToString(" and ")} until end of turn."
             } }
-            is Effect.GainLife -> resolveWho(effect.who, item)?.let { p -> gainLife(p, effect.amount) }
-            is Effect.LoseLife -> resolveWho(effect.who, item)?.let { p -> p.life = p.life?.minus(effect.amount); trace.step("${p.subject} ${p.v("loses", "lose")} ${effect.amount} life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} ${effect.amount} life." }
+            is Effect.GainLife -> resolvePlayers(effect.who, item).forEach { p -> gainLife(p, effect.amount) }
+            is Effect.LoseLife -> resolvePlayers(effect.who, item).forEach { p -> p.life = p.life?.minus(effect.amount); trace.step("${p.subject} ${p.v("loses", "lose")} ${effect.amount} life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} ${effect.amount} life." }
             is Effect.PumpSelf -> { val o = item.source; if (o.isOnBattlefield()) { o.pumps += effect.power to effect.toughness; trace.step("${o.name} gets ${signed(effect.power)}/${signed(effect.toughness)} until end of turn; it's now ${o.power}/${o.toughness}.", "611.2a"); state.outcomes += "${o.name} is ${o.power}/${o.toughness} until end of turn." } else trace.step("${o.name} isn't on the battlefield, so there's nothing for the effect to modify.", "611.2c") }
             is Effect.PumpAll -> {
                 val affected = state.objects.values.filter { state.matches(effect.filter, it, item.controller) }
@@ -589,6 +611,7 @@ class Engine(val state: GameState) {
 
     /** "Enters tapped" / "enters with N counters": replacement effects that modify how it enters (614.1c, 614.12). */
     private fun applyEntersReplacements(o: GameObject) {
+        if (o.def.isPlaneswalker && o.def.loyalty != null) { o.counters["loyalty"] = o.def.loyalty; trace.step("${o.name} enters with ${o.def.loyalty} loyalty counters.", "306.5b") }
         for (e in o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }) when (e) {
             StaticEffect.EntersTapped -> { o.tapped = true; trace.step("${o.name} enters tapped (a replacement effect on how it enters).", "614.1c", "614.12") }
             is StaticEffect.EntersWithCounters -> if (e.count != null) { o.counters[e.kind] = (o.counters[e.kind] ?: 0) + e.count; trace.step("${o.name} enters with ${e.count} ${e.kind} counter${if (e.count > 1) "s" else ""} on it.", "614.1c", "122.6") }
@@ -687,7 +710,8 @@ class Engine(val state: GameState) {
                 if (infect) { p.poison += amount; trace.step("$sourceName has infect, so instead of losing life ${if (p.you) "you get" else p.name + " gets"} $amount poison counter${if (amount > 1) "s" else ""} (${p.poison} total).", "702.90b", "120.3b"); state.outcomes += "${p.subject} ${p.v("has", "have")} ${p.poison} poison counter${if (p.poison > 1) "s" else ""}." }
                 else { p.life = p.life?.minus(amount); trace.step("$sourceName deals $amount damage to ${if (p.you) "you" else p.name}, ${if (p.you) "and you lose" else "who loses"} $amount life${p.life?.let { " ($it)" } ?: ""}.", "120.3a"); state.outcomes += "${p.subject} ${p.v("takes", "take")} $amount damage." } }
             is Ref.Obj -> { val o = state.obj(target.id)
-                if (infect || wither) { o.counters["-1/-1"] = (o.counters["-1/-1"] ?: 0) + amount; trace.step("$sourceName has ${if (infect) "infect" else "wither"}, so the $amount damage to ${o.name} is dealt as $amount -1/-1 counter${if (amount > 1) "s" else ""}; it's now ${o.power}/${o.toughness}.", if (infect) "702.90c" else "702.80a", "120.3d"); state.outcomes += "${o.name} has ${o.counters["-1/-1"]} -1/-1 counter(s)." }
+                if (o.def.isPlaneswalker) { val before = o.counters["loyalty"] ?: 0; o.counters["loyalty"] = maxOf(0, before - amount); trace.step("$sourceName deals $amount damage to ${o.name}, so $amount loyalty counters are removed from it (${o.counters["loyalty"]} left).", "306.8", "120.3c"); state.outcomes += "${o.name} has ${o.counters["loyalty"]} loyalty." }
+                else if (infect || wither) { o.counters["-1/-1"] = (o.counters["-1/-1"] ?: 0) + amount; trace.step("$sourceName has ${if (infect) "infect" else "wither"}, so the $amount damage to ${o.name} is dealt as $amount -1/-1 counter${if (amount > 1) "s" else ""}; it's now ${o.power}/${o.toughness}.", if (infect) "702.90c" else "702.80a", "120.3d"); state.outcomes += "${o.name} has ${o.counters["-1/-1"]} -1/-1 counter(s)." }
                 else { o.damage += amount; trace.step("$sourceName deals $amount damage to ${o.name}; it now has ${o.damage} damage marked (toughness ${o.toughness ?: "?"}).", "120.3e"); state.outcomes += "${o.name} has ${o.damage} damage marked." } }
             is Ref.Stack -> { state.unsupported += Unsupported(sourceName, "Damage can't be dealt to something on the stack."); return 0 }
         }
@@ -875,6 +899,14 @@ class Engine(val state: GameState) {
         Who.THAT_PLAYER, Who.TARGET_PLAYER -> item.targets.filterIsInstance<Ref.Player>().firstOrNull()?.let { state.player(it.id) } ?: causingPlayer(item)
         Who.CONTROLLER_OF_TARGET -> item.targets.firstOrNull()?.let { ref -> when (ref) { is Ref.Obj -> state.player(state.obj(ref.id).controller); is Ref.Stack -> state.stackItem(ref.id)?.let { state.player(it.controller) }; is Ref.Player -> state.player(ref.id) } }
         Who.ANY_PLAYER -> null
+        Who.EACH_PLAYER, Who.EACH_OPPONENT -> resolvePlayers(who, item).singleOrNull()
+    }
+
+    /** Every player an effect applies to: "each player", "each opponent", or the single player [resolveWho] finds. */
+    private fun resolvePlayers(who: Who, item: StackItem): List<Player> = when (who) {
+        Who.EACH_PLAYER -> state.players
+        Who.EACH_OPPONENT -> state.opponentsOf(item.controller)
+        else -> listOfNotNull(resolveWho(who, item))
     }
 
     /** For "that player" in a "whenever an opponent casts a spell" trigger: the player who caused it. */

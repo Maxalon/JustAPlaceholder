@@ -28,7 +28,7 @@ object OracleParser {
     private val reminder = Regex("""\s*\([^)]*\)""")
     private val numberWords = mapOf("a" to 1, "an" to 1, "one" to 1, "two" to 2, "three" to 3, "four" to 4, "five" to 5, "six" to 6, "seven" to 7, "eight" to 8, "nine" to 9, "ten" to 10)
 
-    fun parse(oracleId: String, name: String, typeLine: String, manaCost: String?, manaValue: Double, colors: String, power: String?, toughness: String?, keywords: Collection<String>, oracleText: String): CardDef {
+    fun parse(oracleId: String, name: String, typeLine: String, manaCost: String?, manaValue: Double, colors: String, power: String?, toughness: String?, keywords: Collection<String>, oracleText: String, loyalty: String? = null): CardDef {
         val (supers, types, subs) = CardDef.splitTypeLine(typeLine)
         val text = oracleText.substringBefore("\n//\n")   // front face only, for now
         val rawLines = text.lines().map { it.replace(reminder, "").trim() }.filter { it.isNotEmpty() }
@@ -81,7 +81,7 @@ object OracleParser {
         if (isSpell && spellLines.isNotEmpty()) spellEffect = parseEffect(spellLines.joinToString(" "))
         val kws = keywords.map { it.lowercase() }.toSet()
         return CardDef(oracleId, name, typeLine, supers, types, subs, manaCost, manaValue, if ("devoid" in kws) emptySet() else colors.toSet(), CardDef.parseStat(power), CardDef.parseStat(toughness),
-            kws, abilities, spellEffect, oracleText, enchant, "changeling" in kws)
+            kws, abilities, spellEffect, oracleText, enchant, "changeling" in kws, loyalty?.toIntOrNull())
     }
 
     /** Replace the card's own name and "this creature/permanent/…" with "~". */
@@ -103,6 +103,7 @@ object OracleParser {
         val colon = line.indexOf(':')
         if (colon <= 0) return false
         val cost = line.substring(0, colon)
+        if (Regex("""^[+\u2212-]?\d+$""").matches(cost.trim())) return true   // loyalty ability (606.2)
         return cost.contains('{') || cost.contains("Sacrifice", true) || cost.contains("Discard", true) || cost.contains("Pay", true) || cost.contains("Tap ", true) || cost.contains("Remove", true) || cost.contains("Exile", true)
     }
 
@@ -118,7 +119,9 @@ object OracleParser {
             val rest = effText.substringAfter(". ", "").trim()
             if (rest.isEmpty()) mana else Effect.Seq(listOf(mana, parseEffect(rest)))
         } ?: parseEffect(effText)
-        return ActivatedAbility(line.substring(0, colon).trim(), effect, line, restriction)
+        val cost = line.substring(0, colon).trim()
+        val isLoyalty = Regex("""^[+\u2212-]?\d+$""").matches(cost)
+        return ActivatedAbility(cost, effect, line, restriction ?: if (isLoyalty) "Activate only as a sorcery and only once each turn (loyalty ability)" else null)
     }
 
     private val triggerRe = Regex("""^(When|Whenever|At)\s+(.+?),\s+(.+)$""", RegexOption.IGNORE_CASE)
@@ -372,8 +375,8 @@ object OracleParser {
     private val gainRe = Regex("""^target (.+?) gains (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val gainSelfRe = Regex("""^~ gains (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val payRe = Regex("""^(?:you may )?pay (\{[^}]+\}(?:\{[^}]+\})*|\d+ life)\.?$""", RegexOption.IGNORE_CASE)
-    private val gainLifeRe = Regex("""^(you|target player|that player) gains? (\d+) life\.?$""", RegexOption.IGNORE_CASE)
-    private val loseLifeRe = Regex("""^(you|target player|that player|each opponent) loses? (\d+) life\.?$""", RegexOption.IGNORE_CASE)
+    private val gainLifeRe = Regex("""^(you|target player|that player|each player|each opponent) gains? (\d+) life\.?$""", RegexOption.IGNORE_CASE)
+    private val loseLifeRe = Regex("""^(you|target player|that player|each opponent|each player) loses? (\d+) life\.?$""", RegexOption.IGNORE_CASE)
 
     private val selfPumpRe = Regex("""^~ gets ([+-]\d+)/([+-]\d+) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val massPumpRe = Regex("""^(?:all |each )?(.+?) (?:get|gets) ([+-]\d+)/([+-]\d+) until end of turn\.?$""", RegexOption.IGNORE_CASE)
@@ -494,7 +497,7 @@ object OracleParser {
         }
         mayRe.matchEntire(s)?.let { return Effect.May(parseSentence(it.groupValues[1])) }
         drawRe.matchEntire(s)?.let { m ->
-            val who = when (m.groupValues[1].trim().lowercase()) { "target player" -> Who.TARGET_PLAYER; "that player" -> Who.THAT_PLAYER; "each player" -> Who.ANY_PLAYER; else -> Who.YOU }
+            val who = when (m.groupValues[1].trim().lowercase()) { "target player" -> Who.TARGET_PLAYER; "that player" -> Who.THAT_PLAYER; "each player" -> Who.EACH_PLAYER; else -> Who.YOU }
             return Effect.Draw(who, number(m.groupValues[2]) ?: return Effect.Unparsed(s))
         }
         damageRe.matchEntire(s)?.let { m -> return Effect.Damage(m.groupValues[1].toIntOrNull() ?: return Effect.Unparsed(s), target(m.groupValues[2])) }
@@ -512,7 +515,7 @@ object OracleParser {
         return Effect.Unparsed(s)
     }
 
-    private fun who(s: String) = when (s.lowercase()) { "you" -> Who.YOU; "target player" -> Who.TARGET_PLAYER; "each opponent" -> Who.OPPONENT; else -> Who.THAT_PLAYER }
+    private fun who(s: String) = when (s.lowercase()) { "you" -> Who.YOU; "target player" -> Who.TARGET_PLAYER; "each opponent" -> Who.EACH_OPPONENT; "each player" -> Who.EACH_PLAYER; else -> Who.THAT_PLAYER }
     private fun number(s: String): Int? = s.toIntOrNull() ?: numberWords[s.lowercase()]
 
     private fun target(desc: String, defaultKind: Kind? = null): TargetSpec {
