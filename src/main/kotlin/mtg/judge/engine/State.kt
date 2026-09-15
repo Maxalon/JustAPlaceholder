@@ -6,6 +6,10 @@ class Player(val id: String, val name: String, var life: Int?) {
     var drew = 0
     var lost = false
     var poison = 0
+    /** Cards in hand, when the situation said so (Ensnaring Bridge). */
+    var handSize: Int? = null
+    /** Combat damage taken from each commander (903.10a), by object id. */
+    val commanderDamage = mutableMapOf<String, Int>()
     /** The player asking the question is addressed as "you". */
     val you: Boolean get() = name.equals("me", true) || name.equals("you", true) || name.equals("i", true)
     val subject: String get() = if (you) "You" else name
@@ -25,6 +29,8 @@ class GameObject(
     val counters: MutableMap<String, Int> = mutableMapOf(),
     var damage: Int = 0,
     val token: Boolean = false,
+    /** A commander (Commander format): its combat damage is tracked per player (903.10a). */
+    var commander: Boolean = false,
 ) {
     /** Until-end-of-turn power/toughness modifications from resolved effects (611.2a). */
     val pumps = mutableListOf<Pair<Int, Int>>()
@@ -77,6 +83,8 @@ class StackItem(
     val causedBy: String? = null,
     /** For triggered abilities: the amount in the causing event ("that much life", "that much damage"). */
     val causedAmount: Int? = null,
+    /** For triggered abilities: the object in the causing event ("that creature"). */
+    val causedObject: String? = null,
 ) {
     val describe: String get() = when (kind) {
         StackKind.SPELL -> source.name

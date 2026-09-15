@@ -29,7 +29,7 @@ data class Situation(
 )
 
 @Serializable
-data class PlayerSpec(val id: String, val name: String = id, val life: Int? = null)
+data class PlayerSpec(val id: String, val name: String = id, val life: Int? = null, val poison: Int? = null, val handSize: Int? = null)
 
 @Serializable
 data class TurnSpec(val activePlayer: String? = null, val phase: String? = null, val step: String? = null)
@@ -72,6 +72,8 @@ data class ObjectSpec(
     val attachedTo: String? = null,
     /** An until-end-of-turn modification already applied, e.g. "+3/+3". */
     val pump: String? = null,
+    /** The player's commander (its combat damage to each player is tracked, 903.10a). */
+    val commander: Boolean = false,
 )
 
 @Serializable

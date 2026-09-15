@@ -59,6 +59,8 @@ sealed interface Trigger {
     data class PermanentEnters(val filter: ObjFilter, val other: Boolean) : Trigger
     /** "Whenever you attack" / "Whenever you attack with one or more creatures". */
     data object YouAttack : Trigger
+    /** Exalted: "Whenever a creature you control attacks alone". */
+    data object CreatureAttacksAlone : Trigger
     /** "Whenever you gain life". */
     data object YouGainLife : Trigger
     /** "Whenever a [filter] dies". */
@@ -111,6 +113,8 @@ sealed interface Effect {
     data class Tap(val target: TargetSpec) : Effect
     data class Untap(val target: TargetSpec) : Effect
     data class Pump(val target: TargetSpec, val power: Int, val toughness: Int) : Effect
+    /** Exalted's "that creature gets +1/+1": the attacking creature that caused the trigger. */
+    data class PumpCausing(val power: Int, val toughness: Int, val keywords: List<String> = emptyList()) : Effect
     /** "target creature gains flying until end of turn" (layer 6, 611.2a). */
     data class GainKeywords(val target: TargetSpec, val keywords: Set<String>) : Effect
     data class GainLife(val who: Who, val amount: Int) : Effect
@@ -158,7 +162,7 @@ sealed interface Effect {
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
-        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target)
+        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList()
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
@@ -208,7 +212,7 @@ sealed interface StaticEffect {
     /** "Creatures entering the battlefield (or dying) don't cause abilities to trigger." (Torpor Orb, Hushbringer) */
     data class NoEtbTriggers(val alsoDies: Boolean) : StaticEffect
     /** "~ can't attack" / "~ can't be blocked by [filter]" (`by` restricts which blockers the rule applies to). */
-    data class Cant(val what: String, val by: ObjFilter? = null) : StaticEffect
+    data class Cant(val what: String, val by: ObjFilter? = null, val applies: ObjFilter? = null, val powerAboveHand: Boolean = false) : StaticEffect
     /** Cost modifiers and additional costs: narrated when the spell is cast (601.2b, 601.2f). */
     data class CostText(val text: String) : StaticEffect
     /** "~ attacks each combat if able." (508.1d) */

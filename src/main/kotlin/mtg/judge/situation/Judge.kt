@@ -25,13 +25,13 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
     fun answer(sit: Situation): Answer {
         val understood = mutableListOf<String>()
-        val state = GameState(sit.players.map { Player(it.id, it.name, it.life) }, LinkedHashMap(), activePlayer = sit.turn.activePlayer, phase = sit.turn.phase, step = sit.turn.step)
+        val state = GameState(sit.players.map { ps -> Player(ps.id, ps.name, ps.life).also { it.poison = ps.poison ?: 0; it.handSize = ps.handSize } }, LinkedHashMap(), activePlayer = sit.turn.activePlayer, phase = sit.turn.phase, step = sit.turn.step)
         val engine = Engine(state)
 
         for (o in sit.objects) {
             val def = cardDef(o.card, state) ?: continue
             state.add(GameObject(o.id, def, zone(o.zone), o.controller, o.owner ?: o.controller, o.tapped, o.summoningSick, o.counters.toMutableMap(), o.damage, o.token)).also {
-                it.timestamp = state.tick(); it.attachedTo = o.attachedTo
+                it.timestamp = state.tick(); it.attachedTo = o.attachedTo; it.commander = o.commander
                 o.pump?.let { pm -> Regex("""^([+-]?\d+)/([+-]?\d+)$""").matchEntire(pm)?.let { m -> it.pumps += m.groupValues[1].toInt() to m.groupValues[2].toInt() } }
                 if (def.isPlaneswalker && it.isOnBattlefield() && !it.counters.containsKey("loyalty") && def.loyalty != null) it.counters["loyalty"] = def.loyalty
             }
@@ -63,10 +63,17 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         }
         // The described state may already call for state-based actions (a 1/1 under an opposing Elesh Norn).
         engine.stateBasedActions()
+        var attackBatchEnd = -1
         for ((i, e) in sit.events.withIndex()) {
+            // Consecutive attack events are one declaration: "attacks alone", exalted and "whenever you attack" need the whole set.
+            if ((e.verb == "attack" || e.verb == "attackAll") && i > attackBatchEnd) {
+                attackBatchEnd = i; while (attackBatchEnd + 1 < sit.events.size && sit.events[attackBatchEnd + 1].verb in setOf("attack", "attackAll") && sit.events[attackBatchEnd + 1].player == e.player) attackBatchEnd++
+                engine.beginDeclaringAttackers()
+            }
             try {
                 understood += "Event ${i + 1}: " + describeEvent(e, state)
                 apply(e, state, engine)
+                if (i == attackBatchEnd) engine.finishDeclaringAttackers()
             } catch (ex: JudgeException) {
                 state.unsupported += mtg.judge.engine.Unsupported("event ${i + 1} (${e.verb})", ex.message ?: "failed")
             }
@@ -102,7 +109,11 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 val player = e.player ?: state.players.first().id
                 val existing = e.obj?.let { state.objects[it] }
                 val def = existing?.def ?: cardDef(e.card ?: throw JudgeException("cast needs a card"), state) ?: return
-                engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, e.modes, overload = e.to == "overload")
+                val modes = if (e.modes.isEmpty() && e.to?.startsWith("mode:") == true) {
+                    val word = e.to.removePrefix("mode:").lowercase()
+                    (def.spellEffect as? Effect.Modal)?.modeTexts?.indexOfFirst { it.lowercase().contains(word) }?.takeIf { it >= 0 }?.let { listOf(it + 1) } ?: emptyList()
+                } else e.modes
+                engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, modes, overload = e.to == "overload")
             }
             "draw" -> engine.draw(e.player ?: throw JudgeException("draw needs a player"), e.amount ?: 1)
             "sacrifice" -> { val objId = e.obj ?: throw JudgeException("sacrifice needs an object"); engine.sacrifice(e.player ?: state.obj(objId).controller, objId) }

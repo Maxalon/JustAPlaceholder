@@ -927,5 +927,94 @@
     "cite": [
       "120.3a"
     ]
+  },
+  {
+    "id": "three-players-rhystic-nobody-pays",
+    "text": "Alice, Bob and Carol are playing. Alice has Rhystic Study. Bob casts Sol Ring and Carol casts Counterspell on it. Nobody pays.",
+    "expect": [
+      "Alice draws 1 card. (×2)",
+      "Sol Ring is countered"
+    ],
+    "cite": [
+      "608.2g",
+      "701.6a"
+    ]
+  },
+  {
+    "id": "exalted-commander-alone",
+    "text": "I attack Bob with my commander Rafiq of the Many alone. Bob is at 6.",
+    "expect": [
+      "Bob takes 4 damage. (×2)",
+      "Bob has taken 8 commander damage from Rafiq of the Many",
+      "Bob loses the game"
+    ],
+    "cite": [
+      "702.83a",
+      "903.10a",
+      "702.4b"
+    ]
+  },
+  {
+    "id": "ensnaring-bridge",
+    "text": "My opponent controls Ensnaring Bridge and has 0 cards in hand. I attack with Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears can't attack (Ensnaring Bridge)"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "terminate-darksteel",
+    "text": "I cast Terminate on their Darksteel Colossus.",
+    "expect": [
+      "Darksteel Colossus is indestructible and isn't destroyed"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "pacifism-attack",
+    "text": "I have Grizzly Bears enchanted with Pacifism. Can it attack? I attack with it.",
+    "expect": [
+      "Grizzly Bears can't attack"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "icy-during-combat",
+    "text": "I tap Grizzly Bears with Icy Manipulator during their beginning of combat.",
+    "expect": [
+      "Grizzly Bears is tapped"
+    ],
+    "cite": [
+      "701.26a"
+    ]
+  },
+  {
+    "id": "boros-charm-mode-word",
+    "text": "Bob casts Wrath of God. I respond with Boros Charm choosing the indestructible mode. I control Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears is indestructible and isn't destroyed"
+    ],
+    "cite": [
+      "702.12b",
+      "700.2a"
+    ]
+  },
+  {
+    "id": "blightsteel-poison",
+    "text": "My opponent has 2 poison counters and I attack with Blightsteel Colossus unblocked.",
+    "expect": [
+      "opponent has 13 poison counters",
+      "opponent loses the game (poison)"
+    ],
+    "cite": [
+      "702.90b",
+      "704.5c"
+    ]
   }
 ]
