@@ -82,6 +82,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         if (state.objects.values.any { it.attacking != null } && !state.combatDamageDealt) {
             understood += "Combat damage is dealt after the described actions."
             engine.resolveAll(); engine.combatDamage()
+            if (state.stack.isNotEmpty()) engine.resolveAll()   // abilities that triggered on combat damage or deaths
         }
 
         // Life totals that changed, as a single line each (individual damage lines may repeat and collapse).

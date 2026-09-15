@@ -1539,5 +1539,103 @@
       "510.2",
       "701.13a"
     ]
+  },
+  {
+    "id": "three-player-taxes",
+    "text": "Alice has Rhystic Study, Bob casts Sol Ring and Carol has Smothering Tithe. Bob doesn't pay for anything.",
+    "expect": [
+      "Alice draws 1 card",
+      "Carol gets a Treasure token"
+    ],
+    "cite": [
+      "608.2g",
+      "701.7a"
+    ]
+  },
+  {
+    "id": "named-then-bolts",
+    "text": "I attack Alice with Grizzly Bears and she blocks with Hill Giant. Bob then bolts my Bears.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "sheoldred-divination",
+    "text": "I control Sheoldred, the Apocalypse and cast Divination.",
+    "expect": [
+      "You draw 2 cards",
+      "You gain 2 life. (×2)"
+    ],
+    "cite": [
+      "119.3"
+    ]
+  },
+  {
+    "id": "settle-in-hand-cast-it",
+    "text": "My opponent attacks with Serra Angel and I have Settle the Wreckage. I cast it on them.",
+    "expect": [
+      "Serra Angel: the battlefield → exile"
+    ],
+    "cite": [
+      "701.13a"
+    ]
+  },
+  {
+    "id": "rancor-bears-vs-angel",
+    "text": "I have Grizzly Bears with Rancor and attack. They block with Serra Angel.",
+    "expect": [
+      "Serra Angel: the battlefield → opponent's graveyard",
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Rancor: your graveyard → your hand"
+    ],
+    "cite": [
+      "704.5g",
+      "704.5m"
+    ]
+  },
+  {
+    "id": "snakeskin-veil",
+    "text": "My opponent casts Lightning Bolt targeting my Grizzly Bears. I respond with Snakeskin Veil.",
+    "expect": [
+      "Grizzly Bears has hexproof until end of turn",
+      "Lightning Bolt doesn't resolve (all targets illegal)"
+    ],
+    "cite": [
+      "608.2b"
+    ]
+  },
+  {
+    "id": "icy-during-my-combat",
+    "text": "My opponent taps Grizzly Bears with Icy Manipulator during my beginning of combat. Can I attack with it?",
+    "expect": [
+      "Grizzly Bears is tapped",
+      "Grizzly Bears can't attack (tapped)"
+    ],
+    "cite": [
+      "508.1a"
+    ]
+  },
+  {
+    "id": "ghostly-prison-paid",
+    "text": "I control Ghostly Prison. My opponent attacks with Grizzly Bears and pays {2}.",
+    "expect": [
+      "You take 2 damage"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "bolt-from-hand-face",
+    "text": "I have Lightning Bolt and Grizzly Bears. I cast the Bolt at their face.",
+    "expect": [
+      "opponent takes 3 damage"
+    ],
+    "cite": [
+      "120.3a"
+    ]
   }
 ]

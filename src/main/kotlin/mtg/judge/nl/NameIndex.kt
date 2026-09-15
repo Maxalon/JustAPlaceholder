@@ -8,7 +8,10 @@ import java.sql.Connection
  * Tokens are the words of the normalized name; a name is found when a run of input words matches.
  */
 class NameIndex private constructor(private val byNorm: Map<String, Entry>, val maxWords: Int) {
-    data class Entry(val display: String, val oracleId: String, val isCard: Boolean, val kind: String)
+    data class Entry(val display: String, val oracleId: String, val isCard: Boolean, val kind: String, val typeLine: String = "") {
+        /** An instant or sorcery: it lives in hand or on the stack, never on the battlefield. */
+        val isSpellOnly: Boolean get() = (typeLine.contains("Instant") || typeLine.contains("Sorcery")) && !typeLine.contains("Land")
+    }
 
     fun lookup(norm: String): Entry? = byNorm[norm]
     val size: Int get() = byNorm.size
@@ -89,12 +92,12 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
             val map = HashMap<String, Entry>(80_000)
             var maxWords = 1
             conn.createStatement().executeQuery(
-                """SELECT n.name_norm, n.display, n.oracle_id, n.kind, c.layout FROM card_names n JOIN cards c ON c.oracle_id = n.oracle_id"""
+                """SELECT n.name_norm, n.display, n.oracle_id, n.kind, c.layout, c.type_line FROM card_names n JOIN cards c ON c.oracle_id = n.oracle_id"""
             ).use { rs ->
                 while (rs.next()) {
                     val norm = rs.getString(1); val kind = rs.getString(4)
                     val isCard = rs.getString(5) !in mtg.judge.carddb.ingest.ScryfallIngest.nonCardLayouts
-                    val e = Entry(rs.getString(2), rs.getString(3), isCard, kind)
+                    val e = Entry(rs.getString(2), rs.getString(3), isCard, kind, rs.getString(6) ?: "")
                     val prev = map[norm]
                     // Prefer real cards over tokens, full names over face names, on collisions.
                     if (prev == null || (!prev.isCard && isCard) || (prev.kind != "full" && kind == "full" && prev.isCard == isCard)) map[norm] = e
