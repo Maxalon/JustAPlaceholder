@@ -27,6 +27,8 @@ data class ObjFilter(
     val legendary: Boolean? = null,
     /** "other …": excludes the source of the effect. */
     val other: Boolean = false,
+    /** "enchanted creature" / "equipped creature": only the object the source is attached to. */
+    val attachedToSource: Boolean = false,
 ) {
     val verifiable get() = unknownWords.isEmpty()
 }
@@ -53,6 +55,24 @@ sealed interface Trigger {
     data object YouGainLife : Trigger
     /** "Whenever a [filter] dies". */
     data class PermanentDies(val filter: ObjFilter, val other: Boolean) : Trigger
+    /** "Whenever ~ is dealt damage". */
+    data object ThisIsDealtDamage : Trigger
+    /** "Whenever ~ becomes blocked". */
+    data object ThisBecomesBlocked : Trigger
+    /** "Whenever ~ blocks". */
+    data object ThisBlocks : Trigger
+    /** "Whenever ~ becomes the target of a spell or ability". */
+    data object ThisBecomesTarget : Trigger
+    /** "Whenever ~ becomes tapped". */
+    data object ThisBecomesTapped : Trigger
+    /** "When you cycle ~". */
+    data object ThisCycled : Trigger
+    /** "Whenever [filter] attacks" (e.g. equipped creature attacks). */
+    data class PermanentAttacks(val filter: ObjFilter) : Trigger
+    /** "Whenever [filter] deals combat damage to a player". */
+    data class PermanentDealsCombatDamageToPlayer(val filter: ObjFilter) : Trigger
+    /** "Whenever one or more creatures you control deal combat damage to a player". */
+    data object YourCreaturesDealCombatDamageToPlayer : Trigger
     data class Unknown(val text: String) : Trigger
 }
 
@@ -81,6 +101,14 @@ sealed interface Effect {
     data class Narrated(val text: String, val rules: List<String>) : Effect
     /** "Destroy all [filter]" / "Exile all …" / "~ deals N damage to each [filter]". */
     data class ForAll(val filter: ObjFilter, val action: String, val amount: Int = 0) : Effect
+    /** "You may pay [cost]. If you do, [effect]." / "You may [do X]. If you do, [effect]." */
+    data class IfYouDo(val choice: Effect, val then: Effect, val cost: String?) : Effect
+    /** Attach the source (Aura on resolution, Equipment via equip) to the target (301.5, 303.4). */
+    data class Attach(val target: TargetSpec) : Effect
+    /** "~ gains flying until end of turn". */
+    data class GainKeywordsSelf(val keywords: Set<String>) : Effect
+    /** "Choose one —" with bulleted modes (700.2). */
+    data class Modal(val count: String, val modes: List<Effect>, val modeTexts: List<String>) : Effect
     data class May(val effect: Effect) : Effect
     data class UnlessPays(val effect: Effect, val payer: Who, val cost: String) : Effect
     data class Seq(val effects: List<Effect>) : Effect
@@ -90,13 +118,17 @@ sealed interface Effect {
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
-        is PutCounters -> listOfNotNull(target)
+        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }
-        is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is AddMana, is Narrated, is ForAll -> emptyList()
+        is IfYouDo -> choice.targets() + then.targets()
+        is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
+        is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is AddMana, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
     }
 
     fun hasUnparsed(): Boolean = when (this) {
         is Unparsed -> true; is May -> effect.hasUnparsed(); is UnlessPays -> effect.hasUnparsed(); is Seq -> effects.any { it.hasUnparsed() }
+        is IfYouDo -> choice.hasUnparsed() || then.hasUnparsed()
+        is Modal -> modes.any { it.hasUnparsed() }
         else -> false
     }
 }
@@ -115,11 +147,15 @@ sealed interface StaticEffect {
     data class Cant(val what: String) : StaticEffect
     /** Cost modifiers and additional costs: narrated when the spell is cast (601.2b, 601.2f). */
     data class CostText(val text: String) : StaticEffect
+    /** "~ attacks each combat if able." (508.1d) */
+    data object MustAttack : StaticEffect
+    /** Recognised static text the engine cites but has no game model for (level-up stats, "look at the top card any time", …). */
+    data class Note(val text: String, val rules: List<String>) : StaticEffect
 }
 
 sealed interface Ability { val text: String }
 data class TriggeredAbility(val trigger: Trigger, val effect: Effect, override val text: String) : Ability
-data class ActivatedAbility(val cost: String, val effect: Effect, override val text: String) : Ability
+data class ActivatedAbility(val cost: String, val effect: Effect, override val text: String, val restriction: String? = null) : Ability
 data class StaticAbility(override val text: String, val keyword: String? = null, val effects: List<StaticEffect> = emptyList()) : Ability
 data class UnparsedAbility(override val text: String) : Ability
 
@@ -141,7 +177,13 @@ data class CardDef(
     /** For instants and sorceries: what the spell does on resolution. */
     val spellEffect: Effect?,
     val oracleText: String,
+    /** Auras: what this can enchant (702.5a); the Aura spell targets accordingly (303.4a). */
+    val enchant: ObjFilter? = null,
+    /** Changeling: every creature type (702.73a). */
+    val changeling: Boolean = false,
 ) {
+    val isAura get() = "Aura" in subtypes
+    val isEquipment get() = "Equipment" in subtypes
     val isCreature get() = "Creature" in types
     val isPermanentCard get() = types.any { it in permanentTypes }
     val isInstantOrSorcery get() = "Instant" in types || "Sorcery" in types

@@ -69,6 +69,7 @@ data class ObjectSpec(
     val counters: Map<String, Int> = emptyMap(),
     val damage: Int = 0,
     val token: Boolean = false,
+    val attachedTo: String? = null,
 )
 
 @Serializable
@@ -93,6 +94,8 @@ data class EventSpec(
     val to: String? = null,
     val amount: Int? = null,
     val source: String? = null,
+    /** Chosen mode numbers (1-based) for modal spells (700.2). */
+    val modes: List<Int> = emptyList(),
 )
 
 @Serializable

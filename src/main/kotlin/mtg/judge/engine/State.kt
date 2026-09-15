@@ -5,6 +5,7 @@ enum class Zone { BATTLEFIELD, HAND, GRAVEYARD, LIBRARY, EXILE, STACK, COMMAND }
 class Player(val id: String, val name: String, var life: Int?) {
     var drew = 0
     var lost = false
+    var poison = 0
     /** The player asking the question is addressed as "you". */
     val you: Boolean get() = name.equals("me", true) || name.equals("you", true) || name.equals("i", true)
     val subject: String get() = if (you) "You" else name
@@ -29,6 +30,8 @@ class GameObject(
     val pumps = mutableListOf<Pair<Int, Int>>()
     var timestamp: Int = 0
     /** Combat status this turn. */
+    /** Aura/Equipment: id of the object this is attached to. */
+    var attachedTo: String? = null
     var attacking: Ref? = null            // what this creature is attacking
     var blocking: String? = null          // id of the attacker this creature blocks
     var dealtDeathtouchDamage = false     // for 704.5h
@@ -66,6 +69,8 @@ class StackItem(
     /** Zone each object target was in when chosen, for the 608.2b legality check. */
     val targetZones: Map<String, Zone>,
     val text: String,
+    /** Chosen modes (1-based) for modal spells and abilities (700.2). */
+    val modes: List<Int> = emptyList(),
 ) {
     val describe: String get() = when (kind) {
         StackKind.SPELL -> source.name
@@ -114,7 +119,7 @@ class GameState(
             for (ab in src.def.abilities.filterIsInstance<StaticAbility>()) for (eff in ab.effects) {
                 val filter = when (eff) { is StaticEffect.PtModify -> eff.filter; is StaticEffect.KeywordGrant -> eff.filter; else -> continue }
                 if (filter.other && src === obj) continue
-                if (matches(filter, obj, src.controller)) out += src to eff
+                if (matches(filter, obj, src.controller, src)) out += src to eff
             }
         }
         return out
@@ -163,8 +168,9 @@ class GameState(
     private fun sign(n: Int) = if (n >= 0) "+$n" else "$n"
 
     /** Whether a permanent matches a filter, relative to [controller] (the source's controller). Mirrors Engine.filterMatches for battlefield objects. */
-    fun matches(f: ObjFilter, o: GameObject, controller: String): Boolean {
+    fun matches(f: ObjFilter, o: GameObject, controller: String, source: GameObject? = null): Boolean {
         if (!o.isOnBattlefield()) return false
+        if (f.attachedToSource && (source == null || source.attachedTo != o.id)) return false
         val typeOk = f.kinds.any { k -> when (k) {
             Kind.CREATURE -> o.def.isCreature; Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types
             Kind.LAND -> "Land" in o.def.types; Kind.PLANESWALKER -> "Planeswalker" in o.def.types; Kind.BATTLE -> "Battle" in o.def.types
@@ -172,7 +178,7 @@ class GameState(
         } }
         val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> o.def.isCreature; Kind.LAND -> "Land" in o.def.types; Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types; else -> false } }
         val ctrlOk = when (f.controller) { null -> true; Who.YOU -> o.controller == controller; Who.OPPONENT -> o.controller != controller; else -> true }
-        val subOk = f.subtypes.all { st -> o.def.subtypes.any { it.equals(st, true) } }
+        val subOk = f.subtypes.all { st -> o.def.subtypes.any { it.equals(st, true) } || (o.def.changeling && o.def.isCreature) }
         val kwOk = f.keywords.all { hasKeyword(o, it) }
         val tokenOk = f.token == null || f.token == o.token
         val legOk = f.legendary == null || f.legendary == ("Legendary" in o.def.supertypes)

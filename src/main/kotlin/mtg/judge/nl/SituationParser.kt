@@ -172,10 +172,19 @@ class SituationParser(private val names: NameIndex) {
                 ctx.notes += "${m.cards.getValue(r.groupValues[2]).display} noted as in hand (hidden zones are only tracked when you cast from them)."
                 return true
             }
-            addObject(m.cards.getValue(r.groupValues[2]), owner, tapped = rest.contains("tapped") && !rest.contains("untapped"), ctx)
-            Regex("""(c\d+)""").findAll(rest).forEach { addObject(m.cards.getValue(it.groupValues[1]), owner, false, ctx) }
+            val hostId = addObject(m.cards.getValue(r.groupValues[2]), owner, tapped = rest.contains("tapped") && !rest.contains("untapped"), ctx)
+            // "… with Rancor on it", "… enchanted with X", "… equipped with X"
+            Regex("""(?:enchanted with|equipped with|wearing|with) (?:an? |the )?(c\d+)""").findAll(rest).forEach { a -> val id = addObject(m.cards.getValue(a.groupValues[1]), owner, false, ctx); ctx.objects[id] = ctx.objects.getValue(id).copy(attachedTo = hostId) }
+            Regex("""(c\d+)""").findAll(rest).forEach { if (ctx.objects.values.none { o -> o.card.oracleId == m.cards.getValue(it.groupValues[1]).oracleId }) addObject(m.cards.getValue(it.groupValues[1]), owner, false, ctx) }
             ctx.lastVerb = "have"; ctx.lastOwner = owner
             return true
+        }
+        // "Rancor is on my Bears", "Rancor is attached to / enchanting / equipping my Bears"
+        Regex("""^(?:an? |the |my |their )?(c\d+) (?:is |are )?(?:on|attached to|enchanting|equipping|equips|enchants) (?:my |their |the |an? )?(c\d+)$""").find(c)?.let { r ->
+            val hostCard = m.cards.getValue(r.groupValues[2]); val attCard = m.cards.getValue(r.groupValues[1])
+            val hostId = objectIdFor(hostCard, ctx) ?: addObject(hostCard, actor ?: "me", false, ctx)
+            val attId = objectIdFor(attCard, ctx) ?: addObject(attCard, actor ?: ctx.objects.getValue(hostId).controller, false, ctx)
+            ctx.objects[attId] = ctx.objects.getValue(attId).copy(attachedTo = hostId); return true
         }
         Regex("""^(?:an? |the )?(c\d+) (?:is|are) (?:on the battlefield|in play|out|on board)""").find(c)?.let { r ->
             addObject(m.cards.getValue(r.groupValues[1]), actor ?: "me", clause0.contains("tapped"), ctx); return true
@@ -236,8 +245,13 @@ class SituationParser(private val names: NameIndex) {
     }
 
     private fun emitCast(who: String, card: NameIndex.Entry, rest: String, m: Marked, ctx: Ctx) {
+        // "choosing the second mode", "mode 2", "choosing modes 1 and 3"
+        val modes = Regex("""(?:choosing |with |picking )?(?:the )?(?:mode|modes) (\d+(?:(?:,| and) \d+)*)|(?:choosing |picking )(?:the )?(first|second|third|fourth) (?:mode|option)""").find(rest)?.let { mm ->
+            if (mm.groupValues[1].isNotEmpty()) Regex("""\d+""").findAll(mm.groupValues[1]).map { it.value.toInt() }.toList()
+            else listOf(mapOf("first" to 1, "second" to 2, "third" to 3, "fourth" to 4).getValue(mm.groupValues[2]))
+        } ?: emptyList()
         val targets = targetsIn(rest, m, ctx)
-        ctx.events += EventSpec("cast", player = who, card = CardRef(name = card.display, oracleId = card.oracleId), targets = targets)
+        ctx.events += EventSpec("cast", player = who, card = CardRef(name = card.display, oracleId = card.oracleId), targets = targets, modes = modes)
         ctx.lastActor = who
         ctx.lastVerb = "cast"
         ctx.castCards += card.display

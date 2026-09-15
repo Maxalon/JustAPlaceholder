@@ -28,7 +28,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
         for (o in sit.objects) {
             val def = cardDef(o.card, state) ?: continue
-            state.add(GameObject(o.id, def, zone(o.zone), o.controller, o.owner ?: o.controller, o.tapped, o.summoningSick, o.counters.toMutableMap(), o.damage, o.token)).also { it.timestamp = state.tick() }
+            state.add(GameObject(o.id, def, zone(o.zone), o.controller, o.owner ?: o.controller, o.tapped, o.summoningSick, o.counters.toMutableMap(), o.damage, o.token)).also { it.timestamp = state.tick(); it.attachedTo = o.attachedTo }
         }
         for (s in sit.stack) {
             val kind = when (s.kind.lowercase()) { "triggered" -> StackKind.TRIGGERED; "activated" -> StackKind.ACTIVATED; else -> StackKind.SPELL }
@@ -46,7 +46,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
         understood += "Players: " + state.players.joinToString(", ") { (if (it.you) "you" else it.name) + (it.life?.let { l -> " ($l life)" } ?: "") } + (state.activePlayer?.let { "; it's ${state.player(it).possessive} turn" } ?: "; whose turn it is wasn't stated")
         state.objects.values.groupBy { it.zone }.forEach { (zone, objs) ->
-            understood += "${zone.name.lowercase().replaceFirstChar { it.uppercase() }}: " + objs.joinToString(", ") { "${it.name} [${it.id}] (${state.player(it.controller).possessive}${if (it.def.isCreature && it.isOnBattlefield()) ", " + state.describePt(it) else ""}${if (it.tapped == true) ", tapped" else ""}${if (it.damage > 0) ", ${it.damage} damage" else ""})" }
+            understood += "${zone.name.lowercase().replaceFirstChar { it.uppercase() }}: " + objs.joinToString(", ") { "${it.name} [${it.id}] (${state.player(it.controller).possessive}${if (it.def.isCreature && it.isOnBattlefield()) ", " + state.describePt(it) else ""}${if (it.tapped == true) ", tapped" else ""}${if (it.damage > 0) ", ${it.damage} damage" else ""}${it.attachedTo?.let { a -> ", attached to ${state.objects[a]?.name ?: a}" } ?: ""})" }
         }
         if (state.stack.isNotEmpty()) understood += "Stack (bottom to top): " + state.stack.joinToString(", ") { "${it.describe} [${it.id}]" + (if (it.targets.isNotEmpty()) " targeting " + it.targets.joinToString(" & ") { t -> state.nameOf(t) } else "") }
 
@@ -89,7 +89,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 val player = e.player ?: state.players.first().id
                 val existing = e.obj?.let { state.objects[it] }
                 val def = existing?.def ?: cardDef(e.card ?: throw JudgeException("cast needs a card"), state) ?: return
-                engine.cast(player, def, targets, existing?.id)
+                engine.cast(player, def, targets, existing?.id, e.modes)
             }
             "activate" -> { val objId = e.obj ?: throw JudgeException("activate needs an object"); engine.activate(e.player ?: state.obj(objId).controller, objId, e.abilityIndex, targets) }
             "trigger" -> engine.assertTrigger(e.obj ?: throw JudgeException("trigger needs an object"), e.abilityIndex, targets)

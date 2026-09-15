@@ -18,7 +18,9 @@ import java.sql.Connection
 object Coverage {
     /** Keywords the engine gives rules meaning to. Others parse as static abilities the engine ignores. */
     val modeledKeywords = setOf("flying", "reach", "trample", "first strike", "double strike", "deathtouch", "lifelink", "vigilance", "haste", "menace",
-        "indestructible", "hexproof", "shroud", "defender", "flash", "protection", "ward")
+        "indestructible", "hexproof", "shroud", "defender", "flash", "protection", "ward", "enchant",
+        // cited with their rule when the spell is cast, or converted to abilities by the parser
+        "kicker", "flashback", "madness", "convoke", "affinity", "suspend", "morph", "improvise", "cumulative upkeep", "devoid", "changeling", "partner", "evoke", "echo", "foretell", "infect", "wither")
 
     data class Stats(var cards: Int = 0, var fully: Int = 0, var partly: Int = 0, var none: Int = 0, var noText: Int = 0, var abilities: Int = 0, var modeledAbilities: Int = 0)
 
@@ -63,7 +65,10 @@ object Coverage {
 
     private fun unparsed(e: Effect): String = when (e) {
         is Effect.Unparsed -> e.text; is Effect.May -> unparsed(e.effect); is Effect.UnlessPays -> unparsed(e.effect)
-        is Effect.Seq -> e.effects.firstOrNull { it.hasUnparsed() }?.let { unparsed(it) } ?: ""; else -> ""
+        is Effect.Seq -> e.effects.firstOrNull { it.hasUnparsed() }?.let { unparsed(it) } ?: ""
+        is Effect.IfYouDo -> if (e.choice.hasUnparsed()) unparsed(e.choice) else unparsed(e.then)
+        is Effect.Modal -> e.modes.firstOrNull { it.hasUnparsed() }?.let { unparsed(it) } ?: ""
+        else -> ""
     }
 
     /** Collapse a sentence to its first words with numbers and names abstracted, for counting. */
