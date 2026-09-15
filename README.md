@@ -6,6 +6,8 @@ rules engine whose every step cites the rule that justifies it. No language-mode
 
 ```
 $ mtg-judge ask "I have Rhystic Study. It's their turn, they cast Sol Ring and Stifle the Rhystic Study trigger."
+$ mtg-judge ask "Alice attacks Bob with Hill Giant and Carol with Grizzly Bears. Bob blocks with Wall of Omens. Carol is at 2 life."
+$ mtg-judge ask "I have Jace Beleren with 3 loyalty. I activate Jace's +2. Then my opponent attacks Jace with Hill Giant."
 $ mtg-judge card "time vault" --set lea     # Oracle text, rulings, and a warning if that printing's text is outdated
 $ mtg-judge rule 702.19                     # a rule with its subrules, or `rule trample`, `rule "state-based action"`
 $ mtg-judge resolve "rystic studdy"         # how a (misspelled) name resolves
@@ -45,3 +47,7 @@ Point the CLI at it with `--db judge.db` or `MTG_JUDGE_DB=judge.db`.
 
 `./gradlew test` builds a database from small real-data fixtures and exercises ingest, lookups,
 the rules parser, the Oracle parser, the engine, the situation judge and the language front door.
+With `MTG_JUDGE_DB` set to a full database it also checks every rule number the engine cites
+against the real Comprehensive Rules and runs the plain-English scenario bench
+(`mtg-judge bench`, which also runs on its own and reports answered / refused / wrong).
+`mtg-judge coverage` reports how much of the card pool's rules text the Oracle parser models.

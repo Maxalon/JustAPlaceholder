@@ -103,6 +103,8 @@ class GameState(
     val shields = mutableListOf<Shield>()
     val outcomes = mutableListOf<String>()
     val assumptions = mutableListOf<String>()
+    /** Players who said they will pay the next "unless … pays" cost asked of them (Rhystic Study, Mana Leak…). */
+    val willPay = mutableSetOf<String>()
     val clarifications = mutableListOf<Clarification>()
     val unsupported = mutableListOf<Unsupported>()
     private var nextId = 1

@@ -396,5 +396,39 @@
     "cite": [
       "704.5g"
     ]
+  },
+  {
+    "id": "multi-attack-two-defenders",
+    "text": "It's Alice's turn. Alice attacks Bob with Hill Giant and Carol with Grizzly Bears. Bob blocks with Wall of Omens. Carol is at 2 life.",
+    "expect": [
+      "Wall of Omens has 3 damage marked",
+      "Carol loses the game"
+    ],
+    "cite": [
+      "509.1a",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "multi-it-after-bolt",
+    "text": "Alice has Grizzly Bears. Bob casts Lightning Bolt targeting Alice's Bears. Alice responds with Giant Growth on it.",
+    "expect": [
+      "Grizzly Bears is 5/5 until end of turn",
+      "Grizzly Bears has 3 damage marked"
+    ],
+    "cite": [
+      "120.3e",
+      "611.2a"
+    ]
+  },
+  {
+    "id": "rhystic-pays",
+    "text": "Bob's Rhystic Study is out. Carol casts Sol Ring and pays for Rhystic.",
+    "expect": [
+      "Carol pays {1}; Rhystic Study's triggered ability has no further effect"
+    ],
+    "cite": [
+      "608.2g"
+    ]
   }
 ]

@@ -126,15 +126,21 @@ What happens next, in order. The engine applies these to the described state.
 | `resolve` | (resolves the top of the stack) |
 | `resolveAll` | (everyone passes until the stack is empty) |
 | `pass` | (same as `resolve`) |
-| `attack` | `player`, `attackers`: [{ `object`, `defending`: player or planeswalker id }] |
-| `block` | `player`, `blocks`: [{ `blocker`, `attacker` }] |
+| `attack` | `player`, `object` (the attacker), `targets`: [player, planeswalker or battle id] |
+| `attackAll` | `player`, `targets`: [defender] (every creature the player controls attacks) |
+| `block` | `player`, `object` (the blocker), `targets`: [attacker id] |
+| `combatDamage` | (deals combat damage now; otherwise it's dealt after the last event) |
+| `step` | `player` (the active player), `to`: `upkeep` / `draw` / `precombat_main` / `combat` / `end` (a step begins; its triggers fire) |
+| `pay` | `player`, `to`: `yes` / `no` (whether the player pays the next "unless … pays" cost asked of them) |
 | `damage` | `source`, `target`, `amount` (used when the user describes damage as a given) |
 | `enter` | `object` (a permanent enters, source unspecified) |
 | `leave` | `object`, `to`: zone |
 | `stateCheck` | (explicitly ask for state-based actions to be performed) |
 
 Events are applied in order. A spell cast while something is on the stack is,
-by construction, cast "in response". Not yet implemented: `attack`, `block`.
+by construction, cast "in response". A target written as `a|b` is ambiguous
+(the parser emits this for "it"); the judge takes the first candidate the spell
+can legally target and says so in the assumptions.
 
 ## Question
 

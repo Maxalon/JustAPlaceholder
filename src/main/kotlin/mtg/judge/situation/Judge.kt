@@ -15,6 +15,7 @@ import mtg.judge.engine.StackItem
 import mtg.judge.engine.StackKind
 import mtg.judge.engine.TriggeredAbility
 import mtg.judge.engine.ActivatedAbility
+import mtg.judge.engine.TargetSpec
 import mtg.judge.engine.Zone
 import mtg.judge.oracle.OracleParser
 
@@ -92,7 +93,11 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 val player = e.player ?: state.players.first().id
                 val existing = e.obj?.let { state.objects[it] }
                 val def = existing?.def ?: cardDef(e.card ?: throw JudgeException("cast needs a card"), state) ?: return
-                engine.cast(player, def, targets, existing?.id, e.modes)
+                engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, e.modes)
+            }
+            "pay" -> {
+                val who = e.player ?: throw JudgeException("pay needs a player")
+                if (e.to == "no") state.willPay.remove(who) else state.willPay += who
             }
             "activate" -> {
                 val objId = e.obj ?: throw JudgeException("activate needs an object")
@@ -125,6 +130,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "cast" -> "${who ?: "you"} ${if (who == null || who == "you") "cast" else "casts"} ${e.card ?: e.obj}$tg"
             "activate" -> "${who ?: "controller"} ${if (who == "you") "activate" else "activates"} ${state.objects[e.obj]?.name ?: e.obj}${e.to?.takeIf { e.abilityIndex == null && Regex("""^[+\u2212-]?\d+$""").matches(it) }?.let { " ($it)" } ?: ""}$tg"
             "trigger" -> "${state.objects[e.obj]?.name ?: e.obj}'s ability triggers$tg"
+            "pay" -> "${who ?: "the player"} ${if (e.to == "no") "${if (who == "you") "don't" else "doesn't"} pay" else "${if (who == "you") "pay" else "pays"}"}"
             "resolve", "pass" -> "the top of the stack resolves"
             "resolveall" -> "everything on the stack resolves"
             "enter" -> "${state.objects[e.obj]?.name ?: e.obj} enters the battlefield"
@@ -140,6 +146,22 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
     }
 
     /** `rhystic` (object), `opp` (player), `s1` (stack), `rhystic:trigger` / `bolt:spell` (stack item by source). */
+    /**
+     * A target written as "a|b" is ambiguous ("it" after two things were mentioned): take the first candidate the
+     * spell could legally target, else the first candidate.
+     */
+    private fun disambiguate(targets: List<String>, specs: List<TargetSpec>, controller: String, state: GameState, engine: Engine): List<Ref> =
+        targets.mapIndexed { i, t ->
+            if ('|' !in t) parseRef(t, state)
+            else {
+                val candidates = t.split('|').mapNotNull { c -> runCatching { parseRef(c, state) }.getOrNull() }
+                val spec = specs.getOrNull(i)
+                val pick = candidates.firstOrNull { spec == null || engine.filterMatches(spec.filter, it, controller) } ?: candidates.first()
+                if (candidates.size > 1) state.assumptions += "\"It\" was read as ${state.nameOf(pick)} (the first of ${candidates.joinToString(", ") { state.nameOf(it) }} that fits \"${spec?.raw ?: "the target"}\")."
+                pick
+            }
+        }
+
     private fun parseRef(s: String, state: GameState): Ref {
         if (state.objects.containsKey(s)) return Ref.Obj(s)
         if (state.players.any { it.id == s }) return Ref.Player(s)

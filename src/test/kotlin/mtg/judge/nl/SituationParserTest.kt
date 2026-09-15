@@ -79,6 +79,25 @@ class SituationParserTest {
     }
 
     @Test
+    fun `named players become players, with their turn, life, possessions and pronouns`() {
+        val p = parser.parse("It's Alice's turn. Alice is at 12 life. Bob's Rhystic Study is out. Alice casts Sol Ring and doesn't pay. Then Bob attacks Alice with Time Vault and Carol with Smothering Tithe.")
+        assertEquals(listOf("alice", "bob", "carol"), p.situation.players.map { it.id })
+        assertEquals("Alice", p.situation.players[0].name); assertEquals(12, p.situation.players[0].life)
+        assertEquals("alice", p.situation.turn.activePlayer)
+        assertEquals("bob", p.situation.objects.first { it.card.name == "Rhystic Study" }.controller)
+        val verbs = p.situation.events.map { it.verb }
+        assertEquals(listOf("cast", "pay", "attack", "attack", "resolveAll"), verbs)
+        assertEquals("alice", p.situation.events[0].player); assertEquals("no", p.situation.events[1].to)
+        assertEquals(listOf("alice"), p.situation.events[2].targets); assertEquals(listOf("carol"), p.situation.events[3].targets)
+        assertEquals("bob", p.situation.events[3].player)
+        assertTrue(p.unread.isEmpty(), "unread: ${p.unread}")
+        // "they" after a named actor is that player; "me" joins the table as a player.
+        val q = parser.parse("Bob casts Sol Ring targeting me. They respond with Stifle on it.")
+        assertEquals(listOf("me", "bob"), q.situation.players.map { it.id })
+        assertEquals("bob", q.situation.events[1].player)
+    }
+
+    @Test
     fun `nothing recognisable yields no events and the text is unread`() {
         val p = parser.parse("The weather is nice today.")
         assertTrue(p.situation.events.isEmpty() && p.situation.objects.isEmpty())

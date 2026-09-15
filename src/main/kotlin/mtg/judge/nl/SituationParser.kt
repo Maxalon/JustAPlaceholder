@@ -29,33 +29,61 @@ class SituationParser(private val names: NameIndex) {
         val unread = mutableListOf<String>()
         val notes = mutableListOf<String>()
         var activePlayer: String? = null
-        var lifeMe: Int? = null
-        var lifeOpp: Int? = null
+        val life = LinkedHashMap<String, Int>()
+        /** Named players in order of first mention: id -> display name. "me"/"opp" are added when the text uses them. */
+        val players = LinkedHashMap<String, String>()
+        var usesMe = false
+        var usesOpp = false
+        var lastNamed: String? = null              // the last named (non-"me") player who acted, for "they"/"he"/"she"
         var lastActor: String? = null
         var lastVerb: String? = null               // "have" | "cast" for bare continuations ("… and Smothering Tithe")
         var lastOwner: String = "me"
         var lastMentioned: String? = null          // object id, or "cast:<slug>" for a spell just cast
         val castCards = mutableListOf<String>()     // display names of cards cast so far
         var explicitResolve = false
+
+        /** The single other player, when there are exactly two; with more, callers fall back to the engine's clarification. */
+        fun other(p: String?): String? {
+            val ids = playerIds()
+            if (p == null) return null
+            if (ids.size == 2) return ids.firstOrNull { it != p }
+            if (ids.size < 2) return when (p) { "me" -> "opp"; "opp" -> "me"; else -> null }
+            return null
+        }
+
+        fun playerIds(): List<String> {
+            val ids = mutableListOf<String>()
+            if (usesMe || players.isEmpty()) ids += "me"
+            ids += players.keys
+            if (usesOpp || players.isEmpty()) ids += "opp"
+            return ids
+        }
+
+        fun note(id: String) { if (id == "me") usesMe = true else if (id == "opp") usesOpp = true }
     }
 
     /** A sentence with card names replaced by placeholders C1, C2… */
-    private class Marked(val text: String, val cards: Map<String, NameIndex.Entry>)
+    private class Marked(val text: String, val cards: Map<String, NameIndex.Entry>, val players: Map<String, String> = emptyMap())
 
     /** For debugging: the sentences with card names replaced by placeholders. */
-    fun debugMark(text: String): List<String> = splitSentences(text).let { ss -> val short = shortNames(ss); ss.map { s -> val m = mark(s, short); m.text + "   " + m.cards.map { (k, v) -> "$k=${v.display}" } + "   clauses=" + m.text.split(clauseSplit).map { it.trim() } } }
+    fun debugMark(text: String): List<String> = splitSentences(text).let { ss -> val short = shortNames(ss); val named = playerNames(ss); ss.map { s -> val m = mark(s, short, named); m.text + "   " + m.cards.map { (k, v) -> "$k=${v.display}" } + (if (m.players.isEmpty()) "" else "   players=" + m.players.values) + "   clauses=" + m.text.split(clauseSplit).map { it.trim() } } }
     private val clauseSplit = Regex("""\s*(?:,|\band\b)\s+""")
 
     fun parse(text: String): Parsed {
         val ctx = Ctx()
         val sentences = splitSentences(text)
         val short = shortNames(sentences)
+        val named = playerNames(sentences)
         for (sentence in sentences) {
-            val marked = mark(sentence, short)
+            val marked = mark(sentence, short, named)
             if (!readSentence(marked, ctx)) ctx.unread += sentence.trim()
         }
         if (ctx.events.isNotEmpty() && !ctx.explicitResolve) ctx.events += EventSpec("resolveAll")
-        val players = listOf(PlayerSpec("me", "me", ctx.lifeMe), PlayerSpec("opp", "opponent", ctx.lifeOpp))
+        // Every player that took part; "me" and "opponent" only when the text spoke of them (or named nobody).
+        for (e in ctx.events) { e.player?.let { ctx.note(it) }; e.targets.forEach { if (it == "me" || it == "opp") ctx.note(it) } }
+        for (o in ctx.objects.values) ctx.note(o.controller)
+        val players = ctx.playerIds().map { id -> PlayerSpec(id, when (id) { "me" -> "me"; "opp" -> "opponent"; else -> ctx.players[id] ?: id }, ctx.life[id]) }
+        if (ctx.players.isNotEmpty() && ctx.usesOpp && ctx.players.size >= 2) ctx.notes += "\"opponent\"/\"they\" was read as a separate player from ${ctx.players.values.joinToString(" and ")}; name the player instead if that's wrong."
         return Parsed(Situation(players, TurnSpec(ctx.activePlayer), ctx.objects.values.toList(), emptyList(), ctx.events), ctx.unread, ctx.notes)
     }
 
@@ -92,7 +120,40 @@ class SituationParser(private val names: NameIndex) {
         "lord", "king", "queen", "knight", "wizard", "elf", "goblin", "dragon", "angel", "demon", "spirit", "soldier", "warrior", "beast", "bird", "cat", "dog", "rat", "wolf", "bear", "sphinx", "giant", "elemental",
         "study", "ring", "bolt", "counter", "spell", "creature", "land", "token", "card", "cards", "life", "turn", "step", "phase", "combat", "damage", "mana", "ability", "trigger", "top", "bottom", "first", "second", "last", "next")
 
-    private fun mark(sentence: String, short: Map<String, NameIndex.Entry> = emptyMap()): Marked {
+    /**
+     * Named players: a capitalised word that isn't (part of) a card name and that does something a player does
+     * ("Alice casts…", "Bob's Bears", "attacks Carol with…"). Returns normalized word -> display name.
+     */
+    private fun playerNames(sentences: List<String>): Map<String, String> {
+        val out = LinkedHashMap<String, String>()
+        for (sentence in sentences) {
+            val rawWords = sentence.split(Regex("\\s+")).filter { it.isNotEmpty() }
+            val normWords = rawWords.map { w -> Names.normalize(stripPossessive(w)).ifEmpty { "_" } }
+            val covered = names.findAll(normWords).flatMap { it.start until it.end }.toSet()
+            for ((i, raw) in rawWords.withIndex()) {
+                if (i in covered) continue
+                val core = raw.trimEnd(',', '.', ';', '!', '?').removeSuffix("'s").removeSuffix("\u2019s")
+                if (!Regex("""[A-Z][a-z]{1,}""").matches(core)) continue
+                val norm = normWords[i]
+                if (norm in playerNameStop || out.containsKey(norm)) continue
+                val possessive = raw.contains("'s") || raw.contains("\u2019s")
+                val next = normWords.getOrNull(i + 1) ?: ""
+                val prev = normWords.getOrNull(i - 1) ?: ""
+                val actsLikePlayer = possessive || next in playerVerbs || prev in playerPreps
+                if (actsLikePlayer) out[norm] = core
+            }
+        }
+        return out
+    }
+
+    private val playerNameStop = setOf("i", "my", "me", "we", "opponent", "opp", "they", "he", "she", "it", "the", "then", "now", "so", "if", "when", "what", "does", "do", "can", "is", "are", "at", "during", "on", "in", "after", "before", "also",
+        "both", "each", "everyone", "nobody", "no", "yes", "player", "someone", "another", "his", "her", "their", "its", "next", "later", "finally", "meanwhile", "who", "whose", "which", "how", "why", "there", "here", "this", "that", "these", "those",
+        "one", "two", "three", "four", "first", "second", "third", "last", "turn", "upkeep", "combat", "stack", "response", "target", "counter", "damage", "life", "commander", "planeswalker", "creature", "spell", "ability", "trigger", "token", "land")
+    private val playerVerbs = setOf("casts", "cast", "plays", "played", "attacks", "attacked", "blocks", "blocked", "has", "have", "had", "controls", "control", "activates", "activated", "responds", "responded", "taps", "sacrifices",
+        "is", "are", "was", "swings", "targets", "counters", "draws", "pays", "declines", "passes", "says", "wants", "does", "gets", "takes", "loses", "gains", "dies", "wins", "uses", "equips", "flashes", "resolves", "fires", "slams", "runs")
+    private val playerPreps = setOf("at", "targeting", "target", "to", "attacks", "attack", "attacking", "and", "hits", "hit", "with", "against", "on", "of", "then", "meanwhile")
+
+    private fun mark(sentence: String, short: Map<String, NameIndex.Entry> = emptyMap(), named: Map<String, String> = emptyMap()): Marked {
         val rawWords = sentence.split(Regex("\\s+")).filter { it.isNotEmpty() }
         // Normalize per word so word indices line up with the original words.
         val normWords = rawWords.map { w -> Names.normalize(stripPossessive(w)).ifEmpty { "_" } }
@@ -101,6 +162,7 @@ class SituationParser(private val names: NameIndex) {
         val covered = full.flatMap { it.start until it.end }.toSet()
         val found = full + normWords.indices.filter { it !in covered }.mapNotNull { i -> short[normWords[i]]?.let { NameIndex.Found(i, i + 1, it) } }
         val cards = LinkedHashMap<String, NameIndex.Entry>()
+        val players = LinkedHashMap<String, String>()
         val out = StringBuilder()
         var i = 0
         var n = 1
@@ -115,11 +177,18 @@ class SituationParser(private val names: NameIndex) {
                 val possessive = core.endsWith("'s") || core.endsWith("\u2019s")
                 out.append(' ').append(ph).append(if (possessive) "'s" else "").append(trailing)
                 i = f.end
+            } else if (named.containsKey(normWords[i])) {
+                val raw = rawWords[i]
+                val trailing = raw.takeLastWhile { it in ",.;!?" }
+                val core = raw.dropLast(trailing.length)
+                val possessive = core.endsWith("'s") || core.endsWith("\u2019s")
+                out.append(" @").append(normWords[i]).append(if (possessive) "'s" else "").append(trailing)
+                players[normWords[i]] = named.getValue(normWords[i]); i++
             } else {
                 out.append(' ').append(rawWords[i]); i++
             }
         }
-        return Marked(out.toString().trim().lowercase().replace('’', '\''), cards)
+        return Marked(out.toString().trim().lowercase().replace('’', '\''), cards, players)
     }
 
     private fun stripPossessive(w: String): String {
@@ -130,6 +199,18 @@ class SituationParser(private val names: NameIndex) {
     private val actorMe = Regex("""^(i|me|my|i've|i'm|we)\b""")
     private val actorOpp = Regex("""^(my opponent|the opponent|opponent|opp|they|their|he|she|his|her|them)\b""")
 
+    /**
+     * Who "they"/"opponent" means. With no named players it's the one opponent. With named players, "they/he/she"
+     * is the last named player who acted, and "opponent" is the single named player other than me, if there is one.
+     */
+    private fun pronounPlayer(ctx: Ctx, word: String = "opponent"): String {
+        if (ctx.players.isEmpty()) { ctx.usesOpp = true; return "opp" }
+        val pronoun = word in setOf("they", "their", "he", "she", "his", "her", "them")
+        if (pronoun) ctx.lastNamed?.let { return it }
+        if (ctx.players.size == 1) return ctx.players.keys.first()
+        ctx.usesOpp = true; return "opp"
+    }
+
     private fun readSentence(m: Marked, ctx: Ctx): Boolean {
         val t0 = m.text.replace(Regex("""\s+"""), " ").trim()
         if (t0.isEmpty()) return true
@@ -137,11 +218,13 @@ class SituationParser(private val names: NameIndex) {
 
         // Turn / life statements (removed from the text once read).
         var t2 = t0
-        Regex("""\b(it's|it is|during|on|in) (my|their|the opponent's|opponent's|my opponent's) (?:turn|upkeep|end step|main phase|combat)\b""").find(t2)?.let { r ->
-            ctx.activePlayer = if (r.groupValues[2] == "my") "me" else "opp"; any = true; t2 = t2.removeRange(r.range)
+        Regex("""\b(it's|it is|during|on|in) (my|their|the opponent's|opponent's|my opponent's|@\w+'s) (?:turn|upkeep|end step|main phase|combat)\b""").find(t2)?.let { r ->
+            ctx.activePlayer = when { r.groupValues[2] == "my" -> "me"; r.groupValues[2].startsWith("@") -> r.groupValues[2].removePrefix("@").removeSuffix("'s"); else -> "opp" }
+            ctx.note(ctx.activePlayer!!); any = true; t2 = t2.removeRange(r.range)
         }
-        Regex("""\b(i'm|i am|i'm at|my life is|i have|i've got) (\d+) life\b""").find(t2)?.let { ctx.lifeMe = it.groupValues[2].toInt(); any = true; t2 = t2.removeRange(it.range) }
-        Regex("""\b(opponent|they|they're|opp|my opponent) (is at|are at|has|have|at|is on|are on) (\d+) life\b""").find(t2)?.let { ctx.lifeOpp = it.groupValues[3].toInt(); any = true; t2 = t2.removeRange(it.range) }
+        Regex("""\b(i'm|i am|i'm at|my life is|i have|i've got) (\d+) life\b""").find(t2)?.let { ctx.life["me"] = it.groupValues[2].toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
+        Regex("""\b(opponent|they|they're|opp|my opponent) (is at|are at|has|have|at|is on|are on) (\d+) life\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = it.groupValues[3].toInt(); any = true; t2 = t2.removeRange(it.range) }
+        Regex("""@(\w+) (?:is at|is on|has|at|sits at|is) (\d+)(?: life)?\b""").findAll(t2).toList().asReversed().forEach { ctx.life[it.groupValues[1]] = it.groupValues[2].toInt(); ctx.players.putIfAbsent(it.groupValues[1], m.players[it.groupValues[1]] ?: it.groupValues[1]); any = true; t2 = t2.removeRange(it.range) }
         val t = t2.trim()
 
         // Pure questions carry no state; the engine answers "what happens" by default.
@@ -183,10 +266,32 @@ class SituationParser(private val names: NameIndex) {
         // Leading connectives carry no information: "then my opponent…", "next, they…", "now I…", "so I…".
         var c = clause0.replace(Regex("""^(?:then|next|now|so|after that|afterwards|later|finally|also|meanwhile)\s*,?\s+"""), "")
         var actor: String? = null
-        actorOpp.find(c)?.let { actor = "opp"; c = c.removeRange(it.range).trim() }
-        if (actor == null) actorMe.find(c)?.let { actor = "me"; c = c.removeRange(it.range).trim() }
-        if (actor == null && c.startsWith("in response")) actor = other(ctx.lastActor)
+        // A named player: "@alice casts…", "@bob's c1 …" (the possessive is left for the possession rules below).
+        Regex("""^@(\w+)(?!'s)\b""").find(c)?.let { r ->
+            actor = r.groupValues[1]; ctx.players.putIfAbsent(actor!!, m.players[actor!!] ?: actor!!); ctx.lastNamed = actor
+            c = c.removeRange(r.range).trim()
+        }
+        if (actor == null) actorOpp.find(c)?.let { actor = pronounPlayer(ctx, it.groupValues[1]); c = c.removeRange(it.range).trim() }
+        if (actor == null) actorMe.find(c)?.let { actor = "me"; ctx.usesMe = true; c = c.removeRange(it.range).trim() }
+        if (actor == null && c.startsWith("in response")) actor = ctx.other(ctx.lastActor)
+        actor?.let { ctx.note(it) }
         val subject = actor ?: ctx.lastActor
+        // "@bob's c1 is tapped", "@bob's c1 has 2 damage": possession by a named player.
+        Regex("""^@(\w+)'s (?:(\d+|two|three|four|five) )?(c\d+)(.*)$""").find(c)?.let { r ->
+            val owner = r.groupValues[1]; ctx.players.putIfAbsent(owner, m.players[owner] ?: owner); ctx.note(owner)
+            val count = r.groupValues[2].let { numberWords[it] ?: it.toIntOrNull() ?: 1 }
+            val card = m.cards.getValue(r.groupValues[3]); val rest = r.groupValues[4]
+            if (count > 1) { repeat(count) { addObject(card, owner, false, ctx, allowDuplicate = true) } }
+            else { val id = objectIdFor(card, ctx) ?: addObject(card, owner, rest.contains("tapped") && !rest.contains("untapped"), ctx); ctx.objects[id] = ctx.objects.getValue(id).copy(controller = owner); applyStateWords(id, rest, ctx); ctx.lastMentioned = id }
+            ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner
+            // The rest may be an action: "@bob's c1 attacks @carol" -> the object acts.
+            val tail = rest.trim()
+            if (tail.isNotEmpty() && !Regex("""^(?:is |are )?(?:tapped|untapped|out|in play|on the battlefield|on board)$""").matches(tail)) {
+                val action = Regex("""^(attacks?|swings?|blocks?)\b(.*)$""").find(tail)
+                if (action != null) return readClause("@$owner ${action.groupValues[1]} with ${r.groupValues[3]}${action.groupValues[2]}", m, ctx) || true
+            }
+            return true
+        }
 
         // A state fragment about the last-mentioned permanent: "… and 1 damage on it", "with three +1/+1 counters", "at 4 loyalty".
         if (Regex("""^(?:with |has |having |it has |at |is at )?(?:\d+|\w+) (?:loyalty(?: counters?)?|(?:[+-]\d+/[+-]\d+|[a-z]+) counters?(?: on it)?|damage(?: marked)?(?: on it)?)$""").matches(c)) {
@@ -200,12 +305,25 @@ class SituationParser(private val names: NameIndex) {
             when (ctx.lastVerb) {
                 "have" -> { repeat(count) { addObject(card, actor ?: ctx.lastOwner, false, ctx, allowDuplicate = count > 1) }; if (actor != null) { ctx.lastOwner = actor; ctx.lastActor = actor }; return true }
                 "cast" -> { emitCast(subject ?: "opp", card, "", m, ctx); return true }
-                "attack" -> { val who = ctx.lastActor ?: "me"; val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx); ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(other(who) ?: "opp")); return true }
-                "block" -> { val who = ctx.lastActor ?: "opp"; val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx); val attacker = ctx.events.lastOrNull { it.verb == "attack" }?.obj; ctx.events += EventSpec("block", player = who, obj = id, targets = listOfNotNull(attacker)); return true }
+                "attack" -> { val who = ctx.lastActor ?: "me"; val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx); ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(ctx.other(who) ?: "opp")); return true }
+                "block" -> { val who = ctx.lastActor ?: "opp"; val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx); val attacker = ctx.events.lastOrNull { it.verb == "attack" && who in it.targets }?.obj ?: ctx.events.lastOrNull { it.verb == "attack" }?.obj; ctx.events += EventSpec("block", player = who, obj = id, targets = listOfNotNull(attacker)); return true }
                 else -> return false
             }
         }
 
+        // Continuing an attack across a clause split: "attacks Bob with Hill Giant and Carol with Grizzly Bears".
+        // The defender was stripped as the "actor" above ("@carol with c2", "me with c2"); the attacker is still the last actor.
+        if (ctx.lastVerb == "attack" && actor != null && actor != ctx.lastActor) Regex("""^with\s+(?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->
+            val who = ctx.lastActor ?: "me"
+            val card = m.cards.getValue(r.groupValues[1])
+            val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
+            ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(actor!!)); ctx.lastActor = who; ctx.lastMentioned = id; return true
+        }
+        // Paying, or not, for a tax: "pays", "pays the 1", "doesn't pay", "declines to pay (for Rhystic)".
+        Regex("""^(?:(does not|doesn't|don't|do not|won't|will not|didn't|declines? to|refuses? to|isn't going to) )?(?:pays?|paid|paying)\b.*$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: ctx.events.lastOrNull { it.verb == "cast" }?.player ?: "me"
+            ctx.events += EventSpec("pay", player = who, to = if (r.groupValues[1].isEmpty()) "yes" else "no"); ctx.lastActor = who; return true
+        }
         // Possession: "have X (on the battlefield|out|in play)", "control X", "X is on the battlefield".
         Regex("""^(?:have|has|got|control|controls|controlling|'ve got|am playing|is playing|are playing|run|running)\s+(?:an? |the |my |their |(\d+|two|three|four|five) )?(c\d+)(?:'s)?(.*)$""").find(c)?.let { r ->
             val owner = actor ?: "me"
@@ -232,7 +350,7 @@ class SituationParser(private val names: NameIndex) {
         }
         // "respond by activating X's ability" / "respond by casting Y"
         Regex("""^respond(?:s|ed)? by (activating|casting|playing) (.*)$""").find(c)?.let { r ->
-            val who = actor ?: other(ctx.lastActor) ?: "me"
+            val who = actor ?: ctx.other(ctx.lastActor) ?: "me"
             return readClause((if (r.groupValues[1] == "activating") "activate " else "cast ") + r.groupValues[2], m, ctx).also { ctx.lastActor = who }
         }
         // "equip Bonesplitter to the Bears"
@@ -288,35 +406,36 @@ class SituationParser(private val names: NameIndex) {
         // "attack with everything" / "no blocks".
         if (Regex("""^(?:attacks?|attacking|swings?|swinging)(?: with)? (?:everything|everyone|all(?: of)?(?: my)?(?: creatures)?|the team|with everything)$""").matches(c) || Regex("""^(?:attacks?|swings?|go to combat)$""").matches(c)) {
             val who = actor ?: subject ?: "me"
-            ctx.events += EventSpec("attackAll", player = who, targets = listOf(other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"; return true
+            ctx.events += EventSpec("attackAll", player = who, targets = listOf(ctx.other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"; return true
         }
         if (Regex("""^(?:have no blockers|has no blockers|don't block|doesn't block|no blocks?|can't block|won't block|take it|takes it)$""").matches(c)) return true
         // Combat: "attack with c1", "swing with c1 (at them)", "block (it) with c2".
         Regex("""^(?:attacks?|attacking|swings?|swinging) with (?:it|that|him|her|them)$""").find(c)?.let {
             val who = actor ?: subject ?: "me"
             val id = ctx.lastMentioned?.takeIf { !it.startsWith("cast:") } ?: return false
-            ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"; return true
+            ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(ctx.other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"; return true
         }
         // "attack Jace with Hill Giant", "attacks their planeswalker with c2": the defender comes first.
-        Regex("""^(?:attacks?|attacking|swings? at|swinging at)\s+((?:an? |the |my |their )?(?:c\d+|me|them|him|her|my opponent|the opponent|opponent))\s+with\s+(?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->
+        Regex("""^(?:attacks?|attacking|swings? at|swinging at)\s+((?:an? |the |my |their |@\w+'s )?(?:c\d+|me|them|him|her|my opponent|the opponent|opponent|@\w+))\s+with\s+(?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val card = m.cards.getValue(r.groupValues[2])
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
-            val defender = targetsIn("at " + r.groupValues[1], m, ctx).ifEmpty { listOf(other(who) ?: "opp") }
+            val defender = targetsIn("at " + r.groupValues[1], m, ctx).ifEmpty { listOf(ctx.other(who) ?: "opp") }
             ctx.events += EventSpec("attack", player = who, obj = id, targets = defender); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
         }
         Regex("""^(?:attacks?|attacking|swings?|swinging)(?: with)?\s+(?:an? |the |my |their )?(c\d+)(.*)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val card = m.cards.getValue(r.groupValues[1])
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
-            ctx.events += EventSpec("attack", player = who, obj = id, targets = targetsIn(r.groupValues[2], m, ctx).ifEmpty { listOf(other(who) ?: "opp") }); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
+            ctx.events += EventSpec("attack", player = who, obj = id, targets = targetsIn(r.groupValues[2], m, ctx).ifEmpty { listOf(ctx.other(who) ?: "opp") }); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
         }
         Regex("""^(?:blocks?|blocking)(?: it| that| the attacker)?(?: with)?\s+(?:an? |the |my |their |a single |one |just |only )?(c\d+)(.*)$""").find(c)?.let { r ->
             val attackerPlayer = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" }?.player
-            val who = actor ?: attackerPlayer?.let { other(it) } ?: subject ?: "opp"
+            val who = actor ?: attackerPlayer?.let { ctx.other(it) } ?: subject ?: "opp"
             val card = m.cards.getValue(r.groupValues[1])
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
-            val attacker = ctx.events.lastOrNull { it.verb == "attack" }?.obj
+            // The attacker being blocked: the last creature declared attacking this player, else the last attacker.
+            val attacker = ctx.events.lastOrNull { it.verb == "attack" && who in it.targets }?.obj ?: ctx.events.lastOrNull { it.verb == "attack" }?.obj
             ctx.events += EventSpec("block", player = who, obj = id, targets = listOfNotNull(attacker)); ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
         // Damage as a given: "C1 deals 3 damage to <ref>".
@@ -348,7 +467,7 @@ class SituationParser(private val names: NameIndex) {
         if (r.isEmpty()) return emptyList()
         val seg = Regex("""^(?:targeting|target|on|at|to|into)\s+(.*)$""").find(r)?.groupValues?.get(1)
             ?: Regex("""^(?:my own|their own)\s+(.*)$""").find(r)?.groupValues?.get(1)
-            ?: r.takeIf { Regex("""^(it|that|them|me|the|my|their|c\d+)\b""").containsMatchIn(it) }
+            ?: r.takeIf { Regex("""^(it|that|them|me|the|my|their|c\d+|@\w+)\b""").containsMatchIn(it) }
             ?: return emptyList()
         val out = mutableListOf<String>()
         // Triggers/abilities of a card: "the C2 trigger", "C2's trigger(ed ability)", "C2's ability".
@@ -371,16 +490,24 @@ class SituationParser(private val names: NameIndex) {
             objectIdFor(card, ctx)?.let { out += it; return out }
             if (card.display in ctx.castCards) { out += slug(card.display) + ":spell"; return out }
             // A permanent mentioned for the first time as a target: assume it's on the battlefield under the other player.
-            val owner = when { seg.contains("my ") -> "me"; seg.contains("their ") -> "opp"; else -> other(ctx.lastActor) ?: "me" }
+            val owner = when { seg.contains("my ") -> "me"; Regex("""@(\w+)'s""").containsMatchIn(seg) -> Regex("""@(\w+)'s""").find(seg)!!.groupValues[1].also { ctx.players.putIfAbsent(it, m.players[it] ?: it) }; seg.contains("their ") -> pronounPlayer(ctx, "their"); else -> ctx.other(ctx.lastActor) ?: "me" }
             out += addObject(card, owner, false, ctx)
-            ctx.notes += "${card.display} wasn't mentioned before; assuming it's on the battlefield under ${if (owner == "me") "your" else "your opponent's"} control."
+            ctx.notes += "${card.display} wasn't mentioned before; assuming it's on the battlefield under ${when (owner) { "me" -> "your"; "opp" -> "your opponent's"; else -> (ctx.players[owner] ?: owner) + "'s" }} control."
             return out
         }
         if (Regex("""^(it|that|that spell|the spell)\b""").containsMatchIn(seg)) {
-            ctx.lastMentioned?.let { lm -> out += if (lm.startsWith("cast:")) lm.removePrefix("cast:") + ":spell" else lm; return out }
+            // "it" is the last thing mentioned; when that was a spell just cast, what that spell targeted is the other reading
+            // ("Bob bolts my Bears, I respond with Giant Growth on it"). The judge picks whichever the new spell can target.
+            val candidates = LinkedHashSet<String>()
+            ctx.lastMentioned?.let { lm -> candidates += if (lm.startsWith("cast:")) lm.removePrefix("cast:") + ":spell" else lm }
+            if (ctx.lastMentioned?.startsWith("cast:") == true) ctx.events.lastOrNull { it.verb == "cast" }?.targets?.filter { it in ctx.objects }?.let { candidates += it }
+            // After a block, "it" may be the blocker or the creature it blocks.
+            ctx.events.lastOrNull()?.takeIf { it.verb == "block" }?.let { b -> candidates += listOfNotNull(b.obj) + b.targets.filter { it in ctx.objects } }
+            if (candidates.isNotEmpty()) { out += candidates.joinToString("|"); return out }
         }
-        if (Regex("""^(me|my face|myself)\b""").containsMatchIn(seg)) { out += "me"; return out }
-        if (Regex("""^(them|their face|my opponent|the opponent|opponent|opp|him|her)\b""").containsMatchIn(seg)) { out += "opp"; return out }
+        if (Regex("""^(me|my face|myself)\b""").containsMatchIn(seg)) { out += "me"; ctx.usesMe = true; return out }
+        Regex("""^@(\w+)(?!'s)\b""").find(seg)?.let { r -> val id = r.groupValues[1]; ctx.players.putIfAbsent(id, m.players[id] ?: id); ctx.note(id); out += id; return out }
+        if (Regex("""^(them|their face|my opponent|the opponent|opponent|opp|him|her)\b""").containsMatchIn(seg)) { out += pronounPlayer(ctx, Regex("""^(\w+)""").find(seg)!!.groupValues[1]); return out }
         return out
     }
 

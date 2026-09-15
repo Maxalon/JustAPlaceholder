@@ -274,6 +274,9 @@ class Engine(val state: GameState) {
         state.step = "declare_blockers"
         if (!b.def.isCreature || !b.isOnBattlefield()) { trace.step("${b.name} isn't a creature on the battlefield, so it can't block.", "506.3"); return }
         if (a.attacking == null) { trace.step("${a.name} isn't attacking, so ${b.name} can't block it.", "509.1a"); return }
+        // A creature may only block an attacker that is attacking its controller, a planeswalker they control, or a battle they protect.
+        val defendsAgainst = when (val d = a.attacking) { is Ref.Player -> d.id == playerId; is Ref.Obj -> state.objects[d.id]?.controller == playerId; else -> true }
+        if (!defendsAgainst) { trace.step("${a.name} is attacking ${state.nameOf(a.attacking!!)}, not ${p.subject.lowercase()}${if (p.you) "" else " or a planeswalker ${p.subject} controls"}, so ${b.name} can't block it.", "509.1a"); state.outcomes += "${b.name} can't block ${a.name} (it isn't attacking ${p.subject.lowercase()})."; return }
         if (b.tapped == true) { trace.step("${b.name} is tapped, so it can't block.", "509.1a"); state.outcomes += "${b.name} can't block (tapped)."; return }
         if (cant(b, "block")) { trace.step("${b.name} can't block (its own rules text says so).", "509.1b"); state.outcomes += "${b.name} can't block."; return }
         if (cant(a, "be blocked")) { trace.step("${a.name} can't be blocked.", "509.1b"); state.outcomes += "${b.name} can't block ${a.name}."; return }
@@ -511,8 +514,13 @@ class Engine(val state: GameState) {
             is Effect.UnlessPays -> {
                 val payer = resolveWho(effect.payer, item)
                 trace.step("${payer?.subject ?: "The named player"} may pay ${effect.cost}. If ${if (payer?.you == true) "you do" else "they do"}, nothing more happens; if not: ${describe(effect.effect, item)}.", "608.2g", "117.3d")
-                state.assumptions += "${payer?.subject ?: "The player"} ${payer?.v("does", "do") ?: "does"} not pay ${effect.cost} for ${item.describe}."
-                applyEffect(effect.effect, item)
+                if (payer != null && state.willPay.remove(payer.id)) {
+                    trace.step("${payer.subject} ${payer.v("pays", "pay")} ${effect.cost}, so ${item.describe} does nothing more.", "608.2g")
+                    state.outcomes += "${payer.subject} ${payer.v("pays", "pay")} ${effect.cost}; ${item.describe} has no further effect."
+                } else {
+                    state.assumptions += "${payer?.subject ?: "The player"} ${payer?.v("does", "do") ?: "does"} not pay ${effect.cost} for ${item.describe}."
+                    applyEffect(effect.effect, item)
+                }
             }
             is Effect.Draw -> {
                 val players = resolvePlayers(effect.who, item)
