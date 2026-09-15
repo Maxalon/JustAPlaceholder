@@ -134,6 +134,10 @@ What happens next, in order. The engine applies these to the described state.
 | `pay` | `player`, `to`: `yes` / `no` (whether the player pays the next "unless … pays" cost asked of them) |
 | `draw` | `player`, `amount` (a player draws outside any effect; draw triggers see it) |
 | `regenerate` | `object` (the permanent has a regeneration shield this turn) |
+| `sacrifice` | `player`, `object` |
+
+`activate` also accepts `to: "mana"` (the object's mana ability) or a loyalty cost such as `"+1"`.
+An object's `card` may name a generic token: `"5/5 Zombie token"`, `"Treasure token"`, `"1/1 white Soldier creature token"`.
 
 `cast` also accepts `to: "overload"` (cast for the overload cost, every "target" read as "each") and a
 generic `card` such as `"a spell"`, `"a creature spell"` or `"an instant"` for spells whose identity

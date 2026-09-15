@@ -5,6 +5,7 @@ import mtg.judge.carddb.CardRepo
 import mtg.judge.carddb.Resolution
 import mtg.judge.cr.RulesRepo
 import mtg.judge.engine.CardDef
+import mtg.judge.engine.Effect
 import mtg.judge.engine.Engine
 import mtg.judge.engine.GameObject
 import mtg.judge.engine.GameState
@@ -98,6 +99,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, e.modes, overload = e.to == "overload")
             }
             "draw" -> engine.draw(e.player ?: throw JudgeException("draw needs a player"), e.amount ?: 1)
+            "sacrifice" -> { val objId = e.obj ?: throw JudgeException("sacrifice needs an object"); engine.sacrifice(e.player ?: state.obj(objId).controller, objId) }
             "regenerate" -> { val o = state.obj(e.obj ?: throw JudgeException("regenerate needs an object")); state.shields += mtg.judge.engine.Shield(mtg.judge.engine.Replacement.Regenerate, o.id, null, 1, "a regeneration effect") }
             "pay" -> {
                 val who = e.player ?: throw JudgeException("pay needs a player")
@@ -107,7 +109,9 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 val objId = e.obj ?: throw JudgeException("activate needs an object")
                 val obj = state.obj(objId)
                 // "+1" / "-3" names a loyalty ability by its cost.
-                val idx = e.abilityIndex ?: e.to?.let { cost -> obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { it.cost.replace('\u2212', '-') == cost.replace('\u2212', '-') }.takeIf { it >= 0 } }
+                val idx = e.abilityIndex
+                    ?: e.to?.takeIf { it == "mana" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> a.effect is Effect.AddMana || (a.effect as? Effect.Seq)?.effects?.firstOrNull() is Effect.AddMana }.takeIf { it >= 0 } }
+                    ?: e.to?.let { cost -> obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { it.cost.replace('\u2212', '-') == cost.replace('\u2212', '-') }.takeIf { it >= 0 } }
                 engine.activate(e.player ?: obj.controller, objId, idx, targets)
             }
             "trigger" -> engine.assertTrigger(e.obj ?: throw JudgeException("trigger needs an object"), e.abilityIndex, targets)
@@ -136,6 +140,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "activate" -> "${who ?: "controller"} ${if (who == "you") "activate" else "activates"} ${state.objects[e.obj]?.name ?: e.obj}${e.to?.takeIf { e.abilityIndex == null && Regex("""^[+\u2212-]?\d+$""").matches(it) }?.let { " ($it)" } ?: ""}$tg"
             "trigger" -> "${state.objects[e.obj]?.name ?: e.obj}'s ability triggers$tg"
             "regenerate" -> "${state.objects[e.obj]?.name ?: e.obj} has a regeneration shield"
+            "sacrifice" -> "${who ?: "controller"} ${if (who == "you") "sacrifice" else "sacrifices"} ${state.objects[e.obj]?.name ?: e.obj}"
             "draw" -> "${who ?: "the player"} ${if (who == "you") "draw" else "draws"} ${e.amount ?: 1} card${if ((e.amount ?: 1) > 1) "s" else ""}"
             "pay" -> "${who ?: "the player"} ${if (e.to == "no") "${if (who == "you") "don't" else "doesn't"} pay" else "${if (who == "you") "pay" else "pays"}"}"
             "resolve", "pass" -> "the top of the stack resolves"
@@ -188,6 +193,17 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
     /** "a spell", "an instant", "a creature spell": a stand-in card with no rules text, for "my opponent casts three spells". */
     private fun genericDef(name: String): CardDef? {
         val n = name.lowercase().removePrefix("a ").removePrefix("an ").trim()
+        // "5/5 zombie token", "2/2 zombie creature token", "treasure token", "1/1 white soldier token"
+        Regex("""^(?:(\d+)/(\d+) )?((?:white |blue |black |red |green |colorless )*)((?:[a-z]+ )*?)(?:creature |artifact )?tokens?$""").matchEntire(n)?.let { m ->
+            val colorMap = mapOf("white" to "W", "blue" to "U", "black" to "B", "red" to "R", "green" to "G")
+            val colors = m.groupValues[3].trim().split(' ').filter { it.isNotEmpty() }.mapNotNull { colorMap[it] }.joinToString("")
+            val subs = m.groupValues[4].trim().split(' ').filter { it.isNotEmpty() }.joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+            val creature = m.groupValues[1].isNotEmpty()
+            val artifactToken = subs.equals("Treasure", true) || subs.equals("Food", true) || subs.equals("Clue", true)
+            val typeLine = if (creature) "Token Creature — $subs" else if (artifactToken) "Token Artifact — $subs" else "Token — $subs"
+            val text = when (subs) { "Treasure" -> "{T}, Sacrifice this token: Add one mana of any color."; "Food" -> "{2}, {T}, Sacrifice this token: You gain 3 life."; "Clue" -> "{2}, Sacrifice this token: Draw a card."; else -> "" }
+            return OracleParser.parse("generic-token-$n", if (subs.isEmpty()) "token" else "$subs token", typeLine, null, 0.0, colors, m.groupValues[1].ifEmpty { null }, m.groupValues[2].ifEmpty { null }, emptyList(), text)
+        }
         val typeLine = when (n) {
             "spell", "instant", "instant spell", "noncreature spell" -> "Instant"
             "sorcery", "sorcery spell" -> "Sorcery"

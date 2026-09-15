@@ -17,6 +17,10 @@ class Engine(val state: GameState) {
     fun cast(playerId: String, card: CardDef, targets: List<Ref>, objectId: String? = null, modes: List<Int> = emptyList(), overload: Boolean = false): StackItem? {
         val player = state.player(playerId)
         val obj = objectId?.let { state.objects[it] } ?: state.add(GameObject(objectId ?: freshObjectId(card.name), card, Zone.HAND, playerId))
+        state.stack.firstOrNull { it.kind == StackKind.SPELL && it.source.def.has("split second") }?.let { ss ->
+            trace.step("${ss.source.name} has split second and is on the stack, so players can't cast spells or activate abilities that aren't mana abilities. ${card.name} can't be cast now.", "702.61a")
+            state.outcomes += "${card.name} can't be cast while ${ss.source.name} is on the stack (split second)."; return null
+        }
         if (overload) return castOverloaded(playerId, card, obj)
         if ("Land" in card.types && !card.isInstantOrSorcery) {
             // Lands aren't cast: playing one is a special action that doesn't use the stack.
@@ -71,6 +75,15 @@ class Engine(val state: GameState) {
         trace.step("${player.subject} ${player.v("receives", "receive")} priority again after casting.", "117.3c")
     }
 
+    /** "I sacrifice X": its controller moves it from the battlefield to its owner's graveyard (701.21a). */
+    fun sacrifice(playerId: String, objectId: String) {
+        val o = state.obj(objectId); val p = state.player(playerId)
+        if (!o.isOnBattlefield()) { trace.step("${o.name} isn't on the battlefield, so it can't be sacrificed.", "701.21a"); return }
+        if (o.controller != playerId) { trace.step("${p.subject} ${p.v("doesn't", "don't")} control ${o.name}, so ${p.subject.lowercase()} can't sacrifice it.", "701.21a"); return }
+        move(o, Zone.GRAVEYARD, "${p.subject} ${p.v("sacrifices", "sacrifice")} ${o.name}: it goes from the battlefield to its owner's graveyard. Sacrificing isn't destroying, so indestructible and regeneration don't help.", "701.21a")
+        stateBasedActions()
+    }
+
     /** A player draws cards outside any effect ("my opponent draws a card"): each draw is an event triggers can see. */
     fun draw(playerId: String, count: Int) {
         val who = state.player(playerId)
@@ -88,6 +101,11 @@ class Engine(val state: GameState) {
             return null
         }
         val ability = abilities[abilityIndex ?: 0]
+        val isMana = ability.effect is Effect.AddMana || (ability.effect is Effect.Seq && (ability.effect as Effect.Seq).effects.firstOrNull() is Effect.AddMana)
+        if (!isMana) state.stack.firstOrNull { it.kind == StackKind.SPELL && it.source.def.has("split second") }?.let { ss ->
+            trace.step("${ss.source.name} has split second and is on the stack, so abilities that aren't mana abilities can't be activated. ${obj.name}'s ability can't be activated now.", "702.61a")
+            state.outcomes += "${obj.name}'s ability can't be activated while ${ss.source.name} is on the stack (split second)."; return null
+        }
         if (ability.effect is Effect.AddMana || (ability.effect is Effect.Seq && (ability.effect as Effect.Seq).effects.firstOrNull() is Effect.AddMana)) {
             val p = state.player(playerId)
             trace.step("${p.subject} ${p.v("activates", "activate")} ${obj.name}'s mana ability (${ability.cost}). It's a mana ability, so it doesn't use the stack and resolves immediately: ${describeManaEffect(ability.effect)}.", "605.1a", "605.3b")
@@ -249,6 +267,13 @@ class Engine(val state: GameState) {
         var changed = true; var rounds = 0
         while (changed && rounds++ < 10) {
             changed = false
+            // 704.5j, the "legend rule": one legendary permanent with a given name per player.
+            state.objects.values.filter { it.isOnBattlefield() && "Legendary" in it.def.supertypes }.groupBy { it.controller to it.name }.values.filter { it.size > 1 }.forEach { group ->
+                val keep = group.maxByOrNull { it.timestamp }!!
+                val p = state.player(keep.controller)
+                for (o in group) if (o !== keep) { move(o, Zone.GRAVEYARD, "${p.subject} ${p.v("controls", "control")} two legendary permanents named ${o.name}; ${p.subject.lowercase()} ${p.v("chooses", "choose")} one and the other is put into its owner's graveyard (the \"legend rule\", a state-based action).", "704.3", "704.5j"); changed = true }
+                state.assumptions += "${p.subject} ${p.v("keeps", "keep")} the newer ${keep.name} (704.5j lets ${p.subject.lowercase()} choose which)."
+            }
             for (obj in state.objects.values.toList()) {
                 if (!obj.isOnBattlefield()) continue
                 if (obj.def.isCreature) {
@@ -315,6 +340,7 @@ class Engine(val state: GameState) {
 
     /** Declare one blocker for one attacker (509.1). Legality of evasion abilities is checked here; menace is re-checked when damage is dealt. */
     fun declareBlocker(playerId: String, blockerId: String, attackerId: String) {
+        emptyStackFirst("declaring blockers")
         val b = state.obj(blockerId); val a = state.obj(attackerId); val p = state.player(playerId)
         state.step = "declare_blockers"
         if (!b.def.isCreature || !b.isOnBattlefield()) { trace.step("${b.name} isn't a creature on the battlefield, so it can't block.", "506.3"); return }
@@ -447,6 +473,14 @@ class Engine(val state: GameState) {
     }
 
     private fun onEvent(event: GameEvent) {
+        // Torpor Orb / Hushbringer: creatures entering (or dying) don't cause abilities to trigger.
+        val hush = state.objects.values.filter { it.isOnBattlefield() }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.NoEtbTriggers>().map { o to it } }
+        val muted = hush.firstOrNull { (_, e) -> (event is GameEvent.EntersBattlefield && event.obj.def.isCreature) || (e.alsoDies && event is GameEvent.Dies && event.obj.def.isCreature) }
+        if (muted != null) {
+            val what = if (event is GameEvent.EntersBattlefield) "${event.obj.name} entering the battlefield" else "${(event as GameEvent.Dies).obj.name} dying"
+            trace.step("${muted.first.name} is on the battlefield, so $what doesn't cause any abilities to trigger (its own \"when this enters\" abilities included).", "603.2", "603.6")
+            return
+        }
         val triggered = mutableListOf<Pair<GameObject, TriggeredAbility>>()
         for (obj in state.objects.values) {
             for (ability in obj.def.abilities.filterIsInstance<TriggeredAbility>()) {
@@ -543,8 +577,21 @@ class Engine(val state: GameState) {
 
     private fun putTriggerOnStack(obj: GameObject, ability: TriggeredAbility, targets: List<Ref>, causedBy: String? = null): StackItem? {
         val needed = ability.effect.targets()
+        var targets = targets
+        if (needed.size == 1 && targets.isEmpty()) {
+            // A trigger nobody named a target for: the only legal target, or for "target player"/"target opponent" the one opponent.
+            val spec = needed[0]
+            val inferred = inferTarget("${obj.name}'s triggered ability", spec, obj.controller)
+                ?: if (spec.filter.kinds == setOf(Kind.PLAYER) && state.opponentsOf(obj.controller).size == 1) {
+                    state.clarifications.removeAll { it.about == "${obj.name}'s triggered ability's target" }
+                    val opp = state.opponentsOf(obj.controller).single()
+                    state.assumptions += "${obj.name}'s triggered ability targets ${state.nameOf(Ref.Player(opp.id))} (\"${spec.raw}\"; assuming the opponent, not ${state.player(obj.controller).subject.lowercase()})."
+                    listOf(Ref.Player(opp.id))
+                } else null
+            if (inferred != null) targets = inferred
+        }
         if (needed.size > targets.size) {
-            state.clarifications += Clarification("${obj.name}'s trigger target", "${obj.name}'s triggered ability needs a target (${needed.joinToString("; ") { it.raw }}); which? (603.3d)")
+            if (state.clarifications.none { it.about == "${obj.name}'s triggered ability's target" }) state.clarifications += Clarification("${obj.name}'s trigger target", "${obj.name}'s triggered ability needs a target (${needed.joinToString("; ") { it.raw }}); which? (603.3d)")
             return null
         }
         val item = StackItem(state.newStackId(), StackKind.TRIGGERED, obj.controller, obj, ability.effect, targets, zonesOf(targets), ability.text, causedBy = causedBy)
@@ -642,7 +689,7 @@ class Engine(val state: GameState) {
                 affected.forEach { state.outcomes += "${it.name} is ${it.power}/${it.toughness} until end of turn." }
             }
             is Effect.PutCounters -> {
-                val put: (GameObject) -> Unit = { o -> o.counters[effect.kind] = (o.counters[effect.kind] ?: 0) + effect.count; trace.step("${effect.count} ${effect.kind} counter${if (effect.count > 1) "s are" else " is"} put on ${o.name}${if (o.def.isCreature) "; it's now ${o.power}/${o.toughness}" else ""}.", "122.1a", "122.6"); state.outcomes += "${o.name} has ${o.counters[effect.kind]} ${effect.kind} counter${if (o.counters[effect.kind]!! > 1) "s" else ""}." }
+                val put: (GameObject) -> Unit = { o -> val n = countersPlaced(o, effect.count, effect.kind); o.counters[effect.kind] = (o.counters[effect.kind] ?: 0) + n; trace.step("$n ${effect.kind} counter${if (n > 1) "s are" else " is"} put on ${o.name}${if (o.def.isCreature) "; it's now ${o.power}/${o.toughness}" else ""}.", "122.1a", "122.6"); state.outcomes += "${o.name} has ${o.counters[effect.kind]} ${effect.kind} counter${if (o.counters[effect.kind]!! > 1) "s" else ""}." }
                 if (effect.all != null) { val affected = state.objects.values.filter { state.matches(effect.all, it, item.controller, item.source) }; if (affected.isEmpty()) trace.step("No permanents match \"${effect.all.raw}\", so no counters are put anywhere.", "122.6") else affected.forEach(put) }
                 else if (effect.target == null) { if (item.source.isOnBattlefield()) put(item.source) else trace.step("${item.source.name} isn't on the battlefield, so no counters are put on it.", "122.6") }
                 else forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let(put) }
@@ -699,13 +746,13 @@ class Engine(val state: GameState) {
 
     /** "Enters tapped" / "enters with N counters": replacement effects that modify how it enters (614.1c, 614.12). */
     private fun applyEntersReplacements(o: GameObject) {
-        if (o.def.isPlaneswalker && o.def.loyalty != null) { o.counters["loyalty"] = o.def.loyalty; trace.step("${o.name} enters with ${o.def.loyalty} loyalty counters.", "306.5b") }
+        if (o.def.isPlaneswalker && o.def.loyalty != null) { val n = countersPlaced(o, o.def.loyalty, "loyalty"); o.counters["loyalty"] = n; trace.step("${o.name} enters with $n loyalty counters.", "306.5b"); state.outcomes += "${o.name} has $n loyalty." }
         for (e in o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }) when (e) {
             is StaticEffect.EntersTapped -> {
                 if (e.unless != null && state.conditionHolds(e.unless, o)) trace.step("${o.name} would enter tapped unless its condition is met; it is, so it enters untapped.", "614.1c", "614.12")
                 else { o.tapped = true; trace.step("${o.name} enters tapped (a replacement effect on how it enters${if (e.unless != null) "; its condition isn't met" else ""}).", "614.1c", "614.12") }
             }
-            is StaticEffect.EntersWithCounters -> if (e.count != null) { o.counters[e.kind] = (o.counters[e.kind] ?: 0) + e.count; trace.step("${o.name} enters with ${e.count} ${e.kind} counter${if (e.count > 1) "s" else ""} on it.", "614.1c", "122.6") }
+            is StaticEffect.EntersWithCounters -> if (e.count != null) { val n = countersPlaced(o, e.count, e.kind); o.counters[e.kind] = (o.counters[e.kind] ?: 0) + n; trace.step("${o.name} enters with $n ${e.kind} counter${if (n > 1) "s" else ""} on it.", "614.1c", "122.6") }
                 else { state.clarifications += Clarification("${o.name}'s X", "${o.name} enters with X ${e.kind} counters; what was X?") }
             else -> {}
         }
@@ -814,6 +861,14 @@ class Engine(val state: GameState) {
         }
         if (source != null && target !is Ref.Stack) onEvent(GameEvent.DamageDealt(source, target, amount, inCombatDamage))
         return amount
+    }
+
+    /** Doubling Season and friends: how many counters actually land on [o] when [n] would be placed. */
+    private fun countersPlaced(o: GameObject, n: Int, kind: String): Int {
+        var out = n
+        state.objects.values.filter { it.isOnBattlefield() && it.controller == o.controller }.flatMap { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.CounterMultiplier }.map { src to it } }
+            .forEach { (src, m) -> trace.step("${src.name} replaces the counter placement: ${out * m.factor} $kind counters are put on ${o.name} instead of $out.", "614.1a", "614.6"); out *= m.factor }
+        return out
     }
 
     private fun gainLife(p: Player, amount: Int) {
@@ -993,7 +1048,13 @@ class Engine(val state: GameState) {
     private fun resolveWho(who: Who, item: StackItem): Player? = when (who) {
         Who.YOU -> state.player(item.controller)
         Who.OPPONENT -> state.opponentsOf(item.controller).singleOrNull() ?: run { state.clarifications += Clarification("which opponent", "${item.describe} refers to an opponent and there are several."); null }
-        Who.THAT_PLAYER, Who.TARGET_PLAYER -> item.targets.filterIsInstance<Ref.Player>().firstOrNull()?.let { state.player(it.id) } ?: causingPlayer(item)
+        Who.THAT_PLAYER -> item.targets.filterIsInstance<Ref.Player>().firstOrNull()?.let { state.player(it.id) } ?: causingPlayer(item)
+        Who.TARGET_PLAYER -> item.targets.filterIsInstance<Ref.Player>().firstOrNull()?.let { state.player(it.id) } ?: run {
+            // "Target player loses 1 life" with no target named: assume the one opponent (the sensible choice), and say so.
+            val opp = state.opponentsOf(item.controller).singleOrNull()
+            if (opp != null) state.assumptions += "${item.describe} targets ${if (opp.you) "you" else opp.name} (\"target player\" wasn't specified; assuming the opponent)."
+            opp
+        }
         Who.CONTROLLER_OF_TARGET -> item.targets.firstOrNull()?.let { ref -> when (ref) { is Ref.Obj -> state.player(state.obj(ref.id).controller); is Ref.Stack -> state.stackItem(ref.id)?.let { state.player(it.controller) }; is Ref.Player -> state.player(ref.id) } }
         Who.ANY_PLAYER -> null
         Who.EACH_PLAYER, Who.EACH_OPPONENT -> resolvePlayers(who, item).singleOrNull()

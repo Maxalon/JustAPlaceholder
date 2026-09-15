@@ -223,7 +223,8 @@ class GameState(
         val legOk = f.legendary == null || f.legendary == ("Legendary" in o.def.supertypes)
         val stateOk = (f.tapped == null || o.tapped == f.tapped) && (f.attacking == null || (o.attacking != null) == f.attacking)
         val powerOk = (f.minPower == null || (o.power ?: 0) >= f.minPower) && (f.maxPower == null || (o.power ?: 0) <= f.maxPower)
-        return typeOk && notOk && ctrlOk && subOk && kwOk && tokenOk && legOk && stateOk && powerOk
+        val colorOk = f.colors.all { it in o.def.colors } && f.notColors.none { it in o.def.colors }
+        return typeOk && notOk && ctrlOk && subOk && kwOk && tokenOk && legOk && stateOk && powerOk && colorOk
     }
 
     fun player(id: String): Player = players.firstOrNull { it.id == id } ?: throw JudgeException("Unknown player '$id'")

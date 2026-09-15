@@ -34,6 +34,9 @@ data class ObjFilter(
     val maxPower: Int? = null,
     /** "a Plains or an Island": any one of [subtypes] suffices instead of all of them. */
     val subtypesAny: Boolean = false,
+    /** "black creature" / "nonblack creature": colour letters (W U B R G) required / forbidden. */
+    val colors: Set<Char> = emptySet(),
+    val notColors: Set<Char> = emptySet(),
 ) {
     val verifiable get() = unknownWords.isEmpty()
 }
@@ -186,6 +189,8 @@ sealed interface StaticEffect {
     /** "~ enters with N +1/+1 counters on it" (614.1c). count null = X. */
     data class EntersWithCounters(val kind: String, val count: Int?) : StaticEffect
     /** "~ can't block" / "~ can't attack" / "~ can't be countered" / "~ can't be blocked". */
+    /** "Creatures entering the battlefield (or dying) don't cause abilities to trigger." (Torpor Orb, Hushbringer) */
+    data class NoEtbTriggers(val alsoDies: Boolean) : StaticEffect
     /** "~ can't attack" / "~ can't be blocked by [filter]" (`by` restricts which blockers the rule applies to). */
     data class Cant(val what: String, val by: ObjFilter? = null) : StaticEffect
     /** Cost modifiers and additional costs: narrated when the spell is cast (601.2b, 601.2f). */
@@ -208,6 +213,8 @@ sealed interface Replacement {
     data class DamageMultiplier(val factor: Int, val sourceControl: Who?) : Replacement
     /** "If you would gain life, you gain twice that much life instead." */
     data class LifeGainMultiplier(val factor: Int) : Replacement
+    /** "If an effect would place one or more counters on a permanent you control, it places twice that many instead." (Doubling Season) */
+    data class CounterMultiplier(val factor: Int) : Replacement
     /** Regeneration shield: the next time it would be destroyed this turn (701.19a). */
     data object Regenerate : Replacement
 }

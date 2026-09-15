@@ -617,5 +617,101 @@
       "702.96a",
       "400.7"
     ]
+  },
+  {
+    "id": "sac-outlet-blood-artist",
+    "text": "I control two Grizzly Bears and Blood Artist. I sacrifice a Bears to Viscera Seer.",
+    "expect": [
+      "opponent loses 1 life",
+      "You gain 1 life"
+    ],
+    "cite": [
+      "701.21a",
+      "603.2"
+    ]
+  },
+  {
+    "id": "generic-token-doom-blade",
+    "text": "My opponent has a 5/5 Zombie token. I cast Doom Blade on it.",
+    "expect": [
+      "Zombie token: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "701.8a"
+    ]
+  },
+  {
+    "id": "legend-rule",
+    "text": "I cast a second Sheoldred, the Apocalypse while I already control one.",
+    "expect": [
+      "Sheoldred, the Apocalypse: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5j"
+    ]
+  },
+  {
+    "id": "flash-blocker",
+    "text": "My opponent attacks me with Grizzly Bears. I flash in Ambush Viper and block.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "704.5g",
+      "500.2"
+    ]
+  },
+  {
+    "id": "torpor-orb",
+    "text": "I control Torpor Orb. I cast Solemn Simulacrum.",
+    "expect": [
+      "Solemn Simulacrum enters the battlefield"
+    ],
+    "cite": [
+      "603.6"
+    ]
+  },
+  {
+    "id": "split-second",
+    "text": "Opponent casts Krosan Grip on my Sol Ring. I respond with Cyclonic Rift on Krosan Grip.",
+    "expect": [
+      "Cyclonic Rift can't be cast while Krosan Grip is on the stack (split second)",
+      "Sol Ring: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "702.61a"
+    ]
+  },
+  {
+    "id": "kaalia-avacyn-wrath",
+    "text": "My commander Kaalia of the Vast attacks and its trigger puts Avacyn, Angel of Hope onto the battlefield. Then Wrath of God resolves.",
+    "expect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "doubling-season-jace",
+    "text": "I control Doubling Season and cast Jace Beleren.",
+    "expect": [
+      "Jace Beleren has 6 loyalty"
+    ],
+    "cite": [
+      "614.1a",
+      "306.5b"
+    ]
+  },
+  {
+    "id": "tap-for-mana-then-bolt",
+    "text": "I tap Llanowar Elves for mana and then my opponent casts Lightning Bolt on it.",
+    "expect": [
+      "Llanowar Elves's mana ability: add {G}",
+      "Llanowar Elves: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "605.3b"
+    ]
   }
 ]

@@ -197,6 +197,11 @@ object OracleParser {
             if (!f.verifiable) return Trigger.Unknown(c)
             return Trigger.PermanentEnters(f, m.groupValues[1].trim().equals("another", true))
         }
+        // "~ or another creature dies" (Blood Artist): any creature, this one included.
+        Regex("""^~ or another (.+?) dies$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
+            val f = parseFilter(m.groupValues[1], Kind.CREATURE)
+            return if (f.verifiable) Trigger.PermanentDies(f, false) else Trigger.Unknown(c)
+        }
         Regex("""^(another |a |an )?(.+?) dies$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
             if (m.groupValues[2].equals("~", true)) return Trigger.ThisDies
             val f = parseFilter(m.groupValues[2], Kind.CREATURE)
@@ -257,6 +262,7 @@ object OracleParser {
         }
         doublerRe.matchEntire(line)?.let { m -> return StaticEffect.Replace(Replacement.DamageMultiplier(2, when (m.groupValues[1].trim().lowercase()) { "you control" -> Who.YOU; "an opponent controls" -> Who.OPPONENT; else -> null })) }
         lifeDoubleRe.matchEntire(line)?.let { return StaticEffect.Replace(Replacement.LifeGainMultiplier(2)) }
+        Regex("""^if an effect would (?:place|put) one or more counters on a permanent you control, it (?:places|puts) twice that many of those counters on that permanent instead\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return StaticEffect.Replace(Replacement.CounterMultiplier(2)) }
         return null
     }
 
@@ -268,6 +274,7 @@ object OracleParser {
             val cond = parseCondition(m.groupValues[1]) ?: return emptyList()
             return listOf(StaticEffect.EntersTapped(cond))
         }
+        Regex("""^creatures entering(?: the battlefield)?( or dying)? don't cause abilities to trigger\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.NoEtbTriggers(m.groupValues[1].isNotEmpty())) }
         Regex("""^~ can't be blocked by (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val f = parseFilter(m.groupValues[1], Kind.CREATURE)
             return if (f.verifiable) listOf(StaticEffect.Cant("be blocked", f)) else emptyList()
@@ -570,6 +577,7 @@ object OracleParser {
         else -> w
     }
 
+    private val colorWords = mapOf("white" to 'W', "blue" to 'U', "black" to 'B', "red" to 'R', "green" to 'G')
     private val kindWords = mapOf(
         "creature" to Kind.CREATURE, "creatures" to Kind.CREATURE, "artifact" to Kind.ARTIFACT, "enchantment" to Kind.ENCHANTMENT,
         "land" to Kind.LAND, "planeswalker" to Kind.PLANESWALKER, "battle" to Kind.BATTLE, "permanent" to Kind.PERMANENT,
@@ -591,6 +599,7 @@ object OracleParser {
         var attacking: Boolean? = null; var tapped: Boolean? = null; var token: Boolean? = null; var legendary: Boolean? = null; var attachedToSource = false
         // "with flying" / "with reach or flying" -> keyword requirements
         var minPower: Int? = null; var maxPower: Int? = null
+        val colors = mutableSetOf<Char>(); val notColors = mutableSetOf<Char>()
         Regex("""\s+with power (\d+) or (greater|less)$""").find(core)?.let { m ->
             if (m.groupValues[2] == "greater") minPower = m.groupValues[1].toInt() else maxPower = m.groupValues[1].toInt()
             core = core.removeRange(m.range)
@@ -602,7 +611,10 @@ object OracleParser {
         val subtypesAny = Regex("""\bor\b""").containsMatchIn(core)
         for (w in core.split(Regex("""[\s,]+|\bor\b""")).map { it.trim() }.filter { it.isNotEmpty() }) {
             when {
+                w in colorWords -> colors += colorWords.getValue(w)
+                w.startsWith("non") && w.removePrefix("non") in colorWords -> notColors += colorWords.getValue(w.removePrefix("non"))
                 w in kindWords -> kinds += kindWords.getValue(w)
+                singular(w) in kindWords -> kinds += kindWords.getValue(singular(w))
                 w.startsWith("non") && w.removePrefix("non") in kindWords -> notKinds += kindWords.getValue(w.removePrefix("non"))
                 w == "activated" || w == "triggered" -> { /* ability qualifiers: both counterable the same way */ }
                 w == "attacking" -> attacking = true
@@ -623,6 +635,6 @@ object OracleParser {
         if (kinds.isEmpty() && subtypes.isNotEmpty()) kinds += if (subtypes.all { it in landTypes }) Kind.LAND else Kind.CREATURE
         if (kinds.isEmpty() && notKinds.isNotEmpty()) kinds += defaultKind ?: Kind.PERMANENT
         if (kinds.isEmpty() && defaultKind != null) kinds += defaultKind
-        return ObjFilter(kinds, notKinds, controller, attacking, tapped, unknown, desc, subtypes, keywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1)
+        return ObjFilter(kinds, notKinds, controller, attacking, tapped, unknown, desc, subtypes, keywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1, colors = colors, notColors = notColors)
     }
 }
