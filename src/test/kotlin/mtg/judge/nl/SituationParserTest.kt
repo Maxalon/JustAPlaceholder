@@ -103,4 +103,23 @@ class SituationParserTest {
         assertTrue(p.situation.events.isEmpty() && p.situation.objects.isEmpty())
         assertEquals(1, p.unread.size)
     }
+
+    @Test
+    fun `repeat casts, library size, with-lists, questions, his minus one and named responses`() {
+        val p = parser.parse("I have Sol Ring and cast Stifle on it twice. I have no cards left in my library.")
+        assertEquals(listOf("cast", "cast", "resolveAll"), p.situation.events.map { it.verb })
+        assertEquals(listOf("sol_ring"), p.situation.events[1].targets)
+        assertEquals(0, p.situation.players.first { it.id == "me" }.librarySize)
+        val q = parser.parse("My opponent casts Stifle with Sol Ring and Time Vault on the battlefield under my control.")
+        assertEquals(setOf("Sol Ring", "Time Vault"), q.situation.objects.map { it.card.name }.toSet())
+        assertTrue(q.situation.objects.all { it.controller == "me" })
+        val r = parser.parse("Bob casts Stifle at Alice's Sol Ring. Alice responds by casting Rhystic Study. Does Sol Ring survive?")
+        assertEquals("bob", r.situation.events[0].player); assertEquals("alice", r.situation.events[1].player)
+        assertTrue(r.unread.isEmpty(), "unread: ${r.unread}"); assertTrue(r.notes.any { "survive" in it })
+        val t = parser.parse("I have Time Vault. I use its +1 targeting my opponent.")
+        val act = t.situation.events.first { it.verb == "activate" }
+        assertEquals("time_vault", act.obj); assertEquals("+1", act.to); assertEquals(listOf("opp"), act.targets)
+        val u = parser.parse("I cast Sol Ring with evoke.")
+        assertEquals("evoke", u.situation.events.first().to)
+    }
 }

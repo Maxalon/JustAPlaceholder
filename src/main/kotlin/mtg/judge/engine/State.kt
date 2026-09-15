@@ -8,6 +8,10 @@ class Player(val id: String, val name: String, var life: Int?) {
     var poison = 0
     /** Cards in hand, when the situation said so (Ensnaring Bridge). */
     var handSize: Int? = null
+    /** Cards in library, when the situation said so (empty-library draws, 704.5b). */
+    var librarySize: Int? = null
+    /** Tried to draw from an empty library since state-based actions were last checked (121.4). */
+    var drewFromEmpty = false
     /** Combat damage taken from each commander (903.10a), by object id. */
     val commanderDamage = mutableMapOf<String, Int>()
     /** The player asking the question is addressed as "you". */
@@ -87,6 +91,8 @@ class StackItem(
     val causedAmount: Int? = null,
     /** For triggered abilities: the object in the causing event ("that creature"). */
     val causedObject: String? = null,
+    /** Cast for its evoke cost (702.74a): sacrificed by its own trigger when it enters. */
+    val evoked: Boolean = false,
     /** The value chosen for X when this was cast or activated (107.3a). */
     val x: Int? = null,
     /** Whether the kicker cost was paid (702.33d). */
@@ -124,6 +130,8 @@ class GameState(
     /** Prevention/regeneration shields created by resolved effects this turn (615.7, 701.19a). */
     val shields = mutableListOf<Shield>()
     val outcomes = mutableListOf<String>()
+    /** The permanent most recently sacrificed (Fling's "the sacrificed creature's power"), with last-known information. */
+    var lastSacrificed: GameObject? = null
     val assumptions = mutableListOf<String>()
     /** Players who said they will pay the next "unless … pays" cost asked of them (Rhystic Study, Mana Leak…). */
     val willPay = mutableSetOf<String>()
@@ -226,8 +234,8 @@ class GameState(
     private fun sign(n: Int) = if (n >= 0) "+$n" else "$n"
 
     /** Whether a permanent matches a filter, relative to [controller] (the source's controller). Mirrors Engine.filterMatches for battlefield objects. */
-    fun matches(f: ObjFilter, o: GameObject, controller: String, source: GameObject? = null): Boolean {
-        if (!o.isOnBattlefield()) return false
+    fun matches(f: ObjFilter, o: GameObject, controller: String, source: GameObject? = null, anyZone: Boolean = false): Boolean {
+        if (!anyZone && !o.isOnBattlefield()) return false
         if (f.attachedToSource && (source == null || source.attachedTo != o.id)) return false
         val typeOk = f.kinds.any { k -> when (k) {
             Kind.CREATURE -> o.def.isCreature; Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types

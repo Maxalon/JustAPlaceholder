@@ -29,7 +29,7 @@ data class Situation(
 )
 
 @Serializable
-data class PlayerSpec(val id: String, val name: String = id, val life: Int? = null, val poison: Int? = null, val handSize: Int? = null)
+data class PlayerSpec(val id: String, val name: String = id, val life: Int? = null, val poison: Int? = null, val handSize: Int? = null, val librarySize: Int? = null)
 
 @Serializable
 data class TurnSpec(val activePlayer: String? = null, val phase: String? = null, val step: String? = null)

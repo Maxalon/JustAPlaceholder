@@ -34,10 +34,12 @@ Design rules:
 ## Player
 
 ```json
-{ "id": "me", "name": "me", "life": 40 }
+{ "id": "me", "name": "me", "life": 40, "poison": 0, "handSize": 3, "librarySize": 0 }
 ```
 
-`id` is a short handle used everywhere else (`me`, `opp`, `opp2`, or a name).
+`id` is a short handle used everywhere else (`me`, `opp`, `opp2`, or a name). `poison`, `handSize` and
+`librarySize` are optional and only matter when a card asks (Ensnaring Bridge counts the hand; drawing from
+an empty library loses the game, 704.5b).
 `life` may be `null` for unknown. The first player listed is the person asking
 unless stated otherwise.
 

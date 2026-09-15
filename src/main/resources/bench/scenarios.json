@@ -1637,5 +1637,207 @@
     "cite": [
       "120.3a"
     ]
+  },
+  {
+    "id": "giant-growth-twice",
+    "text": "I have Grizzly Bears and cast Giant Growth on it twice. Then my opponent bolts it.",
+    "expect": [
+      "Grizzly Bears is 8/8 until end of turn",
+      "Grizzly Bears has 3 damage marked"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield"
+    ],
+    "cite": [
+      "611.2a"
+    ]
+  },
+  {
+    "id": "short-name-the-angel",
+    "text": "I attack with Serra Angel. They block the Angel with Wall of Omens.",
+    "expect": [
+      "Wall of Omens can't block Serra Angel (flying)",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "702.9b"
+    ]
+  },
+  {
+    "id": "named-respond-by-casting",
+    "text": "Bob casts Lightning Bolt at Alice's Grizzly Bears. Alice responds by casting Brainstorm.",
+    "expect": [
+      "Alice draws 3 cards",
+      "Grizzly Bears: the battlefield → Alice's graveyard"
+    ],
+    "cite": [
+      "121.1"
+    ]
+  },
+  {
+    "id": "with-two-cards-out",
+    "text": "I cast Titania's Boon with Grizzly Bears and Hill Giant on the battlefield.",
+    "expect": [
+      "Hill Giant has 1 +1/+1 counter",
+      "Grizzly Bears has 1 +1/+1 counter"
+    ],
+    "cite": [
+      "122.6"
+    ]
+  },
+  {
+    "id": "avacyn-under-my-control",
+    "text": "My opponent casts Wrath of God with Avacyn, Angel of Hope on the battlefield under my control.",
+    "expect": [
+      "Avacyn, Angel of Hope is indestructible and isn't destroyed"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "then-bolt-it-after-response",
+    "text": "My opponent bolts my Grizzly Bears, I respond with Giant Growth. Then I cast Lightning Bolt on it.",
+    "expect": [
+      "Grizzly Bears is 5/5 until end of turn",
+      "Grizzly Bears has 6 damage marked",
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "evoke-mulldrifter",
+    "text": "I cast Mulldrifter with evoke.",
+    "expect": [
+      "Mulldrifter is sacrificed",
+      "You draw 2 cards"
+    ],
+    "cite": [
+      "702.74a",
+      "701.21a"
+    ]
+  },
+  {
+    "id": "evoke-under-torpor-orb",
+    "text": "My opponent has Torpor Orb. I cast Mulldrifter for its evoke cost.",
+    "expect": [
+      "Mulldrifter stays on the battlefield (its evoke trigger never triggered)"
+    ],
+    "notExpect": [
+      "You draw 2 cards"
+    ],
+    "cite": [
+      "702.74a",
+      "603.2"
+    ]
+  },
+  {
+    "id": "jace-his-minus-one",
+    "text": "I have Jace Beleren. I use his -1 targeting my opponent.",
+    "expect": [
+      "opponent draws 1 card"
+    ],
+    "cite": [
+      "606.3"
+    ]
+  },
+  {
+    "id": "fling-token",
+    "text": "I cast Fling sacrificing my 5/5 Beast token targeting my opponent.",
+    "expect": [
+      "opponent takes 5 damage"
+    ],
+    "cite": [
+      "608.2h",
+      "701.21a"
+    ]
+  },
+  {
+    "id": "draw-from-empty-library",
+    "text": "I have 0 cards in my library. My opponent casts Prosperity with X = 2.",
+    "expect": [
+      "You lose the game (drew from an empty library)",
+      "opponent draws 2 cards"
+    ],
+    "cite": [
+      "121.4",
+      "704.5b"
+    ]
+  },
+  {
+    "id": "platinum-angel-empty-library",
+    "text": "I have Platinum Angel and no cards left in my library. I cast Brainstorm.",
+    "expect": [
+      "Platinum Angel keeps you from losing"
+    ],
+    "cite": [
+      "704.5b",
+      "104.3b"
+    ]
+  },
+  {
+    "id": "aether-vial-matching-mv",
+    "text": "I activate Aether Vial with 2 counters to put Grizzly Bears onto the battlefield.",
+    "expect": [
+      "Grizzly Bears enters the battlefield"
+    ],
+    "cite": [
+      "202.3",
+      "608.2c"
+    ]
+  },
+  {
+    "id": "aether-vial-wrong-mv",
+    "text": "I activate Aether Vial with 3 counters to put Grizzly Bears onto the battlefield.",
+    "expect": [
+      "Grizzly Bears stays in hand (mana value 2 ≠ 3 counters)"
+    ],
+    "cite": [
+      "202.3"
+    ]
+  },
+  {
+    "id": "obliterator-bolted",
+    "text": "My opponent has Phyrexian Obliterator. I have three Forests and Grizzly Bears. I bolt the Obliterator.",
+    "expect": [
+      "Forest: the battlefield → your graveyard. (×3)"
+    ],
+    "cite": [
+      "701.21a"
+    ]
+  },
+  {
+    "id": "obliterator-blocked",
+    "text": "My opponent attacks me with Phyrexian Obliterator and I block with Grizzly Bears. I control two Forests.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Forest: the battlefield → your graveyard. (×2)"
+    ],
+    "cite": [
+      "701.21a",
+      "702.19b"
+    ]
+  },
+  {
+    "id": "leyline-sanctity-bolt-face",
+    "text": "My opponent has Leyline of Sanctity. I cast Lightning Bolt targeting them.",
+    "expect": [
+      "Lightning Bolt can't target opponent"
+    ],
+    "cite": [
+      "702.11c"
+    ]
+  },
+  {
+    "id": "rancor-question",
+    "text": "I have Grizzly Bears with Rancor. My opponent casts Doom Blade on the Bears. Does Rancor come back?",
+    "expect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "cite": [
+      "704.5m"
+    ]
   }
 ]

@@ -187,7 +187,7 @@ object OracleParser {
         if (Regex("""^~ deals (combat )?damage$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisDealsDamage(c.contains("combat", true), null)
         if (Regex("""^you attack( with one or more creatures)?$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.YouAttack
         if (Regex("""^~ is put into a graveyard from the battlefield$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisDies
-        if (Regex("""^~ is dealt damage$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisIsDealtDamage
+        if (Regex("""^~ is dealt damage$|^a source deals damage to ~$|^~ is dealt damage by a source$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisIsDealtDamage
         if (Regex("""^~ becomes blocked$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBecomesBlocked
         if (Regex("""^one or more creatures you control deal combat damage to a player$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.YourCreaturesDealCombatDamageToPlayer
         if (Regex("""^~ becomes the target of a spell or ability$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBecomesTarget
@@ -335,6 +335,7 @@ object OracleParser {
         if (Regex("""^(As ~ enters, choose (a|an) .+|As ~ enters, .+)$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("614.1c")))
         if (Regex("""^(You may choose not to untap ~ during your untap step|~ doesn't untap during your untap step|Enchanted (creature|permanent) doesn't untap during its controller's untap step)\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("502.3")))
         if (Regex("""^(LEVEL \d+.*|\d+/\d+|\{[^}]+\}(?:\{[^}]+\})* — \d+/\d+.*)$""").matches(line)) return listOf(StaticEffect.Note(line, listOf("702.87a")))
+        if (Regex("""^If ~ is in your opening hand, you may begin the game with it on the battlefield\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("103.6")))
         if (Regex("""^You may look at the top card of your library any time\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("401.5")))
         if (Regex("""^(As an additional cost to cast ~|~ costs \{[^}]+\} (less|more) to cast|You may cast ~ )""", RegexOption.IGNORE_CASE).containsMatchIn(line)) return listOf(StaticEffect.CostText(line))
         if (line.contains("until end of turn", true) || line.startsWith("~", true) || line.contains(" as long as ", true) || line.contains(" for each ", true) || line.contains(" where ", true)) return emptyList()
@@ -575,6 +576,14 @@ object OracleParser {
         }
         forAllRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[2], Kind.PERMANENT); if (f.verifiable) return Effect.ForAll(f, m.groupValues[1].lowercase()) }
         damageEachRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[2], Kind.CREATURE); if (f.verifiable) return Effect.ForAll(f, "damage", m.groupValues[1].toInt()) }
+        if (Regex("""^sacrifice ~\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.SacrificeSource
+        Regex("""^(?:that source's controller|that player|that creature's controller) sacrifices that many (permanents?|creatures?|lands?|artifacts?)(?: of (?:their|his or her) choice)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            return Effect.SacrificeThatMany(Who.THAT_PLAYER, parseFilter(m.groupValues[1].removeSuffix("s"), Kind.PERMANENT))
+        }
+        Regex("""^~ deals damage equal to the sacrificed (?:creature|permanent)'s power to (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.Damage(0, target(m.groupValues[1]), sacrificedPower = true) }
+        Regex("""^put a (creature|land|artifact|permanent|enchantment) card(?: with mana value equal to the number of (charge|\w+) counters on ~)? from your hand onto the battlefield\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            return Effect.PutFromHand(parseFilter(m.groupValues[1], Kind.PERMANENT), m.groupValues[2].ifEmpty { null })
+        }
         for ((re, rules) in narratedRes) if (re.matches(s)) return Effect.Narrated(s.trimEnd('.'), rules)
         // "You draw a card and you lose 1 life." / "Each opponent loses 1 life and you gain 1 life.": two effects joined by "and".
         Regex("""^(.+?) and (you |each opponent |target player |that player |it |~ )(.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trimEnd('.'))?.let { m ->
@@ -595,6 +604,7 @@ object OracleParser {
         }
         drawRe.matchEntire(s)?.let { m ->
             val who = when (m.groupValues[1].trim().lowercase()) { "target player" -> Who.TARGET_PLAYER; "that player" -> Who.THAT_PLAYER; "each player" -> Who.EACH_PLAYER; else -> Who.YOU }
+            if (m.groupValues[2].equals("X", true)) return Effect.Draw(who, 0, x = true)
             return Effect.Draw(who, number(m.groupValues[2]) ?: return Effect.Unparsed(s))
         }
         damageRe.matchEntire(s)?.let { m ->
