@@ -55,6 +55,11 @@ class JudgeTest {
     }
 
     @Test
+    fun `stated devotion colours map to their mana letters`() {
+        assertEquals('U', Judge.colourChar("blue")); assertEquals('B', Judge.colourChar("black")); assertEquals('G', Judge.colourChar("g")); assertEquals(null, Judge.colourChar("purple"))
+    }
+
+    @Test
     fun `unknown card is reported, not guessed`() {
         val a = judge("""{"objects":[{"id":"x","card":"Zzyzx Unicorn of Nowhere","controller":"me"}]}""")
         assertTrue(a.unsupported.any { it.contains("Unknown card") })

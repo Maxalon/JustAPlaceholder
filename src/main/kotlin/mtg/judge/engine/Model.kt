@@ -110,6 +110,8 @@ sealed interface Effect {
     data class CreateToken(val who: Who, val count: Int, val token: String, val countBy: CountExpr? = null) : Effect
     /** "Copy target instant or sorcery spell. You may choose new targets for the copy." (707.10) */
     data class CopySpell(val target: TargetSpec, val newTargets: Boolean) : Effect
+    /** Thassa's Oracle: "look at the top X cards … where X is your devotion to [color] … If X is greater than or equal to the number of cards in your library, you win the game." */
+    data class WinIfDevotionCoversLibrary(val color: Char) : Effect
     /** Aetherflux Reservoir: "you gain N life for each spell you've cast this turn". */
     data class GainLifePerSpellThisTurn(val who: Who, val per: Int) : Effect
     /** "Target player mills N cards" (701.17a). */
@@ -185,7 +187,7 @@ sealed interface Effect {
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
-        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is GainLifePerSpellThisTurn -> emptyList(); is CopySpell -> listOf(target); is PreventCombatToAndBy -> listOf(target); is WinIfCastBefore -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
+        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is GainLifePerSpellThisTurn -> emptyList(); is WinIfDevotionCoversLibrary -> emptyList(); is CopySpell -> listOf(target); is PreventCombatToAndBy -> listOf(target); is WinIfCastBefore -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked

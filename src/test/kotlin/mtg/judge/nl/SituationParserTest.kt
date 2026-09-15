@@ -195,4 +195,19 @@ class SituationParserTest {
         val block = p.situation.events.first { it.verb == "block" }
         assertEquals("opp", block.player); assertEquals("rhystic_study", block.obj)
     }
+
+    @Test
+    fun `casts one, library and devotion trailers, a countered commander and pronoun questions`() {
+        val p = parser.parse("Bob controls Rhystic Study. Carol casts a spell and pays, Dave casts one and doesn't.")
+        assertEquals(listOf("cast:carol", "pay:carol:yes", "cast:dave", "pay:dave:no"), p.situation.events.filter { it.verb != "resolveAll" }.map { "${it.verb}:${it.player}${it.to?.let { t -> ":$t" } ?: ""}" })
+        val q = parser.parse("I control Sol Ring with 3 cards in library and my devotion to blue is 4.")
+        assertEquals(3, q.situation.players.first { it.id == "me" }.librarySize); assertEquals(mapOf("blue" to 4), q.situation.players.first { it.id == "me" }.devotion)
+        val r = parser.parse("My commander is Sol Ring and it has been countered twice. Can I cast it again?")
+        val ring = r.situation.objects.single(); assertEquals("command", ring.zone); assertTrue(ring.commander); assertEquals(2, ring.commanderCasts)
+        assertEquals("sol_ring", r.situation.events.first { it.verb == "cast" }.obj)
+        val d = parser.parse("My opponent controls Sol Ring. I cast Stifle on it. Does it die?")
+        assertEquals("die", d.situation.events.last { it.verb == "ask" }.to); assertEquals("sol_ring", d.situation.events.last { it.verb == "ask" }.obj)
+        val w = parser.parse("I control Sol Ring. Then I draw two.")
+        assertEquals(2, w.situation.events.first { it.verb == "draw" }.amount)
+    }
 }

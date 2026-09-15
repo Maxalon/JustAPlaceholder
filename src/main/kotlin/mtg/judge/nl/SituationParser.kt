@@ -37,6 +37,7 @@ class SituationParser(private val names: NameIndex) {
         val mana = LinkedHashMap<String, Int>()
         val librarySize = LinkedHashMap<String, Int>()
         var turnNumber: Int? = null
+        val devotion = LinkedHashMap<String, MutableMap<String, Int>>()
         val commanderDamage = LinkedHashMap<String, MutableMap<String, Int>>()
         /** Named players in order of first mention: id -> display name. "me"/"opp" are added when the text uses them. */
         val players = LinkedHashMap<String, String>()
@@ -96,7 +97,7 @@ class SituationParser(private val names: NameIndex) {
         for (e in ctx.events) { e.player?.let { ctx.note(it) }; e.targets.forEach { if (it == "me" || it == "opp") ctx.note(it) } }
         for (o in ctx.objects.values) ctx.note(o.controller)
         val turnSpec = TurnSpec(ctx.activePlayer, null, null, ctx.turnNumber)
-        val players = ctx.playerIds().map { id -> PlayerSpec(id, when (id) { "me" -> "me"; "opp" -> "opponent"; else -> ctx.players[id] ?: id }, ctx.life[id], ctx.poison[id], ctx.handSize[id], ctx.librarySize[id], ctx.commanderDamage[id] ?: emptyMap(), ctx.mana[id]) }
+        val players = ctx.playerIds().map { id -> PlayerSpec(id, when (id) { "me" -> "me"; "opp" -> "opponent"; else -> ctx.players[id] ?: id }, ctx.life[id], ctx.poison[id], ctx.handSize[id], ctx.librarySize[id], ctx.commanderDamage[id] ?: emptyMap(), ctx.mana[id], ctx.devotion[id] ?: emptyMap()) }
         if (ctx.players.isNotEmpty() && ctx.usesOpp && ctx.players.size >= 2) ctx.notes += "\"opponent\"/\"they\" was read as a separate player from ${ctx.players.values.joinToString(" and ")}; name the player instead if that's wrong."
         return Parsed(Situation(players, turnSpec, ctx.objects.values.toList(), emptyList(), ctx.events), ctx.unread, ctx.notes)
     }
@@ -135,7 +136,7 @@ class SituationParser(private val names: NameIndex) {
                 if (nameWords.size > 1) { keys += nameWords.first(); keys += nameWords.last() }
                 for (k in keys) if (k.length >= 3 && k !in shortNameStop) candidates.getOrPut(k) { LinkedHashSet() } += f.entry
                 // "the Angel" for Serra Angel: a creature-type word in the name, when only one mentioned card carries it.
-                for (k in nameWords) if (k in typeShortNames) typeCandidates.getOrPut(k) { LinkedHashSet() } += f.entry
+                for (k in nameWords) if (k in typeShortNames && Regex("""(?i)\b${Regex.escape(k)}\b""").containsMatchIn(f.entry.typeLine.substringAfter("—", ""))) typeCandidates.getOrPut(k) { LinkedHashSet() } += f.entry
             }
         }
         val out = LinkedHashMap<String, NameIndex.Entry>()
@@ -553,17 +554,21 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("activate", player = who, obj = id, to = "mana"); ctx.lastActor = who; ctx.lastMentioned = id; return true
         }
         // "draws a card", "draws two cards (during their draw step)"
-        Regex("""^(?:draws?|drew|drawing) (a|an|\d+|two|three|four|five) cards?(?: (?:during|in|for|at) (?:their|my|the|his|her) draw step)?(?: (?:from|off|with|thanks to) (?:an? |the |my |their )?(?:c\d+|[a-z ]+))?$""").find(c)?.let { r ->
+        Regex("""^(?:draws?|drew|drawing) (a|an|\d+|two|three|four|five)(?: cards?| more| again| more cards?)?(?: (?:during|in|for|at) (?:their|my|the|his|her) draw step)?(?: (?:from|off|with|thanks to) (?:an? |the |my |their )?(?:c\d+|[a-z ]+))?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             if (c.contains("draw step")) { ctx.activePlayer = who; ctx.events += EventSpec("step", player = who, to = "draw") }
             ctx.events += EventSpec("draw", player = who, amount = number(r.groupValues[1]) ?: 1); ctx.lastActor = who; return true
         }
         // "casts three spells", "casts a creature spell", "plays two more instants"
-        Regex("""^(?:$castVerbs)\s+(a|an|another|\d+|two|three|four|five)(?: more| other)? (spells?|instants?|sorcer(?:y|ies)|creature spells?|creatures?|noncreature spells?|artifacts?|enchantments?|(?:second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth) (?:one|spell))(?: this turn| in a row| in one turn| on their turn| on my turn)?((?:,? (?:paying for none of them|paying for nothing|without paying|not paying|and pays? for none|never paying|declining to pay each time|and doesn't pay|and never pays)(?: for (?:any|each|all) of them)?)?)$""").find(c)?.let { r ->
+        Regex("""^(?:$castVerbs) (?:one|another|another one|one too|one as well|one of their own|one of my own)$""").find(c)?.let {
+            val who = actor ?: subject ?: "me"
+            ctx.events += EventSpec("cast", player = who, card = CardRef(name = "a spell")); ctx.lastActor = who; ctx.lastVerb = "cast"; return true
+        }
+        Regex("""^(?:$castVerbs)\s+(a|an|another|\d+|two|three|four|five)(?: more| other)? (spells?|instants?|sorcer(?:y|ies)|creature spells?|creatures?|noncreature spells?|artifacts?|enchantments?|one|(?:second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth) (?:one|spell))(?: this turn| in a row| in one turn| on their turn| on my turn)?((?:,? (?:paying for none of them|paying for nothing|without paying|not paying|and pays? for none|never paying|declining to pay each time|and doesn't pay|and never pays)(?: for (?:any|each|all) of them)?)?)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val n = number(r.groupValues[1]) ?: 1
             if (r.groupValues[3].isNotEmpty()) ctx.events += EventSpec("pay", player = who, to = "no")
-            val kind = r.groupValues[2].removeSuffix("s").replace("sorceries", "sorcery").replace(Regex("""^(?:second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth) (?:one|spell)$"""), "spell").let { if (it == "creature" || it == "artifact" || it == "enchantment") "$it spell" else it }
+            val kind = r.groupValues[2].removeSuffix("s").replace("sorceries", "sorcery").replace(Regex("""^(?:(?:second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth) )?(?:one|spell)$"""), "spell").let { if (it == "creature" || it == "artifact" || it == "enchantment") "$it spell" else it }
             repeat(n) { ctx.events += EventSpec("cast", player = who, card = CardRef(name = "a $kind")) }
             ctx.lastActor = who; ctx.lastVerb = "cast"; return true
         }
@@ -588,6 +593,15 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:only )?(?:has|have|with|got)(?: only)? (\d+|\w+) (?:(?:untapped |open )(?:lands?|c\d+s?|mana sources?)|(?:lands?|c\d+s?|mana sources?) (?:untapped|open|available|up|left)|mana(?: (?:open|available|up|left|untapped))?)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"; val n = number(r.groupValues[1]) ?: return@let
             ctx.mana[who] = n; ctx.note(who); ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} $n mana available; costs are checked against that."; return true
+        }
+        // "my devotion to blue is 4"
+        Regex("""^(?:my |their |his |her )?devotion to (white|blue|black|red|green) (?:is|=|of) (\d+)$""").find(c)?.let { r -> val who = actor ?: (if (c.startsWith("their")) pronounPlayer(ctx, "their") else "me"); ctx.devotion.getOrPut(who) { LinkedHashMap() }[r.groupValues[1]] = r.groupValues[2].toInt(); ctx.note(who); return true }
+        // "it has been countered twice" / "Kaalia was countered once": the commander tax.
+        Regex("""^(?:(?:it|that|(?:my )?(c\d+)|my commander) )?(?:has been|was|got|has already been|had been) (?:countered|killed|cast) (once|twice|three times|four times|\d+ times?)(?: (?:already|before|so far|this game))?$""").find(c)?.let { r ->
+            val id = r.groupValues[1].takeIf { it.isNotEmpty() }?.let { m.cards.getValue(it) }?.let { objectIdFor(it, ctx) ?: addObject(it, actor ?: "me", false, ctx) } ?: ctx.objects.values.lastOrNull { it.commander } ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+            val n = when (val w = r.groupValues[2]) { "once" -> 1; "twice" -> 2; "three times" -> 3; "four times" -> 4; else -> w.substringBefore(' ').toIntOrNull() ?: 1 }
+            val idStr = if (id is String) id else (id as ObjectSpec).id
+            ctx.objects[idStr] = ctx.objects.getValue(idStr).copy(commander = true, commanderCasts = n, zone = if (r.groupValues[0].contains(" cast ")) ctx.objects.getValue(idStr).zone else "command"); ctx.notes += "${ctx.objects.getValue(idStr).card.name} has been cast from the command zone $n time${if (n == 1) "" else "s"} already, so the commander tax applies (903.8)."; return true
         }
         // "have 0 cards in library", "with no cards left in my library", "my library is empty", "library has 2 cards"
         Regex("""^(?:(?:has|have|with|am at|is at|at) )?(\d+|\w+|no) cards? (?:left )?in (?:their |my |his |her |the )?library$|^(?:their |my |his |her |the )?library (?:is empty|has (\d+|\w+|no) cards?(?: left)?|is out of cards)$|^(?:has|have) (?:an )?empty library$|^(?:has|have) no library(?: left)?$|^(?:am|is|are) out of cards$""").find(c)?.let { r ->
@@ -875,6 +889,7 @@ class SituationParser(private val names: NameIndex) {
             val rest = r.groupValues[3]
             if (count > 1) { repeat(count) { addObject(m.cards.getValue(r.groupValues[2]), owner, false, ctx, allowDuplicate = true) }; ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner; return true }
             Regex("""\bwith (\d+|\w+|no) cards? in (?:their |my |his |her )?hand\b""").find(rest)?.let { h -> ctx.handSize[owner] = if (h.groupValues[1] == "no") 0 else number(h.groupValues[1]) ?: 0 }
+            Regex("""\bwith (\d+|\w+|no) cards? (?:left )?in (?:their |my |his |her |the )?library\b""").find(rest)?.let { h -> ctx.librarySize[owner] = if (h.groupValues[1] == "no") 0 else number(h.groupValues[1]) ?: 0 }
             if (((rest.contains("in hand") || rest.contains("in my hand")) && !Regex("""\bcards? in (?:their |my |his |her )?hand\b""").containsMatchIn(rest)) || m.cards.getValue(r.groupValues[2]).isSpellOnly) {
                 ctx.notes += "${m.cards.getValue(r.groupValues[2]).display} noted as in hand (hidden zones are only tracked when you cast from them)."
                 ctx.inHand.getOrPut(owner) { mutableListOf() } += m.cards.getValue(r.groupValues[2])
@@ -906,10 +921,11 @@ class SituationParser(private val names: NameIndex) {
             ctx.objects[id] = ctx.objects.getValue(id).copy(summoningSick = true); ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner; ctx.lastMentioned = id; return true
         }
         // "respond by activating X's ability" / "respond by casting Y"
-        Regex("""^respond(?:s|ed)? by (activating|casting|playing) (.*)$""").find(c)?.let { r ->
+        Regex("""^respond(?:s|ed)? by (activating|casting|playing|tapping|sacrificing|attacking|blocking) (.*)$""").find(c)?.let { r ->
             val who = actor ?: ctx.other(ctx.lastActor) ?: "me"
             val prefix = when (who) { "me" -> "i "; "opp" -> "they "; else -> "@$who " }
-            return readClause(prefix + (if (r.groupValues[1] == "activating") "activate " else "cast ") + r.groupValues[2], m, ctx).also { ctx.lastActor = who }
+            val verb = when (r.groupValues[1]) { "activating" -> "activate "; "tapping" -> "tap "; "sacrificing" -> "sacrifice "; "attacking" -> "attack "; "blocking" -> "block "; else -> "cast " }
+            return readClause(prefix + verb + r.groupValues[2], m, ctx).also { ctx.lastActor = who }
         }
         // "put Rakdos onto the battlefield with the trigger" / "with Kaalia's trigger": the choice for that permanent's triggered ability.
         Regex("""^(?:puts?|putting|drops?|cheats?) (?:an? |the |my )?(c\d+) (?:onto the battlefield|into play|out|in)(?: tapped and attacking| attacking| tapped)? (?:with|off|using|via|from) (?:the |its |her |his )?(?:(c\d+)(?:'s)? )?trigger(?:ed ability)?$""").find(c)?.let { r ->
@@ -988,6 +1004,10 @@ class SituationParser(private val names: NameIndex) {
         }
         Regex("""^(?:an? |the )?(c\d+) (?:is|are) (?:on the battlefield|in play|out|on board|on my side|on my board|on my field|on the field|under my control)""").find(c)?.let { r ->
             addObject(m.cards.getValue(r.groupValues[1]), actor ?: "me", clause0.contains("tapped"), ctx); return true
+        }
+        Regex("""^(?:it|that|he|she) (?:enters|comes in|etbs|enters the battlefield)(?: now| again)?$""").find(c)?.let {
+            val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+            ctx.objects[id] = ctx.objects.getValue(id).copy(zone = "hand"); ctx.events += EventSpec("enter", obj = id); return true
         }
         Regex("""^(?:an? |the )?(c\d+) (?:enters|comes in|etbs|enters the battlefield)""").find(c)?.let { r ->
             val id = addObject(m.cards.getValue(r.groupValues[1]), actor ?: subject ?: "me", false, ctx, zone = "hand")
@@ -1155,6 +1175,11 @@ class SituationParser(private val names: NameIndex) {
             val card = m.cards.getValue(r.groupValues[1]); val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
             ctx.events += EventSpec("block", player = who, obj = id, targets = listOf(attacker)); ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
+        // "… and the Bears with Hill Giant": another block, continuing "blocks the Angel with Wall of Omens".
+        Regex("""^(?:the |my |their |an? )?(c\d+) with (?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->
+            if (ctx.lastVerb != "block") return@let
+            return readClause("blocks ${r.groupValues[1]} with ${r.groupValues[2]}", m, ctx)
+        }
         // "blocks Hill Giant with Serra Angel": attacker first.
         Regex("""^(?:chump[- ]?)?(?:blocks?|blocking)\s+(?:an? |the |my |their )?(c\d+) with (?:an? |the |my |their )?(c\d+|it)$""").find(c)?.let { r ->
             val attackerCard = m.cards.getValue(r.groupValues[1])
@@ -1223,6 +1248,8 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("damage", source = objectIdFor(card, ctx) ?: card.display, amount = r.groupValues[2].toInt(), targets = targetsIn(r.groupValues[3], m, ctx)); return true
         }
         if (actor != null && c.isEmpty()) { ctx.lastActor = actor; return true }
+        // "… and doesn't" / "declines" right after a cast: the payment is declined.
+        if (Regex("""^(?:doesn't|does not|don't|declines?|won't|refuses?)$""").matches(c) && ctx.events.lastOrNull()?.verb == "cast") { val who = actor ?: ctx.events.last().player ?: "opp"; ctx.events += EventSpec("pay", player = who, to = "no"); ctx.lastActor = who; return true }
         // "does Rancor come back", "is the Bears dead", "will Jace survive": a question about the outcome, which the answer covers.
         // "does my Blood Artist trigger?": a permanent named only in the question is on the battlefield under that player.
         Regex("""\b(my|their|his|her|@\w+'s) (c\d+)\b""").findAll(clause0).forEach { q -> val card = m.cards.getValue(q.groupValues[2]); if (objectIdFor(card, ctx) == null && !card.isSpellOnly && card.display !in ctx.castCards) addObject(card, when (val w = q.groupValues[1]) { "my" -> "me"; "their", "his", "her" -> pronounPlayer(ctx, w); else -> w.removePrefix("@").removeSuffix("'s") }, false, ctx) }
@@ -1256,12 +1283,18 @@ class SituationParser(private val names: NameIndex) {
             ctx.asks += EventSpec("ask", obj = id, to = "damage", targets = listOf(victim)); ctx.note(victim)
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
+        // "does it survive?" / "will it die?": the last-mentioned permanent.
+        Regex("""^(?:does|do|did|will|would|is|are) (?:it|that|this|he|she|they) (?:still |going to |gonna )?(trigger|triggers|go off|survive|survives|die|dies|dead|still alive|live|lives|make it)\b""").find(clause0)?.let { q ->
+            val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.lastOrNull { it.verb == "cast" || it.verb == "activate" }?.targets?.firstOrNull { it in ctx.objects } ?: return@let
+            ctx.asks += EventSpec("ask", obj = id, to = if (q.groupValues[1].startsWith("trigger") || q.groupValues[1] == "go off") "trigger" else if (q.groupValues[1] in setOf("die", "dies", "dead")) "die" else "survive")
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below (\"it\" read as ${ctx.objects.getValue(id).card.name})."; return true
+        }
         val q = Regex("""^(?:does|do|did|will|would|is|are)\b.*?\b(?:my |their |his |her |the |@\w+'s )?(c\d+)(?:'s)?\b.*?\b(trigger|triggers|go off|survive|survives|die|dies|dead|still alive|live|lives|make it)\b""").find(clause0) ?: return false
         val card = m.cards[q.groupValues[1]] ?: return false
         // "does my Blood Artist trigger?": a permanent named only in the question is on the battlefield under that player.
         val owner = Regex("""\b(my|their|his|her|@\w+'s) ${q.groupValues[1]}\b""").find(clause0)?.groupValues?.get(1)?.let { w -> when (w) { "my" -> "me"; "their", "his", "her" -> pronounPlayer(ctx, w); else -> w.removePrefix("@").removeSuffix("'s") } }
         val id = objectIdFor(card, ctx) ?: (if (card.display in ctx.castCards && !card.isSpellOnly) slug(card.display) else if (owner != null && !card.isSpellOnly) addObject(card, owner, false, ctx) else return false)
-        ctx.asks += EventSpec("ask", obj = id, to = if (q.groupValues[2].startsWith("trigger") || q.groupValues[2] == "go off") "trigger" else "survive")
+        ctx.asks += EventSpec("ask", obj = id, to = if (q.groupValues[2].startsWith("trigger") || q.groupValues[2] == "go off") "trigger" else if (q.groupValues[2] in setOf("die", "dies", "dead")) "die" else "survive")
         ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."
         return true
     }
@@ -1330,7 +1363,7 @@ class SituationParser(private val names: NameIndex) {
 
     /** "targeting the C2 trigger", "on my C3", "at me", "targeting it". */
     private fun targetsIn(rest: String, m: Marked, ctx: Ctx): List<String> {
-        val r = rest.trim()
+        val r = rest.trim().replace(Regex("""\s+(?:again|once more|a second time|for a second time)$"""), "")
         if (r.isEmpty()) return emptyList()
         val seg = Regex("""^(?:targeting|targets?|aimed at|on|at|to|into)\s+(.*)$""").find(r)?.groupValues?.get(1)
             ?: Regex("""^(?:my own|their own)\s+(.*)$""").find(r)?.groupValues?.get(1)

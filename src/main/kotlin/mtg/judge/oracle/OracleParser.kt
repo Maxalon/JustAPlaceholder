@@ -408,6 +408,7 @@ object OracleParser {
     private val sentenceSplit = Regex("""(?<=\.)\s+(?=[A-Z~])""")
 
     fun parseEffect(text: String): Effect {
+        Regex("""^look at the top X cards of your library, where X is your devotion to (white|blue|black|red|green)\. Put up to one of them on top of your library and the rest on the bottom of your library in a random order\. If X is greater than or equal to the number of cards in your library, you win the game\.?$""", RegexOption.IGNORE_CASE).matchEntire(text.trim())?.let { return Effect.WinIfDevotionCoversLibrary(mapOf("white" to 'W', "blue" to 'U', "black" to 'B', "red" to 'R', "green" to 'G').getValue(it.groupValues[1].lowercase())) }
         if (Regex("""^If ~ was cast from your hand and you've cast another spell named ~ this game, you win the game\. Otherwise, put ~ into its owner's library seventh from the top and you gain (\d+) life\.?$""", RegexOption.IGNORE_CASE).matchEntire(text.trim())?.let { return Effect.WinIfCastBefore(it.groupValues[1].toInt()) } != null) Unit
         val t = text.trim().replace(Regex("""(?i)^(copy target [^.]+?)\. You may choose new targets for the copy\."""), "$1. you may choose new targets for the copy.").let { s ->
             Regex("""(?i)^(copy target [^.]+?)\. you may choose new targets for the copy\.$""").matchEntire(s)?.let { r -> return Effect.CopySpell(target(r.groupValues[1].removePrefix("copy target ").removePrefix("Copy target "), Kind.SPELL), true) } ?: s

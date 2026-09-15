@@ -25,13 +25,13 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
     fun answer(sit: Situation): Answer {
         val understood = mutableListOf<String>()
-        val state = GameState(sit.players.map { ps -> Player(ps.id, ps.name, ps.life).also { it.poison = ps.poison ?: 0; it.handSize = ps.handSize; it.librarySize = ps.librarySize; it.commanderDamage.putAll(ps.commanderDamage); it.mana = ps.mana } }, LinkedHashMap(), activePlayer = sit.turn.activePlayer, phase = sit.turn.phase, step = sit.turn.step).also { it.turnNumber = sit.turn.number }
+        val state = GameState(sit.players.map { ps -> Player(ps.id, ps.name, ps.life).also { it.poison = ps.poison ?: 0; it.handSize = ps.handSize; it.librarySize = ps.librarySize; it.commanderDamage.putAll(ps.commanderDamage); it.mana = ps.mana; ps.devotion.forEach { (c, n) -> colourChar(c)?.let { ch -> it.devotion[ch] = n } } } }, LinkedHashMap(), activePlayer = sit.turn.activePlayer, phase = sit.turn.phase, step = sit.turn.step).also { it.turnNumber = sit.turn.number }
         val engine = Engine(state)
 
         for (o in sit.objects) {
             val def = cardDef(o.card, state) ?: continue
             state.add(GameObject(o.id, def, zone(o.zone), o.controller, o.owner ?: o.controller, o.tapped, o.summoningSick, o.counters.toMutableMap(), o.damage, o.token)).also {
-                it.timestamp = state.tick(); it.attachedTo = o.attachedTo; it.commander = o.commander
+                it.timestamp = state.tick(); it.attachedTo = o.attachedTo; it.commander = o.commander; it.commanderCasts = o.commanderCasts
                 o.keywords.forEach { kw -> it.tempKeywords += kw.lowercase() }
                 o.pump?.let { pm -> Regex("""^([+-]?\d+)/([+-]?\d+)$""").matchEntire(pm)?.let { m -> it.pumps += m.groupValues[1].toInt() to m.groupValues[2].toInt() } }
                 if (def.isPlaneswalker && it.isOnBattlefield() && !it.counters.containsKey("loyalty") && def.loyalty != null) it.counters["loyalty"] = def.loyalty
@@ -53,7 +53,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
         understood += "Players: " + state.players.joinToString(", ") { (if (it.you) "you" else it.name) + (it.life?.let { l -> " ($l life)" } ?: "") } + (state.activePlayer?.let { "; it's ${state.player(it).possessive} turn" } ?: "; whose turn it is wasn't stated")
         state.objects.values.groupBy { it.zone }.forEach { (zone, objs) ->
-            understood += "${zone.name.lowercase().replaceFirstChar { it.uppercase() }}: " + objs.joinToString(", ") { "${it.name} [${it.id}] (${state.player(it.controller).possessive}${if (it.def.isCreature && it.isOnBattlefield()) ", " + state.describePt(it) else ""}${if (it.tapped == true) ", tapped" else ""}${if (it.damage > 0) ", ${it.damage} damage" else ""}${it.attachedTo?.let { a -> ", attached to ${state.objects[a]?.name ?: a}" } ?: ""}${it.counters["loyalty"]?.let { l -> ", loyalty $l" } ?: ""})" }
+            understood += "${if (zone == mtg.judge.engine.Zone.COMMAND) "Command zone" else zone.name.lowercase().replaceFirstChar { it.uppercase() }}: " + objs.joinToString(", ") { "${it.name} [${it.id}] (${state.player(it.controller).possessive}${if (it.def.isCreature && it.isOnBattlefield()) ", " + state.describePt(it) else ""}${if (it.tapped == true) ", tapped" else ""}${if (it.damage > 0) ", ${it.damage} damage" else ""}${it.attachedTo?.let { a -> ", attached to ${state.objects[a]?.name ?: a}" } ?: ""}${it.counters["loyalty"]?.let { l -> ", loyalty $l" } ?: ""})" }
         }
         if (state.stack.isNotEmpty()) understood += "Stack (bottom to top): " + state.stack.joinToString(", ") { "${it.describe} [${it.id}]" + (if (it.targets.isNotEmpty()) " targeting " + it.targets.joinToString(" & ") { t -> state.nameOf(t) } else "") }
 
@@ -169,7 +169,11 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         state.outcomes += if (hit) "Yes: ${o.name} dealt damage to $who." else "No: ${o.name} dealt no damage to $who${if (blocked) " (it was blocked, and a blocked creature stays blocked even if its blocker leaves combat; without trample it assigns no damage to the player, 509.1h)" else ""}."
                     }
                     "playerSurvive" -> { val p = state.player(e.player ?: o.controller); state.outcomes += if (p.lost) "No: ${p.subject} ${p.v("has", "have")} lost the game." else "Yes: ${p.subject} ${p.v("is", "are")} still in the game${p.life?.let { " at $it life" } ?: ""}." }
-                    "survive" -> state.outcomes += if (o.isOnBattlefield()) "Yes: ${o.name} is still on the battlefield." else "No: ${o.name} is in ${when (o.zone) { mtg.judge.engine.Zone.GRAVEYARD -> "the graveyard"; mtg.judge.engine.Zone.EXILE -> "exile"; mtg.judge.engine.Zone.HAND -> "its owner's hand"; mtg.judge.engine.Zone.LIBRARY -> "its owner's library"; else -> o.zone.name.lowercase() }}."
+                    "survive", "die" -> {
+                        val where = when (o.zone) { mtg.judge.engine.Zone.GRAVEYARD -> "the graveyard"; mtg.judge.engine.Zone.EXILE -> "exile"; mtg.judge.engine.Zone.HAND -> "its owner's hand"; mtg.judge.engine.Zone.LIBRARY -> "its owner's library"; mtg.judge.engine.Zone.COMMAND -> "the command zone"; else -> o.zone.name.lowercase() }
+                        state.outcomes += if (e.to == "die") { if (o.isOnBattlefield()) "No: ${o.name} is still on the battlefield." else if (o.zone == mtg.judge.engine.Zone.GRAVEYARD) "Yes: ${o.name} died (it's in the graveyard)." else "No: ${o.name} didn't die, but it left the battlefield; it's in $where." }
+                        else { if (o.isOnBattlefield()) "Yes: ${o.name} is still on the battlefield." else "No: ${o.name} is in $where." }
+                    }
                     else -> {}
                 }
             }
@@ -267,6 +271,9 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
     private fun freshId(state: GameState, name: String): String { val base = name.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_'); var id = base; var i = 2; while (state.objects.containsKey(id)) id = "${base}_${i++}"; return id }
 
     companion object {
+        /** A colour name or mana letter as its mana symbol letter: "blue" is U, not B (black). */
+        fun colourChar(name: String): Char? = mapOf("white" to 'W', "blue" to 'U', "black" to 'B', "red" to 'R', "green" to 'G')[name.trim().lowercase()] ?: name.trim().singleOrNull()?.uppercaseChar()?.takeIf { it in "WUBRG" }
+
         fun toDef(card: Card): CardDef {
             val keywords = runCatching { kotlinx.serialization.json.Json.decodeFromString<List<String>>(card.keywords) }.getOrDefault(emptyList())
             return OracleParser.parse(card.oracleId, card.name, card.typeLine, card.manaCost, card.manaValue, card.colors, card.power, card.toughness, keywords, card.oracleText, card.loyalty)

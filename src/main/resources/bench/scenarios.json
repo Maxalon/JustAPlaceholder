@@ -2565,7 +2565,7 @@
     "id": "krenko-elesh-norn-die-question",
     "text": "My opponent has Elesh Norn, Grand Cenobite and I cast Krenko, Mob Boss. Does Krenko die?",
     "expect": [
-      "Yes: Krenko, Mob Boss is still on the battlefield"
+      "No: Krenko, Mob Boss is still on the battlefield"
     ],
     "cite": [
       "608.3a"
@@ -2634,7 +2634,7 @@
     "text": "My opponent attacks with Grizzly Bears and I block with Wall of Omens. They cast Giant Growth on the Bears. Does my Wall die?",
     "expect": [
       "Wall of Omens: the battlefield → your graveyard",
-      "No: Wall of Omens is in the graveyard"
+      "Yes: Wall of Omens died (it's in the graveyard)"
     ],
     "cite": [
       "704.5g"
@@ -2872,6 +2872,114 @@
     ],
     "cite": [
       "608.2g"
+    ]
+  },
+  {
+    "id": "thassa-oracle-stated-devotion",
+    "text": "I control Thassa's Oracle with 3 cards in library and my devotion to blue is 4. It enters. Do I win?",
+    "expect": [
+      "You win the game (Thassa's Oracle: X = 4, library = 3)"
+    ],
+    "cite": [
+      "700.5"
+    ]
+  },
+  {
+    "id": "thassa-oracle-too-few",
+    "text": "I have Thassa's Oracle in hand and 2 cards in library. My devotion to blue is 1. I cast it. Do I win?",
+    "expect": [
+      "Thassa's Oracle doesn't win the game (X = 1, library = 2)"
+    ],
+    "cite": [
+      "700.5"
+    ]
+  },
+  {
+    "id": "kaalia-commander-tax-after-two-counters",
+    "text": "My commander is Kaalia of the Vast and it has been countered twice. Can I cast it again?",
+    "expect": [
+      "costs an additional {4}",
+      "Kaalia of the Vast enters the battlefield"
+    ],
+    "cite": [
+      "903.8"
+    ]
+  },
+  {
+    "id": "rhystic-three-players-casts-one",
+    "text": "Bob controls Rhystic Study. Carol casts a spell and pays, Dave casts one and doesn't.",
+    "expect": [
+      "Carol pays {1}; Rhystic Study's triggered ability has no further effect",
+      "Bob draws 1 card"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "giant-growth-does-the-giant-die",
+    "text": "I attack with Grizzly Bears. My opponent blocks with Hill Giant. After blockers I cast Giant Growth on my Bears. Does the Giant die?",
+    "expect": [
+      "Yes: Hill Giant died (it's in the graveyard)"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "shock-it-does-it-survive",
+    "text": "My opponent controls Hill Giant. I cast Shock on it. Does it survive?",
+    "expect": [
+      "Yes: Hill Giant is still on the battlefield"
+    ],
+    "cite": [
+      "120.3e"
+    ]
+  },
+  {
+    "id": "sheoldred-draw-two",
+    "text": "I have Sheoldred, the Apocalypse. My opponent draws a card. Then I draw two.",
+    "expect": [
+      "You gain 2 life. (×2)",
+      "opponent loses 2 life"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "block-continuation-angel-and-bears",
+    "text": "I attack with Serra Angel and Grizzly Bears. My opponent blocks the Angel with Wall of Omens and the Bears with Hill Giant.",
+    "expect": [
+      "Wall of Omens can't block Serra Angel (flying)",
+      "opponent takes 4 damage",
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "702.9b",
+      "509.1h"
+    ]
+  },
+  {
+    "id": "sol-ring-tap-in-response-to-vindicate",
+    "text": "My opponent casts Vindicate on my Sol Ring. I respond by tapping it for mana.",
+    "expect": [
+      "Sol Ring's mana ability: add {C}{C}",
+      "Sol Ring: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "605.3b"
+    ]
+  },
+  {
+    "id": "bolt-giant-growth-bolt-again",
+    "text": "My opponent controls Hill Giant. I cast Lightning Bolt at the Giant and they respond with Giant Growth on it. Then I bolt it again.",
+    "expect": [
+      "Hill Giant is 6/6 until end of turn",
+      "Hill Giant: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "704.5g"
     ]
   }
 ]

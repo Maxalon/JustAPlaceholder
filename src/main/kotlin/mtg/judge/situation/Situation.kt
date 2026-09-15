@@ -33,7 +33,9 @@ data class PlayerSpec(val id: String, val name: String = id, val life: Int? = nu
                       /** Combat damage already taken from each commander this game, by object id (903.10a). */
                       val commanderDamage: Map<String, Int> = emptyMap(),
                       /** Mana available right now, when stated ("only has one Mountain untapped"). */
-                      val mana: Int? = null)
+                      val mana: Int? = null,
+                      /** Devotion to colours (W/U/B/R/G), when stated. */
+                      val devotion: Map<String, Int> = emptyMap())
 
 @Serializable
 data class TurnSpec(val activePlayer: String? = null, val phase: String? = null, val step: String? = null,
@@ -82,6 +84,8 @@ data class ObjectSpec(
     val keywords: List<String> = emptyList(),
     /** The player's commander (its combat damage to each player is tracked, 903.10a). */
     val commander: Boolean = false,
+    /** Times this commander was already cast from the command zone (903.8). */
+    val commanderCasts: Int = 0,
 )
 
 @Serializable
