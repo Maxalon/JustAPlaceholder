@@ -1,0 +1,3591 @@
+[
+  {
+    "id": "rhystic-stifle",
+    "text": "I have Rhystic Study. It's my opponent's turn, they cast Sol Ring and then Stifle the Rhystic Study trigger.",
+    "expect": [
+      "draw 1 card",
+      "countered"
+    ],
+    "cite": [
+      "603.2",
+      "701.6a"
+    ],
+    "note": "Stifle itself triggers Rhystic Study again; only the first trigger is countered."
+  },
+  {
+    "id": "bolt-growth",
+    "text": "Opponent casts Lightning Bolt targeting my Grizzly Bears, I respond with Giant Growth.",
+    "expect": [
+      "5/5 until end of turn",
+      "3 damage marked"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield"
+    ],
+    "cite": [
+      "611.2a",
+      "120.3e"
+    ]
+  },
+  {
+    "id": "bolt-swords-fizzle",
+    "text": "I control Grizzly Bears. My opponent bolts it and I respond with Swords to Plowshares on my own Bears.",
+    "expect": [
+      "exile",
+      "doesn't resolve"
+    ],
+    "cite": [
+      "608.2b"
+    ]
+  },
+  {
+    "id": "counterspell",
+    "text": "I'm at 3 life. Opponent casts Lightning Bolt at me and I counter it with Counterspell.",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "notExpect": [
+      "you take"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "combat-trample-growth",
+    "text": "I swing with Colossal Dreadmaw, they block with Grizzly Bears and then cast Giant Growth on the Bears.",
+    "expect": [
+      "remaining 1 to opponent",
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "702.19b",
+      "704.5g"
+    ]
+  },
+  {
+    "id": "flying-block",
+    "text": "It's my turn. I attack with Serra Angel and my opponent blocks with Llanowar Elves.",
+    "expect": [
+      "can't block Serra Angel (flying)",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "702.9b"
+    ]
+  },
+  {
+    "id": "anthem-shock",
+    "text": "I have Glorious Anthem and Grizzly Bears. My opponent casts Shock on the Bears.",
+    "expect": [
+      "2 damage marked"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "lord-attack",
+    "text": "I control Elvish Archdruid and two Llanowar Elves. I attack with everything and they have no blockers.",
+    "expect": [
+      "opponent takes 2 damage",
+      "+1/+1 from Elvish Archdruid"
+    ],
+    "cite": [
+      "510.1b"
+    ]
+  },
+  {
+    "id": "hexproof",
+    "text": "My opponent controls Slippery Bogle. I cast Lightning Bolt on it.",
+    "expect": [
+      "can't target"
+    ],
+    "cite": [
+      "702.11b"
+    ]
+  },
+  {
+    "id": "protection-red",
+    "text": "I have Kor Firewalker. Opponent casts Lightning Bolt targeting it.",
+    "expect": [
+      "can't target"
+    ],
+    "cite": [
+      "702.16b"
+    ]
+  },
+  {
+    "id": "ward",
+    "text": "My opponent has Tomakul Honor Guard. I cast Lightning Bolt on it.",
+    "expect": [
+      "ward",
+      "countered"
+    ],
+    "cite": [
+      "702.21a"
+    ]
+  },
+  {
+    "id": "fog",
+    "text": "I attack with Grizzly Bears and my opponent casts Fog.",
+    "expect": [
+      "prevent"
+    ],
+    "notExpect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "615.7"
+    ]
+  },
+  {
+    "id": "deathtouch-block",
+    "text": "I attack with Colossal Dreadmaw and they block with Typhoid Rats.",
+    "expect": [
+      "Colossal Dreadmaw: the battlefield → your graveyard",
+      "Typhoid Rats: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "704.5h"
+    ]
+  },
+  {
+    "id": "first-strike",
+    "text": "I attack with Youthful Knight and they block with Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Youthful Knight: the battlefield"
+    ],
+    "cite": [
+      "510.4"
+    ]
+  },
+  {
+    "id": "rip-dies",
+    "text": "My opponent has Rest in Peace. I have Grizzly Bears and they cast Lightning Bolt on it.",
+    "expect": [
+      "exile",
+      "replaces"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "regenerate",
+    "text": "I control Drudge Skeletons. My opponent casts Murder on it and I respond by activating Drudge Skeletons' ability.",
+    "expect": [
+      "regeneration shield",
+      "regenerates"
+    ],
+    "cite": [
+      "701.19a"
+    ]
+  },
+  {
+    "id": "aura-falls-off",
+    "text": "I have Grizzly Bears enchanted with Rancor. Opponent casts Swords to Plowshares on the Bears.",
+    "expect": [
+      "Rancor is no longer attached",
+      "Rancor's ability triggers"
+    ],
+    "cite": [
+      "704.5m"
+    ]
+  },
+  {
+    "id": "equip",
+    "text": "I control Grizzly Bears and Bonesplitter. I equip Bonesplitter to the Bears and attack.",
+    "expect": [
+      "attached to Grizzly Bears",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "702.6a"
+    ]
+  },
+  {
+    "id": "prowess",
+    "text": "I control Monastery Swiftspear. I cast Lightning Bolt at my opponent.",
+    "expect": [
+      "Monastery Swiftspear's ability triggers",
+      "2/3 until end of turn"
+    ],
+    "cite": [
+      "702.108a",
+      "611.2a"
+    ]
+  },
+  {
+    "id": "infect",
+    "text": "I attack with Blightsteel Colossus and they have no blockers.",
+    "expect": [
+      "poison counter",
+      "loses the game"
+    ],
+    "cite": [
+      "702.90b",
+      "704.5c"
+    ]
+  },
+  {
+    "id": "summoning-sick",
+    "text": "I just cast Grizzly Bears this turn and I attack with it.",
+    "expect": [
+      "can't attack"
+    ],
+    "cite": [
+      "302.6"
+    ]
+  },
+  {
+    "id": "vigilance",
+    "text": "I attack with Serra Angel.",
+    "expect": [
+      "doesn't tap"
+    ],
+    "cite": [
+      "702.20b"
+    ]
+  },
+  {
+    "id": "menace",
+    "text": "I attack with Boggart Brute and they block with a single Grizzly Bears.",
+    "expect": [
+      "menace"
+    ],
+    "cite": [
+      "702.111b"
+    ]
+  },
+  {
+    "id": "wrath",
+    "text": "I control Grizzly Bears and Serra Angel. My opponent casts Wrath of God.",
+    "expect": [
+      "Grizzly Bears is destroyed",
+      "Serra Angel is destroyed"
+    ],
+    "cite": [
+      "701.8a"
+    ]
+  },
+  {
+    "id": "modal-charm",
+    "text": "I cast Boros Charm choosing the second mode.",
+    "expect": [
+      "indestructible"
+    ],
+    "cite": [
+      "700.2a"
+    ]
+  },
+  {
+    "id": "doubler",
+    "text": "My opponent controls Furnace of Rath. I'm at 20. They cast Lightning Bolt at me.",
+    "expect": [
+      "6 damage instead of 3"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "landwalk",
+    "text": "I attack with Bog Wraith. My opponent controls a Swamp and blocks with Grizzly Bears.",
+    "expect": [
+      "can't block"
+    ],
+    "cite": [
+      "702.14c"
+    ]
+  },
+  {
+    "id": "cda",
+    "text": "I control Eluge, the Shoreless Sea and three Islands. What are its stats?",
+    "expect": [
+      "3/3"
+    ],
+    "cite": []
+  },
+  {
+    "id": "etb-draw",
+    "text": "I cast Elvish Visionary.",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "cite": [
+      "603.6a"
+    ]
+  },
+  {
+    "id": "upkeep-trigger",
+    "text": "I control Phyrexian Arena. My upkeep begins.",
+    "expect": [
+      "draw 1 card",
+      "lose 1 life"
+    ],
+    "cite": [
+      "603.2b"
+    ]
+  },
+  {
+    "id": "lifelink",
+    "text": "I attack with Vampire Nighthawk and they don't block.",
+    "expect": [
+      "gain 2 life"
+    ],
+    "cite": [
+      "702.15b"
+    ]
+  },
+  {
+    "id": "stack-order",
+    "text": "I cast Grizzly Bears. Opponent casts Counterspell targeting it. I respond with Negate on their Counterspell.",
+    "expect": [
+      "Counterspell is countered",
+      "Grizzly Bears enters the battlefield"
+    ],
+    "cite": [
+      "701.6a",
+      "405.2"
+    ]
+  },
+  {
+    "id": "pw-loyalty-attack",
+    "text": "I have Jace Beleren with 3 loyalty. I activate Jace's +2. Then my opponent attacks Jace with Hill Giant. What happens?",
+    "expect": [
+      "Jace Beleren has 2 loyalty"
+    ],
+    "cite": [
+      "606.4",
+      "306.8"
+    ]
+  },
+  {
+    "id": "pw-bolt-dies",
+    "text": "My opponent has Liliana of the Veil at 1 loyalty. I cast Lightning Bolt targeting Liliana.",
+    "expect": [
+      "Liliana of the Veil: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "306.8",
+      "704.5i"
+    ]
+  },
+  {
+    "id": "pw-attack-blocked",
+    "text": "My opponent controls Jace, the Mind Sculptor with 2 loyalty. I attack Jace with Grizzly Bears and they block with Hill Giant.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "509.1a",
+      "510.1c"
+    ]
+  },
+  {
+    "id": "counters-damage",
+    "text": "I have Grizzly Bears with two +1/+1 counters and 1 damage on it. Opponent casts Lightning Bolt on it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "multi-attack-two-defenders",
+    "text": "It's Alice's turn. Alice attacks Bob with Hill Giant and Carol with Grizzly Bears. Bob blocks with Wall of Omens. Carol is at 2 life.",
+    "expect": [
+      "Wall of Omens has 3 damage marked",
+      "Carol loses the game"
+    ],
+    "cite": [
+      "509.1a",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "multi-it-after-bolt",
+    "text": "Alice has Grizzly Bears. Bob casts Lightning Bolt targeting Alice's Bears. Alice responds with Giant Growth on it.",
+    "expect": [
+      "Grizzly Bears is 5/5 until end of turn",
+      "Grizzly Bears has 3 damage marked"
+    ],
+    "cite": [
+      "120.3e",
+      "611.2a"
+    ]
+  },
+  {
+    "id": "rhystic-pays",
+    "text": "Bob's Rhystic Study is out. Carol casts Sol Ring and pays for Rhystic.",
+    "expect": [
+      "Carol pays {1}; Rhystic Study's triggered ability has no further effect"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "land-enters-tapped-unless",
+    "text": "I control a Plains. I play Glacial Fortress.",
+    "expect": [
+      "Glacial Fortress enters the battlefield"
+    ],
+    "cite": [
+      "305.1",
+      "614.12"
+    ]
+  },
+  {
+    "id": "possessive-card-name",
+    "text": "I cast Titania's Boon. I control Grizzly Bears and Hill Giant.",
+    "expect": [
+      "Grizzly Bears has 1 +1/+1 counter",
+      "Hill Giant has 1 +1/+1 counter"
+    ],
+    "cite": [
+      "122.6"
+    ]
+  },
+  {
+    "id": "toxic",
+    "text": "My opponent attacks me with Tyrranax Atrocity. I'm at 20 life.",
+    "expect": [
+      "You have 3 poison counters",
+      "You go from 20 to 16 life"
+    ],
+    "cite": [
+      "702.164c"
+    ]
+  },
+  {
+    "id": "cant-be-blocked-by-power",
+    "text": "I have Lydia Frye. Opponent has Hill Giant and Grizzly Bears. I attack with Lydia Frye and they block with Hill Giant.",
+    "expect": [
+      "Hill Giant can't block Lydia Frye",
+      "opponent takes 3 damage"
+    ],
+    "cite": [
+      "509.1b"
+    ]
+  },
+  {
+    "id": "act-of-treason",
+    "text": "I cast Act of Treason targeting their tapped Hill Giant. I attack with it.",
+    "expect": [
+      "You control Hill Giant until end of turn",
+      "opponent takes 3 damage"
+    ],
+    "cite": [
+      "613.1b"
+    ]
+  },
+  {
+    "id": "wrath-vs-regeneration",
+    "text": "My opponent controls Drudge Skeletons with a regeneration shield. I cast Wrath of God.",
+    "expect": [
+      "Drudge Skeletons: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "701.19c",
+      "701.8a"
+    ]
+  },
+  {
+    "id": "sheoldred-draw-step",
+    "text": "I control Sheoldred, the Apocalypse. My opponent draws a card during their draw step.",
+    "expect": [
+      "opponent loses 2 life"
+    ],
+    "cite": [
+      "119.3",
+      "603.2"
+    ]
+  },
+  {
+    "id": "esper-sentinel",
+    "text": "I have Esper Sentinel. Opponent casts Counterspell targeting my Lightning Bolt.",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "chump-block",
+    "text": "I'm at 3 life and control Grizzly Bears. Opponent swings with Colossal Dreadmaw and I chump block with the Bears.",
+    "expect": [
+      "You take 4 damage",
+      "You lose the game"
+    ],
+    "cite": [
+      "702.19b",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "path-question",
+    "text": "I cast Path to Exile on my opponent's Grizzly Bears. Do they get a land?",
+    "expect": [
+      "Grizzly Bears: the battlefield → exile"
+    ],
+    "cite": [
+      "701.23a"
+    ]
+  },
+  {
+    "id": "elesh-norn-sba",
+    "text": "Opponent has Elesh Norn, Grand Cenobite. I control Llanowar Elves and Grizzly Bears.",
+    "expect": [
+      "Llanowar Elves: the battlefield → your graveyard",
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "swords-in-response",
+    "text": "I cast Swords to Plowshares on my own Serra Angel in response to Lightning Bolt.",
+    "expect": [
+      "You gain 4 life",
+      "Lightning Bolt doesn't resolve (all targets illegal)"
+    ],
+    "cite": [
+      "608.2b",
+      "608.2h"
+    ]
+  },
+  {
+    "id": "after-blockers-bolt",
+    "text": "I attack with Serra Angel. They block with Grizzly Bears. After blockers I cast Lightning Bolt on the Bears.",
+    "expect": [
+      "Grizzly Bears can't block Serra Angel (flying)",
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "702.9b"
+    ]
+  },
+  {
+    "id": "thoughtseize-brainstorm",
+    "text": "My opponent casts Thoughtseize targeting me. I respond with Brainstorm.",
+    "expect": [
+      "You draw 3 cards"
+    ],
+    "cite": [
+      "701.20a",
+      "701.9a"
+    ]
+  },
+  {
+    "id": "rhystic-three-spells",
+    "text": "I control Rhystic Study and my opponent casts three spells.",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "block-attacker-first",
+    "text": "I attack with Grizzly Bears and Hill Giant. Opponent blocks Hill Giant with Serra Angel and doesn't block the Bears.",
+    "expect": [
+      "opponent takes 2 damage",
+      "Hill Giant: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "510.1c"
+    ]
+  },
+  {
+    "id": "rift-overload",
+    "text": "Opponent casts Cyclonic Rift overloaded. I control Grizzly Bears and Sol Ring.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your hand",
+      "Sol Ring: the battlefield → your hand"
+    ],
+    "cite": [
+      "702.96a",
+      "400.7"
+    ]
+  },
+  {
+    "id": "sac-outlet-blood-artist",
+    "text": "I control two Grizzly Bears and Blood Artist. I sacrifice a Bears to Viscera Seer.",
+    "expect": [
+      "opponent loses 1 life",
+      "You gain 1 life"
+    ],
+    "cite": [
+      "701.21a",
+      "603.2"
+    ]
+  },
+  {
+    "id": "generic-token-doom-blade",
+    "text": "My opponent has a 5/5 Zombie token. I cast Doom Blade on it.",
+    "expect": [
+      "Zombie token: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "701.8a"
+    ]
+  },
+  {
+    "id": "legend-rule",
+    "text": "I cast a second Sheoldred, the Apocalypse while I already control one.",
+    "expect": [
+      "Sheoldred, the Apocalypse: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5j"
+    ]
+  },
+  {
+    "id": "flash-blocker",
+    "text": "My opponent attacks me with Grizzly Bears. I flash in Ambush Viper and block.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "704.5g",
+      "500.2"
+    ]
+  },
+  {
+    "id": "torpor-orb",
+    "text": "I control Torpor Orb. I cast Solemn Simulacrum.",
+    "expect": [
+      "Solemn Simulacrum enters the battlefield"
+    ],
+    "cite": [
+      "603.6"
+    ]
+  },
+  {
+    "id": "split-second",
+    "text": "Opponent casts Krosan Grip on my Sol Ring. I respond with Cyclonic Rift on Krosan Grip.",
+    "expect": [
+      "Cyclonic Rift can't be cast while Krosan Grip is on the stack (split second)",
+      "Sol Ring: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "702.61a"
+    ]
+  },
+  {
+    "id": "kaalia-avacyn-wrath",
+    "text": "My commander Kaalia of the Vast attacks and its trigger puts Avacyn, Angel of Hope onto the battlefield. Then Wrath of God resolves.",
+    "expect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "doubling-season-jace",
+    "text": "I control Doubling Season and cast Jace Beleren.",
+    "expect": [
+      "Jace Beleren has 6 loyalty"
+    ],
+    "cite": [
+      "614.1a",
+      "306.5b"
+    ]
+  },
+  {
+    "id": "tap-for-mana-then-bolt",
+    "text": "I tap Llanowar Elves for mana and then my opponent casts Lightning Bolt on it.",
+    "expect": [
+      "Llanowar Elves's mana ability: add {G}",
+      "Llanowar Elves: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "605.3b"
+    ]
+  },
+  {
+    "id": "aetherflux",
+    "text": "I have Aetherflux Reservoir and 51 life. I activate it targeting my opponent who is at 40.",
+    "expect": [
+      "You pay 50 life",
+      "opponent takes 50 damage",
+      "opponent loses the game"
+    ],
+    "cite": [
+      "119.4",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "zulaport-damnation",
+    "text": "I control Zulaport Cutthroat and my opponent casts Damnation. I have three creatures.",
+    "expect": [
+      "opponent loses 1 life. (×4)"
+    ],
+    "cite": [
+      "603.10a",
+      "701.8a"
+    ]
+  },
+  {
+    "id": "propaganda-no-pay",
+    "text": "My opponent has Propaganda. I attack with Grizzly Bears and don't pay.",
+    "expect": [
+      "Grizzly Bears can't attack (Propaganda's cost not paid)"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "beast-within",
+    "text": "I cast Beast Within on my own Sol Ring.",
+    "expect": [
+      "Sol Ring: the battlefield → your graveyard",
+      "You get a Beast token"
+    ],
+    "cite": [
+      "701.7a"
+    ]
+  },
+  {
+    "id": "panharmonicon-mulldrifter",
+    "text": "I control Panharmonicon and cast Mulldrifter.",
+    "expect": [
+      "You draw 2 cards. (×2)"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "token-attacks",
+    "text": "I attack with a 4/4 Angel token with flying. Opponent blocks with Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears can't block Angel token (flying)",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "702.9b"
+    ]
+  },
+  {
+    "id": "sulfuric-vortex-upkeep",
+    "text": "It's my turn and I'm at 1 life. My opponent controls Sulfuric Vortex. What happens at my upkeep?",
+    "expect": [
+      "You take 2 damage",
+      "You lose the game"
+    ],
+    "cite": [
+      "503.1",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "grave-pact",
+    "text": "Opponent has Grave Pact. I cast Murder on their Grizzly Bears while I control Llanowar Elves.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard",
+      "Llanowar Elves: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "701.21a"
+    ]
+  },
+  {
+    "id": "greaves-shroud",
+    "text": "I equip Lightning Greaves to Grizzly Bears and my opponent tries to Murder it.",
+    "expect": [
+      "Lightning Greaves is attached to Grizzly Bears",
+      "Murder can't target Grizzly Bears"
+    ],
+    "cite": [
+      "702.18a"
+    ]
+  },
+  {
+    "id": "rhystic-creature-spell-pays",
+    "text": "I have Rhystic Study and my opponent casts a creature spell. They pay the 1.",
+    "expect": [
+      "opponent pays {1}; Rhystic Study's triggered ability has no further effect"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "craterhoof-alpha-strike",
+    "text": "I have Craterhoof Behemoth in hand and five 1/1 Elf tokens. I cast Craterhoof and swing with everything. Opponent is at 30 with no blockers.",
+    "expect": [
+      "opponent loses the game"
+    ],
+    "cite": [
+      "608.2h",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "blasphemous-act-token",
+    "text": "My opponent casts Blasphemous Act. I control Grizzly Bears, Serra Angel and a 7/7 token.",
+    "expect": [
+      "a 7/7 token: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "tithe-pays-for-one",
+    "text": "I control Smothering Tithe and my opponent draws two cards from Brainstorm and pays for one.",
+    "expect": [
+      "opponent pays {2}; Smothering Tithe's triggered ability has no further effect",
+      "You get a Treasure token"
+    ],
+    "cite": [
+      "608.2g",
+      "701.7a"
+    ]
+  },
+  {
+    "id": "mixed-counters-shock",
+    "text": "My Bears has two -1/-1 counters and one +1/+1 counter. Opponent casts Shock on it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "swords-attacker-growth",
+    "text": "I cast Swords to Plowshares on Colossal Dreadmaw while it's attacking me. Opponent responds with Giant Growth.",
+    "expect": [
+      "Colossal Dreadmaw: the battlefield → exile",
+      "opponent gains 9 life"
+    ],
+    "cite": [
+      "608.2h"
+    ]
+  },
+  {
+    "id": "sanguine-bond-lifelink",
+    "text": "My opponent controls Sanguine Bond and gains 5 life from Lifelink.",
+    "expect": [
+      "You lose 5 life"
+    ],
+    "cite": [
+      "119.3"
+    ]
+  },
+  {
+    "id": "end-step-pump",
+    "text": "It is the end step. I have Grizzly Bears with a +3/+3 pump from Giant Growth. Does it wear off?",
+    "expect": [
+      "Until-end-of-turn effects still apply during the end step; they end in the cleanup step"
+    ],
+    "cite": [
+      "514.2"
+    ]
+  },
+  {
+    "id": "chaos-warp-own",
+    "text": "I cast Chaos Warp targeting my own Sol Ring.",
+    "expect": [
+      "Sol Ring: the battlefield → your library"
+    ],
+    "cite": [
+      "701.24a"
+    ]
+  },
+  {
+    "id": "rip-vs-blood-artist",
+    "text": "I control Rest in Peace. My opponent's Grizzly Bears dies and they have Blood Artist.",
+    "expect": [
+      "Grizzly Bears: the battlefield → exile (replaced by Rest in Peace)"
+    ],
+    "cite": [
+      "614.6"
+    ]
+  },
+  {
+    "id": "bolt-face-guttersnipe",
+    "text": "They cast Lightning Bolt at my face with Guttersnipe out.",
+    "expect": [
+      "You take 3 damage"
+    ],
+    "cite": [
+      "120.3a"
+    ]
+  },
+  {
+    "id": "three-players-rhystic-nobody-pays",
+    "text": "Alice, Bob and Carol are playing. Alice has Rhystic Study. Bob casts Sol Ring and Carol casts Counterspell on it. Nobody pays.",
+    "expect": [
+      "Alice draws 1 card. (×2)",
+      "Sol Ring is countered"
+    ],
+    "cite": [
+      "608.2g",
+      "701.6a"
+    ]
+  },
+  {
+    "id": "exalted-commander-alone",
+    "text": "I attack Bob with my commander Rafiq of the Many alone. Bob is at 6.",
+    "expect": [
+      "Bob takes 4 damage. (×2)",
+      "Bob has taken 8 commander damage from Rafiq of the Many",
+      "Bob loses the game"
+    ],
+    "cite": [
+      "702.83a",
+      "903.10a",
+      "702.4b"
+    ]
+  },
+  {
+    "id": "ensnaring-bridge",
+    "text": "My opponent controls Ensnaring Bridge and has 0 cards in hand. I attack with Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears can't attack (Ensnaring Bridge)"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "terminate-darksteel",
+    "text": "I cast Terminate on their Darksteel Colossus.",
+    "expect": [
+      "Darksteel Colossus is indestructible and isn't destroyed"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "pacifism-attack",
+    "text": "I have Grizzly Bears enchanted with Pacifism. Can it attack? I attack with it.",
+    "expect": [
+      "Grizzly Bears can't attack"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "icy-during-combat",
+    "text": "I tap Grizzly Bears with Icy Manipulator during their beginning of combat.",
+    "expect": [
+      "Grizzly Bears is tapped"
+    ],
+    "cite": [
+      "701.26a"
+    ]
+  },
+  {
+    "id": "boros-charm-mode-word",
+    "text": "Bob casts Wrath of God. I respond with Boros Charm choosing the indestructible mode. I control Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears is indestructible and isn't destroyed"
+    ],
+    "cite": [
+      "702.12b",
+      "700.2a"
+    ]
+  },
+  {
+    "id": "blightsteel-poison",
+    "text": "My opponent has 2 poison counters and I attack with Blightsteel Colossus unblocked.",
+    "expect": [
+      "opponent has 13 poison counters",
+      "opponent loses the game (poison)"
+    ],
+    "cite": [
+      "702.90b",
+      "704.5c"
+    ]
+  },
+  {
+    "id": "rancor-returns",
+    "text": "I control Grizzly Bears and cast Rancor on it. Then my opponent kills the Bears with Doom Blade.",
+    "expect": [
+      "Rancor: the battlefield → your graveyard",
+      "Rancor: your graveyard → your hand"
+    ],
+    "cite": [
+      "704.5m",
+      "400.7"
+    ]
+  },
+  {
+    "id": "gitrog-sac-forest",
+    "text": "I have The Gitrog Monster. I sacrifice a Forest to it during my upkeep.",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "cite": [
+      "701.21a",
+      "121.1"
+    ]
+  },
+  {
+    "id": "response-to-mana",
+    "text": "I cast Naturalize on their Sol Ring in response to them tapping it for mana.",
+    "expect": [
+      "Sol Ring's mana ability: add {C}{C}",
+      "Sol Ring: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "605.3b"
+    ]
+  },
+  {
+    "id": "settle-after-attack",
+    "text": "I have Kaalia of the Vast. Opponent casts Settle the Wreckage after I attack with Kaalia and Serra Angel.",
+    "expect": [
+      "Kaalia of the Vast: the battlefield → exile",
+      "Serra Angel: the battlefield → exile"
+    ],
+    "cite": [
+      "701.13a"
+    ]
+  },
+  {
+    "id": "blaze-x",
+    "text": "Opponent has 3 life and I cast Blaze with X equal to 3 targeting them.",
+    "expect": [
+      "opponent takes 3 damage",
+      "opponent loses the game"
+    ],
+    "cite": [
+      "107.3a",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "can-respond-question",
+    "text": "Can my opponent respond to my Lightning Bolt with Counterspell?",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "cite": [
+      "701.6a",
+      "117.3c"
+    ]
+  },
+  {
+    "id": "atraxa-end-step",
+    "text": "My commander is Atraxa, Praetors' Voice. I have Jace Beleren with 3 loyalty. What happens at my end step?",
+    "expect": [
+      "Jace Beleren has 4 loyalty counters"
+    ],
+    "cite": [
+      "701.34a",
+      "513.1"
+    ]
+  },
+  {
+    "id": "baneslayer-double-block",
+    "text": "My opponent attacks with Baneslayer Angel. I block with Grizzly Bears and Hill Giant.",
+    "expect": [
+      "Grizzly Bears can't block Baneslayer Angel (flying)",
+      "You take 5 damage",
+      "opponent gains 5 life"
+    ],
+    "cite": [
+      "702.9b",
+      "702.15b"
+    ]
+  },
+  {
+    "id": "ponder-preordain",
+    "text": "I cast Ponder. Then I cast Preordain. Do I draw?",
+    "expect": [
+      "You draw 1 card. (×2)"
+    ],
+    "cite": [
+      "121.1"
+    ]
+  },
+  {
+    "id": "dismember-indestructible",
+    "text": "My opponent's Darksteel Colossus is indestructible. I cast Dismember on it.",
+    "expect": [
+      "Darksteel Colossus is 6/6 until end of turn"
+    ],
+    "cite": [
+      "611.2a"
+    ]
+  },
+  {
+    "id": "menace-single-blocker",
+    "text": "I attack with Boggart Brute. My opponent has only one untapped creature, Grizzly Bears, and tries to block.",
+    "expect": [
+      "opponent takes 3 damage"
+    ],
+    "cite": [
+      "702.111b"
+    ]
+  },
+  {
+    "id": "ward-unpaid",
+    "text": "I cast Lightning Bolt targeting Tomakul Honor Guard and I don't pay for ward.",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "cite": [
+      "702.21a"
+    ]
+  },
+  {
+    "id": "chupacabra-etb-target",
+    "text": "I cast Ravenous Chupacabra targeting their Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "603.3d",
+      "701.8a"
+    ]
+  },
+  {
+    "id": "kor-firewalker",
+    "text": "I have Kor Firewalker. My opponent casts Lightning Bolt at me.",
+    "expect": [
+      "You gain 1 life",
+      "You take 3 damage"
+    ],
+    "cite": [
+      "119.3",
+      "120.3a"
+    ]
+  },
+  {
+    "id": "kicked-burst-lightning",
+    "text": "I cast Burst Lightning kicked at their Serra Angel.",
+    "expect": [
+      "Serra Angel: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "702.33d"
+    ]
+  },
+  {
+    "id": "two-bears-block-one",
+    "text": "My opponent attacks with two Grizzly Bears. I block one with Hill Giant.",
+    "expect": [
+      "You take 2 damage",
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "510.1c"
+    ]
+  },
+  {
+    "id": "caryatid-hexproof",
+    "text": "I cast Lightning Bolt on my opponent's Sylvan Caryatid.",
+    "expect": [
+      "Lightning Bolt can't target Sylvan Caryatid"
+    ],
+    "cite": [
+      "702.11b"
+    ]
+  },
+  {
+    "id": "black-knight-protection",
+    "text": "My opponent controls Black Knight. I cast Swords to Plowshares on it.",
+    "expect": [
+      "Swords to Plowshares can't target Black Knight"
+    ],
+    "cite": [
+      "702.16b"
+    ]
+  },
+  {
+    "id": "counter-their-counterspell",
+    "text": "I cast Counterspell on my opponent's Counterspell that targets my Grizzly Bears.",
+    "expect": [
+      "Counterspell is countered"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "bolt-face-in-response",
+    "text": "My opponent casts Thoughtseize. I respond with Lightning Bolt to their face. They're at 3.",
+    "expect": [
+      "opponent takes 3 damage",
+      "opponent loses the game"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "cast-it-from-hand",
+    "text": "I have Wrath of God in hand. Opponent controls Grizzly Bears, Serra Angel and Darksteel Colossus. I cast it.",
+    "expect": [
+      "Serra Angel: the battlefield → opponent's graveyard",
+      "Darksteel Colossus is indestructible and isn't destroyed"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "attack-into-no-block",
+    "text": "I attack with Grizzly Bears into their untapped Serra Angel. They don't block.",
+    "expect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "510.1b"
+    ]
+  },
+  {
+    "id": "rhystic-triggers-i-draw",
+    "text": "It's my opponent's turn. They cast Sol Ring, then Rhystic Study triggers for me and I draw.",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "mana-leak-paid",
+    "text": "My opponent counters my Grizzly Bears with Mana Leak. I pay the 3.",
+    "expect": [
+      "You pay {3}; Mana Leak has no further effect",
+      "Grizzly Bears enters the battlefield"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "naturalize-rancor",
+    "text": "I control Grizzly Bears with Rancor. Opponent casts Naturalize on Rancor.",
+    "expect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "cite": [
+      "400.7"
+    ]
+  },
+  {
+    "id": "elder-sac-in-response",
+    "text": "I cast Sakura-Tribe Elder and sacrifice it in response to Lightning Bolt.",
+    "expect": [
+      "Sakura-Tribe Elder: the battlefield → your graveyard",
+      "Lightning Bolt doesn't resolve (all targets illegal)"
+    ],
+    "cite": [
+      "701.21a",
+      "608.2b"
+    ]
+  },
+  {
+    "id": "aura-shards-target",
+    "text": "I control Aura Shards and cast Grizzly Bears. Opponent has Sol Ring.",
+    "expect": [
+      "Sol Ring: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "701.8a"
+    ]
+  },
+  {
+    "id": "bridge-two-cards",
+    "text": "My opponent controls Ensnaring Bridge with 2 cards in hand. I attack with Llanowar Elves and Serra Angel.",
+    "expect": [
+      "Serra Angel can't attack (Ensnaring Bridge)",
+      "opponent takes 1 damage"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "emrakul-swords",
+    "text": "I cast Swords to Plowshares on Emrakul, the Aeons Torn.",
+    "expect": [
+      "Swords to Plowshares can't target Emrakul, the Aeons Torn"
+    ],
+    "cite": [
+      "702.16b"
+    ]
+  },
+  {
+    "id": "mind-control-next-turn",
+    "text": "I cast Mind Control on their Serra Angel and attack with it next turn.",
+    "expect": [
+      "You control Serra Angel",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "613.1b",
+      "502.3"
+    ]
+  },
+  {
+    "id": "mana-in-response-split-second",
+    "text": "Opponent casts Krosan Grip on my Sol Ring. Can I tap Sol Ring for mana in response?",
+    "expect": [
+      "Sol Ring's mana ability: add {C}{C}",
+      "Sol Ring: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "702.61a",
+      "605.3b"
+    ]
+  },
+  {
+    "id": "unsummon-recast",
+    "text": "I cast Unsummon on my own Mulldrifter and recast it.",
+    "expect": [
+      "Mulldrifter: the battlefield → your hand",
+      "You draw 2 cards"
+    ],
+    "cite": [
+      "400.7",
+      "121.1"
+    ]
+  },
+  {
+    "id": "bolt-wall-before-damage",
+    "text": "I attack with Grizzly Bears and my opponent blocks with Wall of Omens. Then I cast Lightning Bolt on the Wall before damage.",
+    "expect": [
+      "Wall of Omens: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "both-bears-boros-charm",
+    "text": "Both of us control Grizzly Bears. I cast Wrath of God. My opponent responds with Boros Charm for indestructible.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Grizzly Bears is indestructible and isn't destroyed"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "mother-of-runes",
+    "text": "I have Mother of Runes and Grizzly Bears. Opponent casts Doom Blade on the Bears and I give it protection from black in response.",
+    "expect": [
+      "Grizzly Bears has protection from black until end of turn",
+      "Doom Blade doesn't resolve (all targets illegal)"
+    ],
+    "cite": [
+      "608.2b"
+    ]
+  },
+  {
+    "id": "platinum-angel",
+    "text": "My opponent has 5 life and Platinum Angel. I attack with Craterhoof Behemoth and three Elves.",
+    "expect": [
+      "opponent stays in the game: Platinum Angel keeps opponent from losing"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "leyline-thoughtseize",
+    "text": "I control Leyline of Sanctity. My opponent casts Thoughtseize targeting me.",
+    "expect": [
+      "Thoughtseize can't target you"
+    ],
+    "cite": [
+      "702.11c"
+    ]
+  },
+  {
+    "id": "path-their-token",
+    "text": "I cast Path to Exile on my opponent's token.",
+    "expect": [
+      "a 1/1 token: the battlefield → exile"
+    ],
+    "cite": [
+      "701.13a"
+    ]
+  },
+  {
+    "id": "blood-moon-tropical",
+    "text": "My opponent plays Blood Moon while I control Tropical Island. Can I still tap it for green?",
+    "expect": [
+      "Tropical Island adds {R} (only), because of Blood Moon"
+    ],
+    "cite": [
+      "305.7",
+      "613.1d"
+    ]
+  },
+  {
+    "id": "fog-from-hand-after-blockers",
+    "text": "I attack with Grizzly Bears. Opponent has Fog in hand and casts it after blockers.",
+    "expect": [
+      "Damage to opponent from Grizzly Bears is prevented"
+    ],
+    "cite": [
+      "615.6"
+    ]
+  },
+  {
+    "id": "rift-end-step",
+    "text": "I control Grizzly Bears and Serra Angel. My opponent casts Cyclonic Rift overloaded during my end step. Do I get them back?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your hand",
+      "Serra Angel: the battlefield → your hand"
+    ],
+    "cite": [
+      "702.96a",
+      "513.1"
+    ]
+  },
+  {
+    "id": "force-of-will-counterspell",
+    "text": "I cast Ponder and my opponent casts Counterspell on it. I respond with Force of Will pitching a blue card.",
+    "expect": [
+      "Counterspell is countered",
+      "You draw 1 card"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "baneslayer-vs-nighthawk",
+    "text": "Opponent attacks with Baneslayer Angel. I block with Vampire Nighthawk.",
+    "expect": [
+      "Vampire Nighthawk: the battlefield → your graveyard",
+      "opponent gains 5 life"
+    ],
+    "cite": [
+      "702.7b",
+      "702.15b"
+    ]
+  },
+  {
+    "id": "skullclamp-elf",
+    "text": "I cast Skullclamp and equip it to a 1/1 Elf token.",
+    "expect": [
+      "Skullclamp is attached to Elf token",
+      "Elf token: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5f",
+      "702.6a"
+    ]
+  },
+  {
+    "id": "naturalize-pacifism-attack",
+    "text": "My opponent controls Grizzly Bears with a Pacifism on it. I cast Naturalize on Pacifism and then they attack with the Bears.",
+    "expect": [
+      "Pacifism: the battlefield → opponent's graveyard",
+      "You take 2 damage"
+    ],
+    "cite": [
+      "701.8a"
+    ]
+  },
+  {
+    "id": "blightsteel-block",
+    "text": "I have 3 poison counters. My opponent attacks with Blightsteel Colossus and I block with Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears has 2 -1/-1 counter(s)",
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "702.90c"
+    ]
+  },
+  {
+    "id": "craterhoof-under-norn",
+    "text": "My opponent has Elesh Norn, Grand Cenobite. I cast Craterhoof Behemoth with two Llanowar Elves in play.",
+    "expect": [
+      "Llanowar Elves: the battlefield → your graveyard. (×2)",
+      "Craterhoof Behemoth is 4/4 until end of turn"
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "swords-after-damage",
+    "text": "I attack with Grizzly Bears. Opponent blocks with Wall of Omens and then casts Swords to Plowshares on my Bears after damage.",
+    "expect": [
+      "Wall of Omens has 2 damage marked",
+      "Grizzly Bears: the battlefield → exile"
+    ],
+    "cite": [
+      "510.2",
+      "701.13a"
+    ]
+  },
+  {
+    "id": "three-player-taxes",
+    "text": "Alice has Rhystic Study, Bob casts Sol Ring and Carol has Smothering Tithe. Bob doesn't pay for anything.",
+    "expect": [
+      "Alice draws 1 card",
+      "Carol gets a Treasure token"
+    ],
+    "cite": [
+      "608.2g",
+      "701.7a"
+    ]
+  },
+  {
+    "id": "named-then-bolts",
+    "text": "I attack Alice with Grizzly Bears and she blocks with Hill Giant. Bob then bolts my Bears.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "sheoldred-divination",
+    "text": "I control Sheoldred, the Apocalypse and cast Divination.",
+    "expect": [
+      "You draw 2 cards",
+      "You gain 2 life. (×2)"
+    ],
+    "cite": [
+      "119.3"
+    ]
+  },
+  {
+    "id": "settle-in-hand-cast-it",
+    "text": "My opponent attacks with Serra Angel and I have Settle the Wreckage. I cast it on them.",
+    "expect": [
+      "Serra Angel: the battlefield → exile"
+    ],
+    "cite": [
+      "701.13a"
+    ]
+  },
+  {
+    "id": "rancor-bears-vs-angel",
+    "text": "I have Grizzly Bears with Rancor and attack. They block with Serra Angel.",
+    "expect": [
+      "Serra Angel: the battlefield → opponent's graveyard",
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Rancor: your graveyard → your hand"
+    ],
+    "cite": [
+      "704.5g",
+      "704.5m"
+    ]
+  },
+  {
+    "id": "snakeskin-veil",
+    "text": "My opponent casts Lightning Bolt targeting my Grizzly Bears. I respond with Snakeskin Veil.",
+    "expect": [
+      "Grizzly Bears has hexproof until end of turn",
+      "Lightning Bolt doesn't resolve (all targets illegal)"
+    ],
+    "cite": [
+      "608.2b"
+    ]
+  },
+  {
+    "id": "icy-during-my-combat",
+    "text": "My opponent taps Grizzly Bears with Icy Manipulator during my beginning of combat. Can I attack with it?",
+    "expect": [
+      "Grizzly Bears is tapped",
+      "Grizzly Bears can't attack (tapped)"
+    ],
+    "cite": [
+      "508.1a"
+    ]
+  },
+  {
+    "id": "ghostly-prison-paid",
+    "text": "I control Ghostly Prison. My opponent attacks with Grizzly Bears and pays {2}.",
+    "expect": [
+      "You take 2 damage"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "bolt-from-hand-face",
+    "text": "I have Lightning Bolt and Grizzly Bears. I cast the Bolt at their face.",
+    "expect": [
+      "opponent takes 3 damage"
+    ],
+    "cite": [
+      "120.3a"
+    ]
+  },
+  {
+    "id": "giant-growth-twice",
+    "text": "I have Grizzly Bears and cast Giant Growth on it twice. Then my opponent bolts it.",
+    "expect": [
+      "Grizzly Bears is 8/8 until end of turn",
+      "Grizzly Bears has 3 damage marked"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield"
+    ],
+    "cite": [
+      "611.2a"
+    ]
+  },
+  {
+    "id": "short-name-the-angel",
+    "text": "I attack with Serra Angel. They block the Angel with Wall of Omens.",
+    "expect": [
+      "Wall of Omens can't block Serra Angel (flying)",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "702.9b"
+    ]
+  },
+  {
+    "id": "named-respond-by-casting",
+    "text": "Bob casts Lightning Bolt at Alice's Grizzly Bears. Alice responds by casting Brainstorm.",
+    "expect": [
+      "Alice draws 3 cards",
+      "Grizzly Bears: the battlefield → Alice's graveyard"
+    ],
+    "cite": [
+      "121.1"
+    ]
+  },
+  {
+    "id": "with-two-cards-out",
+    "text": "I cast Titania's Boon with Grizzly Bears and Hill Giant on the battlefield.",
+    "expect": [
+      "Hill Giant has 1 +1/+1 counter",
+      "Grizzly Bears has 1 +1/+1 counter"
+    ],
+    "cite": [
+      "122.6"
+    ]
+  },
+  {
+    "id": "avacyn-under-my-control",
+    "text": "My opponent casts Wrath of God with Avacyn, Angel of Hope on the battlefield under my control.",
+    "expect": [
+      "Avacyn, Angel of Hope is indestructible and isn't destroyed"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "then-bolt-it-after-response",
+    "text": "My opponent bolts my Grizzly Bears, I respond with Giant Growth. Then I cast Lightning Bolt on it.",
+    "expect": [
+      "Grizzly Bears is 5/5 until end of turn",
+      "Grizzly Bears has 6 damage marked",
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "evoke-mulldrifter",
+    "text": "I cast Mulldrifter with evoke.",
+    "expect": [
+      "Mulldrifter is sacrificed",
+      "You draw 2 cards"
+    ],
+    "cite": [
+      "702.74a",
+      "701.21a"
+    ]
+  },
+  {
+    "id": "evoke-under-torpor-orb",
+    "text": "My opponent has Torpor Orb. I cast Mulldrifter for its evoke cost.",
+    "expect": [
+      "Mulldrifter stays on the battlefield (its evoke trigger never triggered)"
+    ],
+    "notExpect": [
+      "You draw 2 cards"
+    ],
+    "cite": [
+      "702.74a",
+      "603.2"
+    ]
+  },
+  {
+    "id": "jace-his-minus-one",
+    "text": "I have Jace Beleren. I use his -1 targeting my opponent.",
+    "expect": [
+      "opponent draws 1 card"
+    ],
+    "cite": [
+      "606.3"
+    ]
+  },
+  {
+    "id": "fling-token",
+    "text": "I cast Fling sacrificing my 5/5 Beast token targeting my opponent.",
+    "expect": [
+      "opponent takes 5 damage"
+    ],
+    "cite": [
+      "608.2h",
+      "701.21a"
+    ]
+  },
+  {
+    "id": "draw-from-empty-library",
+    "text": "I have 0 cards in my library. My opponent casts Prosperity with X = 2.",
+    "expect": [
+      "You lose the game (drew from an empty library)",
+      "opponent draws 2 cards"
+    ],
+    "cite": [
+      "121.4",
+      "704.5b"
+    ]
+  },
+  {
+    "id": "platinum-angel-empty-library",
+    "text": "I have Platinum Angel and no cards left in my library. I cast Brainstorm.",
+    "expect": [
+      "Platinum Angel keeps you from losing"
+    ],
+    "cite": [
+      "704.5b",
+      "104.3b"
+    ]
+  },
+  {
+    "id": "aether-vial-matching-mv",
+    "text": "I activate Aether Vial with 2 counters to put Grizzly Bears onto the battlefield.",
+    "expect": [
+      "Grizzly Bears enters the battlefield"
+    ],
+    "cite": [
+      "202.3",
+      "608.2c"
+    ]
+  },
+  {
+    "id": "aether-vial-wrong-mv",
+    "text": "I activate Aether Vial with 3 counters to put Grizzly Bears onto the battlefield.",
+    "expect": [
+      "Grizzly Bears stays in hand (mana value 2 ≠ 3 counters)"
+    ],
+    "cite": [
+      "202.3"
+    ]
+  },
+  {
+    "id": "obliterator-bolted",
+    "text": "My opponent has Phyrexian Obliterator. I have three Forests and Grizzly Bears. I bolt the Obliterator.",
+    "expect": [
+      "Forest: the battlefield → your graveyard. (×3)"
+    ],
+    "cite": [
+      "701.21a"
+    ]
+  },
+  {
+    "id": "obliterator-blocked",
+    "text": "My opponent attacks me with Phyrexian Obliterator and I block with Grizzly Bears. I control two Forests.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Forest: the battlefield → your graveyard. (×2)"
+    ],
+    "cite": [
+      "701.21a",
+      "702.19b"
+    ]
+  },
+  {
+    "id": "leyline-sanctity-bolt-face",
+    "text": "My opponent has Leyline of Sanctity. I cast Lightning Bolt targeting them.",
+    "expect": [
+      "Lightning Bolt can't target opponent"
+    ],
+    "cite": [
+      "702.11c"
+    ]
+  },
+  {
+    "id": "rancor-question",
+    "text": "I have Grizzly Bears with Rancor. My opponent casts Doom Blade on the Bears. Does Rancor come back?",
+    "expect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "cite": [
+      "704.5m"
+    ]
+  },
+  {
+    "id": "nighthawk-block-with-it-next-turn",
+    "text": "My opponent has Grizzly Bears with a +1/+1 counter. I cast Vampire Nighthawk and block the Bears with it next turn.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard",
+      "Vampire Nighthawk: the battlefield → your graveyard",
+      "You gain 2 life"
+    ],
+    "cite": [
+      "702.2b",
+      "702.15b"
+    ]
+  },
+  {
+    "id": "rhystic-three-spells-none-paid",
+    "text": "I have Rhystic Study and my opponent casts three spells this turn, paying for none of them.",
+    "expect": [
+      "You draw 1 card. (×3)"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "counterspell-uncast-wrath",
+    "text": "I cast Counterspell on my opponent's Wrath of God.",
+    "expect": [
+      "Wrath of God is countered"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "jace-ultimate-doubling-season",
+    "text": "I have Doubling Season and cast Jace, the Mind Sculptor. Can I ultimate him right away?",
+    "expect": [
+      "Jace, the Mind Sculptor has 6 loyalty",
+      "-12 ability can't be activated (not enough loyalty)"
+    ],
+    "cite": [
+      "606.6"
+    ]
+  },
+  {
+    "id": "ambush-viper-flash-block",
+    "text": "It's my turn. I attack with Grizzly Bears and my opponent flashes in Ambush Viper to block it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Ambush Viper: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "702.8a"
+    ]
+  },
+  {
+    "id": "kaalia-baneslayer",
+    "text": "I attack with Kaalia of the Vast and put Baneslayer Angel onto the battlefield with Kaalia's trigger. My opponent has no blockers.",
+    "expect": [
+      "Baneslayer Angel is attacking opponent",
+      "opponent takes 5 damage",
+      "You gain 5 life",
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "508.4",
+      "702.15b"
+    ]
+  },
+  {
+    "id": "creature-cast-in-response-no-flash",
+    "text": "My opponent casts Lightning Bolt at me. I respond by casting Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears doesn't have flash"
+    ],
+    "cite": [
+      "302.1"
+    ]
+  },
+  {
+    "id": "three-three-blocked-by-two-two-twos",
+    "text": "I attack with a 3/3 and my opponent blocks with two 2/2s. How do I assign damage?",
+    "expect": [
+      "a 3/3 creature: the battlefield → your graveyard",
+      "a 2/2 creature: the battlefield → opponent's graveyard",
+      "2 to a 2/2 creature, 1 to a 2/2 creature"
+    ],
+    "cite": [
+      "510.1c"
+    ]
+  },
+  {
+    "id": "ensnaring-bridge-empty-hand-fragment",
+    "text": "My opponent has Ensnaring Bridge and 0 cards in hand. I attack with Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears can't attack (Ensnaring Bridge)"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "wrath-vs-regeneration-from-ezuri",
+    "text": "I cast Wrath of God. I have Grizzly Bears with regeneration from Ezuri.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "701.19c"
+    ]
+  },
+  {
+    "id": "glimpse-small-library",
+    "text": "My opponent mills me with Glimpse the Unthinkable. I have 5 cards in library.",
+    "expect": [
+      "You mill 5 cards (0 left in library)"
+    ],
+    "notExpect": [
+      "lose the game"
+    ],
+    "cite": [
+      "701.17a",
+      "701.17b"
+    ]
+  },
+  {
+    "id": "krenko-three-goblins",
+    "text": "I control Krenko, Mob Boss and 3 other goblins. I tap Krenko.",
+    "expect": [
+      "You get a Goblin token. (×4)"
+    ],
+    "cite": [
+      "608.2h",
+      "701.7a"
+    ]
+  },
+  {
+    "id": "terminus-indestructible-counter",
+    "text": "I cast Terminus. My opponent has Grizzly Bears with an indestructible counter.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's library"
+    ],
+    "cite": [
+      "400.7"
+    ]
+  },
+  {
+    "id": "wrath-vs-indestructible-counter",
+    "text": "My opponent casts Wrath of God. I have Grizzly Bears with an indestructible counter.",
+    "expect": [
+      "Grizzly Bears is indestructible and isn't destroyed"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "pyroclasm-described-creatures",
+    "text": "I have two 2/2 zombies and a 4/4 with flying. My opponent casts Pyroclasm.",
+    "expect": [
+      "a 2/2 zombie creature: the battlefield → your graveyard. (×2)",
+      "a 4/4 creature with flying has 2 damage marked"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "sheoldred-wheel",
+    "text": "I control Sheoldred, the Apocalypse and my opponent casts Wheel of Fortune.",
+    "expect": [
+      "opponent loses 2 life. (×7)",
+      "You gain 2 life. (×7)"
+    ],
+    "cite": [
+      "121.1"
+    ]
+  },
+  {
+    "id": "greaves-on-bears-has-form",
+    "text": "My opponent has Lightning Greaves on Grizzly Bears. Can I bolt the Bears?",
+    "expect": [
+      "Lightning Bolt can't target Grizzly Bears"
+    ],
+    "cite": [
+      "702.18a"
+    ]
+  },
+  {
+    "id": "rift-overloaded-treasure",
+    "text": "I cast Cyclonic Rift overloaded. My opponent has two Forests, Grizzly Bears and a Treasure token.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's hand",
+      "Treasure token: the battlefield → opponent's hand"
+    ],
+    "notExpect": [
+      "Forest: the battlefield"
+    ],
+    "cite": [
+      "702.96a"
+    ]
+  },
+  {
+    "id": "questing-beast-token-block",
+    "text": "I attack with Questing Beast. My opponent blocks with a 1/1 Soldier token and is at 3 life.",
+    "expect": [
+      "Soldier token can't block Questing Beast",
+      "opponent loses the game"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "elder-in-response-targeting-it",
+    "text": "I sacrifice Sakura-Tribe Elder in response to Lightning Bolt targeting it.",
+    "expect": [
+      "Lightning Bolt doesn't resolve (all targets illegal)",
+      "a basic land enters the battlefield"
+    ],
+    "cite": [
+      "602.2b",
+      "608.2b"
+    ]
+  },
+  {
+    "id": "commander-damage-first-name",
+    "text": "My commander Atraxa has dealt 18 damage to my opponent already. I hit them with Atraxa again unblocked.",
+    "expect": [
+      "opponent loses the game (commander damage)"
+    ],
+    "cite": [
+      "903.10a"
+    ]
+  },
+  {
+    "id": "sheoldred-first-name",
+    "text": "I have Sheoldred and my opponent draws a card.",
+    "expect": [
+      "opponent loses 2 life"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "kaalia-first-name-her-trigger",
+    "text": "Kaalia attacks and I put Rakdos onto the battlefield with her trigger.",
+    "expect": [
+      "is attacking opponent"
+    ],
+    "cite": [
+      "508.4"
+    ]
+  },
+  {
+    "id": "jace-short-after-full",
+    "text": "I have Jace, the Mind Sculptor. I activate Jace's +2.",
+    "expect": [
+      "you activate Jace, the Mind Sculptor (+2)"
+    ],
+    "cite": [
+      "606.3"
+    ]
+  },
+  {
+    "id": "ghostly-prison-named-two-creatures",
+    "text": "Bob has Ghostly Prison. I attack Bob with two creatures but only have 2 mana.",
+    "expect": [
+      "Bob takes 1 damage. (×2)"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "teferi-no-counter",
+    "text": "I have Teferi, Time Raveler. Can my opponent counter my Grizzly Bears?",
+    "expect": [
+      "a counterspell can't be cast (Teferi, Time Raveler: sorcery speed only)",
+      "Grizzly Bears enters the battlefield"
+    ],
+    "cite": [
+      "307.1"
+    ]
+  },
+  {
+    "id": "thoughtseize-reveal-list",
+    "text": "I cast Thoughtseize on my opponent. They reveal Counterspell and Forest.",
+    "expect": [
+      "You lose 2 life"
+    ],
+    "notExpect": [
+      "Forest enters the battlefield"
+    ],
+    "cite": [
+      "119.3"
+    ]
+  },
+  {
+    "id": "rest-in-peace-blood-artist-question",
+    "text": "My opponent casts Rest in Peace. Then my Grizzly Bears dies. Does my Blood Artist trigger?",
+    "expect": [
+      "Grizzly Bears: the battlefield → exile (replaced by Rest in Peace)",
+      "No: Blood Artist's ability didn't trigger"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "four-untapped-plains-fragment",
+    "text": "I attack with Serra Angel and Grizzly Bears. My opponent has Settle the Wreckage in hand and 4 untapped Plains.",
+    "expect": [
+      "Plains [plains_4] (opponent's)",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "510.2"
+    ]
+  },
+  {
+    "id": "twincast-copy-retarget",
+    "text": "My opponent bolts my Grizzly Bears and I copy it with Twincast targeting their Hill Giant.",
+    "expect": [
+      "A copy of Lightning Bolt is put on the stack targeting Hill Giant",
+      "Hill Giant: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "707.10",
+      "707.10c"
+    ]
+  },
+  {
+    "id": "twincast-copy-bolt-at-me",
+    "text": "I copy my opponent's Lightning Bolt with Twincast.",
+    "expect": [
+      "opponent takes 3 damage",
+      "You take 3 damage"
+    ],
+    "cite": [
+      "707.10c"
+    ]
+  },
+  {
+    "id": "dovins-veto-uncast-counterspell",
+    "text": "I cast Dovin's Veto on my opponent's Counterspell.",
+    "expect": [
+      "Counterspell is countered"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "bears-survive-question",
+    "text": "My opponent casts Doom Blade on my Grizzly Bears. I respond with Giant Growth. Does the Bears survive?",
+    "expect": [
+      "No: Grizzly Bears is in the graveyard"
+    ],
+    "cite": [
+      "701.8a"
+    ]
+  },
+  {
+    "id": "bolt-at-one-life-left",
+    "text": "It's my end step and I have Sylvan Library. My opponent casts Lightning Bolt at me with 1 life left for me.",
+    "expect": [
+      "You lose the game"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "sword-fire-ice-red-blocker",
+    "text": "I have Grizzly Bears equipped with Sword of Fire and Ice and attack. My opponent blocks with a red creature.",
+    "expect": [
+      "a red creature can't block Grizzly Bears (protection)",
+      "opponent takes 4 damage",
+      "opponent takes 2 damage",
+      "You draw 1 card"
+    ],
+    "cite": [
+      "702.16f"
+    ]
+  },
+  {
+    "id": "maze-of-ith",
+    "text": "My opponent has Maze of Ith. I attack with Grizzly Bears and they use Maze on it.",
+    "expect": [
+      "Grizzly Bears is untapped",
+      "2 combat damage from Grizzly Bears is prevented"
+    ],
+    "notExpect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "615.1"
+    ]
+  },
+  {
+    "id": "greaves-equip-right-away",
+    "text": "I control Lightning Greaves and cast Grizzly Bears. Can I equip it right away and attack?",
+    "expect": [
+      "Lightning Greaves is attached to Grizzly Bears",
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "702.10b"
+    ]
+  },
+  {
+    "id": "approach-second-time",
+    "text": "I cast Approach of the Second Sun for the second time this game.",
+    "expect": [
+      "Approach of the Second Sun goes into your library seventh from the top",
+      "You win the game"
+    ],
+    "cite": [
+      "104.2b"
+    ]
+  },
+  {
+    "id": "krenko-summoning-sick-tap",
+    "text": "My opponent has Elesh Norn, Grand Cenobite. I cast Krenko, Mob Boss and tap it.",
+    "expect": [
+      "Krenko, Mob Boss's {T} ability can't be activated (summoning sickness)"
+    ],
+    "cite": [
+      "302.6"
+    ]
+  },
+  {
+    "id": "ulamog-cast-it-countered",
+    "text": "I have Ulamog, the Ceaseless Hunger and cast it. My opponent responds with Counterspell.",
+    "expect": [
+      "Ulamog, the Ceaseless Hunger is countered"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "zur-fetches-pacifism",
+    "text": "I control Zur the Enchanter and attack. I fetch Pacifism with Zur and put it on their Grizzly Bears.",
+    "expect": [
+      "Pacifism enters the battlefield attached to Grizzly Bears"
+    ],
+    "cite": [
+      "303.4f",
+      "701.24a"
+    ]
+  },
+  {
+    "id": "solemnity-ballista",
+    "text": "My opponent has Solemnity. I cast Walking Ballista for X=2.",
+    "expect": [
+      "Walking Ballista: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5f",
+      "122.1"
+    ]
+  },
+  {
+    "id": "grand-abolisher-their-turn",
+    "text": "My opponent controls Grand Abolisher. Can I cast Lightning Bolt during their turn?",
+    "expect": [
+      "Lightning Bolt can't be cast (Grand Abolisher: not during opponent's turn)"
+    ],
+    "cite": [
+      "101.2"
+    ]
+  },
+  {
+    "id": "thalia-one-mountain",
+    "text": "I control Thalia, Guardian of Thraben. My opponent casts Lightning Bolt and only has one Mountain untapped.",
+    "expect": [
+      "Lightning Bolt can't be cast (costs 2, only 1 mana available)"
+    ],
+    "cite": [
+      "601.2f",
+      "601.2h"
+    ]
+  },
+  {
+    "id": "thalia-counterspell-two-lands",
+    "text": "I control Thalia, Guardian of Thraben and my opponent has 2 lands untapped. They cast Counterspell on my Grizzly Bears.",
+    "expect": [
+      "Counterspell can't be cast (costs 3, only 2 mana available)",
+      "Grizzly Bears enters the battlefield"
+    ],
+    "cite": [
+      "601.2h"
+    ]
+  },
+  {
+    "id": "ruric-thar-counterspell",
+    "text": "I have Rhystic Study and my opponent has Ruric Thar, the Unbowed. They cast Counterspell.",
+    "expect": [
+      "opponent takes 6 damage",
+      "You draw 1 card"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "deathrite-tap-for-mana",
+    "text": "I control Deathrite Shaman. Can I tap it for mana?",
+    "expect": [
+      "Exile target land card from a graveyard"
+    ],
+    "notExpect": [
+      "which one?"
+    ],
+    "cite": [
+      "605.1a"
+    ]
+  },
+  {
+    "id": "reach-blocks-one-angel",
+    "text": "I attack with two 4/4 Angel tokens with flying. My opponent has a 2/2 with reach and blocks one.",
+    "expect": [
+      "a 2/2 creature with reach: the battlefield → opponent's graveyard",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "509.1a"
+    ]
+  },
+  {
+    "id": "fog-after-blocks",
+    "text": "I attack with Grizzly Bears and Hill Giant. My opponent blocks the Giant with Serra Angel and then casts Fog.",
+    "expect": [
+      "Damage to opponent from Grizzly Bears is prevented",
+      "Damage to Serra Angel from Hill Giant is prevented"
+    ],
+    "cite": [
+      "615.1"
+    ]
+  },
+  {
+    "id": "trample-five-five-vs-two-two",
+    "text": "My opponent attacks with a 5/5 trample and I block with a 2/2. How much damage do I take?",
+    "expect": [
+      "You take 3 damage",
+      "a 2/2 creature: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "702.19b"
+    ]
+  },
+  {
+    "id": "giant-growth-then-bolted",
+    "text": "My Grizzly Bears has a +1/+1 counter and my opponent casts Giant Growth on it. Then it gets Lightning Bolted.",
+    "expect": [
+      "Grizzly Bears is 6/6 until end of turn",
+      "Grizzly Bears has 3 damage marked"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield"
+    ],
+    "cite": [
+      "120.3e"
+    ]
+  },
+  {
+    "id": "aetherflux-six-spells",
+    "text": "I control Aetherflux Reservoir and cast five spells this turn. Then I cast a sixth one.",
+    "expect": [
+      "You gain 6 life"
+    ],
+    "cite": [
+      "608.2h"
+    ]
+  },
+  {
+    "id": "settle-should-i-cast-after-blockers",
+    "text": "My opponent attacks me with Grizzly Bears and I have Settle the Wreckage. Should I cast it after blockers?",
+    "expect": [
+      "Grizzly Bears: the battlefield → exile"
+    ],
+    "cite": [
+      "701.13a"
+    ]
+  },
+  {
+    "id": "kci-two-treasures",
+    "text": "I have Krark-Clan Ironworks and sacrifice two Treasure tokens to it.",
+    "expect": [
+      "Krark-Clan Ironworks's mana ability: add {C}{C}. (×2)"
+    ],
+    "cite": [
+      "605.1a",
+      "701.21a"
+    ]
+  },
+  {
+    "id": "boros-charm-indestructible-vs-damnation",
+    "text": "My opponent casts Damnation. I have Grizzly Bears and respond with Boros Charm choosing indestructible.",
+    "expect": [
+      "Grizzly Bears has indestructible until end of turn",
+      "Grizzly Bears is indestructible and isn't destroyed"
+    ],
+    "cite": [
+      "702.12b",
+      "700.2a"
+    ]
+  },
+  {
+    "id": "swords-in-response-to-giant-growth",
+    "text": "I cast Swords to Plowshares on Grizzly Bears in response to my opponent's Giant Growth on it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → exile",
+      "You gain 2 life",
+      "Giant Growth doesn't resolve (all targets illegal)"
+    ],
+    "cite": [
+      "608.2b"
+    ]
+  },
+  {
+    "id": "propaganda-pay-for-two",
+    "text": "My opponent has Propaganda and I attack with three creatures but can only pay for two.",
+    "expect": [
+      "opponent takes 1 damage. (×2)"
+    ],
+    "cite": [
+      "508.1c"
+    ],
+    "notExpect": [
+      "(×3)"
+    ]
+  },
+  {
+    "id": "tutor-get-bolt",
+    "text": "I cast Demonic Tutor and get Lightning Bolt. Then I bolt my opponent's Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "701.23a"
+    ]
+  },
+  {
+    "id": "pacifism-can-i-block",
+    "text": "I have Grizzly Bears and my opponent casts Pacifism on it. Can I still block with it?",
+    "expect": [
+      "No: Grizzly Bears can't block (Pacifism says so)"
+    ],
+    "cite": [
+      "303.4"
+    ]
+  },
+  {
+    "id": "ghostly-prison-six-lands",
+    "text": "My opponent has Ghostly Prison and I have Grizzly Bears and 6 lands. I attack with the Bears.",
+    "expect": [
+      "You pay {2} for Ghostly Prison (Grizzly Bears attacks)",
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "guttersnipe-lethal",
+    "text": "My opponent has 2 life and I control Guttersnipe. I cast Lightning Bolt targeting their Grizzly Bears.",
+    "expect": [
+      "opponent takes 2 damage",
+      "opponent loses the game"
+    ],
+    "cite": [
+      "603.2",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "ashnods-altar-sac-to-it",
+    "text": "I have Ashnod's Altar and sacrifice Grizzly Bears to it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Ashnod's Altar's mana ability: add {C}{C}"
+    ],
+    "cite": [
+      "701.21a",
+      "605.1a"
+    ]
+  },
+  {
+    "id": "rift-own-creature-illegal",
+    "text": "I cast Cyclonic Rift on my own Grizzly Bears.",
+    "expect": [
+      "Cyclonic Rift can't target Grizzly Bears (not a nonland permanent you don't control)"
+    ],
+    "cite": [
+      "601.2c"
+    ]
+  },
+  {
+    "id": "can-it-attack",
+    "text": "I have Grizzly Bears. Can it attack this turn?",
+    "expect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "508.1a"
+    ]
+  },
+  {
+    "id": "blocked-stays-blocked-question",
+    "text": "I attack with Grizzly Bears and my opponent blocks with Wall of Omens. After blockers I cast Lightning Bolt on the Wall. Does the Bears deal damage to my opponent?",
+    "expect": [
+      "No: Grizzly Bears dealt no damage to opponent (it was blocked"
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "krenko-elesh-norn-die-question",
+    "text": "My opponent has Elesh Norn, Grand Cenobite and I cast Krenko, Mob Boss. Does Krenko die?",
+    "expect": [
+      "No: Krenko, Mob Boss is still on the battlefield"
+    ],
+    "cite": [
+      "608.3a"
+    ]
+  },
+  {
+    "id": "sun-titan-return",
+    "text": "I have Sun Titan and it attacks. I return Grizzly Bears from my graveyard.",
+    "expect": [
+      "Grizzly Bears enters the battlefield",
+      "opponent takes 6 damage"
+    ],
+    "cite": [
+      "603.3"
+    ]
+  },
+  {
+    "id": "rhystic-tithe-pays-neither",
+    "text": "I control Rhystic Study and Smothering Tithe. My opponent casts a spell and pays for neither.",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "blightsteel-chump",
+    "text": "My opponent has 3 poison counters. I attack with Blightsteel Colossus and they chump with a 1/1.",
+    "expect": [
+      "opponent has 13 poison counters",
+      "opponent loses the game (poison)"
+    ],
+    "cite": [
+      "702.90b",
+      "702.19b"
+    ]
+  },
+  {
+    "id": "mana-drain-mana-value",
+    "text": "I cast Mana Drain on my opponent's Grizzly Bears. How much mana do I get next turn?",
+    "expect": [
+      "Grizzly Bears is countered",
+      "2 (Grizzly Bears's mana value)"
+    ],
+    "cite": [
+      "202.3",
+      "603.7a"
+    ]
+  },
+  {
+    "id": "vendilion-flash-target",
+    "text": "It's my opponent's turn. I flash in Vendilion Clique targeting them.",
+    "expect": [
+      "Vendilion Clique enters the battlefield"
+    ],
+    "notExpect": [
+      "needs 0 targets"
+    ],
+    "cite": [
+      "702.8a"
+    ]
+  },
+  {
+    "id": "wall-dies-question-after-damage",
+    "text": "My opponent attacks with Grizzly Bears and I block with Wall of Omens. They cast Giant Growth on the Bears. Does my Wall die?",
+    "expect": [
+      "Wall of Omens: the battlefield → your graveyard",
+      "Yes: Wall of Omens died (it's in the graveyard)"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "serra-avenger-turn-three",
+    "text": "I control Serra Avenger and it's turn 3. Can I cast it?",
+    "expect": [
+      "Serra Avenger can't be cast yet (turn 3; not before your turn 4)"
+    ],
+    "cite": [
+      "101.2"
+    ]
+  },
+  {
+    "id": "sheoldred-brainstorm-at-five",
+    "text": "My opponent has Sheoldred, the Apocalypse and I cast Brainstorm at 5 life. Do I die?",
+    "expect": [
+      "You lose 2 life. (×3)",
+      "You lose the game",
+      "Yes: You have lost the game"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "hexproof-adjective-bolt",
+    "text": "I have Lightning Bolt in hand and my opponent controls hexproof Grizzly Bears. Can I bolt it?",
+    "expect": [
+      "Lightning Bolt can't target Grizzly Bears"
+    ],
+    "cite": [
+      "702.11b"
+    ]
+  },
+  {
+    "id": "fling-ghalta-it",
+    "text": "I control Ghalta, Primal Hunger and cast Fling sacrificing it targeting my opponent at 12 life.",
+    "expect": [
+      "opponent takes 12 damage",
+      "opponent loses the game"
+    ],
+    "cite": [
+      "608.2h",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "toxic-deluge-paying-three",
+    "text": "I control Toxic Deluge and cast it paying 3 life. My opponent has Grizzly Bears and Serra Angel.",
+    "expect": [
+      "You lose 3 life",
+      "Serra Angel is 1/1 until end of turn",
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "704.5f",
+      "107.3a"
+    ]
+  },
+  {
+    "id": "rancor-disenchant-question",
+    "text": "I have Grizzly Bears with Rancor. My opponent casts Disenchant on Rancor. Does Rancor come back to my hand?",
+    "expect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "path-the-blocker-no-damage",
+    "text": "I attack with Grizzly Bears and my opponent blocks with Hill Giant. Before damage I cast Path to Exile on the Giant. Does the Bears deal damage to my opponent?",
+    "expect": [
+      "Hill Giant: the battlefield → exile",
+      "No: Grizzly Bears dealt no damage to opponent (it was blocked"
+    ],
+    "notExpect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "trample-blocker-bounced",
+    "text": "I attack with a 5/5 trample and my opponent blocks with a 2/2. They then bounce their blocker with Unsummon.",
+    "expect": [
+      "a 2/2 creature: the battlefield → opponent's hand",
+      "opponent takes 5 damage"
+    ],
+    "cite": [
+      "702.19d"
+    ]
+  },
+  {
+    "id": "hangarback-doubling-season",
+    "text": "I have Doubling Season and cast Hangarback Walker for X=2. How many counters does it enter with?",
+    "expect": [
+      "Hangarback Walker enters with 4 +1/+1 counters"
+    ],
+    "cite": [
+      "614.6",
+      "107.3a"
+    ]
+  },
+  {
+    "id": "ensnaring-bridge-two-described",
+    "text": "My opponent controls Ensnaring Bridge and has 2 cards in hand. I attack with a 3/3 and a 2/2.",
+    "expect": [
+      "a 3/3 creature can't attack (Ensnaring Bridge)",
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "settle-during-declare-blockers",
+    "text": "My opponent attacks me with Serra Angel and I have Settle the Wreckage. I cast it during the declare blockers step.",
+    "expect": [
+      "Serra Angel: the battlefield → exile"
+    ],
+    "notExpect": [
+      "You take 4 damage"
+    ],
+    "cite": [
+      "701.13a"
+    ]
+  },
+  {
+    "id": "dismember-counters",
+    "text": "I have Grizzly Bears with two +1/+1 counters and my opponent casts Dismember on it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "fog-named-third-player",
+    "text": "Alice attacks Bob with Serra Angel. Carol casts Fog. Does Bob take damage?",
+    "expect": [
+      "Damage to Bob from Serra Angel is prevented",
+      "No: Bob takes no damage"
+    ],
+    "cite": [
+      "615.1"
+    ]
+  },
+  {
+    "id": "control-magic-disenchant",
+    "text": "I control Grizzly Bears and my opponent casts Control Magic on it. Then I cast Disenchant on Control Magic. Do I get the Bears back?",
+    "expect": [
+      "opponent controls Grizzly Bears",
+      "You control Grizzly Bears again"
+    ],
+    "cite": [
+      "611.2b"
+    ]
+  },
+  {
+    "id": "they-block-bolt-the-wall",
+    "text": "My opponent has Wall of Omens and I have Lightning Bolt. I attack with Grizzly Bears, they block, and I bolt the Wall in response to nothing.",
+    "expect": [
+      "opponent blocks with Wall of Omens",
+      "Wall of Omens: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "reb-on-counterspell",
+    "text": "I cast Lightning Bolt at my opponent and they respond with Counterspell. I respond with Red Elemental Blast on Counterspell.",
+    "expect": [
+      "Counterspell is countered",
+      "opponent takes 3 damage"
+    ],
+    "notExpect": [
+      "needs 0 targets"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "overrun-attack-with-both",
+    "text": "I have two Grizzly Bears and cast Overrun. I attack with both. My opponent blocks one with a 1/1.",
+    "expect": [
+      "Grizzly Bears is 5/5 until end of turn. (×2)",
+      "opponent takes 4 damage",
+      "opponent takes 5 damage"
+    ],
+    "cite": [
+      "702.19b"
+    ]
+  },
+  {
+    "id": "platinum-angel-poison",
+    "text": "My opponent has Platinum Angel and I attack with Blightsteel Colossus. They already have 10 poison.",
+    "expect": [
+      "opponent stays in the game: Platinum Angel keeps opponent from losing",
+      "opponent has 21 poison counters"
+    ],
+    "cite": [
+      "104.3b"
+    ]
+  },
+  {
+    "id": "flash-it-in-end-step",
+    "text": "It's my end step and my opponent has Vendilion Clique in hand. Can they flash it in on my end step?",
+    "expect": [
+      "Vendilion Clique enters the battlefield"
+    ],
+    "cite": [
+      "702.8a"
+    ]
+  },
+  {
+    "id": "rhystic-pays-then-doesnt",
+    "text": "I control Rhystic Study. My opponent casts Sol Ring and pays the 1. Then they cast Arcane Signet and don't pay.",
+    "expect": [
+      "opponent pays {1}; Rhystic Study's triggered ability has no further effect",
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "normally can't be"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "thassa-oracle-stated-devotion",
+    "text": "I control Thassa's Oracle with 3 cards in library and my devotion to blue is 4. It enters. Do I win?",
+    "expect": [
+      "You win the game (Thassa's Oracle: X = 4, library = 3)"
+    ],
+    "cite": [
+      "700.5"
+    ]
+  },
+  {
+    "id": "thassa-oracle-too-few",
+    "text": "I have Thassa's Oracle in hand and 2 cards in library. My devotion to blue is 1. I cast it. Do I win?",
+    "expect": [
+      "Thassa's Oracle doesn't win the game (X = 1, library = 2)"
+    ],
+    "cite": [
+      "700.5"
+    ]
+  },
+  {
+    "id": "kaalia-commander-tax-after-two-counters",
+    "text": "My commander is Kaalia of the Vast and it has been countered twice. Can I cast it again?",
+    "expect": [
+      "costs an additional {4}",
+      "Kaalia of the Vast enters the battlefield"
+    ],
+    "cite": [
+      "903.8"
+    ]
+  },
+  {
+    "id": "rhystic-three-players-casts-one",
+    "text": "Bob controls Rhystic Study. Carol casts a spell and pays, Dave casts one and doesn't.",
+    "expect": [
+      "Carol pays {1}; Rhystic Study's triggered ability has no further effect",
+      "Bob draws 1 card"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "giant-growth-does-the-giant-die",
+    "text": "I attack with Grizzly Bears. My opponent blocks with Hill Giant. After blockers I cast Giant Growth on my Bears. Does the Giant die?",
+    "expect": [
+      "Yes: Hill Giant died (it's in the graveyard)"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "shock-it-does-it-survive",
+    "text": "My opponent controls Hill Giant. I cast Shock on it. Does it survive?",
+    "expect": [
+      "Yes: Hill Giant is still on the battlefield"
+    ],
+    "cite": [
+      "120.3e"
+    ]
+  },
+  {
+    "id": "sheoldred-draw-two",
+    "text": "I have Sheoldred, the Apocalypse. My opponent draws a card. Then I draw two.",
+    "expect": [
+      "You gain 2 life. (×2)",
+      "opponent loses 2 life"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "block-continuation-angel-and-bears",
+    "text": "I attack with Serra Angel and Grizzly Bears. My opponent blocks the Angel with Wall of Omens and the Bears with Hill Giant.",
+    "expect": [
+      "Wall of Omens can't block Serra Angel (flying)",
+      "opponent takes 4 damage",
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "702.9b",
+      "509.1h"
+    ]
+  },
+  {
+    "id": "sol-ring-tap-in-response-to-vindicate",
+    "text": "My opponent casts Vindicate on my Sol Ring. I respond by tapping it for mana.",
+    "expect": [
+      "Sol Ring's mana ability: add {C}{C}",
+      "Sol Ring: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "605.3b"
+    ]
+  },
+  {
+    "id": "bolt-giant-growth-bolt-again",
+    "text": "My opponent controls Hill Giant. I cast Lightning Bolt at the Giant and they respond with Giant Growth on it. Then I bolt it again.",
+    "expect": [
+      "Hill Giant is 6/6 until end of turn",
+      "Hill Giant: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "healing-salve-gaining-in-response",
+    "text": "My opponent has 3 life. I cast Lightning Bolt targeting them and they respond with Healing Salve gaining 3 life. Do they die?",
+    "expect": [
+      "opponent gains 3 life",
+      "No: opponent is still in the game at 3 life"
+    ],
+    "notExpect": [
+      "Which mode"
+    ],
+    "cite": [
+      "700.2a"
+    ]
+  },
+  {
+    "id": "first-strike-does-my-creature-survive",
+    "text": "I attack with a 2/2 with first strike. My opponent blocks with Grizzly Bears. Does my creature survive?",
+    "expect": [
+      "Yes: a 2/2 creature with first strike is still on the battlefield",
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "702.7b"
+    ]
+  },
+  {
+    "id": "rancor-where-does-it-go",
+    "text": "I control Grizzly Bears enchanted with Rancor. My opponent casts Doom Blade on the Bears. Where does Rancor go?",
+    "expect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5m"
+    ]
+  },
+  {
+    "id": "bolt-do-i-lose",
+    "text": "I'm at 2 life. My opponent casts Lightning Bolt at me. Do I lose?",
+    "expect": [
+      "Yes: You have lost the game"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "bolt-do-i-win",
+    "text": "My opponent is at 3. I cast Lightning Bolt at them. Do I win?",
+    "expect": [
+      "Yes: You have won the game"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "is-the-wall-dead",
+    "text": "My opponent attacks with Grizzly Bears. I block with Wall of Omens. Is the Wall dead?",
+    "expect": [
+      "No: Wall of Omens is still on the battlefield"
+    ],
+    "cite": [
+      "510.2"
+    ]
+  },
+  {
+    "id": "token-blocks-does-their-creature-die",
+    "text": "My opponent attacks with a 4/4. I block with a 2/2 token. Does their creature die?",
+    "expect": [
+      "a 2/2 token: the battlefield → your graveyard",
+      "No: a 4/4 creature is still on the battlefield"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "mirror-entity-x4-attack",
+    "text": "I have Mirror Entity and three 1/1 Soldier tokens. I activate Mirror Entity with X=4 and attack with everything.",
+    "expect": [
+      "opponent takes 4 damage. (×4)"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "613.4b"
+    ]
+  },
+  {
+    "id": "blossoming-defense-in-response-to-chupacabra",
+    "text": "I control Grizzly Bears. My opponent casts Ravenous Chupacabra. Can I respond by giving my Bears hexproof with Blossoming Defense?",
+    "expect": [
+      "Grizzly Bears has hexproof until end of turn",
+      "Ravenous Chupacabra's triggered ability has no legal target and is removed from the stack"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Not understood"
+    ],
+    "cite": [
+      "702.11b",
+      "603.3d"
+    ]
+  },
+  {
+    "id": "fog-at-one-life-mid-sentence",
+    "text": "My opponent attacks me with Grizzly Bears and I'm at 1 life. I cast Fog. Do I survive?",
+    "expect": [
+      "Yes: You are still in the game at 1 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "615.1"
+    ]
+  },
+  {
+    "id": "thoughtseize-leyline-does-it-fizzle",
+    "text": "I cast Thoughtseize on my opponent. They have Leyline of Sanctity. Does it fizzle?",
+    "expect": [
+      "Thoughtseize can't target opponent"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.11c"
+    ]
+  },
+  {
+    "id": "doom-blade-only-hexproof-creature",
+    "text": "I control Grizzly Bears with hexproof. My opponent casts Doom Blade.",
+    "expect": [
+      "Doom Blade can't be cast: no legal target"
+    ],
+    "cite": [
+      "601.2c",
+      "702.11b"
+    ]
+  },
+  {
+    "id": "doom-blade-skips-hexproof-creature",
+    "text": "I control Grizzly Bears with hexproof and Serra Angel. My opponent casts Doom Blade.",
+    "expect": [
+      "Serra Angel: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield"
+    ],
+    "cite": [
+      "702.11b"
+    ]
+  },
+  {
+    "id": "torment-of-hailfire-x3",
+    "text": "I cast Torment of Hailfire with X=3. My opponent has no cards in hand and controls Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard",
+      "opponent loses 3 life. (×2)"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "701.21a",
+      "119.3"
+    ]
+  },
+  {
+    "id": "blood-moon-urzas-saga",
+    "text": "My opponent controls Blood Moon. I control Urza's Saga. What happens?",
+    "expect": [
+      "Urza's Saga is a Mountain with no abilities (Blood Moon)"
+    ],
+    "notExpect": [
+      "Rules text not modeled"
+    ],
+    "cite": [
+      "305.7",
+      "714.4"
+    ]
+  },
+  {
+    "id": "serra-angel-untaps-question",
+    "text": "I attack with Serra Angel and my opponent blocks with Grizzly Bears. After damage, does Serra Angel untap?",
+    "expect": [
+      "Serra Angel is untapped (vigilance: attacking didn't tap it)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.20b"
+    ]
+  },
+  {
+    "id": "stony-silence-sol-ring",
+    "text": "My opponent cast Sol Ring last turn. I control Stony Silence. Can they tap it for mana?",
+    "expect": [
+      "Sol Ring's ability can't be activated (Stony Silence)"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "602.5"
+    ]
+  },
+  {
+    "id": "ghostly-prison-four-lands-three-attackers",
+    "text": "My opponent has Ghostly Prison. I have 4 lands and attack with three creatures.",
+    "expect": [
+      "opponent takes 1 damage. (×2)"
+    ],
+    "notExpect": [
+      "Not understood",
+      "You take"
+    ],
+    "cite": [
+      "508.1a"
+    ]
+  },
+  {
+    "id": "giant-growth-after-no-block-picks-attacker",
+    "text": "I attack with Grizzly Bears into an untapped Wall of Omens. They don't block. I cast Giant Growth after blockers.",
+    "expect": [
+      "Grizzly Bears is 5/5 until end of turn",
+      "opponent takes 5 damage"
+    ],
+    "notExpect": [
+      "Which?"
+    ],
+    "cite": [
+      "611.2a"
+    ]
+  },
+  {
+    "id": "ponder-do-i-shuffle",
+    "text": "I cast Ponder. Do I shuffle?",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "701.24a"
+    ]
+  },
+  {
+    "id": "tarmogoyf-bolt-grows-in-time",
+    "text": "I cast Lightning Bolt targeting my opponent's Tarmogoyf. They have a land and a creature in their graveyard.",
+    "expect": [
+      "Tarmogoyf has 3 damage marked"
+    ],
+    "notExpect": [
+      "Tarmogoyf: the battlefield",
+      "Not understood"
+    ],
+    "cite": [
+      "120.3e"
+    ]
+  },
+  {
+    "id": "tarmogoyf-bolt-dies-with-instant-already",
+    "text": "I cast Lightning Bolt targeting my opponent's Tarmogoyf. They have an instant and a creature in their graveyard.",
+    "expect": [
+      "Tarmogoyf: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "rancor-fizzles-no-return",
+    "text": "I control Grizzly Bears and cast Rancor on it. My opponent casts Doom Blade on the Bears in response. What happens to Rancor?",
+    "expect": [
+      "Rancor doesn't resolve (all targets illegal)"
+    ],
+    "notExpect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "cite": [
+      "603.6c",
+      "608.2b"
+    ]
+  },
+  {
+    "id": "block-with-same-named-creature",
+    "text": "My opponent attacks me with Grizzly Bears. I block with Grizzly Bears and cast Shock on their Bears after blockers.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "can't block (tapped)"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "kird-ape-stats",
+    "text": "I have Kird Ape and control a Forest. What are its stats?",
+    "expect": [
+      "Kird Ape is 2/3 (1/1 base, +1/+2 from its own ability (condition met))"
+    ],
+    "cite": []
+  },
+  {
+    "id": "cleanup-eight-cards",
+    "text": "My opponent has 8 cards in hand at their cleanup step. What happens?",
+    "expect": [
+      "opponent discards 1 card to hand size"
+    ],
+    "cite": [
+      "514.1"
+    ]
+  },
+  {
+    "id": "brainstorm-one-card-library",
+    "text": "I cast Brainstorm with 1 card in my library. Do I lose?",
+    "expect": [
+      "Yes: You have lost the game"
+    ],
+    "cite": [
+      "704.5b"
+    ]
+  },
+  {
+    "id": "sensei-top-in-response",
+    "text": "I control Sensei's Divining Top. Can I activate it in response to my opponent's Counterspell?",
+    "expect": [
+      "You activate Sensei's Divining Top"
+    ],
+    "notExpect": [
+      "which one?"
+    ],
+    "cite": [
+      "602.2a"
+    ]
+  },
+  {
+    "id": "vampire-hexmage-strips-counters",
+    "text": "I control Grizzly Bears with a +1/+1 counter and my opponent casts Vampire Hexmage. Then they sacrifice Hexmage targeting my Bears.",
+    "expect": [
+      "Grizzly Bears loses all its counters (1 +1/+1)"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "122.1"
+    ]
+  },
+  {
+    "id": "thoughtseize-self-do-i-lose-2",
+    "text": "I cast Thoughtseize targeting myself. Do I lose 2 life?",
+    "expect": [
+      "You lose 2 life."
+    ],
+    "notExpect": [
+      "(×2)"
+    ],
+    "cite": [
+      "119.3"
+    ]
+  },
+  {
+    "id": "giant-growth-mine-does-theirs-die",
+    "text": "I attack with Grizzly Bears and my opponent blocks with Grizzly Bears. I cast Giant Growth on mine. Does theirs die?",
+    "expect": [
+      "Yes: Grizzly Bears died (it's in the graveyard)"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "threaten-attack-get-it-back",
+    "text": "I control Serra Angel. My opponent casts Threaten on it and attacks me. Do I get it back?",
+    "expect": [
+      "You take 4 damage",
+      "Serra Angel is back under your control",
+      "Yes: Serra Angel is under your control"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Can't verify"
+    ],
+    "cite": [
+      "611.2a",
+      "514.2"
+    ]
+  },
+  {
+    "id": "aura-of-silence-sol-ring-cost",
+    "text": "I have Aura of Silence. My opponent casts Sol Ring. How much does it cost?",
+    "expect": [
+      "Aura of Silence makes Sol Ring cost {2} more"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "601.2f"
+    ]
+  },
+  {
+    "id": "two-attackers-one-blocked-takes-the-other",
+    "text": "I attack with two 2/2s. My opponent blocks one with a 4/4 and takes the other. They're at 2.",
+    "expect": [
+      "opponent takes 2 damage",
+      "opponent loses the game"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "rhystic-then-they-pay",
+    "text": "I control Rhystic Study and my opponent casts Lightning Bolt at me. Then they pay the 1.",
+    "expect": [
+      "opponent pays {1}; Rhystic Study's triggered ability has no further effect",
+      "You take 3 damage"
+    ],
+    "notExpect": [
+      "You draw 1 card"
+    ],
+    "cite": [
+      "608.2g"
+    ]
+  },
+  {
+    "id": "bears-attack-no-creatures-take-2",
+    "text": "I attack with Grizzly Bears. My opponent has no creatures. Do they take 2?",
+    "expect": [
+      "opponent takes 2 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "510.1b"
+    ]
+  },
+  {
+    "id": "unsummon-in-response-to-bolt",
+    "text": "My opponent controls Grizzly Bears. I cast Lightning Bolt on it and they respond by bouncing it with Unsummon. Does Bolt fizzle?",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's hand",
+      "Lightning Bolt doesn't resolve (all targets illegal)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "608.2b"
+    ]
+  },
+  {
+    "id": "shatter-in-response-to-attack",
+    "text": "I control Grizzly Bears equipped with Bonesplitter. My opponent casts Shatter on Bonesplitter in response to my attack.",
+    "expect": [
+      "Bonesplitter: the battlefield → your graveyard",
+      "opponent takes 2 damage"
+    ],
+    "notExpect": [
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "701.8a",
+      "510.1b"
+    ]
+  },
+  {
+    "id": "disenchant-anthem-what-are-my-bears",
+    "text": "I have Glorious Anthem and two Grizzly Bears. My opponent casts Disenchant on the Anthem. What are my Bears?",
+    "expect": [
+      "Grizzly Bears is 2/2."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "701.8a"
+    ]
+  },
+  {
+    "id": "counterspell-abrupt-decay",
+    "text": "I cast Counterspell on my opponent's Abrupt Decay.",
+    "expect": [
+      "Abrupt Decay can't be countered, so Counterspell has no effect on it"
+    ],
+    "notExpect": [
+      "No spell from"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "cloudshift-in-response-to-doom-blade",
+    "text": "I control Grizzly Bears. My opponent casts Doom Blade on it. I respond with Cloudshift. Does the Bears survive?",
+    "expect": [
+      "Grizzly Bears is exiled and returns as a new object (your control)",
+      "Doom Blade doesn't resolve (all targets illegal)"
+    ],
+    "notExpect": [
+      "Need to know"
+    ],
+    "cite": [
+      "400.7",
+      "608.2b"
+    ]
+  },
+  {
+    "id": "crackling-doom-greatest-power",
+    "text": "I cast Crackling Doom. My opponent controls Grizzly Bears and Serra Angel.",
+    "expect": [
+      "opponent takes 2 damage",
+      "Serra Angel: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "not tracked",
+      "Grizzly Bears: the battlefield"
+    ],
+    "cite": [
+      "701.21a"
+    ]
+  },
+  {
+    "id": "ancestral-recall-two-cards-do-i-lose",
+    "text": "I cast Ancestral Recall with 2 cards in library. Do I lose?",
+    "expect": [
+      "You lose the game (drew from an empty library)",
+      "Yes: You have lost the game"
+    ],
+    "cite": [
+      "704.5b"
+    ]
+  },
+  {
+    "id": "sword-stays-when-bears-dies",
+    "text": "I have Sword of Fire and Ice equipped to Grizzly Bears. My opponent casts Doom Blade on the Bears. What happens to the Sword?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Sword of Fire and Ice stays on the battlefield, unattached"
+    ],
+    "cite": [
+      "704.5n"
+    ]
+  },
+  {
+    "id": "sun-titan-returns-bears",
+    "text": "I control Sun Titan. It enters. I have Grizzly Bears in my graveyard.",
+    "expect": [
+      "Grizzly Bears enters the battlefield"
+    ],
+    "notExpect": [
+      "which card?"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "pacifism-can-it-block",
+    "text": "My opponent controls Grizzly Bears with Pacifism on it. Can it block?",
+    "expect": [
+      "No: Grizzly Bears can't block (Pacifism says so)"
+    ],
+    "cite": []
+  },
+  {
+    "id": "propaganda-cant-pay-second",
+    "text": "My opponent has Propaganda. I attack with Grizzly Bears and pay. Then I attack with Hill Giant too but can't pay.",
+    "expect": [
+      "opponent takes 2 damage",
+      "Hill Giant can't attack"
+    ],
+    "notExpect": [
+      "opponent takes 3 damage"
+    ],
+    "cite": [
+      "508.1a"
+    ]
+  },
+  {
+    "id": "equip-then-attack",
+    "text": "I control Grizzly Bears and Bonesplitter. I equip Bonesplitter to the Bears. Then I attack.",
+    "expect": [
+      "Bonesplitter is attached to Grizzly Bears",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "702.6a"
+    ]
+  }
+]

@@ -1,0 +1,19 @@
+{
+ "fetched_at": "2026-09-14T22:59:37Z",
+ "scryfall": [
+  {
+   "type": "oracle_cards",
+   "updated_at": "2026-09-14T21:01:53.341+00:00",
+   "compressed_size": 1
+  }
+ ],
+ "mtgjson": {
+  "date": "2026-09-14",
+  "version": "5.3.0+20260914"
+ },
+ "comprehensive_rules": {
+  "effective": "August 7, 2026",
+  "source": "test"
+ },
+ "files": []
+}

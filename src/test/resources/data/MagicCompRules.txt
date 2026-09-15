@@ -1,0 +1,258 @@
+Magic: The Gathering Comprehensive Rules
+
+These rules are effective as of August 7, 2026.
+
+Introduction
+
+This document is the ultimate authority for Magic: The Gathering® competitive game play. It consists of a series of numbered rules followed by a glossary. Many of the numbered rules are divided into subrules, and each separate rule and subrule of the game has its own number. (Note that subrules skip the letters “l” and “o” due to potential confusion with the numbers “1” and “0”; subrule 704.5k is followed by 704.5m, then 704.5n, then 704.5p, for example.)
+
+Changes may have been made to this document since its publication. You can download the most recent version from the Magic rules website at Magic.Wizards.com/Rules.
+ 
+Contents
+
+1. Game Concepts
+100. General
+101. The Magic Golden Rules
+102. Players
+103. Starting the Game
+104. Ending the Game
+105. Colors
+106. Mana
+107. Numbers and Symbols
+108. Cards
+109. Objects
+110. Permanents
+111. Tokens
+112. Spells
+113. Abilities
+114. Emblems
+115. Targets
+116. Special Actions
+117. Timing and Priority
+118. Costs
+119. Life
+120. Damage
+121. Drawing a Card
+122. Counters
+123. Stickers
+
+2. Parts of a Card
+200. General
+201. Name
+202. Mana Cost and Color
+203. Illustration
+204. Color Indicator
+205. Type Line
+206. Expansion Symbol
+207. Text Box
+208. Power/Toughness
+209. Loyalty
+210. Defense
+211. Hand Modifier
+212. Life Modifier
+213. Information Below the Text Box
+
+3. Card Types
+300. General
+301. Artifacts
+302. Creatures
+303. Enchantments
+304. Instants
+305. Lands
+306. Planeswalkers
+307. Sorceries
+308. Kindreds
+309. Dungeons
+310. Battles
+311. Planes
+312. Phenomena
+313. Vanguards
+314. Schemes
+315. Conspiracies
+
+4. Zones
+400. General
+401. Library
+402. Hand
+403. Battlefield
+404. Graveyard
+405. Stack
+406. Exile
+407. Ante
+408. Command
+
+5. Turn Structure
+500. General
+501. Beginning Phase
+502. Untap Step
+503. Upkeep Step
+504. Draw Step
+505. Main Phase
+506. Combat Phase
+507. Beginning of Combat Step
+508. Declare Attackers Step
+509. Declare Blockers Step
+510. Combat Damage Step
+511. End of Combat Step
+512. Ending Phase
+513. End Step
+514. Cleanup Step
+
+6. Spells, Abilities, and Effects
+600. General
+601. Casting Spells
+602. Activating Activated Abilities
+603. Handling Triggered Abilities
+604. Handling Static Abilities
+605. Mana Abilities
+606. Loyalty Abilities
+607. Linked Abilities
+608. Resolving Spells and Abilities
+609. Effects
+610. One-Shot Effects
+611. Continuous Effects
+612. Text-Changing Effects
+613. Interaction of Continuous Effects
+614. Replacement Effects
+615. Prevention Effects
+616. Interaction of Replacement and/or Prevention Effects
+
+7. Additional Rules
+700. General
+701. Keyword Actions
+702. Keyword Abilities
+703. Turn-Based Actions
+704. State-Based Actions
+705. Flipping a Coin
+706. Rolling a Die
+707. Copying Objects
+708. Face-Down Spells and Permanents
+709. Split Cards
+710. Flip Cards
+711. Leveler Cards
+712. Double-Faced Cards
+713. Substitute Cards
+714. Saga Cards
+715. Adventurer Cards
+716. Class Cards
+717. Attraction Cards
+718. Prototype Cards
+719. Case Cards
+720. Omen Cards
+721. Station Cards
+722. Preparation Cards
+723. Controlling Another Player
+724. Ending Turns and Phases
+725. The Monarch
+726. The Initiative
+727. Restarting the Game
+728. Rad Counters
+729. Subgames
+730. Merging with Permanents
+731. Day and Night
+732. Taking Shortcuts
+733. Handling Illegal Actions
+
+8. Multiplayer Rules
+800. General
+801. Limited Range of Influence Option
+802. Attack Multiple Players Option
+803. Attack Left and Attack Right Options
+804. Deploy Creatures Option
+805. Shared Team Turns Option
+806. Free-for-All Variant
+807. Grand Melee Variant
+808. Team vs. Team Variant
+809. Emperor Variant
+810. Two-Headed Giant Variant
+811. Alternating Teams Variant
+
+9. Casual Variants
+900. General
+901. Planechase
+902. Vanguard
+903. Commander
+904. Archenemy
+905. Conspiracy Draft
+
+Glossary
+
+Credits
+ 
+1. Game Concepts
+
+100. General
+
+100.1. These Magic rules apply to any Magic game with two or more players, including two-player games and multiplayer games.
+
+100.1a A two-player game is a game that begins with only two players.
+
+100.1b A multiplayer game is a game that begins with more than two players. See section 8, “Multiplayer Rules.”
+
+100.2. To play, each player needs their own deck of traditional Magic cards, small items to represent any tokens and counters, and some way to clearly track life totals.
+
+100.2a In constructed play (a way of playing in which each player creates their own deck ahead of time), each deck has a minimum deck size of 60 cards. A constructed deck may contain any number of basic land cards and no more than four of any card with a particular English name other than basic land cards. For the purposes of deck construction, cards with interchangeable names have the same English name (see rule 201.3).
+
+100.2b In limited play (a way of playing in which each player gets the same quantity of unopened Magic product such as booster packs and creates their own deck using only this product and basic land cards), each deck has a minimum deck size of 40 cards. A limited deck may contain as many duplicates of a card as are included with the product.
+
+100.2c Commander decks are subject to additional deckbuilding restrictions and requirements. See rule 903, “Commander,” for details.
+
+100.2d Some formats and casual play variants allow players to use a supplementary deck of nontraditional Magic cards (see rule 108.2a). These supplementary decks have their own deck construction rules. See rule 717, “Attraction Cards;” rule 901, “Planechase;” and rule 904, “Archenemy.”
+
+100.3. Some cards require coins or traditional dice. Some casual variants require additional items, such as specially designated cards, nontraditional Magic cards, and specialized dice.
+
+100.4. Each player may also have a sideboard, which is a group of additional cards the player may use to modify their deck between games of a match. Sideboard rules and restrictions for some formats are modified by the Magic: The Gathering Tournament Rules (found at WPN.Wizards.com/en/rules-documents).
+
+100.4a In constructed play, a sideboard may contain no more than fifteen cards. The four-card limit (see rule 100.2a) applies to the combined deck and sideboard.
+
+100.4b In limited play involving individual players, all cards in a player’s card pool not included in their deck are in that player’s sideboard.
+
+100.4c In limited play involving the Two-Headed Giant multiplayer variant, all cards in a team’s card pool but not in either player’s deck are in that team’s sideboard.
+
+100.4d In limited play involving other multiplayer team variants, each card in a team’s card pool but not in any player’s deck is assigned to the sideboard of one of those players. Each player has their own sideboard; cards may not be transferred between players.
+
+100.5. If a deck must contain at least a certain number of cards, that number is referred to as a minimum deck size. There is no maximum deck size for non-Commander decks.
+
+
+702.19. Trample
+
+702.19a Trample is a static ability that modifies the rules for assigning an attacking creature’s combat damage. The ability has no effect when a creature with trample is blocking or is dealing noncombat damage. (See rule 510, “Combat Damage Step.”)
+
+702.19b The controller of an attacking creature with trample first assigns damage to the creature(s) blocking it. Once all those blocking creatures are assigned lethal damage, any excess damage is assigned as its controller chooses among those blocking creatures and the player, planeswalker, or battle the creature is attacking. When checking for assigned lethal damage, take into account damage already marked on the creature and damage from other creatures that’s being assigned during the same combat damage step, but not any abilities or effects that might change the amount of damage that’s actually dealt. The attacking creature’s controller need not assign lethal damage to all those blocking creatures but in that case can’t assign any damage to the player or planeswalker it’s attacking.
+Example: A 2/2 creature that can block an additional creature blocks two attackers: a 1/1 with no abilities and a 3/3 with trample. The active player could assign 1 damage from the first attacker and 1 damage from the second to the blocking creature, and 2 damage to the defending player from the creature with trample.
+Example: A 6/6 green creature with trample is blocked by a 2/2 creature with protection from green. The attacking creature’s controller must assign at least 2 damage to the blocker, even though that damage will be prevented by the blocker’s protection ability. The attacking creature’s controller can divide the rest of the damage as they choose between the blocking creature and the defending player.
+
+702.19c Trample over planeswalkers is a variant of trample that modifies the rules for assigning combat damage to planeswalkers. The controller of a creature with trample over planeswalkers assigns that creature’s combat damage as described in rule 702.19b, with one exception. If that creature is attacking a planeswalker, after lethal damage is assigned to all blocking creatures and damage at least equal to the loyalty of the planeswalker the creature is attacking is assigned to that planeswalker, further excess damage may be assigned as the attacking creature’s controller chooses among those blocking creatures, that planeswalker, and that planeswalker’s controller. When checking for assigned damage equal to a planeswalker’s loyalty, take into account damage from other creatures that’s being assigned during the same combat damage step, but not any abilities or effects that might change the amount of damage that’s actually dealt.
+Example: A player controls a planeswalker with three loyalty counters that is being attacked by a 1/1 with no abilities and a 7/7 with trample over planeswalkers. The active player could assign 1 damage from the first attacker and 2 damage from the second to the planeswalker and 5 damage to the defending player from the creature with trample over planeswalkers.
+
+702.19d If an attacking creature with trample or trample over planeswalkers is blocked, but there are no creatures blocking it when damage is assigned, its damage is assigned to the defending player and/or planeswalker as though all blocking creatures have been assigned lethal damage.
+
+702.19e If a creature with trample over planeswalkers is attacking a planeswalker and that planeswalker is removed from combat, the creature’s damage may be assigned to the defending player once all blocking creatures have been dealt lethal damage or, if there are no blocking creatures when damage is assigned, all its damage is assigned to the defending player. This is an exception to rule 506.4c, and it does not cause the creature to be attacking that player.
+
+702.19f If a creature without trample over planeswalkers is attacking a planeswalker, none of its combat damage can be assigned to the defending player, even if that planeswalker has been removed from combat or the damage the attacking creature could assign is greater than the planeswalker’s loyalty.
+
+702.19g Multiple instances of trample on the same creature are redundant. Multiple instances of trample over planeswalkers on the same creature are redundant.
+
+
+Glossary
+
+Abandon
+To turn a face-up ongoing scheme card face down and put it on the bottom of its owner’s scheme deck. See rule 701.33, “Abandon.”
+
+Ability
+1. Text on an object that explains what that object does or can do.
+2. An activated or triggered ability on the stack. This kind of ability is an object.
+See rule 113, “Abilities,” and section 6, “Spells, Abilities, and Effects.”
+
+Ability Word
+An italicized word with no rules meaning that ties together abilities on different cards that have similar functionality. See rule 207.2c.
+
+Absorb
+A keyword ability that prevents damage. See rule 702.64, “Absorb.”
+
+Activate
+To put an activated ability onto the stack and pay its costs, so that it will eventually resolve and have its effect. See rule 602, “Activating Activated Abilities.”
+
+
+Credits
+Magic: The Gathering Original Game Design: Richard Garfield
