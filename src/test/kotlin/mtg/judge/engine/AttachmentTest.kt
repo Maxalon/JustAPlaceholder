@@ -33,7 +33,8 @@ class AttachmentTest {
         assertEquals("bears", r.attachedTo); assertEquals(4, s.obj("bears").power); assertTrue(s.obj("bears").has("trample"))
         assertTrue("303.4a" in s.cited() && "608.3b" in s.cited())
         e.cast("opp", swords, listOf(Ref.Obj("bears"))); e.resolveAll()
-        assertEquals(Zone.GRAVEYARD, r.zone, "Aura goes to the graveyard when its creature leaves (704.5m)")
+        assertTrue("704.5m" in s.cited(), "Aura goes to the graveyard when its creature leaves (704.5m)")
+        assertEquals(Zone.HAND, r.zone, "and Rancor's own trigger then returns it to hand")
         assertTrue("704.5m" in s.cited())
         assertTrue(s.trace.steps.any { it.text.startsWith("Rancor's ability triggers on Rancor dying") }, "Rancor's dies trigger (put into a graveyard from the battlefield) fired: " + s.trace.steps.map { it.text })
     }

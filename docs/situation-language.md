@@ -120,7 +120,7 @@ What happens next, in order. The engine applies these to the described state.
 
 | verb | fields |
 |---|---|
-| `cast` | `player`, `card` (or `object` for a card already in the situation), `targets` |
+| `cast` | `player`, `card` (or `object` for a card already in the situation), `targets`, `amount` (the value of X), `modes` |
 | `activate` | `player`, `object`, `abilityIndex`, `targets` |
 | `trigger` | `object`, `abilityIndex`, `targets` (used when the user asserts a trigger happened) |
 | `resolve` | (resolves the top of the stack) |

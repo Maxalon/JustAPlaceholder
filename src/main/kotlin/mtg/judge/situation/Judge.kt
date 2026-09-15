@@ -113,7 +113,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     val word = e.to.removePrefix("mode:").lowercase()
                     (def.spellEffect as? Effect.Modal)?.modeTexts?.indexOfFirst { it.lowercase().contains(word) }?.takeIf { it >= 0 }?.let { listOf(it + 1) } ?: emptyList()
                 } else e.modes
-                engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, modes, overload = e.to == "overload")
+                engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount)
             }
             "draw" -> engine.draw(e.player ?: throw JudgeException("draw needs a player"), e.amount ?: 1)
             "sacrifice" -> { val objId = e.obj ?: throw JudgeException("sacrifice needs an object"); engine.sacrifice(e.player ?: state.obj(objId).controller, objId) }

@@ -85,6 +85,8 @@ class StackItem(
     val causedAmount: Int? = null,
     /** For triggered abilities: the object in the causing event ("that creature"). */
     val causedObject: String? = null,
+    /** The value chosen for X when this was cast or activated (107.3a). */
+    val x: Int? = null,
 ) {
     val describe: String get() = when (kind) {
         StackKind.SPELL -> source.name

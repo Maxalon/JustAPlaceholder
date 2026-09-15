@@ -67,6 +67,8 @@ sealed interface Trigger {
     data class PermanentDies(val filter: ObjFilter, val other: Boolean) : Trigger
     /** "Whenever you draw a card". */
     data object YouDraw : Trigger
+    /** "Whenever one or more land cards are put into your graveyard from anywhere" (The Gitrog Monster). */
+    data class CardsToYourGraveyard(val filter: ObjFilter) : Trigger
     /** "Whenever an opponent draws a card" / "a player draws a card". */
     data class PlayerDraws(val who: Who) : Trigger
     /** "Whenever you draw your second card each turn". */
@@ -94,7 +96,12 @@ sealed interface Trigger {
 
 sealed interface Effect {
     data class Draw(val who: Who, val count: Int) : Effect
-    data class Damage(val amount: Int, val target: TargetSpec) : Effect
+    /** `x` = the amount is X, chosen when the spell is cast (107.3a). */
+    data class Damage(val amount: Int, val target: TargetSpec, val x: Boolean = false) : Effect
+    /** "Proliferate" (701.34a): assumed to choose everything of yours and your opponents' poison counters. */
+    data object Proliferate : Effect
+    /** "Exile all attacking creatures target player controls": an action on everything matching, among a target player's permanents. */
+    data class ForAllTargeted(val target: TargetSpec, val filter: ObjFilter, val action: String) : Effect
     data class Counter(val target: TargetSpec) : Effect
     data class Destroy(val target: TargetSpec, val noRegen: Boolean = false) : Effect
     /** "~ deals N damage to that player / each opponent / each player / you". */
@@ -162,7 +169,7 @@ sealed interface Effect {
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
-        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList()
+        is PutCounters -> listOfNotNull(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked

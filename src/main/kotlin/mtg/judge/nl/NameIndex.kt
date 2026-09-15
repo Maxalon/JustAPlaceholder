@@ -81,7 +81,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
             "then", "and", "or", "with", "on", "at", "to", "in", "of", "from", "is", "are", "was", "has", "have", "had", "do", "does", "did", "what", "happens",
             "who", "which", "when", "if", "that", "this", "their", "its", "his", "her", "him", "them", "kill", "dies", "die", "gets", "get", "becomes", "put",
             "one", "two", "three", "four", "five", "first", "second", "last", "next", "now", "still", "also", "just", "only", "again", "before", "after",
-            "everything", "all", "nothing", "everyone", "nobody", "blockers", "attackers", "response", "responses", "counters", "loyalty", "marked", "regeneration", "regenerate", "shield", "flash", "sacrifice", "sac", "attacking", "blocking", "wear", "tear", "begin", "start", "time", "enchanted", "equipped", "poison", "unblocked", "alone",
+            "everything", "all", "nothing", "everyone", "nobody", "blockers", "attackers", "response", "responses", "counters", "loyalty", "marked", "regeneration", "regenerate", "shield", "flash", "sacrifice", "sac", "attacking", "blocking", "wear", "tear", "begin", "start", "time", "enchanted", "equipped", "poison", "unblocked", "alone", "x",
         )
 
         fun load(conn: Connection): NameIndex {

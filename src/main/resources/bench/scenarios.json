@@ -1016,5 +1016,107 @@
       "702.90b",
       "704.5c"
     ]
+  },
+  {
+    "id": "rancor-returns",
+    "text": "I control Grizzly Bears and cast Rancor on it. Then my opponent kills the Bears with Doom Blade.",
+    "expect": [
+      "Rancor: the battlefield → your graveyard",
+      "Rancor: your graveyard → your hand"
+    ],
+    "cite": [
+      "704.5m",
+      "400.7"
+    ]
+  },
+  {
+    "id": "gitrog-sac-forest",
+    "text": "I have The Gitrog Monster. I sacrifice a Forest to it during my upkeep.",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "cite": [
+      "701.21a",
+      "121.1"
+    ]
+  },
+  {
+    "id": "response-to-mana",
+    "text": "I cast Naturalize on their Sol Ring in response to them tapping it for mana.",
+    "expect": [
+      "Sol Ring's mana ability: add {C}{C}",
+      "Sol Ring: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "605.3b"
+    ]
+  },
+  {
+    "id": "settle-after-attack",
+    "text": "I have Kaalia of the Vast. Opponent casts Settle the Wreckage after I attack with Kaalia and Serra Angel.",
+    "expect": [
+      "Kaalia of the Vast: the battlefield → exile",
+      "Serra Angel: the battlefield → exile"
+    ],
+    "cite": [
+      "701.13a"
+    ]
+  },
+  {
+    "id": "blaze-x",
+    "text": "Opponent has 3 life and I cast Blaze with X equal to 3 targeting them.",
+    "expect": [
+      "opponent takes 3 damage",
+      "opponent loses the game"
+    ],
+    "cite": [
+      "107.3a",
+      "704.5a"
+    ]
+  },
+  {
+    "id": "can-respond-question",
+    "text": "Can my opponent respond to my Lightning Bolt with Counterspell?",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "cite": [
+      "701.6a",
+      "117.3c"
+    ]
+  },
+  {
+    "id": "atraxa-end-step",
+    "text": "My commander is Atraxa, Praetors' Voice. I have Jace Beleren with 3 loyalty. What happens at my end step?",
+    "expect": [
+      "Jace Beleren has 4 loyalty counters"
+    ],
+    "cite": [
+      "701.34a",
+      "513.1"
+    ]
+  },
+  {
+    "id": "baneslayer-double-block",
+    "text": "My opponent attacks with Baneslayer Angel. I block with Grizzly Bears and Hill Giant.",
+    "expect": [
+      "Grizzly Bears can't block Baneslayer Angel (flying)",
+      "You take 5 damage",
+      "opponent gains 5 life"
+    ],
+    "cite": [
+      "702.9b",
+      "702.15b"
+    ]
+  },
+  {
+    "id": "ponder-preordain",
+    "text": "I cast Ponder. Then I cast Preordain. Do I draw?",
+    "expect": [
+      "You draw 1 card. (×2)"
+    ],
+    "cite": [
+      "121.1"
+    ]
   }
 ]

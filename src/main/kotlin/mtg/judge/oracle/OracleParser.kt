@@ -133,9 +133,9 @@ object OracleParser {
         val cond = m.groupValues[2].trim().replace(Regex("""^Landfall — """), "")
         val trigger = parseTrigger(cond)
         // "Whenever ~ attacks, it gets +1/+1" / "…, put a +1/+1 counter on it": in a self-trigger, a leading "it" is ~.
-        val selfTrigger = trigger is Trigger.ThisAttacks || trigger is Trigger.ThisEnters || trigger is Trigger.ThisDealsDamage || trigger is Trigger.ThisBecomesBlocked || trigger is Trigger.ThisBlocks ||
+        val selfTrigger = trigger is Trigger.ThisDies || trigger is Trigger.ThisLeavesBattlefield || trigger is Trigger.ThisAttacks || trigger is Trigger.ThisEnters || trigger is Trigger.ThisDealsDamage || trigger is Trigger.ThisBecomesBlocked || trigger is Trigger.ThisBlocks ||
             trigger is Trigger.ThisBecomesTarget || trigger is Trigger.ThisBecomesTapped || trigger is Trigger.ThisIsDealtDamage || trigger is Trigger.ThisCast
-        val effText = if (selfTrigger) m.groupValues[3].replace(Regex("""^it (gets|gains) """), "~ $1 ").replace(Regex("""^(put (?:a|an|\w+|\d+|X) [+-]\d/[+-]\d counters? on) it\b"""), "$1 ~") else m.groupValues[3]
+        val effText = if (selfTrigger) m.groupValues[3].replace(Regex("""^it (gets|gains) """), "~ $1 ").replace(Regex("""^(put (?:a|an|\w+|\d+|X) [+-]\d/[+-]\d counters? on) it\b"""), "$1 ~").replace(Regex("""^return it to its owner's hand"""), "return ~ to its owner's hand") else m.groupValues[3]
         // "Whenever a creature you control attacks alone, it gains double strike / gets +2/+2 until end of turn": the attacking creature.
         if (trigger is Trigger.CreatureAttacksAlone) {
             Regex("""^(?:it|that creature) gets ([+-]\d+)/([+-]\d+)(?: and gains (.+?))? until end of turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(effText)?.let { r ->
@@ -197,6 +197,7 @@ object OracleParser {
         if (Regex("""^you gain life$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.YouGainLife
         if (Regex("""^you draw a card$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.YouDraw
         if (Regex("""^a creature you control attacks alone$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.CreatureAttacksAlone
+        Regex("""^one or more (.+?) cards? (?:are|is) put into your graveyard from anywhere$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m -> val f = parseFilter(m.groupValues[1], Kind.PERMANENT); return if (f.verifiable) Trigger.CardsToYourGraveyard(f) else Trigger.Unknown(c) }
         Regex("""^(an opponent|a player) draws a card$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { return Trigger.PlayerDraws(if (it.groupValues[1].lowercase() == "an opponent") Who.OPPONENT else Who.ANY_PLAYER) }
         Regex("""^you draw your (first|second|third) card each turn$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { return Trigger.YouDrawNth(mapOf("first" to 1, "second" to 2, "third" to 3).getValue(it.groupValues[1].lowercase())) }
         Regex("""^~ or another (.+?) enters(?: the battlefield)?(?: under your control)?$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
@@ -491,7 +492,6 @@ object OracleParser {
         Regex("""^(?:you may )?play (?:it|that card|those cards|cards exiled with ~) .+$""", RegexOption.IGNORE_CASE) to listOf("101.4"),
         Regex("""^goad target .+$""", RegexOption.IGNORE_CASE) to listOf("701.15a"),
         Regex("""^investigate\.?$""", RegexOption.IGNORE_CASE) to listOf("701.16a"),
-        Regex("""^proliferate\.?$""", RegexOption.IGNORE_CASE) to listOf("701.34a"),
         Regex("""^populate\.?$""", RegexOption.IGNORE_CASE) to listOf("701.36a"),
         Regex("""^manifest (?:the top card of your library|dread).*$""", RegexOption.IGNORE_CASE) to listOf("701.40a"),
         Regex("""^you may cast (?:it|that card|the exiled card).*$""", RegexOption.IGNORE_CASE) to listOf("601.2"),
@@ -584,6 +584,7 @@ object OracleParser {
             return Effect.Draw(who, number(m.groupValues[2]) ?: return Effect.Unparsed(s))
         }
         damageRe.matchEntire(s)?.let { m ->
+            if (m.groupValues[1].equals("X", true)) return Effect.Damage(0, target(m.groupValues[2]), x = true)
             val n = m.groupValues[1].toIntOrNull() ?: return Effect.Unparsed(s)
             when (m.groupValues[2].lowercase().trim()) {
                 "that player" -> return Effect.DamagePlayer(Who.THAT_PLAYER, n); "each opponent" -> return Effect.DamagePlayer(Who.EACH_OPPONENT, n)
@@ -594,6 +595,11 @@ object OracleParser {
         counterRe.matchEntire(s)?.let { return Effect.Counter(target(it.groupValues[1], Kind.SPELL)) }
         destroyRe.matchEntire(s)?.let { return Effect.Destroy(target(it.groupValues[1])) }
         bounceRe.matchEntire(s)?.let { m -> return Effect.Bounce(if (m.groupValues[1] == "~") null else target(m.groupValues[1])) }
+        if (Regex("""^proliferate\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.Proliferate
+        Regex("""^(exile|destroy|tap) all (.+?) target (player|opponent) controls\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val f = parseFilter(m.groupValues[2], Kind.PERMANENT)
+            if (f.verifiable) return Effect.ForAllTargeted(target(m.groupValues[3]), f, m.groupValues[1].lowercase())
+        }
         createTokenRe.matchEntire(s)?.let { m ->
             val who = when (m.groupValues[1].lowercase().trim()) { "its controller" -> Who.CONTROLLER_OF_TARGET; "that player" -> Who.THAT_PLAYER; "target player" -> Who.TARGET_PLAYER; "each opponent" -> Who.EACH_OPPONENT; "each player" -> Who.EACH_PLAYER; else -> Who.YOU }
             val n = number(m.groupValues[2]) ?: return Effect.Unparsed(s)
