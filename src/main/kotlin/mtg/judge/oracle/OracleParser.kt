@@ -480,6 +480,14 @@ object OracleParser {
         forAllRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[2], Kind.PERMANENT); if (f.verifiable) return Effect.ForAll(f, m.groupValues[1].lowercase()) }
         damageEachRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[2], Kind.CREATURE); if (f.verifiable) return Effect.ForAll(f, "damage", m.groupValues[1].toInt()) }
         for ((re, rules) in narratedRes) if (re.matches(s)) return Effect.Narrated(s.trimEnd('.'), rules)
+        // "You draw a card and you lose 1 life." / "Each opponent loses 1 life and you gain 1 life.": two effects joined by "and".
+        Regex("""^(.+?) and (you |each opponent |target player |that player |it |~ )(.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trimEnd('.'))?.let { m ->
+            if (!m.groupValues[1].contains(" and ", true) && !m.groupValues[1].startsWith("if ", true)) {
+                val left = parseSentence(m.groupValues[1].replaceFirstChar { it.uppercase() })
+                val right = parseSentence((m.groupValues[2] + m.groupValues[3]).replaceFirstChar { it.uppercase() })
+                if (left !is Effect.Unparsed && right !is Effect.Unparsed) return Effect.Seq(listOf(left, right))
+            }
+        }
         unlessRe.matchEntire(s)?.let { m ->
             val payer = when (m.groupValues[2].lowercase()) { "you" -> Who.YOU; "an opponent" -> Who.OPPONENT; "target player" -> Who.TARGET_PLAYER; "its controller" -> Who.CONTROLLER_OF_TARGET; else -> Who.THAT_PLAYER }
             return Effect.UnlessPays(parseSentence(m.groupValues[1]), payer, m.groupValues[3])

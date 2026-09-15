@@ -22,6 +22,7 @@ mtg-judge <command> [options]
   judge   FILE.json|- [--json] [--db FILE]           Answer a situation written in the situation language (docs/)
   meta    [--db FILE]                                Data provenance
   coverage [--format commander] [--top N] [--db FILE] How much of the card pool's rules text the engine models
+  bench   [--only ID] [--show] [--db FILE]           Run the built-in plain-English scenarios and score answered/refused/wrong
 
 The database defaults to ${'$'}MTG_JUDGE_DB or ./judge.db.
 """
@@ -81,6 +82,13 @@ fun main(args: Array<String>) {
         }
         "meta" -> withDb(opts) { cards, _ -> cards.meta().toSortedMap().forEach { (k, v) -> println("$k = $v") } }
         "coverage" -> withDbConn(opts) { conn, _, _ -> mtg.judge.oracle.Coverage.report(conn, opts["format"] ?: "commander", opts["top"]?.toIntOrNull() ?: 40) }
+        "bench" -> withDbConn(opts) { conn, _, _ ->
+            val all = mtg.judge.situation.Bench.load()
+            val chosen = opts["only"]?.let { id -> all.filter { it.id == id } } ?: all
+            val results = mtg.judge.situation.Bench.run(conn, chosen)
+            print(mtg.judge.situation.Bench.report(results))
+            if (opts.containsKey("show")) results.filter { it.verdict != mtg.judge.situation.Bench.Verdict.ANSWERED || chosen.size == 1 }.forEach { r -> println("\n=== ${r.scenario.id}: ${r.scenario.text}"); print(mtg.judge.situation.AnswerRenderer.render(r.answer, withCitations = false)); if (r.unread.isNotEmpty()) println("Not understood: " + r.unread.joinToString(" | ")) }
+        }
         else -> { println(USAGE.trim()); exitProcess(2) }
     }
 }
