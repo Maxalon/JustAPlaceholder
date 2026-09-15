@@ -222,4 +222,14 @@ class SituationParserTest {
         val w = parser.parse("I control Sol Ring. My opponent casts Stifle on it. Where does Sol Ring go?")
         assertTrue(w.unread.isEmpty(), w.unread.toString()); assertTrue(w.situation.players.none { it.name == "Where" }); assertTrue(w.notes.any { "answered by the outcome" in it })
     }
+
+    @Test
+    fun `x on activations, giving-with as a cast, and a life total in the middle of a sentence`() {
+        val p = parser.parse("I have Sol Ring. I activate Sol Ring with X=4.")
+        assertEquals(4, p.situation.events.first { it.verb == "activate" }.amount); assertTrue(p.situation.events.first { it.verb == "activate" }.targets.isEmpty())
+        val q = parser.parse("I control Sol Ring. My opponent casts Rhystic Study. Can I respond by giving my Sol Ring hexproof with Stifle?")
+        val cast = q.situation.events.last { it.verb == "cast" }; assertEquals("me", cast.player); assertEquals("Stifle", cast.card?.name); assertEquals(listOf("sol_ring"), cast.targets)
+        val r = parser.parse("My opponent attacks me with Sol Ring and I'm at 1 life. I cast Stifle.")
+        assertEquals(1, r.situation.players.first { it.id == "me" }.life); assertTrue(r.situation.events.any { it.verb == "attack" && it.obj == "sol_ring" }); assertTrue(r.unread.isEmpty(), r.unread.toString())
+    }
 }

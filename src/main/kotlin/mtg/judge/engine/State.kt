@@ -48,6 +48,8 @@ class GameObject(
 ) {
     /** Until-end-of-turn power/toughness modifications from resolved effects (611.2a). */
     val pumps = mutableListOf<Pair<Int, Int>>()
+    /** An until-end-of-turn "base power and toughness N/N" (layer 7b, 613.4b); applied before counters and pumps. */
+    var basePt: Pair<Int, Int>? = null
     var timestamp: Int = 0
     /** Combat status this turn. */
     /** Aura/Equipment: id of the object this is attached to. */
@@ -201,8 +203,8 @@ class GameState(
     }
     fun cdaOf(obj: GameObject): StaticEffect.PtCda? = obj.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.PtCda>().firstOrNull()
 
-    private fun basePower(obj: GameObject): Int? = cdaOf(obj)?.let { c -> if (c.power != null) cdaValue(obj, c.power)?.plus(c.plus) else obj.def.power } ?: obj.def.power
-    private fun baseToughness(obj: GameObject): Int? = cdaOf(obj)?.let { c -> if (c.toughness != null) cdaValue(obj, c.toughness)?.plus(c.plus) else obj.def.toughness } ?: obj.def.toughness
+    private fun basePower(obj: GameObject): Int? = obj.basePt?.first ?: cdaOf(obj)?.let { c -> if (c.power != null) cdaValue(obj, c.power)?.plus(c.plus) else obj.def.power } ?: obj.def.power
+    private fun baseToughness(obj: GameObject): Int? = obj.basePt?.second ?: cdaOf(obj)?.let { c -> if (c.toughness != null) cdaValue(obj, c.toughness)?.plus(c.plus) else obj.def.toughness } ?: obj.def.toughness
 
     fun powerOf(obj: GameObject): Int? = basePower(obj)?.let { base ->
         base + staticEffectsOn(obj).sumOf { (_, e) -> (e as? StaticEffect.PtModify)?.power ?: 0 } + obj.pumps.sumOf { it.first } + (obj.counters["+1/+1"] ?: 0) - (obj.counters["-1/-1"] ?: 0)

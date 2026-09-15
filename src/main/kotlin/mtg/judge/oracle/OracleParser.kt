@@ -571,6 +571,10 @@ object OracleParser {
             }
         }
         selfPumpRe.matchEntire(s)?.let { return Effect.PumpSelf(it.groupValues[1].toInt(), it.groupValues[2].toInt()) }
+        // "Until end of turn, creatures you control have base power and toughness X/X and gain all creature types." (Mirror Entity)
+        Regex("""^(?:until end of turn, )?(?:all |each )?(.+?) (?:have|has) base power and toughness (X|\d+)/(X|\d+)((?: and gain all creature types)?)(?: until end of turn)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            if (!m.groupValues[1].startsWith("target", true) && m.groupValues[1] != "~") { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Effect.SetBasePtAll(f, m.groupValues[2].toIntOrNull() ?: 0, m.groupValues[3].toIntOrNull() ?: 0, x = m.groupValues[2].equals("X", true), allCreatureTypes = m.groupValues[4].isNotEmpty()) }
+        }
         massPumpRe.matchEntire(s)?.let { m -> if (!m.groupValues[1].startsWith("target", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Effect.PumpAll(f, m.groupValues[2].toInt(), m.groupValues[3].toInt()) } }
         Regex("""^(?:all |each )?(.+?) (?:gain|gains) (.+?) and (?:get|gets) \+X/\+X until end of turn, where X is (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             val f = parseFilter(m.groupValues[1], Kind.CREATURE); val kws = keywordsIn(m.groupValues[2]); val count = parseCount(m.groupValues[3])

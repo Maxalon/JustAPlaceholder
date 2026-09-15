@@ -22,6 +22,7 @@ class BatchThirteenTest {
     private val vial = card("Aether Vial", "Artifact", "At the beginning of your upkeep, you may put a charge counter on Aether Vial.\n{T}: You may put a creature card with mana value equal to the number of charge counters on Aether Vial from your hand onto the battlefield.", "{1}")
     private val jace = card("Jace Beleren", "Legendary Planeswalker — Jace", "+2: Each player draws a card.\n−1: Target player draws a card.\n−10: Target player mills twenty cards.", "{1}{U}{U}", "U")
     private val kaalia = card("Kaalia of the Vast", "Legendary Creature — Human Cleric", "Flying\nWhenever Kaalia attacks an opponent, you may put an Angel, Demon, or Dragon creature card from your hand onto the battlefield tapped and attacking that opponent.", "{1}{R}{W}{B}", "RWB", "2", "2", "Flying")
+    private val mirrorEntity = card("Mirror Entity", "Creature — Shapeshifter", "Changeling\n{X}: Until end of turn, creatures you control have base power and toughness X/X and gain all creature types.", "{2}{W}", "W", "1", "1", "Changeling")
     private val serra = card("Serra Angel", "Creature — Angel", "Flying, vigilance", "{3}{W}{W}", "W", "4", "4", "Flying", "Vigilance")
     private val viper = card("Ambush Viper", "Creature — Snake", "Flash\nDeathtouch", "{1}{G}", "G", "2", "1", "Flash", "Deathtouch")
     private val krenko = card("Krenko, Mob Boss", "Legendary Creature — Goblin Warrior", "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.", "{2}{R}{R}", "R", "3", "3")
@@ -44,6 +45,7 @@ class BatchThirteenTest {
     private val deluge = card("Toxic Deluge", "Sorcery", "As an additional cost to cast this spell, pay X life.\nAll creatures get -X/-X until end of turn.", "{2}{B}", "B")
     private val trampler = card("Rampaging Baloths", "Creature — Beast", "Trample", "{4}{G}{G}", "G", "6", "6", "Trample")
     private val unsummon = card("Unsummon", "Instant", "Return target creature to its owner's hand.", "{U}", "U")
+    private val giantGrowth = card("Giant Growth", "Instant", "Target creature gets +3/+3 until end of turn.", "{G}", "G")
     private val sakura = card("Sakura-Tribe Elder", "Creature — Snake Shaman", "Sacrifice Sakura-Tribe Elder: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.", "{1}{G}", "G", "1", "1")
 
     private fun state() = GameState(listOf(Player("me", "me", 20), Player("opp", "opp", 20)), LinkedHashMap(), activePlayer = "me")
@@ -284,6 +286,16 @@ class BatchThirteenTest {
         val s2 = state(); s2.put("bears", bears, "opp"); s2.put("serra", serra, "opp"); val e2 = Engine(s2)
         e2.cast("me", deluge, emptyList(), x = 3); e2.resolveAll()
         assertEquals(Zone.GRAVEYARD, s2.obj("bears").zone); assertEquals(Zone.BATTLEFIELD, s2.obj("serra").zone); assertEquals(1, s2.obj("serra").power)
+    }
+
+    @Test
+    fun `mirror entity sets base power and toughness under counters and pumps until cleanup`() {
+        val s = state(); s.put("mirror", mirrorEntity, "me"); s.put("bears", bears, "me"); s.obj("bears").counters["+1/+1"] = 1; s.put("serra", serra, "opp"); val e = Engine(s)
+        assertTrue(e.activate("me", "mirror", 0, emptyList(), x = 4) != null); e.resolveAll()
+        assertEquals(4, s.obj("mirror").power); assertEquals(5, s.obj("bears").power, "the +1/+1 counter still applies above the new base"); assertEquals(4, s.obj("serra").power, "only your creatures")
+        assertTrue("613.4b" in s.cited())
+        e.cast("me", giantGrowth, listOf(Ref.Obj("bears"))); e.resolveAll(); assertEquals(8, s.obj("bears").power, "a pump applies above the new base")
+        e.beginStep("cleanup", "me"); assertEquals(3, s.obj("bears").power, "base 2 plus the counter once the effect ends"); assertEquals(1, s.obj("mirror").power)
     }
 
     @Test

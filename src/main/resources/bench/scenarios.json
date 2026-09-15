@@ -3060,5 +3060,84 @@
     "cite": [
       "704.5g"
     ]
+  },
+  {
+    "id": "mirror-entity-x4-attack",
+    "text": "I have Mirror Entity and three 1/1 Soldier tokens. I activate Mirror Entity with X=4 and attack with everything.",
+    "expect": [
+      "opponent takes 4 damage. (×4)"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "613.4b"
+    ]
+  },
+  {
+    "id": "blossoming-defense-in-response-to-chupacabra",
+    "text": "I control Grizzly Bears. My opponent casts Ravenous Chupacabra. Can I respond by giving my Bears hexproof with Blossoming Defense?",
+    "expect": [
+      "Grizzly Bears has hexproof until end of turn",
+      "Ravenous Chupacabra's triggered ability has no legal target and is removed from the stack"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Not understood"
+    ],
+    "cite": [
+      "702.11b",
+      "603.3d"
+    ]
+  },
+  {
+    "id": "fog-at-one-life-mid-sentence",
+    "text": "My opponent attacks me with Grizzly Bears and I'm at 1 life. I cast Fog. Do I survive?",
+    "expect": [
+      "Yes: You are still in the game at 1 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "615.1"
+    ]
+  },
+  {
+    "id": "thoughtseize-leyline-does-it-fizzle",
+    "text": "I cast Thoughtseize on my opponent. They have Leyline of Sanctity. Does it fizzle?",
+    "expect": [
+      "Thoughtseize can't target opponent"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.11c"
+    ]
+  },
+  {
+    "id": "doom-blade-only-hexproof-creature",
+    "text": "I control Grizzly Bears with hexproof. My opponent casts Doom Blade.",
+    "expect": [
+      "Doom Blade can't be cast: no legal target"
+    ],
+    "cite": [
+      "601.2c",
+      "702.11b"
+    ]
+  },
+  {
+    "id": "doom-blade-skips-hexproof-creature",
+    "text": "I control Grizzly Bears with hexproof and Serra Angel. My opponent casts Doom Blade.",
+    "expect": [
+      "Serra Angel: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield"
+    ],
+    "cite": [
+      "702.11b"
+    ]
   }
 ]

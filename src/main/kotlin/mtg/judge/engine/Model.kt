@@ -154,6 +154,8 @@ sealed interface Effect {
     data class PumpSelf(val power: Int, val toughness: Int) : Effect
     /** "[filter] get +N/+N until end of turn": affects the objects present when it resolves (611.2c). */
     data class PumpAll(val filter: ObjFilter, val power: Int, val toughness: Int, val keywords: List<String> = emptyList(), val x: Boolean = false) : Effect
+    /** "[filter] have base power and toughness N/N (X/X) until end of turn": a layer-7b setting effect (613.4b) on the objects present when it resolves. */
+    data class SetBasePtAll(val filter: ObjFilter, val power: Int, val toughness: Int, val x: Boolean = false, val allCreatureTypes: Boolean = false) : Effect
     /** "Gain control of target creature (until end of turn)". */
     data class GainControl(val target: TargetSpec, val untilEndOfTurn: Boolean) : Effect
     /** "Put N [kind] counters on target …" / "… on ~" (target null = self). */
@@ -191,7 +193,7 @@ sealed interface Effect {
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
-        is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is AddMana, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
+        is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
     }
 
     fun hasUnparsed(): Boolean = when (this) {
