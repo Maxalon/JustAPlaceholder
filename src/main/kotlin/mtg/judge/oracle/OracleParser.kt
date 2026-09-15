@@ -663,6 +663,12 @@ object OracleParser {
             if (f.verifiable) return Effect.PutFromHand(f, null, tapped = s.contains("battlefield tapped", true), fromGraveyard = true, maxMv = m.groupValues[2].toIntOrNull())
         }
         Regex("""^you gain (\d+) life for each spell you've cast this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.GainLifePerSpellThisTurn(Who.YOU, it.groupValues[1].toInt()) }
+        // "Each opponent sacrifices a creature (with the greatest power among creatures that player controls)": modeled, so it goes before the narrated table.
+        Regex("""^each (other player|opponent|player) sacrifices (?:a|an|one) (.+?)(?: of their choice)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val greatest = Regex("""^(.+?) with the greatest power among (?:creatures|permanents) (?:that player controls|they control)$""", RegexOption.IGNORE_CASE).matchEntire(m.groupValues[2])
+            val f = parseFilter(greatest?.groupValues?.get(1) ?: m.groupValues[2], Kind.CREATURE)
+            if (f.verifiable) return Effect.SacrificeEach(if (m.groupValues[1].lowercase() == "player") Who.EACH_PLAYER else Who.EACH_OPPONENT, f, greatestPower = greatest != null)
+        }
         for ((re, rules) in narratedRes) if (re.matches(s)) return Effect.Narrated(s.trimEnd('.'), rules)
         // "You draw a card and you lose 1 life." / "Each opponent loses 1 life and you gain 1 life.": two effects joined by "and".
         Regex("""^(.+?) and (you |each opponent |target player |that player |it |~ )(.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trimEnd('.'))?.let { m ->
@@ -715,8 +721,10 @@ object OracleParser {
             return if (Generic.token(desc) != null) Effect.CreateToken(who, n, desc) else Effect.Unparsed(s)
         }
         Regex("""^each (other player|opponent|player) sacrifices (?:a|an|one) (.+?)(?: of their choice)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
-            val f = parseFilter(m.groupValues[2], Kind.CREATURE)
-            return if (f.verifiable) Effect.SacrificeEach(if (m.groupValues[1].lowercase() == "player") Who.EACH_PLAYER else Who.EACH_OPPONENT, f) else Effect.Unparsed(s)
+            // Crackling Doom: "a creature with the greatest power among creatures that player controls"
+            val greatest = Regex("""^(.+?) with the greatest power among (?:creatures|permanents) (?:that player controls|they control)$""", RegexOption.IGNORE_CASE).matchEntire(m.groupValues[2])
+            val f = parseFilter(greatest?.groupValues?.get(1) ?: m.groupValues[2], Kind.CREATURE)
+            return if (f.verifiable) Effect.SacrificeEach(if (m.groupValues[1].lowercase() == "player") Who.EACH_PLAYER else Who.EACH_OPPONENT, f, greatestPower = greatest != null) else Effect.Unparsed(s)
         }
         if (Regex("""^its controller gains life equal to its power\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.GainLifeEqualToPower(Who.CONTROLLER_OF_TARGET)
         if (Regex("""^its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.May(Effect.Narrated("search their library for a basic land card, put it onto the battlefield tapped, then shuffle", listOf("701.23a", "701.23e")), Who.CONTROLLER_OF_TARGET)
@@ -725,6 +733,7 @@ object OracleParser {
             val a = parseSentence(m.groupValues[1].trimEnd('.') + "."); val b = parseSentence(m.groupValues[2].replaceFirstChar { it.uppercase() })
             if (!a.hasUnparsed() && !b.hasUnparsed()) return Effect.Seq(listOf(a, b))
         }
+        Regex("""^exile (target .+?), then return (?:that card|it|them|that creature) to the battlefield under (your|its owner's|their owner's) control\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.Blink(target(m.groupValues[1]), ownersControl = !m.groupValues[2].equals("your", true)) }
         exileRe.matchEntire(s)?.let { return Effect.Exile(target(it.groupValues[1])) }
         tapRe.matchEntire(s)?.let { return Effect.Tap(target(it.groupValues[1])) }
         // Threaten: "Untap target creature and gain control of it until end of turn."

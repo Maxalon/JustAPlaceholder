@@ -39,6 +39,8 @@ class GameObject(
     val token: Boolean = false,
     /** A commander (Commander format): its combat damage is tracked per player (903.10a). */
     var commander: Boolean = false,
+    /** After a blink: the new object this one came back as (400.7), so questions about "it" follow it. */
+    var successor: String? = null,
     /** Times this commander has already been cast from the command zone (903.8: {2} more each time). */
     var commanderCasts: Int = 0,
     /** Targets named for a permanent spell that itself targets nothing: they go to its enters-the-battlefield trigger (603.3d). */

@@ -278,8 +278,8 @@ class SituationParser(private val names: NameIndex) {
         Regex("""\b(opponent|they|they're|opp|my opponent)(?: who)? (?:(?:is at|are at|at|is on|are on|'re at|'s at) (\d+)(?: life)?|(?:has|have) (\d+) life)\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = (it.groupValues[2].ifEmpty { it.groupValues[3] }).toInt(); any = true; t2 = t2.replaceRange(it.range, it.groupValues[1]) }
         Regex("""@(\w+) (?:is at|is on|has|at|sits at|is) (\d+)(?: life)?\b""").findAll(t2).toList().asReversed().forEach { ctx.life[it.groupValues[1]] = it.groupValues[2].toInt(); ctx.players.putIfAbsent(it.groupValues[1], m.players[it.groupValues[1]] ?: it.groupValues[1]); any = true; t2 = t2.removeRange(it.range) }
         // "I cast Brainstorm with 1 card in my library" / "with no cards left in their library": library sizes, wherever they sit.
-        Regex("""\s*\b(?:with|and|at|having) (\d+|no|one|two|three|four|five|six|seven) cards? (?:left )?in (my|their|his|her|the) library\b""").find(t2)?.let { r ->
-            val who = if (r.groupValues[2] == "my") "me" else if (r.groupValues[2] == "the") (actorOfClause(t2.trim()) ?: "me") else pronounPlayer(ctx, "their")
+        Regex("""\s*\b(?:with|and|at|having) (\d+|no|one|two|three|four|five|six|seven) cards? (?:left )?in (?:(my|their|his|her|the) )?library\b""").find(t2)?.let { r ->
+            val who = if (r.groupValues[2] == "my") "me" else if (r.groupValues[2] == "the" || r.groupValues[2].isEmpty()) (actorOfClause(t2.trim()) ?: "me") else pronounPlayer(ctx, "their")
             ctx.librarySize[who] = if (r.groupValues[1] == "no") 0 else number(r.groupValues[1]) ?: 0; ctx.note(who); any = true; t2 = t2.removeRange(r.range)
         }
         // "… attacks me with Bears and I'm at 1 life": the life total was taken out above; a dangling "and" is left behind.

@@ -33,6 +33,10 @@ class BatchThirteenTest {
     private val hexmage = card("Vampire Hexmage", "Creature — Vampire Shaman", "First strike\nSacrifice Vampire Hexmage: Remove all counters from target permanent.", "{B}{B}", "B", "2", "1", "First strike")
     private val threaten = card("Threaten", "Sorcery", "Untap target creature and gain control of it until end of turn. That creature gains haste until end of turn.", "{2}{R}", "R")
     private val auraOfSilence = card("Aura of Silence", "Enchantment", "Artifact and enchantment spells your opponents cast cost {2} more to cast.\nSacrifice Aura of Silence: Destroy target artifact or enchantment.", "{1}{W}{W}", "W")
+    private val cloudshift = card("Cloudshift", "Instant", "Exile target creature you control, then return that card to the battlefield under your control.", "{W}", "W")
+    private val doomBlade = card("Doom Blade", "Instant", "Destroy target nonblack creature.", "{1}{B}", "B")
+    private val cracklingDoom = card("Crackling Doom", "Instant", "Crackling Doom deals 2 damage to each opponent. Each opponent sacrifices a creature with the greatest power among creatures that player controls.", "{R}{W}{B}", "RWB")
+    private val recall = card("Ancestral Recall", "Instant", "Target player draws three cards.", "{U}", "U")
     private val serra = card("Serra Angel", "Creature — Angel", "Flying, vigilance", "{3}{W}{W}", "W", "4", "4", "Flying", "Vigilance")
     private val viper = card("Ambush Viper", "Creature — Snake", "Flash\nDeathtouch", "{1}{G}", "G", "2", "1", "Flash", "Deathtouch")
     private val krenko = card("Krenko, Mob Boss", "Legendary Creature — Goblin Warrior", "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.", "{2}{R}{R}", "R", "3", "3")
@@ -395,6 +399,23 @@ class BatchThirteenTest {
         val item = e.cast("opp", decay, emptyList()); assertTrue(item != null, "on the stack despite the missing target"); assertTrue(item!!.targetsUnknown)
         e.cast("me", card("Counterspell", "Instant", "Counter target spell.", "{U}{U}", "U"), listOf(Ref.Stack(item.id))); e.resolveAll()
         assertTrue(s.trace.steps.any { it.text.contains("can't be countered") }, s.trace.steps.joinToString("\n") { it.text }); assertTrue(s.trace.steps.any { it.text.contains("target was never stated") })
+    }
+
+    @Test
+    fun `cloudshift in response makes doom blade fizzle and returns a fresh creature`() {
+        val s = state(); s.put("bears", bears, "me"); s.obj("bears").counters["+1/+1"] = 1; val e = Engine(s)
+        e.cast("opp", doomBlade, listOf(Ref.Obj("bears"))); e.cast("me", cloudshift, emptyList()); e.resolveAll()
+        assertEquals(Zone.EXILE, s.obj("bears").zone); val fresh = s.objects.values.first { it.def.name == "Grizzly Bears" && it.isOnBattlefield() }
+        assertTrue(fresh.counters.isEmpty()); assertEquals(true, fresh.summoningSick); assertTrue(s.outcomes.any { it.contains("Doom Blade doesn't resolve") }, s.outcomes.toString()); assertTrue("400.7" in s.cited())
+    }
+
+    @Test
+    fun `crackling doom takes the biggest creature and ancestral recall targets its caster by default`() {
+        val s = state(); s.put("bears", bears, "opp"); s.put("serra", serra, "opp"); val e = Engine(s)
+        e.cast("me", cracklingDoom, emptyList()); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("serra").zone); assertEquals(Zone.BATTLEFIELD, s.obj("bears").zone); assertEquals(18, s.player("opp").life)
+        val s2 = state(); val e2 = Engine(s2); e2.cast("me", recall, emptyList()); e2.resolveAll()
+        assertEquals(3, s2.player("me").drew); assertTrue(s2.assumptions.any { it.contains("assuming its controller") }, s2.assumptions.toString())
     }
 
     @Test

@@ -3489,5 +3489,46 @@
     "cite": [
       "701.6a"
     ]
+  },
+  {
+    "id": "cloudshift-in-response-to-doom-blade",
+    "text": "I control Grizzly Bears. My opponent casts Doom Blade on it. I respond with Cloudshift. Does the Bears survive?",
+    "expect": [
+      "Grizzly Bears is exiled and returns as a new object (your control)",
+      "Doom Blade doesn't resolve (all targets illegal)"
+    ],
+    "notExpect": [
+      "Need to know"
+    ],
+    "cite": [
+      "400.7",
+      "608.2b"
+    ]
+  },
+  {
+    "id": "crackling-doom-greatest-power",
+    "text": "I cast Crackling Doom. My opponent controls Grizzly Bears and Serra Angel.",
+    "expect": [
+      "opponent takes 2 damage",
+      "Serra Angel: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "not tracked",
+      "Grizzly Bears: the battlefield"
+    ],
+    "cite": [
+      "701.21a"
+    ]
+  },
+  {
+    "id": "ancestral-recall-two-cards-do-i-lose",
+    "text": "I cast Ancestral Recall with 2 cards in library. Do I lose?",
+    "expect": [
+      "You lose the game (drew from an empty library)",
+      "Yes: You have lost the game"
+    ],
+    "cite": [
+      "704.5b"
+    ]
   }
 ]
