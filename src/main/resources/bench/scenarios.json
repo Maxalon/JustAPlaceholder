@@ -2114,5 +2114,104 @@
     "cite": [
       "508.1c"
     ]
+  },
+  {
+    "id": "teferi-no-counter",
+    "text": "I have Teferi, Time Raveler. Can my opponent counter my Grizzly Bears?",
+    "expect": [
+      "a counterspell can't be cast (Teferi, Time Raveler: sorcery speed only)",
+      "Grizzly Bears enters the battlefield"
+    ],
+    "cite": [
+      "307.1"
+    ]
+  },
+  {
+    "id": "thoughtseize-reveal-list",
+    "text": "I cast Thoughtseize on my opponent. They reveal Counterspell and Forest.",
+    "expect": [
+      "You lose 2 life"
+    ],
+    "notExpect": [
+      "Forest enters the battlefield"
+    ],
+    "cite": [
+      "119.3"
+    ]
+  },
+  {
+    "id": "rest-in-peace-blood-artist-question",
+    "text": "My opponent casts Rest in Peace. Then my Grizzly Bears dies. Does my Blood Artist trigger?",
+    "expect": [
+      "Grizzly Bears: the battlefield → exile (replaced by Rest in Peace)",
+      "No: Blood Artist's ability didn't trigger"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "four-untapped-plains-fragment",
+    "text": "I attack with Serra Angel and Grizzly Bears. My opponent has Settle the Wreckage in hand and 4 untapped Plains.",
+    "expect": [
+      "Plains [plains_4] (opponent's)",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "510.2"
+    ]
+  },
+  {
+    "id": "twincast-copy-retarget",
+    "text": "My opponent bolts my Grizzly Bears and I copy it with Twincast targeting their Hill Giant.",
+    "expect": [
+      "A copy of Lightning Bolt is put on the stack targeting Hill Giant",
+      "Hill Giant: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "707.10",
+      "707.10c"
+    ]
+  },
+  {
+    "id": "twincast-copy-bolt-at-me",
+    "text": "I copy my opponent's Lightning Bolt with Twincast.",
+    "expect": [
+      "opponent takes 3 damage",
+      "You take 3 damage"
+    ],
+    "cite": [
+      "707.10c"
+    ]
+  },
+  {
+    "id": "dovins-veto-uncast-counterspell",
+    "text": "I cast Dovin's Veto on my opponent's Counterspell.",
+    "expect": [
+      "Counterspell is countered"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "bears-survive-question",
+    "text": "My opponent casts Doom Blade on my Grizzly Bears. I respond with Giant Growth. Does the Bears survive?",
+    "expect": [
+      "No: Grizzly Bears is in the graveyard"
+    ],
+    "cite": [
+      "701.8a"
+    ]
+  },
+  {
+    "id": "bolt-at-one-life-left",
+    "text": "It's my end step and I have Sylvan Library. My opponent casts Lightning Bolt at me with 1 life left for me.",
+    "expect": [
+      "You lose the game"
+    ],
+    "cite": [
+      "704.5a"
+    ]
   }
 ]

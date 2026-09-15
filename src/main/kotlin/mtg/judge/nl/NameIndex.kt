@@ -83,7 +83,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
             "life", "death", "damage", "counter", "target", "attack", "block", "draw", "hand", "deck", "library", "graveyard", "exile", "battlefield", "stack", "response", "trigger", "ability", "poison", "commander", "cards", "card",
             "they", "them", "he", "she", "we", "you", "i", "me", "re", "ve", "ll", "m", "s", "d", "t", "don", "doesn", "can", "won", "isn", "aren")
         private val stopWords = setOf(
-            "counter", "target", "turn", "attack", "block", "cast", "play", "draw", "damage", "life", "control",
+            "counter", "target", "turn", "attack", "block", "cast", "play", "draw", "damage", "life", "control", "survive", "survives", "dead", "alive", "die", "dies", "grow", "resolve",
             "creature", "spell", "ability", "trigger", "stack", "response", "resolve", "resolves", "tap", "untap", "exile", "destroy", "sacrifice",
             "discard", "hand", "library", "graveyard", "battlefield", "token", "copy", "end", "step", "upkeep", "combat", "main", "phase", "pay",
             "mana", "land", "player", "opponent", "me", "my", "i", "you", "they", "it", "the", "a", "an",

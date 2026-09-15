@@ -14,12 +14,19 @@ class Engine(val state: GameState) {
 
     // ---- events ----------------------------------------------------------------------------
 
-    fun cast(playerId: String, card: CardDef, targets: List<Ref>, objectId: String? = null, modes: List<Int> = emptyList(), overload: Boolean = false, x: Int? = null, kicked: Boolean = false, evoked: Boolean = false): StackItem? {
+    fun cast(playerId: String, card: CardDef, targets: List<Ref>, objectId: String? = null, modes: List<Int> = emptyList(), overload: Boolean = false, x: Int? = null, kicked: Boolean = false, evoked: Boolean = false, choice: String? = null): StackItem? {
         val player = state.player(playerId)
         val obj = objectId?.let { state.objects[it] } ?: state.add(GameObject(objectId ?: freshObjectId(card.name), card, Zone.HAND, playerId))
         state.stack.firstOrNull { it.kind == StackKind.SPELL && it.source.def.has("split second") }?.let { ss ->
             trace.step("${ss.source.name} has split second and is on the stack, so players can't cast spells or activate abilities that aren't mana abilities. ${card.name} can't be cast now.", "702.61a")
             state.outcomes += "${card.name} can't be cast while ${ss.source.name} is on the stack (split second)."; return null
+        }
+        state.objects.values.firstOrNull { it.isOnBattlefield() && it.controller != playerId && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { s -> s is StaticEffect.OpponentsSorcerySpeed } }?.let { teferi ->
+            val offTiming = state.stack.isNotEmpty() || state.phase == "combat" || (state.activePlayer != null && state.activePlayer != playerId) || state.step in setOf("upkeep", "draw", "end", "cleanup", "untap")
+            if (offTiming) {
+                trace.step("${teferi.name} says ${state.player(playerId).subject.lowercase()} can cast spells only any time ${state.player(playerId).subject.lowercase()} could cast a sorcery: during ${state.player(playerId).possessive} own main phase with an empty stack. ${card.name} can't be cast now${if (state.stack.isNotEmpty()) " (something is on the stack)" else ""}.", "307.1", "117.1a")
+                state.outcomes += "${card.name} can't be cast (${teferi.name}: sorcery speed only)."; return null
+            }
         }
         if (overload) return castOverloaded(playerId, card, obj)
         if ("Land" in card.types && !card.isInstantOrSorcery) {
@@ -63,7 +70,7 @@ class Engine(val state: GameState) {
         // A modal spell's targets belong to the chosen mode (700.2c): validate against that mode's needs.
         val modal = effect as? Effect.Modal
         val modeEffect = modal?.let { m -> modes.mapNotNull { i -> m.modes.getOrNull(i - 1) }.let { if (it.isEmpty()) null else Effect.Seq(it) } }
-        val item = StackItem(state.newStackId(), StackKind.SPELL, playerId, obj, effect, targets, zonesOf(targets), card.oracleText, modes, x = x, kicked = kicked, evoked = evoked && card.has("evoke"))
+        val item = StackItem(state.newStackId(), StackKind.SPELL, playerId, obj, effect, targets, zonesOf(targets), card.oracleText, modes, x = x, kicked = kicked, evoked = evoked && card.has("evoke"), choice = choice)
         state.stack += item
         if (evoked && !card.has("evoke")) { state.clarifications += Clarification("${card.name}'s evoke", "${card.name} doesn't have evoke, so it can't be cast for an evoke cost; treating it as cast normally.") }
         if (item.evoked) trace.step("${card.name} is cast for its evoke cost, an alternative cost paid instead of its mana cost. It's still a creature spell and resolves normally; its evoke trigger will sacrifice it once it has entered.", "702.74a", "601.2b")
@@ -315,7 +322,8 @@ class Engine(val state: GameState) {
                 if (def.isInstantOrSorcery) {
                     item.effect?.let { applyEffect(it, item) } ?: if (!Generic.isGeneric(def)) state.unsupported.add(Unsupported(def.name, "The spell has no modeled effect.")) else Unit
                     item.source.zone = Zone.GRAVEYARD
-                    trace.step("${def.name} finishes resolving and is put into its owner's graveyard.", "608.2c", "608.2n")
+                    if (item.source.token) trace.step("The copy of ${def.name} finishes resolving; a copy of a spell ceases to exist once it leaves the stack.", "608.2c", "707.10a")
+                    else trace.step("${def.name} finishes resolving and is put into its owner's graveyard.", "608.2c", "608.2n")
                 } else {
                     item.source.zone = Zone.BATTLEFIELD; item.source.tapped = false; item.source.summoningSick = def.isCreature; item.source.timestamp = state.tick()
                     if (def.isAura) {
@@ -804,6 +812,26 @@ class Engine(val state: GameState) {
                     "tap" -> { o.tapped = true; trace.step("${o.name} becomes tapped.", "701.26a"); state.outcomes += "${o.name} is tapped." }
                     else -> state.unsupported += Unsupported(item.describe, "Unknown action ${effect.action}")
                 } } finally { leavingTogether = emptySet() }
+            }
+            is Effect.CopySpell -> forEachLegalTarget(item, effect.target) { ref ->
+                val target = (ref as? Ref.Stack)?.let { state.stackItem(it.id) } ?: (ref as? Ref.Obj)?.let { r -> state.stack.firstOrNull { it.source.id == r.id } }
+                if (target == null) { trace.step("${state.nameOf(ref)} is no longer on the stack, so there's nothing to copy.", "707.10"); return@forEachLegalTarget }
+                val you = state.player(item.controller)
+                val copyObj = state.add(GameObject(freshObjectId(target.source.name + " copy"), target.source.def, Zone.STACK, item.controller, token = true))
+                // 707.10c: new targets may be chosen. Assume they stay unless the copy would hit its new controller, who then aims it at the opponent.
+                var targets = target.targets
+                val named = item.choice?.split('|')?.mapNotNull { c -> state.objects[c]?.let { Ref.Obj(it.id) } ?: state.players.firstOrNull { it.id == c }?.let { Ref.Player(it.id) } } ?: emptyList()
+                if (effect.newTargets && named.isNotEmpty() && named.size == targets.size) { targets = named; trace.step("${you.subject} ${you.v("chooses", "choose")} new targets for the copy: ${named.joinToString(" and ") { state.nameOf(it) }}.", "707.10c") }
+                else if (effect.newTargets) {
+                    val opp = state.opponentsOf(item.controller).singleOrNull()
+                    val retargeted = targets.map { t -> if (t is Ref.Player && t.id == item.controller && opp != null) Ref.Player(opp.id) else if (t is Ref.Obj && state.objects[t.id]?.controller == item.controller && isHarmful(target.effect) && opp != null) (state.objects.values.firstOrNull { it.isOnBattlefield() && it.controller == opp.id && it.def.isCreature }?.let { Ref.Obj(it.id) } ?: Ref.Player(opp.id)) else t }
+                    if (retargeted != targets) { targets = retargeted; state.assumptions += "${you.subject} ${you.v("chooses", "choose")} new targets for the copy of ${target.source.name}: ${targets.joinToString(" and ") { state.nameOf(it) }} (707.10c; the original aimed at ${you.subject.lowercase()})." }
+                    else state.assumptions += "${you.subject} ${you.v("keeps", "keep")} the copy's targets as they were (707.10c allows new ones)."
+                }
+                val copy = StackItem(state.newStackId(), StackKind.SPELL, item.controller, copyObj, target.effect, targets, zonesOf(targets), target.text, target.modes, x = target.x, kicked = target.kicked)
+                state.stack += copy
+                trace.step("${you.subject} ${you.v("puts", "put")} a copy of ${target.source.name} on the stack, above ${item.describe}. The copy isn't cast (so \"when you cast\" abilities don't trigger and it can't be countered by \"counter target spell\" only while it's a spell on the stack, which it is), and it copies every choice made for the original: modes, targets, X${if (targets != target.targets) ", except the targets changed" else ""}.", "707.10", "707.10c")
+                state.outcomes += "A copy of ${target.source.name} is put on the stack${describeTargets(targets)}."
             }
             is Effect.Counter -> forEachLegalTarget(item, effect.target) { ref ->
                 val target = (ref as? Ref.Stack)?.let { state.stackItem(it.id) } ?: (ref as? Ref.Obj)?.let { r -> state.stack.firstOrNull { it.source.id == r.id } }
@@ -1390,7 +1418,7 @@ class Engine(val state: GameState) {
     private fun describe(effect: Effect, item: StackItem): String = when (effect) {
         is Effect.Draw -> "draw ${if (effect.x) "X" else effect.count.toString()} card${if (effect.count > 1 || effect.x) "s" else ""}"
         is Effect.Damage -> "deal ${effect.amount} damage to ${effect.target.raw}"
-        is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
+        is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
         is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
         is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your hand onto the battlefield"

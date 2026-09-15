@@ -114,7 +114,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     val word = e.to.removePrefix("mode:").lowercase()
                     (def.spellEffect as? Effect.Modal)?.modeTexts?.indexOfFirst { it.lowercase().contains(word) }?.takeIf { it >= 0 }?.let { listOf(it + 1) } ?: emptyList()
                 } else e.modes
-                engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke")
+                engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", choice = e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:"))
             }
             "draw" -> engine.draw(e.player ?: throw JudgeException("draw needs a player"), e.amount ?: 1)
             "sacrifice" -> {
@@ -144,6 +144,14 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "choose" -> { val objId = e.obj ?: throw JudgeException("choose needs an object"); state.pendingChoices[objId] = e.to?.substringAfter(':') ?: throw JudgeException("choose needs a choice") }
             "resolve" -> engine.resolveTop()
             "resolveall" -> engine.resolveAll()
+            "ask" -> {
+                val o = state.obj(e.obj ?: throw JudgeException("ask needs an object"))
+                when (e.to) {
+                    "trigger" -> state.outcomes += if (state.trace.steps.any { it.text.startsWith("${o.name}'s ability triggers") || it.text.startsWith("${o.name}'s evoke ability triggers") }) "Yes: ${o.name}'s ability triggered." else "No: ${o.name}'s ability didn't trigger (nothing that happened matched its trigger condition)."
+                    "survive" -> state.outcomes += if (o.isOnBattlefield()) "Yes: ${o.name} is still on the battlefield." else "No: ${o.name} is in ${when (o.zone) { mtg.judge.engine.Zone.GRAVEYARD -> "the graveyard"; mtg.judge.engine.Zone.EXILE -> "exile"; mtg.judge.engine.Zone.HAND -> "its owner's hand"; mtg.judge.engine.Zone.LIBRARY -> "its owner's library"; else -> o.zone.name.lowercase() }}."
+                    else -> {}
+                }
+            }
             "pass" -> engine.resolveTop()
             "enter" -> engine.enter(e.obj ?: throw JudgeException("enter needs an object"))
             "leave" -> engine.leave(e.obj ?: throw JudgeException("leave needs an object"), zone(e.to ?: "graveyard"))
@@ -175,6 +183,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "pay" -> "${who ?: "the player"} ${if (e.to == "no") "${if (who == "you") "don't" else "doesn't"} pay" else "${if (who == "you") "pay" else "pays"}"}"
             "resolve", "pass" -> "the top of the stack resolves"
             "resolveall" -> "everything on the stack resolves"
+            "ask" -> "question: does ${state.objects[e.obj]?.name ?: e.obj} ${if (e.to == "trigger") "trigger" else "survive"}?"
             "enter" -> "${state.objects[e.obj]?.name ?: e.obj} enters the battlefield"
             "leave" -> "${state.objects[e.obj]?.name ?: e.obj} goes to ${e.to}"
             "damage" -> "${e.source} deals ${e.amount} damage$tg"

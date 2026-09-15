@@ -28,6 +28,8 @@ class BatchThirteenTest {
     private val glimpse = card("Glimpse the Unthinkable", "Sorcery", "Target player mills ten cards.", "{U}{B}", "UB")
     private val terminus = card("Terminus", "Sorcery", "Put all creatures on the bottom of their owners' libraries.\nMiracle {W}", "{4}{W}{W}", "W")
     private val wrath = card("Wrath of God", "Sorcery", "Destroy all creatures. They can't be regenerated.", "{2}{W}{W}", "W")
+    private val teferi = card("Teferi, Time Raveler", "Legendary Planeswalker — Teferi", "Each opponent can cast spells only any time they could cast a sorcery.\n+1: Until your next turn, you may cast sorcery spells as though they had flash.\n−3: Return up to one target artifact, creature, or enchantment to its owner's hand. Draw a card.", "{1}{W}{U}", "WU")
+    private val twincast = card("Twincast", "Instant", "Copy target instant or sorcery spell. You may choose new targets for the copy.", "{U}{U}", "U")
     private val sakura = card("Sakura-Tribe Elder", "Creature — Snake Shaman", "Sacrifice Sakura-Tribe Elder: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.", "{1}{G}", "G", "1", "1")
 
     private fun state() = GameState(listOf(Player("me", "me", 20), Player("opp", "opp", 20)), LinkedHashMap(), activePlayer = "me")
@@ -167,5 +169,24 @@ class BatchThirteenTest {
         assertEquals(4, d.power); assertEquals(4, d.toughness); assertTrue(d.has("flying"))
         val z = Generic.spell("a 2/2 zombie creature")!!
         assertTrue("Zombie" in z.subtypes); assertTrue(Generic.creature("creature") == null)
+    }
+
+    @Test
+    fun `teferi keeps opponents at sorcery speed`() {
+        val s = state(); s.put("teferi", teferi, "me").counters["loyalty"] = 4; val e = Engine(s)
+        e.cast("me", bears, emptyList())
+        assertTrue(e.cast("opp", bolt, listOf(Ref.Player("me"))) == null, "something is on the stack"); assertTrue("307.1" in s.cited())
+        e.resolveAll()
+        assertTrue(e.cast("opp", bolt, listOf(Ref.Player("me"))) == null, "not the opponent's turn either")
+        s.activePlayer = "opp"; assertTrue(e.cast("opp", bolt, listOf(Ref.Player("me"))) != null, "their own main phase with an empty stack is fine")
+    }
+
+    @Test
+    fun `twincast copies a spell, retargeting when it was aimed at the copier`() {
+        val s = state(); val e = Engine(s)
+        val boltItem = e.cast("opp", bolt, listOf(Ref.Player("me")))!!
+        e.cast("me", twincast, listOf(Ref.Stack(boltItem.id))); e.resolveAll()
+        assertEquals(17, s.player("me").life); assertEquals(17, s.player("opp").life); assertTrue("707.10c" in s.cited())
+        assertTrue(s.objects.values.none { it.token && it.zone == Zone.STACK }, "the copy is gone once it resolved")
     }
 }
