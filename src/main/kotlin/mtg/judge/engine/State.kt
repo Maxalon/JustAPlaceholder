@@ -132,6 +132,22 @@ class GameState(
         return staticEffectsOn(obj).any { (_, e) -> e is StaticEffect.KeywordGrant && k in e.keywords }
     }
 
+    /** Qualities an object has protection from ("red", "everything", "creatures"), lowercase. */
+    fun protections(obj: GameObject): Set<String> {
+        val out = mutableSetOf<String>()
+        val texts = obj.def.abilities.filterIsInstance<StaticAbility>().map { it.text } + obj.tempKeywords +
+            staticEffectsOn(obj).flatMap { (_, e) -> (e as? StaticEffect.KeywordGrant)?.keywords ?: emptySet() }
+        for (t in texts) Regex("""protection from ([a-z]+)(?: and from ([a-z]+))?""", RegexOption.IGNORE_CASE).findAll(t).forEach { m ->
+            out += m.groupValues[1].lowercase(); if (m.groupValues[2].isNotEmpty()) out += m.groupValues[2].lowercase()
+        }
+        return out
+    }
+
+    /** Ward cost on an object, if any ("Ward {2}", "Ward—Pay 3 life"). */
+    fun wardCost(obj: GameObject): String? = obj.def.abilities.filterIsInstance<StaticAbility>().firstNotNullOfOrNull { a ->
+        Regex("""^Ward(?:\s*[—-]\s*|\s+)(.+?)\.?$""", RegexOption.IGNORE_CASE).find(a.text)?.groupValues?.get(1)
+    }
+
     /** "3/3 (2/2, +1/+1 from Glorious Anthem, +0/+0 …)" for traces and echoes. */
     fun describePt(obj: GameObject): String {
         val p = obj.power ?: return "no power/toughness"

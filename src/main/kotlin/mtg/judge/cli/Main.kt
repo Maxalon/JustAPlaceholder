@@ -21,6 +21,7 @@ mtg-judge <command> [options]
   ask     "TEXT" [--json] [--db FILE]                Describe a situation in plain English and get the ruling
   judge   FILE.json|- [--json] [--db FILE]           Answer a situation written in the situation language (docs/)
   meta    [--db FILE]                                Data provenance
+  coverage [--format commander] [--top N] [--db FILE] How much of the card pool's rules text the engine models
 
 The database defaults to ${'$'}MTG_JUDGE_DB or ./judge.db.
 """
@@ -79,6 +80,7 @@ fun main(args: Array<String>) {
             if (opts.containsKey("json")) println(json.encodeToString(mtg.judge.situation.Answer.serializer(), answer)) else print(mtg.judge.situation.AnswerRenderer.render(answer))
         }
         "meta" -> withDb(opts) { cards, _ -> cards.meta().toSortedMap().forEach { (k, v) -> println("$k = $v") } }
+        "coverage" -> withDbConn(opts) { conn, _, _ -> mtg.judge.oracle.Coverage.report(conn, opts["format"] ?: "commander", opts["top"]?.toIntOrNull() ?: 40) }
         else -> { println(USAGE.trim()); exitProcess(2) }
     }
 }

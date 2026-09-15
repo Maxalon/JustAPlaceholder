@@ -29,11 +29,17 @@ class Engine(val state: GameState) {
                 "${card.name} needs ${needed.size} target${if (needed.size == 1) "" else "s"} (${needed.joinToString("; ") { it.raw }}) but ${targets.size} ${if (targets.size == 1) "was" else "were"} given (601.2c).")
             if (needed.size > targets.size) return null
         }
+        for (ref in targets) targetingProblem(obj, playerId, ref)?.let { (why, rule) ->
+            trace.step("${card.name} can't be cast targeting ${state.nameOf(ref)}: $why.", rule, "601.2c")
+            state.outcomes += "${card.name} can't target ${state.nameOf(ref)}."
+            return null
+        }
         obj.zone = Zone.STACK
         val item = StackItem(state.newStackId(), StackKind.SPELL, playerId, obj, effect, targets, zonesOf(targets), card.oracleText)
         state.stack += item
         trace.step("${player.subject} ${player.v("casts", "cast")} ${card.name}${describeTargets(targets)}. It goes on top of the stack.", "601.2a", "405.2")
         checkTargetsAtCast(item)
+        wardTriggers(item)
         if (effect?.hasUnparsed() == true) state.unsupported += Unsupported(card.name, "Part of the spell's effect is not modeled: " + unparsedText(effect))
         onEvent(GameEvent.SpellCast(item))
         trace.step("${player.subject} ${player.v("receives", "receive")} priority again after casting.", "117.3c")
@@ -54,8 +60,12 @@ class Engine(val state: GameState) {
             state.clarifications += Clarification("${obj.name}'s ability target", "The ability needs ${needed.size} target(s) (${needed.joinToString("; ") { it.raw }}) but ${targets.size} given (602.2b, 601.2c).")
             if (needed.size > targets.size) return null
         }
+        for (ref in targets) targetingProblem(obj, playerId, ref)?.let { (why, rule) ->
+            trace.step("${obj.name}'s ability can't target ${state.nameOf(ref)}: $why.", rule, "602.2b", "601.2c"); state.outcomes += "${obj.name}'s ability can't target ${state.nameOf(ref)}."; return null
+        }
         val item = StackItem(state.newStackId(), StackKind.ACTIVATED, playerId, obj, ability.effect, targets, zonesOf(targets), ability.text)
         state.stack += item
+        wardTriggers(item)
         state.player(playerId).let { p -> trace.step("${p.subject} ${p.v("activates", "activate")} ${obj.name}'s ability (${ability.cost})${describeTargets(targets)}. It goes on top of the stack.", "602.2a", "405.2") }
         if (ability.effect.hasUnparsed()) state.unsupported += Unsupported(obj.name, "Part of the ability's effect is not modeled: " + unparsedText(ability.effect))
         return item
@@ -188,6 +198,10 @@ class Engine(val state: GameState) {
         if (!b.def.isCreature || !b.isOnBattlefield()) { trace.step("${b.name} isn't a creature on the battlefield, so it can't block.", "506.3"); return }
         if (a.attacking == null) { trace.step("${a.name} isn't attacking, so ${b.name} can't block it.", "509.1a"); return }
         if (b.tapped == true) { trace.step("${b.name} is tapped, so it can't block.", "509.1a"); state.outcomes += "${b.name} can't block (tapped)."; return }
+        state.protections(a).takeIf { it.isNotEmpty() }?.let { prots ->
+            val bq = qualitiesOf(b.def)
+            prots.firstOrNull { it == "everything" || it in bq }?.let { q -> trace.step("${a.name} has protection from $q, so ${b.name} can't block it.", "702.16f"); state.outcomes += "${b.name} can't block ${a.name} (protection)."; return }
+        }
         if (a.has("flying") && !(b.has("flying") || b.has("reach"))) { trace.step("${a.name} has flying and ${b.name} has neither flying nor reach, so ${b.name} can't block it.", "702.9b"); state.outcomes += "${b.name} can't block ${a.name} (flying)."; return }
         b.blocking = a.id
         trace.step("${p.subject} ${p.v("blocks", "block")} ${a.name} with ${b.name} (${state.describePt(b)}). ${a.name} is now a blocked creature and stays blocked even if ${b.name} leaves combat.", "509.1a", "509.1g", "509.1h")
@@ -387,7 +401,17 @@ class Engine(val state: GameState) {
         }
     }
 
-    private fun applyDamage(sourceName: String, target: Ref, amount: Int) {
+    private fun applyDamage(sourceName: String, target: Ref, amount: Int, source: GameObject? = state.objects.values.firstOrNull { it.name == sourceName }) {
+        if (source != null && target is Ref.Obj) {
+            val o = state.objects[target.id]
+            if (o != null) {
+                val qualities = qualitiesOf(source.def)
+                state.protections(o).firstOrNull { it == "everything" || it in qualities }?.let { q ->
+                    trace.step("$sourceName would deal $amount damage to ${o.name}, but ${o.name} has protection from $q, so that damage is prevented.", "702.16e", "615.1")
+                    state.outcomes += "Damage to ${o.name} from $sourceName is prevented (protection)."; return
+                }
+            }
+        }
         when (target) {
             is Ref.Player -> { val p = state.player(target.id); p.life = p.life?.minus(amount); trace.step("$sourceName deals $amount damage to ${if (p.you) "you" else p.name}, ${if (p.you) "and you lose" else "who loses"} $amount life${p.life?.let { " ($it)" } ?: ""}.", "120.3a"); state.outcomes += "${p.subject} ${p.v("takes", "take")} $amount damage." }
             is Ref.Obj -> { val o = state.obj(target.id); o.damage += amount; trace.step("$sourceName deals $amount damage to ${o.name}; it now has ${o.damage} damage marked (toughness ${o.toughness ?: "?"}).", "120.3e"); state.outcomes += "${o.name} has ${o.damage} damage marked." }
@@ -408,6 +432,42 @@ class Engine(val state: GameState) {
     private fun afterResolution() {
         stateBasedActions()
         trace.step("The active player receives priority.", "117.3b")
+    }
+
+    // ---- targeting restrictions (hexproof, shroud, protection, ward) ----------------------------
+
+    private val colorNames = mapOf('W' to "white", 'U' to "blue", 'B' to "black", 'R' to "red", 'G' to "green")
+
+    private fun qualitiesOf(def: CardDef): Set<String> = def.colors.mapNotNull { colorNames[it] }.toSet() + def.types.map { it.lowercase() } + def.types.map { it.lowercase() + "s" }
+
+    /** Why [ref] can't be targeted by a spell/ability from [source] controlled by [controller], or null if it can. */
+    private fun targetingProblem(source: GameObject, controller: String, ref: Ref): Pair<String, String>? {
+        val o = (ref as? Ref.Obj)?.let { state.objects[it.id] } ?: return null
+        if (!o.isOnBattlefield()) return null
+        if (o.has("shroud")) return "${o.name} has shroud and can't be the target of spells or abilities" to "702.18a"
+        if (o.has("hexproof") && o.controller != controller) return "${o.name} has hexproof and can't be the target of spells or abilities its controller's opponents control" to "702.11b"
+        val prots = state.protections(o)
+        if (prots.isNotEmpty()) {
+            val qualities = qualitiesOf(source.def)
+            val hit = prots.firstOrNull { it == "everything" || it in qualities }
+            if (hit != null) return "${o.name} has protection from $hit, so it can't be targeted by ${if (source.def.isInstantOrSorcery || source.zone == Zone.STACK) "that spell" else "an ability from that source"}" to "702.16b"
+        }
+        return null
+    }
+
+    /** Ward: targeting an opponent's warded permanent triggers "counter unless you pay [cost]" (702.21a). */
+    private fun wardTriggers(item: StackItem) {
+        for (ref in item.targets) {
+            val o = (ref as? Ref.Obj)?.let { state.objects[it.id] } ?: continue
+            val cost = state.wardCost(o) ?: continue
+            if (o.controller == item.controller) continue
+            val counterSpec = TargetSpec(ObjFilter(setOf(Kind.SPELL, Kind.ABILITY), raw = "spell or ability"), "that spell or ability")
+            val effect = Effect.UnlessPays(Effect.Counter(counterSpec), Who.CONTROLLER_OF_TARGET, cost)
+            val ward = StackItem(state.newStackId(), StackKind.TRIGGERED, o.controller, o, effect, listOf(Ref.Stack(item.id)), mapOf(item.id to Zone.STACK), "Ward $cost")
+            state.stack += ward
+            val caster = state.player(item.controller)
+            trace.step("${o.name} has ward $cost: it became the target of a spell or ability an opponent controls, so its ward ability triggers and goes on the stack above ${item.describe}. When it resolves, ${item.describe} is countered unless ${caster.subject.lowercase()} ${caster.v("pays", "pay")} $cost.", "702.21a", "603.3")
+        }
     }
 
     // ---- targets ---------------------------------------------------------------------------
@@ -446,13 +506,13 @@ class Engine(val state: GameState) {
         return when (ref) {
             is Ref.Player -> !state.player(ref.id).lost
             is Ref.Stack -> state.stackItem(ref.id) != null
-            is Ref.Obj -> { val o = state.objects[ref.id] ?: return false; o.zone == item.targetZones[ref.id] && (!spec.filter.verifiable || filterMatches(spec.filter, ref, item.controller)) }
+            is Ref.Obj -> { val o = state.objects[ref.id] ?: return false; o.zone == item.targetZones[ref.id] && (!spec.filter.verifiable || filterMatches(spec.filter, ref, item.controller)) && targetingProblem(item.source, item.controller, ref) == null }
         }
     }
 
     private fun whyIllegal(item: StackItem, ref: Ref): String = when (ref) {
         is Ref.Stack -> "${state.nameOf(ref)} has left the stack"
-        is Ref.Obj -> { val o = state.objects[ref.id]; if (o == null || o.zone != item.targetZones[ref.id]) "${state.nameOf(ref)} left ${zoneName(item.targetZones[ref.id] ?: Zone.BATTLEFIELD, o)}" else "${state.nameOf(ref)} no longer matches \"${specFor(item, ref)?.raw}\"" }
+        is Ref.Obj -> { val o = state.objects[ref.id]; if (o == null || o.zone != item.targetZones[ref.id]) "${state.nameOf(ref)} left ${zoneName(item.targetZones[ref.id] ?: Zone.BATTLEFIELD, o)}" else targetingProblem(item.source, item.controller, ref)?.first ?: "${state.nameOf(ref)} no longer matches \"${specFor(item, ref)?.raw}\"" }
         is Ref.Player -> "${state.nameOf(ref)} has left the game"
     }
 
