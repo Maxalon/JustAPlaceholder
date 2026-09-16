@@ -950,7 +950,7 @@ class Engine(val state: GameState) {
         is Trigger.ThisDealsDamage -> event is GameEvent.DamageDealt && event.source === obj && (!trigger.combatOnly || event.combat) &&
             (trigger.toPlayer == null || trigger.toPlayer == (event.target is Ref.Player))
         is Trigger.PermanentEnters -> event is GameEvent.EntersBattlefield && obj.isOnBattlefield() && !(trigger.other && event.obj === obj) && state.matches(trigger.filter, event.obj, obj.controller)
-        is Trigger.PermanentDies -> event is GameEvent.Dies && (obj.isOnBattlefield() || event.obj === obj || obj.id in leavingTogether) && !(trigger.other && event.obj === obj) && matchesLki(trigger.filter, event.obj, obj.controller)
+        is Trigger.PermanentDies -> event is GameEvent.Dies && (obj.isOnBattlefield() || event.obj === obj || obj.id in leavingTogether) && !(trigger.other && event.obj === obj) && matchesLki(trigger.filter, event.obj, obj.controller, obj)
         Trigger.YouAttack -> event is GameEvent.PlayerAttacks && event.playerId == obj.controller && obj.isOnBattlefield()
         Trigger.CreatureAttacksAlone -> event is GameEvent.AttacksAlone && event.obj.controller == obj.controller && obj.isOnBattlefield()
         Trigger.YouGainLife -> event is GameEvent.LifeGained && event.playerId == obj.controller && obj.isOnBattlefield()
@@ -971,9 +971,9 @@ class Engine(val state: GameState) {
     }
 
     /** Filter match for something that just left the battlefield (last known information, 603.10a). */
-    private fun matchesLki(f: ObjFilter, o: GameObject, controller: String): Boolean {
+    private fun matchesLki(f: ObjFilter, o: GameObject, controller: String, source: GameObject? = null): Boolean {
         val z = o.zone; o.zone = Zone.BATTLEFIELD
-        try { return state.matches(f, o, controller) } finally { o.zone = z }
+        try { return state.matches(f, o, controller, source) } finally { o.zone = z }
     }
 
     /** The evoke trigger (702.74a): "When this permanent enters, if its evoke cost was paid, its controller sacrifices it." It's an enters-the-battlefield trigger like any other, so Torpor Orb stops it. */

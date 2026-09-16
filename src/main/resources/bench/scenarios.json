@@ -5099,5 +5099,42 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "skullclamp-draws-on-death",
+    "text": "I control Skullclamp and equip it to a 1/1. What happens?",
+    "expect": [
+      "a 1/1 creature: the battlefield → your graveyard",
+      "You draw 2 cards"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5f",
+      "702.6a"
+    ]
+  },
+  {
+    "id": "dismember-on-a-described-creature",
+    "text": "I control Dismember and cast it on a 4/4 paying 4 life. What happens?",
+    "expect": [
+      "a 4/4 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "but 0 were given"
+    ],
+    "cite": []
+  },
+  {
+    "id": "cursed-totem-stops-birds",
+    "text": "My opponent controls Cursed Totem and I try to activate my Birds of Paradise. What happens?",
+    "expect": [
+      "can't be activated (Cursed Totem)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

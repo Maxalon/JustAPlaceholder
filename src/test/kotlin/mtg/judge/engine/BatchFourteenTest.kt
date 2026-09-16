@@ -336,4 +336,16 @@ class BatchFourteenTest {
         assertEquals(6, s.obj("asc").power); assertEquals(6, s.obj("asc").toughness)
         assertTrue(s.hasKeyword(s.obj("asc"), "flying"))
     }
+
+    private val clamp = card("Skullclamp", "Artifact — Equipment", "Equipped creature gets +1/-1.\nWhenever equipped creature dies, draw two cards.\nEquip {1}", "{1}", "", null, null, "Equip")
+
+    @Test
+    fun `an equipped creature dying triggers the equipment`() {
+        val s = state(); s.put("clamp", clamp, "me")
+        val small = card("Elf", "Creature — Elf", "", "{G}", "G", "1", "1")
+        s.put("elf", small, "me")
+        val e = Engine(s); e.activate("me", "clamp", 0, listOf(Ref.Obj("elf"))); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("elf").zone)
+        assertEquals(2, s.player("me").drew)
+    }
 }
