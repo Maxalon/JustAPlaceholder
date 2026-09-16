@@ -1606,11 +1606,17 @@ class SituationParser(private val names: NameIndex) {
             emitCast(who, m.cards.getValue(r.groupValues[2]), " targeting ${r.groupValues[1]}", m, ctx); return true
         }
         // "my commander Atraxa has dealt 18 damage to my opponent already" / "Atraxa has already dealt them 18 commander damage"
-        Regex("""^(?:my )?(?:commander )?(c\d+|it|that) (?:has |have )?(?:already )?(?:dealt|done|hit (?:them|me|@\w+|my opponent) for) (\d+)(?: commander| combat)? damage(?: to (me|them|my opponent|the opponent|@\w+))?(?: already| so far| this game)?$|^(?:my )?(?:commander )?(c\d+|it|that) (?:has |have )?(?:already )?dealt (me|them|my opponent|the opponent|@\w+) (\d+)(?: commander| combat)? damage(?: already| so far| this game)?$""").find(c)?.let { r ->
-            val ph = r.groupValues[1].ifEmpty { r.groupValues[4] }; val amount = (r.groupValues[2].ifEmpty { r.groupValues[6] }).toInt(); val victimWord = r.groupValues[3].ifEmpty { r.groupValues[5] }
+        Regex("""^(?:my |their )?(?:(\d+/\d+) )?(?:commander )?(c\d+|it|that|commander) (?:has |have )?(?:already )?(?:dealt|done|hit (?:them|me|@\w+|my opponent) for) (\d+)(?: commander| combat)? damage(?: to (me|them|my opponent|the opponent|@\w+))?(?: already| so far| this game)?$|^(?:my |their )?(?:(\d+/\d+) )?(?:commander )?(c\d+|it|that|commander) (?:has |have )?(?:already )?dealt (me|them|my opponent|the opponent|@\w+) (\d+)(?: commander| combat)? damage(?: already| so far| this game)?$""").find(c)?.let { r ->
+            val ph = r.groupValues[2].ifEmpty { r.groupValues[6] }; val amount = (r.groupValues[3].ifEmpty { r.groupValues[8] }).toInt(); val victimWord = r.groupValues[4].ifEmpty { r.groupValues[7] }
+            val pt = r.groupValues[1].ifEmpty { r.groupValues[5] }
             val who = actor ?: ctx.lastActor ?: "me"
             // "My commander is Atraxa and it has dealt 18 commander damage": "it" is the commander just named.
             val id = if (ph == "it" || ph == "that") ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     // "my commander has dealt 18 damage" with no name: an unnamed commander, sized if the asker said so.
+                     else if (ph == "commander") ctx.objects.values.lastOrNull { it.controller == who && it.commander }?.id
+                         ?: describedCreatures("a ", pt, "creature", who, ctx, "").first().also {
+                             ctx.notes += "The commander wasn't named" + (if (pt.isEmpty()) " and no size was given; name it, or say how big it is, for a precise answer." else "; it is read as the described creature.")
+                         }
                      else objectIdFor(m.cards.getValue(ph), ctx) ?: addObject(m.cards.getValue(ph), who, false, ctx)
             ctx.objects[id] = ctx.objects.getValue(id).copy(commander = true)
             val victim = when { victimWord.isEmpty() -> ctx.other(who) ?: "opp"; victimWord == "me" -> "me"; victimWord.startsWith("@") -> victimWord.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) }; else -> pronounPlayer(ctx, victimWord.substringAfterLast(' ')) }
@@ -2082,7 +2088,7 @@ class SituationParser(private val names: NameIndex) {
         // "it isn't blocked", "nobody blocks", "it goes unblocked", "it gets through": there was no block, which is what the engine assumes anyway.
         if (unblockedRe.matches(c)) { if (actor != null) ctx.lastActor = actor; return true }
         // Combat: "attack with c1", "swing with c1 (at them)", "block (it) with c2".
-        Regex("""^(?:attacks?|attacking|swings?|swinging) with (?:it|that|him|her|them)$""").find(c)?.let {
+        Regex("""^(?:attacks?|attacking|swings?|swinging) with (?:it|that|him|her|them)(?: again| once more| one more time| this turn| now)?$""").find(c)?.let {
             val who = actor ?: subject ?: "me"
             // "it" after a spell means what that spell targeted ("I cast Act of Treason on their Giant and attack with it"); an Aura's "it" is what it enchants.
             // Nothing was targeted, so "it" is the creature just cast: it has to resolve first, and then it's summoning sick.

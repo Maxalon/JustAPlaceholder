@@ -7622,5 +7622,19 @@
       "I couldn't find"
     ],
     "cite": []
+  },
+  {
+    "id": "commander-damage-without-a-name",
+    "text": "My 5/5 commander has dealt 18 damage to my opponent and I attack with it again. Do they lose?",
+    "expect": [
+      "23 combat damage",
+      "loses the game"
+    ],
+    "notExpect": [
+      "No: opponent is still in the game"
+    ],
+    "cite": [
+      "903.10a"
+    ]
   }
 ]
