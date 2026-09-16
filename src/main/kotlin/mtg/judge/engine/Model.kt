@@ -311,7 +311,8 @@ sealed interface CountExpr {
 
 sealed interface StaticEffect {
     /** Death's Shadow: "~ gets -X/-X, where X is your life total" (layer 7c, recomputed continuously). */
-    data class PtModifyByCount(val count: CountExpr, val negative: Boolean) : StaticEffect
+    /** [power]/[toughness] are the step per counted thing: "+1/+0 for each artifact you control" is 1 and 0. */
+    data class PtModifyByCount(val count: CountExpr, val negative: Boolean, val power: Int = 1, val toughness: Int = 1) : StaticEffect
     /** Layer 7c: "[filter] get +N/+N". `self` = "~ gets"; `condition` = "as long as …". */
     data class PtModify(val filter: ObjFilter, val power: Int, val toughness: Int, val self: Boolean = false, val condition: Condition? = null) : StaticEffect
     /** Layer 7a: "~'s power and toughness are each equal to the number of …" (604.3). */

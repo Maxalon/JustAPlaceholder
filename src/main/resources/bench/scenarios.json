@@ -7338,5 +7338,27 @@
       "can't attack"
     ],
     "cite": []
+  },
+  {
+    "id": "gets-plus-for-each-artifact",
+    "text": "I control Nim Lasher and two Sol Rings. What are its stats?",
+    "expect": [
+      "Nim Lasher is 3/1"
+    ],
+    "notExpect": [
+      "Rules text not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "gets-plus-for-each-other-giant",
+    "text": "I control Borderland Behemoth, Hill Giant and Craw Giant. What are Borderland Behemoth's stats?",
+    "expect": [
+      "Borderland Behemoth is 12/12"
+    ],
+    "notExpect": [
+      "Rules text not modeled"
+    ],
+    "cite": []
   }
 ]

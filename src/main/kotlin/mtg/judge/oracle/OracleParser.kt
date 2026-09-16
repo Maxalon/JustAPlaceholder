@@ -572,6 +572,12 @@ object OracleParser {
             if (c is CountExpr.Unknown) return emptyList()
             return listOf(StaticEffect.PtModifyByCount(c, m.groupValues[1] == "-"))
         }
+        // "~ gets +1/+0 for each artifact you control": a static that recounts every time the size is asked for.
+        Regex("""^~ gets ([+-]\d+)/([+-]\d+) for each (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val c = parseCount("the number of " + m.groupValues[3].trim())
+            if (c is CountExpr.Unknown) return emptyList()
+            return listOf(StaticEffect.PtModifyByCount(c, negative = false, power = m.groupValues[1].removePrefix("+").toInt(), toughness = m.groupValues[2].removePrefix("+").toInt()))
+        }
         if (line.contains("until end of turn", true) || line.startsWith("~", true) || line.contains(" as long as ", true) || line.contains(" for each ", true) || line.contains(" where ", true)) return emptyList()
         anthemRe.matchEntire(line)?.let { m ->
             val filter = parseFilter(m.groupValues[2], Kind.CREATURE).let { if (m.groupValues[1].trim().equals("other", true)) it.copy(other = true) else it }

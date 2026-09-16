@@ -134,4 +134,11 @@ class StaysParsedTest {
         check("Gadrak, the Crown-Scourge", "Legendary Creature — Dragon", "~ can't attack unless you control four or more artifacts.")
         check("Wolf Pack", "Creature — Wolf", "~ can't attack unless you control another Wolf.")
     }
+
+    @Test
+    fun `gets-for-each wordings stay modelled`() {
+        check("Nim Lasher", "Creature — Zombie", "~ gets +1/+0 for each artifact you control.")
+        check("Borderland Behemoth", "Creature — Giant", "~ gets +4/+4 for each other Giant you control.")
+        check("Death's Shadow", "Creature — Avatar", "~ gets -X/-X, where X is your life total.")
+    }
 }
