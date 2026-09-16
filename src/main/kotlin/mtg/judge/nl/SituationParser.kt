@@ -1026,6 +1026,23 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("activate", player = who, obj = src, to = "color:${r.groupValues[2]}")
             ctx.lastActor = who; return true
         }
+        // "my Grizzly Bears has flying", "their Serra Angel has protection from black": a keyword the asker states
+        // rather than one the card is printed with. Said as a fact about the board, not as something happening now.
+        Regex("""^(?:(my|their|his|her|the|my opponent's|@\w+'s) )?(c\d+|it|that) (?:has|have|already has|is given|comes with|now has) ((?:$kwPhrase)(?:(?:,| and|, and) (?:$kwPhrase))*)$""").find(c)?.let { r ->
+            val owner = when (val w = r.groupValues[1].trim()) {
+                "my" -> "me"
+                "their", "his", "her", "my opponent's" -> pronounPlayer(ctx, "their")
+                "", "the" -> actor ?: ctx.lastOwner
+                else -> if (w.startsWith("@")) w.removePrefix("@").removeSuffix("'s").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else ctx.lastOwner
+            }
+            val id = if (r.groupValues[2] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, owner, false, ctx) } ?: return@let
+            val kws = r.groupValues[3].split(Regex(""",? and |, """)).map { it.trim() }.filter { it.isNotEmpty() }
+            val spec = ctx.objects.getValue(id)
+            ctx.objects[id] = spec.copy(keywords = spec.keywords + kws.filter { it !in spec.keywords })
+            ctx.notes += "${spec.card.name ?: id} is read as having ${kws.joinToString(" and ")} (from an effect; say what gives it if that matters)."
+            ctx.lastMentioned = id; ctx.lastOwner = owner ?: ctx.lastOwner; return true
+        }
         // "give it protection from black": the actor's other permanent grants it (Mother of Runes).
         Regex("""^(?:gives?|granting|grants?) (?:it|that|(?:the |my )?(c\d+)) protection from (white|blue|black|red|green)(?: in response)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
@@ -2482,6 +2499,8 @@ class SituationParser(private val names: NameIndex) {
         "sacrifice", "regenerate", "bounce", "exile", "tap", "untap", "pay", "cast", "play", "target", "fight", "counter", "discard", "mill", "scry", "activate", "stop", "answer", "remove", "trigger")
     /** Keyword words that are also card names ("Lifelink", "Flying"); in a keyword list they mean the keyword. */
     private val keywordWords = setOf("flying", "trample", "deathtouch", "lifelink", "haste", "vigilance", "reach", "menace", "hexproof", "indestructible", "infect", "defender", "flash", "shroud", "intimidate", "fear", "wither", "changeling", "banding", "horsemanship", "shadow", "persist", "undying", "exalted", "prowess")
+    /** Keywords an asker can state on a permanent ("has flying", "with protection from black"). */
+    private val kwPhrase = """(?:hexproof|indestructible|flying|trample|lifelink|deathtouch|haste|vigilance|reach|menace|shroud|unblockable|first strike|double strike|infect|wither|defender|flash|protection from \w+)"""
     private val kwNouns = """(?:fliers?|flyers?|flying|tramplers?|trample|deathtouchers?|deathtouch|lifelinkers?|lifelink|first strikers?|first strike|double strikers?|double strike|haste|vigilance|reach|menace|hexproof|indestructible|infect)"""
     private val creatureKinds = """(?:creatures?|walls?|goblins?|elves|elf|zombies?|soldiers?|spirits?|angels?|dragons?|humans?|vampires?|beasts?|birds?|cats?|dogs?|wolves|wolf|knights?|warriors?|wizards?|merfolk|dinosaurs?|hydras?|demons?|elementals?|insects?|rats?|snakes?|thopters?|servos?|saprolings?|squirrels?|bears?|giants?|orcs?|slivers?|faeries|faerie|treefolk|horrors?|constructs?|golems?)"""
     private val singularKind = mapOf("elves" to "elf", "wolves" to "wolf", "faeries" to "faerie")

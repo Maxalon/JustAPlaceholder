@@ -6707,5 +6707,29 @@
     "cite": [
       "510.1b"
     ]
+  },
+  {
+    "id": "a-keyword-stated-on-a-permanent",
+    "text": "My Grizzly Bears has protection from black. They cast Doom Blade on it. What happens?",
+    "expect": [
+      "has protection from black, so it can't be targeted"
+    ],
+    "notExpect": [
+      "is destroyed"
+    ],
+    "cite": [
+      "702.16b"
+    ]
+  },
+  {
+    "id": "flying-stated-on-a-permanent-stops-the-block",
+    "text": "My Grizzly Bears has flying and they block with Wall of Omens. What happens?",
+    "expect": [
+      "Wall of Omens can't block it"
+    ],
+    "notExpect": [],
+    "cite": [
+      "702.9b"
+    ]
   }
 ]
