@@ -220,7 +220,10 @@ class SituationParser(private val names: NameIndex) {
                 // "Bob bolts my Bears": the next word is a card name used as a verb, so the capitalised word before it is a player.
                 val nextIsVerbifiedCard = (i + 1) in covered &&
                     rawWords.getOrNull(i + 1)?.trimEnd(',', '.', ';', '!', '?')?.lowercase()?.let { w -> (w.endsWith("s") && !w.endsWith("ss")) || w.endsWith("ed") } == true
-                val actsLikePlayer = possessive || next in playerVerbs || prev in playerPreps || nextIsVerbifiedCard
+                // "Alice, Bob and I are playing": a roster sentence names players and nothing else, so every
+                // capitalised word in it that isn't a card is one. Without this Bob was never in the game.
+                val roster = Regex("""\b(?:are|is|'re) (?:playing|in the game|at the table)\b""", RegexOption.IGNORE_CASE).containsMatchIn(sentence)
+                val actsLikePlayer = possessive || next in playerVerbs || prev in playerPreps || nextIsVerbifiedCard || roster
                 if (actsLikePlayer) out[norm] = core
             }
         }
@@ -574,6 +577,13 @@ class SituationParser(private val names: NameIndex) {
                 for (clause in r.groupValues[1].split(clauseSplit).map { it.trim() }.filter { it.isNotEmpty() }) if (readClause(clause, m, ctx)) any = true else if (!isNoise(clause)) ctx.unread += restore(clause, m)
                 return any || anySub
             }
+        }
+        // "Alice, Bob and I are playing", "there are four players": who is at the table. Split on the commas and
+        // the "and" it becomes a handful of bare names, each of which looks like a clause nobody could read.
+        Regex("""^((?:@\w+|i|me|we|you)(?:,? (?:and )?(?:@\w+|i|me|you))*) (?:are|is|'re) (?:playing|in the game|at the table|all playing)$""").find(t)?.let { r ->
+            for (n in Regex("""@(\w+)""").findAll(r.groupValues[1]).map { it.groupValues[1] }) { ctx.players.putIfAbsent(n, m.players[n] ?: n); ctx.note(n) }
+            if (Regex("""\b(?:i|me|we)\b""").containsMatchIn(r.groupValues[1])) ctx.usesMe = true
+            return true
         }
         // Clause-by-clause for actions.
         val clauses = t.split(clauseSplit).map { it.trim() }.filter { it.isNotEmpty() }

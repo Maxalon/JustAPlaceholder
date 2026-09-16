@@ -7870,5 +7870,17 @@
       "Bob loses 1 life"
     ],
     "cite": []
+  },
+  {
+    "id": "a-three-player-roster",
+    "text": "Alice, Bob and I are playing. I cast Torment of Hailfire for X equals 2. What happens?",
+    "expect": [
+      "Alice loses 3 life",
+      "Bob loses 3 life"
+    ],
+    "notExpect": [
+      "opponent loses 3 life"
+    ],
+    "cite": []
   }
 ]
