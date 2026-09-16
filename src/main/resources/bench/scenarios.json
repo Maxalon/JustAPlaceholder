@@ -5023,5 +5023,43 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "two-blockers-one-with-deathtouch",
+    "text": "I attack with a 3/3 and my opponent blocks with a 1/1 with deathtouch and a 1/1. What happens?",
+    "expect": [
+      "a 1/1 creature: the battlefield → opponent's graveyard",
+      "a 3/3 creature: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "510.1c"
+    ]
+  },
+  {
+    "id": "hardened-scales-adds-one",
+    "text": "I control Hardened Scales and cast Walking Ballista with X equal to 2. What are its stats?",
+    "expect": [
+      "Walking Ballista is 3/3"
+    ],
+    "notExpect": [
+      "Rules text not modeled: If one or more +1/+1 counters"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "ballista-without-scales",
+    "text": "I cast Walking Ballista with X equal to 2. What are its stats?",
+    "expect": [
+      "Walking Ballista is 2/2"
+    ],
+    "notExpect": [
+      "3/3"
+    ],
+    "cite": []
   }
 ]

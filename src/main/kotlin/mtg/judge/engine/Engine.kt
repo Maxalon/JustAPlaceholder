@@ -1768,6 +1768,9 @@ class Engine(val state: GameState) {
             .forEach { (src, m) -> trace.step("${src.name} replaces the counter placement: ${out * m.factor} $kind counters are put on ${o.name} instead of $out.", "614.1a", "614.6"); out *= m.factor }
         if (out > 0) state.objects.values.filter { it.isOnBattlefield() && it.controller == o.controller }.flatMap { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.CounterMultiplier }.filter { it.factor > 1 }.map { src to it } }
             .forEach { (src, m) -> trace.step("${src.name} replaces the counter placement: ${out * m.factor} $kind counters are put on ${o.name} instead of $out.", "614.1a", "614.6"); out *= m.factor }
+        // Hardened Scales: one more of that kind, however many were coming.
+        if (out > 0) state.objects.values.filter { it.isOnBattlefield() && it.controller == o.controller }.flatMap { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.CounterMultiplier }.filter { it.extra > 0 && (it.kind == null || it.kind.equals(kind, true)) }.map { src to it } }
+            .forEach { (src, m) -> trace.step("${src.name} replaces the counter placement: ${out + m.extra} $kind counters are put on ${o.name} instead of $out.", "614.1a", "614.6"); out += m.extra }
         return out
     }
 
