@@ -5707,5 +5707,58 @@
       "a elf creature"
     ],
     "cite": []
+  },
+  {
+    "id": "mutavault-animates-and-attacks",
+    "text": "I control Mutavault and activate it. Can it attack?",
+    "expect": [
+      "Mutavault becomes a 2/2 creature with every creature type until end of turn",
+      "it is still a land",
+      "You attack with Mutavault (2/2)"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "613.1d",
+      "302.6"
+    ]
+  },
+  {
+    "id": "an-animated-land-is-a-creature",
+    "text": "I control Mutavault and activate it. Is it a creature?",
+    "expect": [
+      "Yes: Mutavault is a creature (2/2) until end of turn"
+    ],
+    "notExpect": [
+      "isn't a creature"
+    ],
+    "cite": []
+  },
+  {
+    "id": "colonnade-animates-with-its-keywords",
+    "text": "I control Celestial Colonnade. I activate it. It resolves. What are its stats?",
+    "expect": [
+      "Celestial Colonnade becomes a 4/4 Elemental creature with flying and vigilance"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "613.1d"
+    ]
+  },
+  {
+    "id": "an-animated-land-can-be-targeted-once-the-ability-resolves",
+    "text": "I control Mutavault. I activate it. It resolves. My opponent casts Doom Blade targeting Mutavault. What happens?",
+    "expect": [
+      "Mutavault is destroyed"
+    ],
+    "notExpect": [
+      "can't target Mutavault"
+    ],
+    "cite": [
+      "701.8a"
+    ]
   }
 ]

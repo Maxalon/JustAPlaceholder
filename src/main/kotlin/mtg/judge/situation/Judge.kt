@@ -192,11 +192,11 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     "pt" -> state.outcomes += when {
                         !o.isOnBattlefield() -> "${o.name} isn't on the battlefield."
                         state.notACreatureBecause(o) != null -> "${o.name} isn't a creature right now (${state.player(o.controller).possessive} ${state.notACreatureBecause(o)}), so it has no power or toughness. It's still an enchantment on the battlefield and keeps its other abilities."
-                        o.def.isCreature -> "${o.name} is ${state.describePt(o)}."
+                        o.def.isCreature || o.animatedAs != null -> "${o.name} is ${state.describePt(o)}."
                         else -> "${o.name} isn't a creature."
                     }
                     "isCreature" -> state.outcomes += state.notACreatureBecause(o)?.let { why -> "No: ${o.name} isn't a creature — ${state.player(o.controller).possessive} $why. It's still an enchantment on the battlefield, it keeps its other abilities, and it can't attack, block, or be targeted by anything that needs a creature." }
-                        ?: if (!o.isOnBattlefield()) "${o.name} isn't on the battlefield." else if (o.def.isCreature) "Yes: ${o.name} is a creature (${state.describePt(o)})." else "No: ${o.name} isn't a creature; it's ${o.def.types.joinToString(" ").lowercase()}."
+                        ?: if (!o.isOnBattlefield()) "${o.name} isn't on the battlefield." else if (o.def.isCreature || o.animatedAs != null) "Yes: ${o.name} is a creature (${state.describePt(o)})${if (o.animatedAs != null) " until end of turn" else ""}." else "No: ${o.name} isn't a creature; it's ${o.def.types.joinToString(" ").lowercase()}."
                     "control" -> {
                         // "Do I get it back?": the turn is played out to its cleanup step first, once combat is done.
                         if (o.controlRevertsTo != null) engine.beginStep("cleanup", e.targets.firstOrNull()?.takeIf { t -> state.players.any { it.id == t } } ?: state.activePlayer ?: o.controller)

@@ -510,6 +510,39 @@ class BatchFourteenTest {
         assertEquals(2, s.obj("jitte").counters["charge"])
     }
 
+    private val mutavault = card("Mutavault", "Land", "{T}: Add {C}.\n{1}: Mutavault becomes a 2/2 creature with all creature types until end of turn. It's still a land.", "")
+    private val colonnade = card("Celestial Colonnade", "Land", "{3}{W}{U}: Until end of turn, Celestial Colonnade becomes a 4/4 white and blue Elemental creature with flying and vigilance. It's still a land.", "")
+
+    @Test
+    fun `an animated land is a creature, keeps its land types and can attack`() {
+        val s = state(); val mv = s.put("mv", mutavault, "me"); mv.summoningSick = false
+        val e = Engine(s); e.activate("me", "mv", 1, emptyList()); e.resolveAll()
+        assertTrue(s.isCreature(mv)); assertEquals(2, mv.power); assertEquals(2, mv.toughness)
+        assertTrue("Land" in mv.def.types)
+        e.declareAttacker("me", "mv", Ref.Player("opp"))
+        assertTrue(mv.attacking != null, s.trace.steps.joinToString("\n") { it.text })
+    }
+
+    @Test
+    fun `an animated land takes its colours and keywords from the ability`() {
+        val s = state(); val cc = s.put("cc", colonnade, "me"); cc.summoningSick = false
+        val e = Engine(s); e.activate("me", "cc", 0, emptyList()); e.resolveAll()
+        assertEquals(4, cc.power)
+        assertTrue(s.hasKeyword(cc, "flying")); assertTrue(s.hasKeyword(cc, "vigilance"))
+        assertEquals(setOf('W', 'U'), s.colorsOf(cc))
+    }
+
+    @Test
+    fun `wrath takes an animated land and misses an unanimated one`() {
+        val s = state(); val mv = s.put("mv", mutavault, "me"); s.put("plain", mutavault, "opp")
+        mv.summoningSick = false
+        val e = Engine(s); e.activate("me", "mv", 1, emptyList()); e.resolveAll()
+        s.put("wrath", wrath, "opp", Zone.HAND)
+        e.cast("opp", wrath, emptyList(), "wrath"); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("mv").zone)
+        assertEquals(Zone.BATTLEFIELD, s.obj("plain").zone)
+    }
+
     @Test
     fun `the germ dies once the equipment leaves`() {
         val s = state(); s.put("skull", batterskull, "me", Zone.HAND)

@@ -779,6 +779,23 @@ object OracleParser {
         Regex("""^(target opponent|target player|that player|each opponent|you) loses? that much life\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             return Effect.LoseLifeThatMuch(when (m.groupValues[1].lowercase()) { "target opponent", "target player" -> Who.TARGET_PLAYER; "each opponent" -> Who.EACH_OPPONENT; "you" -> Who.YOU; else -> Who.THAT_PLAYER })
         }
+        // Mutavault, Celestial Colonnade, Inkmoth Nexus: "until end of turn, ~ becomes a 4/4 white and blue Elemental creature with flying and vigilance."
+        Regex("""^(?:until end of turn, )?~ becomes an? (\d+)/(\d+)((?: (?:white|blue|black|red|green|colorless)(?:,|(?: and)?)?)*)((?: [A-Za-z'-]+)*?) (?:artifact )?creature(?: with (.+?))?(?: until end of turn)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val colours = Regex("""white|blue|black|red|green""", RegexOption.IGNORE_CASE).findAll(m.groupValues[3]).map { c ->
+                when (c.value.lowercase()) { "white" -> 'W'; "blue" -> 'U'; "black" -> 'B'; "red" -> 'R'; else -> 'G' }
+            }.toSet()
+            val words = m.groupValues[4].trim().split(' ').map { it.trim() }.filter { it.isNotEmpty() }
+            val allTypes = m.groupValues[5].contains("all creature types", true)
+            val kws = if (allTypes) emptyList() else keywordsIn(m.groupValues[5])?.toList() ?: return@let
+            val subtypes = words.filter { it.first().isUpperCase() }
+            if (words.size == subtypes.size) return Effect.AnimateSelf(m.groupValues[1].toInt(), m.groupValues[2].toInt(), subtypes, colours, kws, allTypes, stillALand = false)
+        }
+        // "~ becomes a 2/2 creature with all creature types until end of turn."
+        Regex("""^(?:until end of turn, )?~ becomes an? (\d+)/(\d+) creature with all creature types(?: until end of turn)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            return Effect.AnimateSelf(m.groupValues[1].toInt(), m.groupValues[2].toInt(), emptyList(), emptySet(), emptyList(), allCreatureTypes = true, stillALand = false)
+        }
+        // "It's still a land." always follows an animation; it changes nothing on its own but shouldn't read as unmodeled.
+        Regex("""^it's still an? (?:land|artifact|enchantment)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.Seq(emptyList()) }
         // Bloodghast: "return ~ from your graveyard to the battlefield."
         Regex("""^return ~ from your graveyard to the battlefield( tapped)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.ReturnSelfFromGraveyard(m.groupValues[1].isNotEmpty()) }
         // Questing Beast: "it deals that much damage to target planeswalker that player controls."

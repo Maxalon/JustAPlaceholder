@@ -28,6 +28,9 @@ class Player(val id: String, val name: String, var life: Int?) {
     fun v(third: String, second: String) = if (you) second else third
 }
 
+/** What a land or artifact currently is while an "until end of turn, ~ becomes a creature" effect applies. */
+data class Animation(val power: Int, val toughness: Int, val subtypes: List<String>, val colors: Set<Char>, val allCreatureTypes: Boolean, val stillALand: Boolean, val source: String)
+
 class GameObject(
     val id: String,
     val def: CardDef,
@@ -56,6 +59,8 @@ class GameObject(
     val pumps = mutableListOf<Pair<Int, Int>>()
     /** An until-end-of-turn "base power and toughness N/N" (layer 7b, 613.4b); applied before counters and pumps. */
     var basePt: Pair<Int, Int>? = null
+    /** Set while "until end of turn, ~ becomes a creature" is in effect (Mutavault). Cleared at cleanup and on a zone change. */
+    var animatedAs: Animation? = null
     /** The controller an until-end-of-turn control change (Threaten) hands this back to at cleanup. */
     var controlRevertsTo: String? = null
     var timestamp: Int = 0
@@ -232,10 +237,13 @@ class GameState(
     private fun colourChar(name: String?): Char? = when (name?.lowercase()) { "white" -> 'W'; "blue" -> 'U'; "black" -> 'B'; "red" -> 'R'; "green" -> 'G'; else -> null }
 
     /** An object's colours right now — printed, plus the colour Painter's Servant names (layer 5). */
-    fun colorsOf(o: GameObject): Set<Char> = painter()?.let { (_, c) -> o.def.colors + c } ?: o.def.colors
+    fun colorsOf(o: GameObject): Set<Char> {
+        val own = o.animatedAs?.colors?.takeIf { it.isNotEmpty() } ?: o.def.colors
+        return painter()?.let { (_, c) -> own + c } ?: own
+    }
 
     /** Whether a permanent is a creature right now — printed type, minus anything currently turning it off. */
-    fun isCreature(o: GameObject): Boolean = o.def.isCreature && notACreatureBecause(o) == null
+    fun isCreature(o: GameObject): Boolean = o.animatedAs != null || (o.def.isCreature && notACreatureBecause(o) == null)
 
     /** Whether a static ability's condition currently holds for its source. */
     fun conditionHolds(c: Condition?, src: GameObject): Boolean = when (c) {
@@ -277,8 +285,8 @@ class GameState(
         return null
     }
 
-    private fun basePower(obj: GameObject): Int? = obj.basePt?.first ?: abilitiesLostOn(obj)?.second?.power ?: cdaOf(obj)?.let { c -> if (c.power != null) cdaValue(obj, c.power)?.plus(c.plus) else obj.def.power } ?: obj.def.power
-    private fun baseToughness(obj: GameObject): Int? = obj.basePt?.second ?: abilitiesLostOn(obj)?.second?.toughness ?: cdaOf(obj)?.let { c -> if (c.toughness != null) cdaValue(obj, c.toughness)?.plus(c.toughnessPlus ?: c.plus) else obj.def.toughness } ?: obj.def.toughness
+    private fun basePower(obj: GameObject): Int? = obj.animatedAs?.power ?: obj.basePt?.first ?: abilitiesLostOn(obj)?.second?.power ?: cdaOf(obj)?.let { c -> if (c.power != null) cdaValue(obj, c.power)?.plus(c.plus) else obj.def.power } ?: obj.def.power
+    private fun baseToughness(obj: GameObject): Int? = obj.animatedAs?.toughness ?: obj.basePt?.second ?: abilitiesLostOn(obj)?.second?.toughness ?: cdaOf(obj)?.let { c -> if (c.toughness != null) cdaValue(obj, c.toughness)?.plus(c.toughnessPlus ?: c.plus) else obj.def.toughness } ?: obj.def.toughness
 
     /** "~ gets -X/-X, where X is your life total": the amount, recomputed each time it's asked for. */
     fun selfCountPt(obj: GameObject): Int {
@@ -337,7 +345,7 @@ class GameState(
 
     /** "3/3 (2/2, +1/+1 from Glorious Anthem, +0/+0 …)" for traces and echoes. */
     fun describePt(obj: GameObject): String {
-        notACreatureBecause(obj)?.let { why -> return "not a creature right now ($why), so no power or toughness" }
+        if (obj.animatedAs == null) notACreatureBecause(obj)?.let { why -> return "not a creature right now ($why), so no power or toughness" }
         val p = obj.power ?: return "no power/toughness"
         val t = obj.toughness ?: return "no power/toughness"
         val parts = mutableListOf<String>()
@@ -365,8 +373,11 @@ class GameState(
         val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> isCreature(o); Kind.LAND -> "Land" in o.def.types; Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types; else -> false } }
         val notSubOk = f.notSubtypes.none { st -> o.def.subtypes.any { it.equals(st, true) } }
         val ctrlOk = when (f.controller) { null -> true; Who.YOU -> o.controller == controller; Who.OPPONENT -> o.controller != controller; else -> true }
-        val subOk = if (f.subtypesAny && f.subtypes.isNotEmpty()) f.subtypes.any { st -> o.def.subtypes.any { it.equals(st, true) } || (o.def.changeling && o.def.isCreature) }
-                    else f.subtypes.all { st -> o.def.subtypes.any { it.equals(st, true) } || (o.def.changeling && o.def.isCreature) || (st.equals("basic", true) && o.def.supertypes.any { it.equals("Basic", true) }) || (st.equals("snow", true) && o.def.supertypes.any { it.equals("Snow", true) }) }
+        val anim = o.animatedAs
+        fun hasSub(st: String) = o.def.subtypes.any { it.equals(st, true) } || (anim?.subtypes?.any { it.equals(st, true) } == true) ||
+            (o.def.changeling && o.def.isCreature) || anim?.allCreatureTypes == true
+        val subOk = if (f.subtypesAny && f.subtypes.isNotEmpty()) f.subtypes.any { st -> hasSub(st) }
+                    else f.subtypes.all { st -> hasSub(st) || (st.equals("basic", true) && o.def.supertypes.any { it.equals("Basic", true) }) || (st.equals("snow", true) && o.def.supertypes.any { it.equals("Snow", true) }) }
         val kwOk = f.keywords.all { hasKeyword(o, it) }
         val tokenOk = f.token == null || f.token == o.token
         val legOk = f.legendary == null || f.legendary == ("Legendary" in o.def.supertypes)

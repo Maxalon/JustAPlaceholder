@@ -516,7 +516,7 @@ class Engine(val state: GameState) {
                 trace.step("The \"until end of turn\" control change on ${o.name} ends: ${back.subject} ${back.v("controls", "control")} it again (it doesn't leave the battlefield or untap).", "514.2", "611.2a")
                 state.outcomes += "${o.name} is back under ${back.possessive} control."
             }
-            for (o in affected) { o.pumps.clear(); o.tempKeywords.clear(); o.basePt = null; o.damage = 0; trace.step("${o.name} is back to ${if (o.def.isCreature) state.describePt(o) else "normal"} with no damage.", "514.2"); state.outcomes += "${o.name}'s until-end-of-turn effects and damage are gone (cleanup)." }
+            for (o in affected) { o.pumps.clear(); o.tempKeywords.clear(); o.basePt = null; o.animatedAs = null; o.damage = 0; trace.step("${o.name} is back to ${if (o.def.isCreature) state.describePt(o) else "normal"} with no damage.", "514.2"); state.outcomes += "${o.name}'s until-end-of-turn effects and damage are gone (cleanup)." }
             state.shields.clear(); state.objects.values.forEach { it.exileOnDeath = null }
             return
         }
@@ -654,7 +654,7 @@ class Engine(val state: GameState) {
         val a = state.obj(attackerId)
         val p = state.player(playerId)
         state.phase = "combat"; state.step = "declare_attackers"
-        if (!a.def.isCreature || !a.isOnBattlefield()) { trace.step("${a.name} isn't a creature on the battlefield, so it can't attack.", "506.3"); state.outcomes += "${a.name} can't attack."; return }
+        if ((!a.def.isCreature && a.animatedAs == null) || !a.isOnBattlefield()) { trace.step("${a.name} isn't a creature on the battlefield, so it can't attack.", "506.3"); state.outcomes += "${a.name} can't attack."; return }
         state.notACreatureBecause(a)?.let { why -> trace.step("${a.name} isn't a creature right now — ${p.possessive} $why — so it can't be declared as an attacker. It's still an enchantment on the battlefield.", "506.3", "508.1a"); state.outcomes += "${a.name} can't attack (${p.possessive} $why)."; return }
         if (a.controller != playerId) { trace.step("${a.name} isn't controlled by ${p.subject.lowercase()}, so ${p.subject.lowercase()} can't attack with it.", "508.1a"); return }
         if (a.has("defender")) { trace.step("${a.name} has defender and can't attack.", "702.3b"); state.outcomes += "${a.name} can't attack (defender)."; return }
@@ -713,7 +713,7 @@ class Engine(val state: GameState) {
         emptyStackFirst("declaring blockers")
         val b = state.obj(blockerId); val a = state.obj(attackerId); val p = state.player(playerId)
         state.step = "declare_blockers"
-        if (!b.def.isCreature || !b.isOnBattlefield()) { trace.step("${b.name} isn't a creature on the battlefield, so it can't block.", "506.3"); return }
+        if ((!b.def.isCreature && b.animatedAs == null) || !b.isOnBattlefield()) { trace.step("${b.name} isn't a creature on the battlefield, so it can't block.", "506.3"); return }
         state.notACreatureBecause(b)?.let { why -> trace.step("${b.name} isn't a creature right now — ${state.player(b.controller).possessive} $why — so it can't block.", "506.3", "509.1a"); state.outcomes += "${b.name} can't block (${state.player(b.controller).possessive} $why)."; return }
         if (a.attacking == null) { trace.step("${a.name} isn't attacking, so ${b.name} can't block it.", "509.1a"); return }
         // A creature may only block an attacker that is attacking its controller, a planeswalker they control, or a battle they protect.
@@ -1149,6 +1149,21 @@ class Engine(val state: GameState) {
                     on
                 }
                 forEachLegalTarget(item, effect.target) { applyDamage(item.source.name, it, sacAmount ?: if (effect.x) (item.x ?: 0) else if (item.kicked && effect.kickedAmount != null) effect.kickedAmount else mastery ?: effect.amount) }
+            }
+            is Effect.AnimateSelf -> {
+                val o = item.source
+                if (!o.isOnBattlefield()) trace.step("${o.name} isn't on the battlefield, so there is nothing to animate.", "608.2b")
+                else {
+                    val stillLand = effect.stillALand || "Land" in o.def.types
+                    o.animatedAs = Animation(effect.power, effect.toughness, effect.subtypes, effect.colors, effect.allCreatureTypes, stillLand, o.name)
+                    if (effect.keywords.isNotEmpty()) o.tempKeywords += effect.keywords
+                    val what = (if (effect.allCreatureTypes) "creature with every creature type" else (effect.subtypes.joinToString(" ").ifEmpty { "" } + " creature").trim()) +
+                        (if (effect.keywords.isEmpty()) "" else " with " + effect.keywords.joinToString(" and "))
+                    trace.step("${o.name} becomes a ${effect.power}/${effect.toughness} $what until end of turn" +
+                        (if (stillLand) ", and it is still a land — animating it doesn't remove its land types or its mana ability" else "") +
+                        ". It has been on the battlefield, so summoning sickness only matters if it came under ${state.player(o.controller).possessive} control this turn.", "613.1d", "613.1f", "302.6")
+                    state.outcomes += "${o.name} is a ${effect.power}/${effect.toughness} creature until end of turn."
+                }
             }
             is Effect.ReturnSelfFromGraveyard -> {
                 val o = item.source; val p = state.player(item.controller)
@@ -1765,7 +1780,7 @@ class Engine(val state: GameState) {
             }
         }
         if (obj.isOnBattlefield()) obj.lkiPower = obj.power
-        obj.zone = to; obj.damage = 0; obj.pumps.clear(); obj.tempKeywords.clear(); obj.basePt = null; obj.tapped = false; obj.attacking = null; obj.blocking = null; obj.dealtDeathtouchDamage = false
+        obj.zone = to; obj.damage = 0; obj.pumps.clear(); obj.tempKeywords.clear(); obj.basePt = null; obj.animatedAs = null; obj.tapped = false; obj.attacking = null; obj.blocking = null; obj.dealtDeathtouchDamage = false
     }
 
     /** Destruction with regeneration (701.19a, 614.8): returns true if the destruction was replaced. */
@@ -2283,7 +2298,7 @@ class Engine(val state: GameState) {
         is Effect.Draw -> "draw ${if (effect.x) "X" else effect.count.toString()} card${if (effect.count > 1 || effect.x) "s" else ""}"
         is Effect.Damage -> "deal ${effect.amount} damage to ${effect.target.raw}"
         is Effect.CounterThatSpell -> "counter that spell"; is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Fight -> "${effect.mine.raw} fights ${effect.theirs.raw}"; is Effect.DealsPowerTo -> "${effect.mine.raw} deals damage equal to its power to ${effect.theirs.raw}"; is Effect.RedirectToSelf -> "change a target of ${effect.target.raw} to ${item.source.name}"; is Effect.Blink -> "exile ${effect.target.raw}, then return it to the battlefield under ${if (effect.ownersControl) "its owner's" else "your"} control"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.PreventCombatToAndBy -> "prevent all combat damage dealt to and by ${effect.target.raw} this turn"; is Effect.WinIfCastBefore -> "win the game if another spell with this name was cast this game, otherwise tuck it seventh from the top and gain ${effect.life} life"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
-        is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.ReturnSelfFromGraveyard -> "return ${item.source.name} from your graveyard to the battlefield${if (effect.tapped) " tapped" else ""}"; is Effect.DamageThatMuch -> "deal that much damage to ${effect.target.raw}"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
+        is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.AnimateSelf -> "${item.source.name} becomes a ${effect.power}/${effect.toughness} creature until end of turn"; is Effect.ReturnSelfFromGraveyard -> "return ${item.source.name} from your graveyard to the battlefield${if (effect.tapped) " tapped" else ""}"; is Effect.DamageThatMuch -> "deal that much damage to ${effect.target.raw}"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
         is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.GainLifePerSpellThisTurn -> "gain ${effect.per} life for each spell cast this turn"; is Effect.WinIfDevotionCoversLibrary -> "look at the top X cards (X = your devotion) and win if X is at least your library size"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.ExileGraveyard -> "exile ${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "your"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }}${if (effect.who == Who.YOU) "" else "'s"} graveyard"; is Effect.DiscardNamed -> "that player reveals their hand and discards every card with the name you chose"; is Effect.BounceChosen -> "return ${withArticle(effect.what)} you control to its owner's hand"; is Effect.LivingWeapon -> "create a 0/0 black Phyrexian Germ creature token, then attach ${item.source.name} to it"; is Effect.DiscardChosen -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }} reveals their hand and discards ${effect.what} of your choice"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"} onto the battlefield"
         is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.GainLifeEqualToToughness -> "its controller gains life equal to its toughness"; is Effect.PutOnBottom -> "put ${effect.target.raw} on the bottom of its owner's library"; is Effect.GainLifeLostThisWay -> "gain life equal to the life lost this way"; is Effect.RevealTopToHand -> "reveal the top card of your library and put it into your hand"; is Effect.PutSelfOnLibraryTop -> "put ${item.source.name} on top of its owner's library"; is Effect.LoseLifeEqualToRevealedMv -> "lose life equal to the revealed card's mana value"; is Effect.ExileIfDamagedDies -> "exile a creature dealt damage this way instead if it would die this turn"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"
