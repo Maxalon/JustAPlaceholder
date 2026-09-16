@@ -1026,6 +1026,28 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("activate", player = who, obj = src, to = "color:${r.groupValues[2]}")
             ctx.lastActor = who; return true
         }
+        // "it deals combat damage to my opponent": the way to say a creature attacked and got through, which is
+        // what abilities that trigger on combat damage need.
+        Regex("""^(?:(my|their|his|her|the|my opponent's|@\w+'s) )?(c\d+|it|that) (?:deals?|dealt|connects? for) combat damage to (me|them|him|her|my opponent|the opponent|opponent|@\w+)$""").find(c)?.let { r ->
+            val owner = when (val w = r.groupValues[1].trim()) {
+                "my" -> "me"
+                "their", "his", "her", "my opponent's" -> pronounPlayer(ctx, "their")
+                else -> actor ?: ctx.lastOwner ?: "me"
+            }
+            val id = if (r.groupValues[2] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, owner, false, ctx) } ?: return@let
+            val who = ctx.objects[id]?.controller ?: owner
+            val victim = when (val w = r.groupValues[3]) {
+                "me" -> "me"
+                "them", "him", "her", "my opponent", "the opponent", "opponent" -> pronounPlayer(ctx, w.substringAfterLast(' '))
+                else -> w.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) }
+            }
+            if (ctx.events.none { it.verb == "attack" && it.obj == id }) {
+                ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(victim))
+                ctx.notes += "${ctx.objects[id]?.card?.name ?: id} is read as attacking ${if (victim == "me") "you" else ctx.players[victim] ?: "your opponent"} and going unblocked; that is how it deals combat damage."
+            }
+            ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; ctx.note(victim); return true
+        }
         // "my Grizzly Bears has flying", "their Serra Angel has protection from black": a keyword the asker states
         // rather than one the card is printed with. Said as a fact about the board, not as something happening now.
         Regex("""^(?:(my|their|his|her|the|my opponent's|@\w+'s) )?(c\d+|it|that) (?:has|have|already has|is given|comes with|now has) ((?:$kwPhrase)(?:(?:,| and|, and) (?:$kwPhrase))*)$""").find(c)?.let { r ->

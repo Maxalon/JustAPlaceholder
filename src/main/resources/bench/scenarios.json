@@ -6731,5 +6731,17 @@
     "cite": [
       "702.9b"
     ]
+  },
+  {
+    "id": "a-creature-said-to-deal-combat-damage",
+    "text": "I control Blightsteel Colossus and it deals combat damage to my opponent. What happens?",
+    "expect": [
+      "gets 11 poison counters",
+      "loses the game"
+    ],
+    "notExpect": [],
+    "cite": [
+      "704.5c"
+    ]
   }
 ]
