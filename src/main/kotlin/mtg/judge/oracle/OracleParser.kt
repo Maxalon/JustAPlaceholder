@@ -38,7 +38,7 @@ object OracleParser {
         var i0 = 0
         while (i0 < rawLines.size) {
             val l = rawLines[i0]
-            if (Regex("""^(.*?)(Choose (one|two|three|four|any number|one or more|up to \w+)(?: or more)?(?: —|\.)?)(?: You may choose the same mode more than once\.)?\s*$""", RegexOption.IGNORE_CASE).matches(l) && rawLines.getOrNull(i0 + 1)?.startsWith("•") == true) {
+            if (Regex("""^(.*?)(Choose ($modeCount)(?: —|\.)?)(?: You may choose the same mode more than once\.)?\s*$""", RegexOption.IGNORE_CASE).matches(l) && rawLines.getOrNull(i0 + 1)?.startsWith("•") == true) {
                 val modes = mutableListOf<String>()
                 var j = i0 + 1
                 while (j < rawLines.size && rawLines[j].startsWith("•")) { modes += rawLines[j].removePrefix("•").trim(); j++ }
@@ -46,7 +46,7 @@ object OracleParser {
                 // note, not an effect, and the full stop would split the header off its own modes. Normalise to the
                 // em-dash form the effect parser reads.
                 val header = l.trimEnd().replace(Regex(""" You may choose the same mode more than once\.$"""), "")
-                    .let { h -> Regex("""^(.*?Choose (?:one|two|three|four|any number|one or more|up to \w+)(?: or more)?)[\s—.]*$""", RegexOption.IGNORE_CASE).matchEntire(h)?.groupValues?.get(1)?.plus(" \u2014") ?: h }
+                    .let { h -> Regex("""^(.*?Choose (?:$modeCount))[\s—.]*$""", RegexOption.IGNORE_CASE).matchEntire(h)?.groupValues?.get(1)?.plus(" \u2014") ?: h }
                 lines += header + " " + modes.joinToString(" ") { "• $it" }
                 i0 = j
             } else { lines += l; i0++ }
@@ -757,7 +757,9 @@ object OracleParser {
         Regex("""^destroy target (.+?) at the beginning of the next end step\.?$""", RegexOption.IGNORE_CASE) to listOf("603.7a"),
     )
 
-    private val modalRe = Regex("""^(.*?)Choose (one|two|three|four|any number|one or more|up to \w+)(?: or more)?(?: —|\.)?(?: You may choose the same mode more than once\.)?\s*((?:• .+?)+)$""", RegexOption.IGNORE_CASE)
+    // Longest first: "one or more" and "one or both" must beat the bare "one", or the count is read as "one".
+    private val modeCount = """one or more|one or both|any number|up to \w+|one|two|three|four|five"""
+    private val modalRe = Regex("""^(.*?)Choose ($modeCount)(?: —|\.)?(?: You may choose the same mode more than once\.)?\s*((?:• .+?)+)$""", RegexOption.IGNORE_CASE)
     private val preventNextRe = Regex("""^prevent the next (\d+) damage that would be dealt to (any target|target creature or player|target creature|target player|you|target creature or planeswalker|target permanent or player) this turn\.?$""", RegexOption.IGNORE_CASE)
     // The "to" part is read as a filter rather than matched against a fixed list, so "creatures and planeswalkers
     // you control" and "creature tokens you control" work without their own entries. Anything parseFilter can't

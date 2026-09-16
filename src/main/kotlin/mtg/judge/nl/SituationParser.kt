@@ -2266,7 +2266,8 @@ class SituationParser(private val names: NameIndex) {
         val modes = Regex("""(?:choosing |with |picking )?(?:the )?(?:mode|modes) (\d+(?:(?:,| and) \d+)*)|(?:choosing |picking )(?:the )?(first|second|third|fourth) (?:mode|option)""").find(rest)?.let { mm ->
             if (mm.groupValues[1].isNotEmpty()) Regex("""\d+""").findAll(mm.groupValues[1]).map { it.value.toInt() }.toList()
             else listOf(mapOf("first" to 1, "second" to 2, "third" to 3, "fourth" to 4).getValue(mm.groupValues[2]))
-        } ?: emptyList()
+        // "choosing both modes", "choosing both": a "choose one or both" spell with every mode taken.
+        } ?: Regex("""\b(?:choosing|picking|with|taking) (?:both|all)(?: (?:of the )?modes| of them| the modes)?\b""").find(rest)?.let { listOf(1, 2) } ?: emptyList()
         val overload = Regex("""\b(?:overloaded|with overload|for (?:its|the) overload cost|via overload)\b""").containsMatchIn(rest)
         // "naming Lightning Bolt" / "calling Brainstorm": the card name a spell asks its caster to choose.
         val namedCard = Regex("""\b(?:naming|calling|and names?|which names) (?:an? |the )?(c\d+)\b""").find(rest)?.let { n -> m.cards[n.groupValues[1]]?.display }

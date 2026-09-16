@@ -60,6 +60,17 @@ class StaysParsedTest {
         check("Kor Skyfisher", "Creature — Kor Soldier", "When this creature enters, return a permanent you control to its owner's hand.")
     }
 
+    /** The mode count is read from the header; "one or more" must not be read as "one". */
+    @Test
+    fun `modal headers keep their own counts`() {
+        for ((header, count) in listOf("Choose one —" to "one", "Choose two —" to "two", "Choose one or both —" to "one or both",
+                "Choose one or more —" to "one or more", "Choose any number —" to "any number")) {
+            val def = parse("Modal Test", "Instant", "$header\n• Draw a card.\n• You gain 2 life.")
+            val modal = def.spellEffect as? mtg.judge.engine.Effect.Modal
+            assertTrue(modal != null && modal.count == count, "\"$header\" was read as ${(def.spellEffect as? mtg.judge.engine.Effect.Modal)?.count ?: def.spellEffect}")
+        }
+    }
+
     @Test
     fun `one-sided damage wordings stay modelled`() {
         check("Rabid Bite", "Sorcery", "Target creature you control deals damage equal to its power to target creature you don't control.")

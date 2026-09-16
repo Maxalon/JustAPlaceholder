@@ -6576,5 +6576,20 @@
     "cite": [
       "701.14a"
     ]
+  },
+  {
+    "id": "a-choose-one-or-both-spell",
+    "text": "I control Grizzly Bears and cast Subtle Strike choosing both modes on it. What happens?",
+    "expect": [
+      "Mode 1:",
+      "Mode 2:",
+      "it's now 2/2"
+    ],
+    "notExpect": [
+      "its effect isn't applied"
+    ],
+    "cite": [
+      "700.2a"
+    ]
   }
 ]
