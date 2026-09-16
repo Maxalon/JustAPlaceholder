@@ -101,7 +101,10 @@ class Engine(val state: GameState) {
             trace.step("${card.name} itself doesn't target anything as a spell; ${describeTargets(targets).removePrefix(" targeting ")} will be the target of its enters-the-battlefield trigger when it's put on the stack.", "603.3d", "601.2c")
             emptyList()
         } else targets
-        if (needed.size != targets.size && effect !is Effect.Modal && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && effect != null && targetsAPlayer(effect))) {
+        // The spell's own text names a target the engine couldn't model ("target creature loses all abilities …"): the target is kept, not queried.
+        val unmodeledTarget = needed.isEmpty() && targets.isNotEmpty() && effect != null && effect.hasUnparsed() && Regex("""(?i)\btarget\b""").containsMatchIn(card.oracleText ?: "")
+        if (unmodeledTarget) trace.step("${card.name}'s text names a target the engine can't model, so ${describeTargets(targets).removePrefix(" targeting ")} is kept as its target and what the spell does to it is reported as unsupported.", "601.2c")
+        if (needed.size != targets.size && !unmodeledTarget && effect !is Effect.Modal && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && effect != null && targetsAPlayer(effect))) {
             if (!asked) state.clarifications += Clarification("${card.name}'s target${if (needed.size == 1) "" else "s"}",
                 "${card.name} needs ${needed.size} target${if (needed.size == 1) "" else "s"} (${needed.joinToString("; ") { it.raw }}) but ${targets.size} ${if (targets.size == 1) "was" else "were"} given (601.2c).")
             if (needed.size > targets.size && (card.isInstantOrSorcery || obj.zone == Zone.HAND)) { targetsUnknown = true; trace.step("${card.name} needs a target that wasn't stated; it's put on the stack anyway so responses to it can be shown, but what it does to its target can't be.", "601.2c") }

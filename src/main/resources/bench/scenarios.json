@@ -4161,5 +4161,44 @@
     "cite": [
       "608.3a"
     ]
+  },
+  {
+    "id": "academy-rector-dies",
+    "text": "I control Academy Rector and it dies.",
+    "expect": [
+      "Academy Rector: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "400.7"
+    ]
+  },
+  {
+    "id": "turn-to-frog-keeps-target",
+    "text": "I have Grizzly Bears attacking and my opponent casts Turn to Frog on it.",
+    "expect": [
+      "Turn to Frog's text names a target the engine can't model"
+    ],
+    "notExpect": [
+      "needs 0 targets"
+    ],
+    "cite": [
+      "601.2c"
+    ]
+  },
+  {
+    "id": "deathrite-first-ability",
+    "text": "I control Deathrite Shaman and there is a Lightning Bolt in my opponent's graveyard. I activate its first ability.",
+    "expect": [
+      "You activate Deathrite Shaman"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "602.2a"
+    ]
   }
 ]

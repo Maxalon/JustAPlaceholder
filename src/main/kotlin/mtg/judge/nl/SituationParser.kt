@@ -561,6 +561,18 @@ class SituationParser(private val names: NameIndex) {
             if (ctx.events.lastOrNull()?.verb in setOf("cast", "activate", "trigger")) ctx.events += EventSpec("resolveAll")   // the attempt comes after what was already happening
             return readClause((actor?.let { if (it == "me") "i " else if (it == "opp") "they " else "@$it " } ?: "") + r.groupValues[1], m, ctx)
         }
+        // "activate its first ability" / "use the second ability of Deathrite Shaman": the ability picked by its place in the text.
+        Regex("""^(?:$activateVerbs)\s+(?:its|the|his|her|their|my)? ?(first|second|third|fourth|1st|2nd|3rd|4th) ability(?: of (?:an? |the |my |their )?(c\d+))?(.*)$|^(?:$activateVerbs)\s+(?:an? |the |my |their )?(c\d+)'s (first|second|third|fourth) ability(.*)$""").find(c)?.let { r ->
+            val whichWord = r.groupValues[1].ifEmpty { r.groupValues[5] }
+            val which = mapOf("first" to 0, "1st" to 0, "second" to 1, "2nd" to 1, "third" to 2, "3rd" to 2, "fourth" to 3, "4th" to 3)[whichWord] ?: return@let
+            val who = actor ?: subject ?: "me"
+            val ph = r.groupValues[2].ifEmpty { r.groupValues[4] }
+            val id = if (ph.isNotEmpty()) m.cards.getValue(ph).let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) }
+                     else ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).zone == "battlefield" }
+                         ?: ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" }?.id ?: return@let
+            ctx.events += EventSpec("activate", player = who, obj = id, abilityIndex = which, targets = targetsIn(r.groupValues[3].ifEmpty { r.groupValues[6] }, m, ctx))
+            ctx.lastActor = who; ctx.lastMentioned = id; return true
+        }
         // "activate it (targeting X)": the last-mentioned permanent's ability.
         Regex("""^(?:$activateVerbs)\s+(?:it|that|its ability|it's ability)\b(.*)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
@@ -705,11 +717,21 @@ class SituationParser(private val names: NameIndex) {
             }
             ctx.notes += "${if (who == "me") "Your" else (ctx.players[who] ?: "Your opponent") + "'s"} graveyard is read as holding: $list (only the card types matter to the engine)."; ctx.note(who); if (actor != null) ctx.lastActor = actor; return true
         }
+        // "there is a Lightning Bolt in my opponent's graveyard" / "they have a Bolt in the yard": a named card in a graveyard.
+        Regex("""^(?:there (?:is|are)|i have|they have|there's) (?:an? |the )?(c\d+) in (my|their|his|her|my opponent's|the opponent's|opponent's) (?:graveyard|yard|bin)$""").find(c)?.let { r ->
+            val who = when (r.groupValues[2]) { "my" -> "me"; else -> pronounPlayer(ctx, "their") }
+            val was = ctx.lastMentioned
+            addObject(m.cards.getValue(r.groupValues[1]), who, false, ctx, zone = "graveyard", allowDuplicate = true)
+            ctx.lastMentioned = was   // a card in a graveyard isn't what "it" means next
+            ctx.note(who); return true
+        }
         // "the top card of my library is Lightning Bolt" / "my top card is X": that card sits on top of the library.
         Regex("""^(?:the )?top (?:card )?(?:of (?:my|their|his|her|the) library )?is (?:an? |the )?(c\d+)$|^(?:my|their|his|her) top card is (?:an? |the )?(c\d+)$""").find(c)?.let { r ->
             val ph = r.groupValues[1].ifEmpty { r.groupValues[2] }
             val who = actor ?: (if (Regex("""\btheir|his|her\b""").containsMatchIn(clauseIn)) pronounPlayer(ctx, "their") else "me")
+            val wasTop = ctx.lastMentioned
             addObject(m.cards.getValue(ph), who, false, ctx, zone = "library", allowDuplicate = true)
+            ctx.lastMentioned = wasTop   // a card on a library isn't what "it" means next
             ctx.notes += "${m.cards.getValue(ph).display} is on top of ${if (who == "me") "your" else "their"} library."; ctx.note(who); return true
         }
         // "have 4 lands" / "with six lands": mana available, the lands assumed untapped.
@@ -814,6 +836,13 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:gains?|gained|gaining) (\d+) life\b.*$""").find(c)?.let { r -> val who = actor ?: subject ?: "me"; ctx.events += EventSpec("gainLife", player = who, amount = r.groupValues[1].toInt()); ctx.lastActor = who; ctx.lastMentioned = ctx.lastMentioned; return true }
         Regex("""^(?:loses?|lost|losing) (\d+) life\b.*$""").find(c)?.let { r -> val who = actor ?: subject ?: "me"; ctx.events += EventSpec("loseLife", player = who, amount = r.groupValues[1].toInt()); ctx.lastActor = who; return true }
         // "X dies", "my opponent's X is destroyed", "X leaves the battlefield", "X gets exiled"
+        // "it dies" / "that gets destroyed": the permanent just mentioned.
+        Regex("""^(?:it|that|this|he|she|they) (dies|died|is destroyed|gets destroyed|goes to the graveyard|leaves the battlefield|is exiled|gets exiled|is bounced|is sacrificed|gets sacrificed)$""").find(c)?.let { r ->
+            val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.objects.values.lastOrNull()?.id ?: return@let
+            val to = when { r.groupValues[1].contains("exiled") -> "exile"; r.groupValues[1].contains("bounced") -> "hand"; else -> "graveyard" }
+            if (r.groupValues[1].contains("sacrificed")) ctx.events += EventSpec("sacrifice", player = ctx.objects.getValue(id).controller, obj = id) else ctx.events += EventSpec("leave", obj = id, to = to)
+            ctx.lastMentioned = id; return true
+        }
         Regex("""^(?:my opponent's |the opponent's |opponent's |their |my |the |@(\w+)'s )?(c\d+) (?:dies|died|is destroyed|gets destroyed|would die|is put into (?:a|the|its owner's) graveyard|goes to the graveyard|is exiled|gets exiled|leaves the battlefield|is bounced|is sacrificed|gets sacrificed)$""").find(c)?.let { r ->
             val card = m.cards.getValue(r.groupValues[2])
             val ownerWord = c.substringBefore(" c").trim()
