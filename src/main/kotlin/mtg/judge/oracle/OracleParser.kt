@@ -690,6 +690,11 @@ object OracleParser {
             return Effect.May(Effect.Narrated("search ${if (m.groupValues[1].lowercase() == "you") "your" else "their"} library for ${m.groupValues[2]}, then shuffle", listOf("701.23a", "701.24a")), when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "target player" -> Who.TARGET_PLAYER; "its controller" -> Who.CONTROLLER_OF_TARGET; else -> Who.THAT_PLAYER })
         }
         tuckAllRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[1], Kind.PERMANENT); if (f.verifiable) return Effect.ForAll(f, "tuck") }
+        // "Add {G} for each creature you control." (Gaea's Cradle, Cabal Coffers)
+        Regex("""^add (\{[^}]+\}) for each (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val f = parseFilter(m.groupValues[2], Kind.PERMANENT)
+            if (f.verifiable) return Effect.AddManaPer(m.groupValues[1], f)
+        }
         // "If you control an Urza's Mine and an Urza's Power-Plant, add {C}{C}{C} instead."
         Regex("""^if you control (an?[^,]+?) and (an?[^,]+?), add ((?:\{[^}]+\})+) instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             val a = m.groupValues[1].trim().removePrefix("an ").removePrefix("a ").trim()

@@ -215,6 +215,10 @@ class Engine(val state: GameState) {
         return state.abilitiesLostOn(obj)?.first?.name
     }
 
+    /** Whether an ability's effect adds mana, so it's a mana ability that doesn't use the stack (605.1a). */
+    private fun isManaEffect(e: Effect?): Boolean = e is Effect.AddMana || e is Effect.AddManaPer ||
+        ((e as? Effect.Seq)?.effects?.firstOrNull()?.let { it is Effect.AddMana || it is Effect.AddManaPer } == true)
+
     fun activate(playerId: String, objectId: String, abilityIndex: Int?, targets: List<Ref>, choice: String? = null, x: Int? = null): StackItem? {
         val obj = state.obj(objectId)
         val abilities = obj.def.abilities.filterIsInstance<ActivatedAbility>()
@@ -224,14 +228,14 @@ class Engine(val state: GameState) {
                 trace.step("${moon.name} makes ${obj.name} a Mountain: it loses its other land types and all its printed abilities and has only \"{T}: Add {R}\" (a type-changing effect, layer 4).", "613.1d", "305.7")
             // Asked for one of the land's own abilities: under the moon there is no such ability any more.
             val asked = abilityIndex?.let { abilities.getOrNull(it) }
-            if (asked != null && !(asked.effect is Effect.AddMana || (asked.effect as? Effect.Seq)?.effects?.firstOrNull() is Effect.AddMana)) {
+            if (asked != null && !(isManaEffect(asked.effect))) {
                 trace.step("${obj.name} no longer has \"${asked.text.replace("~", obj.name)}\", so it can't be activated.", "613.1d", "305.7")
                 state.outcomes += "${obj.name}'s own ability is gone under ${moon.name}, so it can't be activated."; return null
             }
             if (obj.tapped == true) { trace.step("${obj.name} is already tapped, so it can't be tapped for mana.", "602.5a"); state.outcomes += "${obj.name} can't be tapped (already tapped)."; return null }
             tap(obj); trace.step("${p.subject} ${p.v("taps", "tap")} ${obj.name} for {R}; that's the only mana it can make under ${moon.name}.", "605.1a", "605.3b"); state.outcomes += "${obj.name} adds {R} (only), because of ${moon.name}."; return null
         }
-        val isManaAbility: (ActivatedAbility) -> Boolean = { a -> a.effect is Effect.AddMana || (a.effect as? Effect.Seq)?.effects?.any { it is Effect.AddMana } == true }
+        val isManaAbility: (ActivatedAbility) -> Boolean = { a -> isManaEffect(a.effect) }
         val lockApplies: (GameObject, StaticEffect.CantActivate) -> Boolean = { lock, e ->
             (!e.opponentsOnly || lock.controller != playerId) &&
                 (if (e.named) lock.chosenName?.equals(obj.name, true) == true else state.matches(e.filter, obj, lock.controller, lock)) &&
@@ -240,24 +244,24 @@ class Engine(val state: GameState) {
         state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { e -> e is StaticEffect.CantActivate && lockApplies(it, e) } }?.let { lock ->
             val e = lock.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.filterIsInstance<StaticEffect.CantActivate>().first { lockApplies(lock, it) }
             if (e.named) { trace.step("${lock.name} names ${obj.name}, and activated abilities of sources with the chosen name can't be activated${if (e.exceptMana) " unless they're mana abilities, which this isn't" else ""}, so ${state.player(playerId).subject.lowercase()} can't begin to activate it.", "602.5", "604.2", "101.2"); state.outcomes += "${obj.name}'s ability can't be activated (${lock.name} names it)."; return null }
-            trace.step("${lock.name} says activated abilities of ${e.filter.raw} can't be activated, and ${obj.name} is ${withArticle(e.filter.raw)}, so ${state.player(playerId).subject.lowercase()} can't begin to activate its ability${if (abilities.any { a -> a.effect is Effect.AddMana || (a.effect as? Effect.Seq)?.effects?.any { it is Effect.AddMana } == true }) " (mana abilities included: they are activated abilities too)" else ""}.", "602.5", "604.2", "101.2")
+            trace.step("${lock.name} says activated abilities of ${e.filter.raw} can't be activated, and ${obj.name} is ${withArticle(e.filter.raw)}, so ${state.player(playerId).subject.lowercase()} can't begin to activate its ability${if (abilities.any { a -> isManaEffect(a.effect) }) " (mana abilities included: they are activated abilities too)" else ""}.", "602.5", "604.2", "101.2")
             state.outcomes += "${obj.name}'s ability can't be activated (${lock.name})."; return null
         }
         if (abilities.isEmpty()) { state.unsupported += Unsupported(obj.name, "No activated ability was recognised on ${obj.name}."); return null }
         val pickedIndex = abilityIndex ?: if (abilities.size > 1) {
             // Nothing said which: take the first that isn't a mana ability, and say so.
-            val first = abilities.indexOfFirst { a -> !(a.effect is Effect.AddMana || (a.effect as? Effect.Seq)?.effects?.any { it is Effect.AddMana } == true) }.takeIf { it >= 0 } ?: 0
+            val first = abilities.indexOfFirst { a -> !(isManaEffect(a.effect)) }.takeIf { it >= 0 } ?: 0
             state.assumptions += "${obj.name} has ${abilities.size} activated abilities and none was named; assuming \"${abilities[first].text.replace("~", obj.name)}\"${abilities.withIndex().filter { it.index != first }.joinToString("") { " (not \"${it.value.text.replace("~", obj.name)}\")" }}."
             first
         } else 0
         val ability = abilities[pickedIndex]
         if (!paySacrificeCosts(playerId, obj, ability, choice)) return null
-        val isMana = ability.effect is Effect.AddMana || (ability.effect is Effect.Seq && (ability.effect as Effect.Seq).effects.firstOrNull() is Effect.AddMana)
+        val isMana = isManaEffect(ability.effect)
         if (!isMana) state.stack.firstOrNull { it.kind == StackKind.SPELL && it.source.def.has("split second") }?.let { ss ->
             trace.step("${ss.source.name} has split second and is on the stack, so abilities that aren't mana abilities can't be activated. ${obj.name}'s ability can't be activated now.", "702.61a")
             state.outcomes += "${obj.name}'s ability can't be activated while ${ss.source.name} is on the stack (split second)."; return null
         }
-        if (ability.effect is Effect.AddMana || (ability.effect is Effect.Seq && (ability.effect as Effect.Seq).effects.firstOrNull() is Effect.AddMana)) {
+        if (isManaEffect(ability.effect)) {
             val p = state.player(playerId)
             val made = manaMade(ability.effect, playerId)
             trace.step("${p.subject} ${p.v("activates", "activate")} ${obj.name}'s mana ability (${ability.cost}). It's a mana ability, so it doesn't use the stack and resolves immediately: ${made ?: describeManaEffect(ability.effect)}.", "605.1a", "605.3b")
@@ -1437,6 +1441,11 @@ class Engine(val state: GameState) {
                 } else for (mi in chosen) { effect.modes.getOrNull(mi - 1)?.let { trace.step("Mode ${mi}: ${effect.modeTexts[mi - 1]}.", "700.2a"); applyEffect(it, item) } ?: run { state.clarifications += Clarification("mode", "Mode $mi doesn't exist on ${item.describe}.") } }
             }
             is Effect.AddMana -> trace.step("${describeManaEffect(effect)}.", "605.1a")
+            is Effect.AddManaPer -> {
+                val n = state.objects.values.count { it.isOnBattlefield() && state.matches(effect.filter, it, item.controller, item.source) }
+                val pp = state.player(item.controller)
+                trace.step("${pp.subject} ${pp.v("controls", "control")} $n ${effect.filter.raw.removeSuffix(" you control")}${if (n == 1) "" else "s"}, so ${item.source.name} adds ${if (n == 0) "no mana" else effect.symbol.repeat(n)}.", "605.1a", "107.3")
+            }
             is Effect.AddManaInstead -> {
                 fun key(x: String) = x.lowercase().replace(Regex("""[^a-z]"""), "")
                 fun controls(n: String) = state.objects.values.any { o -> o.isOnBattlefield() && o.controller == item.controller && (key(o.def.name) == key(n) || o.def.subtypes.any { key(it) == key(n) }) }
@@ -1540,7 +1549,7 @@ class Engine(val state: GameState) {
     /** "~ can't be blocked by [filter]": the restriction that forbids this particular blocker, if any. */
     private fun cantBeBlockedBy(a: GameObject, b: GameObject): StaticEffect.Cant? = a.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.Cant>().firstOrNull { it.what == "be blocked" && it.by != null && state.matches(it.by, b, b.controller) }
 
-    private fun describeManaEffect(e: Effect): String = when (e) { is Effect.AddMana -> "add ${e.text}"; is Effect.AddManaInstead -> "add ${e.text} instead if you control ${e.required.joinToString(" and ") { "an $it" }}"; is Effect.Narrated -> e.text.trimEnd('.'); is Effect.DamagePlayer -> "it deals ${e.amount} damage to ${when (e.who) { Who.YOU -> "you"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }}"; is Effect.Seq -> e.effects.joinToString(", then ") { describeManaEffect(it) }; else -> e.toString().lowercase() }
+    private fun describeManaEffect(e: Effect): String = when (e) { is Effect.AddMana -> "add ${e.text}"; is Effect.AddManaPer -> "add ${e.symbol} for each ${e.filter.raw}"; is Effect.AddManaInstead -> "add ${e.text} instead if you control ${e.required.joinToString(" and ") { "an $it" }}"; is Effect.Narrated -> e.text.trimEnd('.'); is Effect.DamagePlayer -> "it deals ${e.amount} damage to ${when (e.who) { Who.YOU -> "you"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }}"; is Effect.Seq -> e.effects.joinToString(", then ") { describeManaEffect(it) }; else -> e.toString().lowercase() }
     /** "~" -> the source's name; first letter lowercased for use after a subject. */
     private fun effectText(t: String, item: StackItem) = t.replace("~", item.source.name).replaceFirstChar { it.lowercase() }
 
@@ -1699,6 +1708,10 @@ class Engine(val state: GameState) {
     /** What a mana ability actually adds right now, once conditional "add … instead" clauses are settled; null if it isn't that shape. */
     private fun manaMade(effect: Effect, playerId: String): String? {
         val parts = (effect as? Effect.Seq)?.effects ?: listOf(effect)
+        (parts.firstOrNull() as? Effect.AddManaPer)?.let { per ->
+            val n = state.objects.values.count { it.isOnBattlefield() && state.matches(per.filter, it, playerId) }
+            return if (n == 0) "add no mana (nothing to count)" else "add ${per.symbol.repeat(n)}"
+        }
         val base = parts.firstOrNull() as? Effect.AddMana ?: return null
         val instead = parts.drop(1).filterIsInstance<Effect.AddManaInstead>().lastOrNull() ?: return null
         return if (instead.required.all { controlsNamed(playerId, it) }) "add ${instead.text}" else "add ${base.text}"
@@ -1709,11 +1722,12 @@ class Engine(val state: GameState) {
         val p = state.player(playerId)
         val sources = state.objects.values.filter { it.isOnBattlefield() && it.controller == playerId && it.tapped != true }
             .mapNotNull { o ->
-                val a = o.def.abilities.filterIsInstance<ActivatedAbility>().firstOrNull { ab -> ab.effect is Effect.AddMana || (ab.effect as? Effect.Seq)?.effects?.firstOrNull() is Effect.AddMana } ?: return@mapNotNull null
+                val a = o.def.abilities.filterIsInstance<ActivatedAbility>().firstOrNull { ab -> isManaEffect(ab.effect) } ?: return@mapNotNull null
                 if (a.cost.contains("{T}") && o.def.isCreature && o.summoningSick == true && !state.hasKeyword(o, "haste")) return@mapNotNull Triple(o, "summoning sick, so it can't be tapped for mana yet", null as Int?)
                 val moon = state.objects.values.firstOrNull { m -> m.isOnBattlefield() && m.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.NonbasicLandsAreMountains } }
                 if (moon != null && "Land" in o.def.types && "Basic" !in o.def.supertypes) return@mapNotNull Triple(o, "{R} (it's a Mountain under ${moon.name})", 1)
                 val made = manaMade(a.effect, playerId) ?: (a.effect as? Effect.AddMana)?.let { "add ${it.text}" } ?: ((a.effect as? Effect.Seq)?.effects?.firstOrNull() as? Effect.AddMana)?.let { "add ${it.text}" } ?: return@mapNotNull null
+                if (made.startsWith("add no mana")) return@mapNotNull Triple(o, "nothing right now", 0)
                 val text = made.removePrefix("add ")
                 Triple(o, text, Regex("""\{[^}]+\}""").findAll(text).count().takeIf { it > 0 } ?: 1)
             }
@@ -1727,7 +1741,7 @@ class Engine(val state: GameState) {
         val o = state.obj(objectId)
         val moon = state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.NonbasicLandsAreMountains } }
         if (moon != null && "Land" in o.def.types && "Basic" !in o.def.supertypes) return "${o.name} is a Mountain under ${moon.name}, so it taps for {R} and nothing else."
-        val mana = o.def.abilities.filterIsInstance<ActivatedAbility>().filter { a -> a.effect is Effect.AddMana || (a.effect as? Effect.Seq)?.effects?.any { it is Effect.AddMana } == true }
+        val mana = o.def.abilities.filterIsInstance<ActivatedAbility>().filter { a -> isManaEffect(a.effect) }
         if (mana.isEmpty()) return "${o.name} has no mana ability the engine recognises."
         return "${o.name} can make: " + mana.joinToString("; ") { it.text.replace("~", o.name) }
     }
@@ -1964,7 +1978,7 @@ class Engine(val state: GameState) {
         is Effect.PumpSelf -> "${item.source.name} gets ${signed(effect.power)}/${signed(effect.toughness)}"
         is Effect.PumpAll -> "${effect.filter.raw} get ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.SetBasePtAll -> "${effect.filter.raw} have base power and toughness ${if (effect.x) "X/X" else "${effect.power}/${effect.toughness}"} until end of turn"
         is Effect.PutCounters -> "put ${effect.count} ${effect.kind} counter(s) on ${effect.target?.raw ?: item.source.name}"; is Effect.RemoveAllCounters -> "remove all counters from ${effect.target.raw}"
-        is Effect.AddMana -> "add ${effect.text}"; is Effect.AddManaInstead -> "add ${effect.text} instead if you control ${effect.required.joinToString(" and ") { "an $it" }}"; is Effect.Narrated -> effect.text.replace("~", item.source.name).replaceFirstChar { it.lowercase() }
+        is Effect.AddMana -> "add ${effect.text}"; is Effect.AddManaPer -> "add ${effect.symbol} for each ${effect.filter.raw}"; is Effect.AddManaInstead -> "add ${effect.text} instead if you control ${effect.required.joinToString(" and ") { "an $it" }}"; is Effect.Narrated -> effect.text.replace("~", item.source.name).replaceFirstChar { it.lowercase() }
         is Effect.ForAll -> "${effect.action} ${if (effect.action == "damage") "${effect.amount} to " else ""}each ${effect.filter.raw}"
         is Effect.IfYouDo -> "${describe(effect.choice, item)}, and if so ${describe(effect.then, item)}"
         is Effect.Attach -> "attach ${item.source.name} to ${effect.target.raw}"

@@ -174,4 +174,26 @@ class BatchFourteenTest {
         assertEquals(Zone.HAND, s.obj("b1").zone)
         assertTrue(s.clarifications.any { it.why.contains("which name was chosen?") }, s.clarifications.toString())
     }
+
+    private val cradle = card("Gaea's Cradle", "Legendary Land", "{T}: Add {G} for each creature you control.", "")
+    private val coffers = card("Cabal Coffers", "Land", "{2}, {T}: Add {B} for each Swamp you control.", "")
+    private val swamp = card("Swamp", "Basic Land — Swamp", "", "")
+
+    @Test
+    fun `gaeas cradle counts the creatures on the battlefield`() {
+        val s = state(); s.put("cradle", cradle, "me"); s.put("b1", bears, "me"); s.put("b2", bears, "me")
+        val e = Engine(s); e.activate("me", "cradle", 0, emptyList())
+        assertTrue(s.outcomes.any { it == "Gaea's Cradle's mana ability: add {G}{G}." }, s.outcomes.toString())
+
+        val s2 = state(); s2.put("cradle", cradle, "me")
+        val e2 = Engine(s2); e2.activate("me", "cradle", 0, emptyList())
+        assertTrue(s2.outcomes.any { it.contains("no mana") }, s2.outcomes.toString())
+    }
+
+    @Test
+    fun `cabal coffers counts only swamps`() {
+        val s = state(); s.put("coffers", coffers, "me"); s.put("s1", swamp, "me"); s.put("s2", swamp, "me"); s.put("bear", bears, "me")
+        val e = Engine(s); e.activate("me", "coffers", 0, emptyList())
+        assertTrue(s.outcomes.any { it == "Cabal Coffers's mana ability: add {B}{B}." }, s.outcomes.toString())
+    }
 }

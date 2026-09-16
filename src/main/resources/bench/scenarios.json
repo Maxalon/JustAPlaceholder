@@ -4486,5 +4486,56 @@
       "613.1d",
       "701.21a"
     ]
+  },
+  {
+    "id": "gaeas-cradle-counts-creatures",
+    "text": "I control Gaea's Cradle and three creatures. I tap Gaea's Cradle for mana. What do I get?",
+    "expect": [
+      "add {G}{G}{G}"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "605.1a",
+      "605.3b"
+    ]
+  },
+  {
+    "id": "cabal-coffers-counts-swamps",
+    "text": "I control Cabal Coffers and five Swamps. I tap Cabal Coffers. What do I get?",
+    "expect": [
+      "add {B}{B}{B}{B}{B}"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "605.1a"
+    ]
+  },
+  {
+    "id": "torpor-orb-answers-the-trigger-question",
+    "text": "My opponent controls Torpor Orb. I cast Reclamation Sage. Does its ability trigger?",
+    "expect": [
+      "No: Torpor Orb stops it"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "rec-sage-does-trigger",
+    "text": "I cast Reclamation Sage. Does its ability trigger?",
+    "expect": [
+      "Yes: Reclamation Sage's ability triggered"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

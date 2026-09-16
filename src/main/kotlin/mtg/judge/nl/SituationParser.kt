@@ -1629,17 +1629,20 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below (read as ${id.card.name ?: id.id})."; return true
         }
         // "does it survive?" / "will it die?": the last-mentioned permanent.
-        Regex("""^(?:does|do|did|will|would|is|are) (it|that|this|he|she|they|theirs|mine|yours|the other one|the other) (?:still |going to |gonna )?(trigger|triggers|go off|survive|survives|die|dies|dead|still alive|live|lives|make it)\b""").find(clause0)?.let { q0 ->
+        Regex("""^(?:does|do|did|will|would|is|are) (?:(?:its|the|his|her|their) (?:ability|abilities|trigger|triggered ability) )?(it|that|this|he|she|they|theirs|mine|yours|the other one|the other)?(?: (?:still |going to |gonna ))? ?(trigger|triggers|go off|survive|survives|die|dies|dead|still alive|live|lives|make it)\b""").find(clause0)?.let { q0 ->
             val q = object { val groupValues = listOf(q0.groupValues[0], q0.groupValues[2]) }
             val last = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.asReversed().firstNotNullOfOrNull { e -> if (e.verb == "cast" || e.verb == "activate") e.targets.firstOrNull { it in ctx.objects } else null }
+                // "Does its ability trigger?" right after casting a creature: the creature that was cast.
+                ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.card?.name?.let { slug(it) }
             // "theirs" / "mine": the same-named creature on the other side of the table.
             val id = when (q0.groupValues[1]) {
-                "theirs", "the other one", "the other" -> last?.let { l -> ctx.objects.values.lastOrNull { it.card.name == ctx.objects.getValue(l).card.name && it.controller != ctx.objects.getValue(l).controller }?.id } ?: ctx.objects.values.lastOrNull { it.controller == pronounPlayer(ctx, "their") }?.id ?: return@let
-                "mine", "yours" -> last?.let { l -> ctx.objects.values.lastOrNull { it.card.name == ctx.objects.getValue(l).card.name && it.controller == "me" }?.id } ?: ctx.objects.values.lastOrNull { it.controller == "me" }?.id ?: return@let
+                "theirs", "the other one", "the other" -> last?.let { l -> ctx.objects[l] }?.let { o -> ctx.objects.values.lastOrNull { it.card.name == o.card.name && it.controller != o.controller }?.id } ?: ctx.objects.values.lastOrNull { it.controller == pronounPlayer(ctx, "their") }?.id ?: return@let
+                "mine", "yours" -> last?.let { l -> ctx.objects[l] }?.let { o -> ctx.objects.values.lastOrNull { it.card.name == o.card.name && it.controller == "me" }?.id } ?: ctx.objects.values.lastOrNull { it.controller == "me" }?.id ?: return@let
                 else -> last ?: return@let
             }
             ctx.asks += EventSpec("ask", obj = id, to = if (q.groupValues[1].startsWith("trigger") || q.groupValues[1] == "go off") "trigger" else if (q.groupValues[1] in setOf("die", "dies", "dead")) "die" else "survive")
-            ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below (\"${q0.groupValues[1]}\" read as ${ctx.objects.getValue(id).card.name}${ctx.objects.getValue(id).controller.let { c -> if (c == "me") ", yours" else ", ${ctx.players[c] ?: "your opponent"}'s" }})."; return true
+            val known = ctx.objects[id]
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below" + (known?.let { o -> " (\"${q0.groupValues[1].ifEmpty { "its ability" }}\" read as ${o.card.name}${if (o.controller == "me") ", yours" else ", ${ctx.players[o.controller] ?: "your opponent"}'s"})" } ?: "") + "."; return true
         }
         val q = Regex("""^(?:does|do|did|will|would|is|are)\b.*?\b(?:my |their |his |her |the |@\w+'s )?(c\d+)(?:'s)?\b.*?\b(trigger|triggers|go off|survive|survives|die|dies|dead|still alive|live|lives|make it)\b""").find(clause0) ?: return false
         val card = m.cards[q.groupValues[1]] ?: return false
