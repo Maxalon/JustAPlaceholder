@@ -43,6 +43,8 @@ class GameObject(
     var successor: String? = null,
     /** Times this commander has already been cast from the command zone (903.8: {2} more each time). */
     var commanderCasts: Int = 0,
+    /** The card name chosen as this entered (Meddling Mage, Pithing Needle). */
+    var chosenName: String? = null,
     /** Targets named for a permanent spell that itself targets nothing: they go to its enters-the-battlefield trigger (603.3d). */
     var etbTargets: List<Ref>? = null,
     /** X chosen when this was cast ("enters with X counters"). */

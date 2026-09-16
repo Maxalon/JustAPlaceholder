@@ -341,6 +341,7 @@ object OracleParser {
         if (Regex("""^If ~ is in your opening hand, you may begin the game with it on the battlefield\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("103.6")))
         if (Regex("""^(?:Combat )?damage that would be dealt by (?:creatures|sources) you control can't be prevented\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("615.12")))
         if (Regex("""^Each opponent can cast spells only any time they could cast a sorcery\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsSorcerySpeed)
+        if (Regex("""^Spells with the chosen name can't be cast\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.CantCastNamed)
         // "Activated abilities of artifacts can't be activated." / "Activated abilities of creatures your opponents control can't be activated."
         Regex("""^Activated abilities of (.+?) can't be activated\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val f = parseFilter(m.groupValues[1], Kind.PERMANENT); if (f.verifiable) return listOf(StaticEffect.CantActivate(f))
@@ -663,6 +664,12 @@ object OracleParser {
             if (f.verifiable) return Effect.PutFromHand(f, null, tapped = s.contains("battlefield tapped", true), fromGraveyard = true, maxMv = m.groupValues[2].toIntOrNull())
         }
         Regex("""^you gain (\d+) life for each spell you've cast this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.GainLifePerSpellThisTurn(Who.YOU, it.groupValues[1].toInt()) }
+        // "Target player discards X cards at random" / "each player discards two cards": modeled, so it goes before the narrated table.
+        Regex("""^(you|target player|target opponent|each player|each opponent|that player) discards? (a|an|\d+|X|two|three|four) cards?( at random)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val w = when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "target player", "target opponent" -> Who.TARGET_PLAYER; "each player" -> Who.EACH_PLAYER; "each opponent" -> Who.EACH_OPPONENT; else -> Who.THAT_PLAYER }
+            val n = m.groupValues[2].let { if (it.equals("X", true)) 0 else number(it) ?: 1 }
+            return Effect.Discard(w, n, x = m.groupValues[2].equals("X", true), random = m.groupValues[3].isNotEmpty())
+        }
         // "Each opponent sacrifices a creature (with the greatest power among creatures that player controls)": modeled, so it goes before the narrated table.
         Regex("""^each (other player|opponent|player) sacrifices (?:a|an|one) (.+?)(?: of their choice)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             val greatest = Regex("""^(.+?) with the greatest power among (?:creatures|permanents) (?:that player controls|they control)$""", RegexOption.IGNORE_CASE).matchEntire(m.groupValues[2])

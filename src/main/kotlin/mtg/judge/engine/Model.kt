@@ -122,6 +122,8 @@ sealed interface Effect {
     data class Blink(val target: TargetSpec, val ownersControl: Boolean) : Effect
     /** Spellskite: "Change a target of target spell or ability to ~." */
     data class RedirectToSelf(val target: TargetSpec) : Effect
+    /** "Target player discards X cards at random" / "each player discards two cards". */
+    data class Discard(val who: Who, val count: Int, val x: Boolean = false, val random: Boolean = false) : Effect
     /** "Repeat the following process X times." followed by the process. */
     data class Repeat(val body: Effect, val times: Int, val x: Boolean) : Effect
     /** "Each opponent loses N life unless that player sacrifices a [filter] of their choice or discards a card." (Torment of Hailfire) */
@@ -211,7 +213,7 @@ sealed interface Effect {
         is Repeat -> body.targets()
         is LoseLifeUnlessSacOrDiscard -> emptyList()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
-        is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is GainLifeLostThisWay, is GainLifeEqualToToughness, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
+        is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is GainLifeLostThisWay, is GainLifeEqualToToughness, is Discard, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
     }
 
     fun hasUnparsed(): Boolean = when (this) {
@@ -273,6 +275,8 @@ sealed interface StaticEffect {
     data object OpponentsSorcerySpeed : StaticEffect
     /** Stony Silence, Linvala: "Activated abilities of [filter] can't be activated." ([mana] restricts it to mana abilities, as Damping Sphere-style text does not). */
     data class CantActivate(val filter: ObjFilter, val manaOnly: Boolean = false, val opponentsOnly: Boolean = false) : StaticEffect
+    /** Meddling Mage: "Spells with the chosen name can't be cast." (the name is chosen as it enters and given in the situation). */
+    data object CantCastNamed : StaticEffect
     /** Grand Abolisher: "During your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments." */
     data object OpponentsLockedOnYourTurn : StaticEffect
     /** Serra Avenger: "You can't cast this spell during your first, second, or third turns of the game." */

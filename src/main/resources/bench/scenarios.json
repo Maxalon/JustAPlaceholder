@@ -3763,5 +3763,52 @@
     "cite": [
       "115.7"
     ]
+  },
+  {
+    "id": "meddling-mage-names-bolt",
+    "text": "I control Grizzly Bears and my opponent controls Meddling Mage naming Lightning Bolt. Can I cast Lightning Bolt?",
+    "expect": [
+      "Lightning Bolt can't be cast (Meddling Mage names it)"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "101.2"
+    ]
+  },
+  {
+    "id": "blood-artist-pyroclasm-three-triggers",
+    "text": "I have Blood Artist and my opponent casts Pyroclasm. I control two 1/1 tokens. How much life do they lose?",
+    "expect": [
+      "opponent loses 1 life. (×3)",
+      "You gain 1 life. (×3)"
+    ],
+    "cite": [
+      "603.10a"
+    ]
+  },
+  {
+    "id": "mind-twist-x3-five-cards",
+    "text": "My opponent casts Mind Twist for X=3. I have 5 cards in hand.",
+    "expect": [
+      "You discard 3 cards (5 → 2 in hand)"
+    ],
+    "notExpect": [
+      "not tracked"
+    ],
+    "cite": [
+      "701.9a"
+    ]
+  },
+  {
+    "id": "end-step-nine-cards-what-do-i-discard",
+    "text": "It's my end step and I have 9 cards in hand. What do I discard?",
+    "expect": [
+      "You discard 2 cards to hand size"
+    ],
+    "cite": [
+      "514.1"
+    ]
   }
 ]

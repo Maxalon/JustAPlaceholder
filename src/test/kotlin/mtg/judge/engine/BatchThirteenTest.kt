@@ -40,6 +40,10 @@ class BatchThirteenTest {
     private val exsanguinate = card("Exsanguinate", "Sorcery", "Each opponent loses X life. You gain life equal to the life lost this way.", "{X}{B}{B}", "B")
     private val condemn = card("Condemn", "Instant", "Put target attacking creature on the bottom of its owner's library. Its controller gains life equal to its toughness.", "{W}", "W")
     private val spellskite = card("Spellskite", "Artifact Creature — Phyrexian Horror", "{U/P}: Change a target of target spell or ability to Spellskite.", "{2}", "", "0", "4")
+    private val bloodArtist = card("Blood Artist", "Creature — Vampire", "Whenever Blood Artist or another creature dies, target player loses 1 life and you gain 1 life.", "{B}", "B", "0", "1")
+    private val pyroclasm = card("Pyroclasm", "Sorcery", "Pyroclasm deals 2 damage to each creature.", "{1}{R}", "R")
+    private val meddlingMage = card("Meddling Mage", "Creature — Human Wizard", "As this creature enters, choose a nonland card name.\nSpells with the chosen name can't be cast.", "{W}{U}", "WU", "2", "2")
+    private val mindTwist = card("Mind Twist", "Sorcery", "Target player discards X cards at random.", "{X}{B}", "B")
     private val serra = card("Serra Angel", "Creature — Angel", "Flying, vigilance", "{3}{W}{W}", "W", "4", "4", "Flying", "Vigilance")
     private val viper = card("Ambush Viper", "Creature — Snake", "Flash\nDeathtouch", "{1}{G}", "G", "2", "1", "Flash", "Deathtouch")
     private val krenko = card("Krenko, Mob Boss", "Legendary Creature — Goblin Warrior", "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.", "{2}{R}{R}", "R", "3", "3")
@@ -446,6 +450,22 @@ class BatchThirteenTest {
         val naturalize = e3.cast("opp", card("Shatter", "Instant", "Destroy target artifact.", "{1}{R}", "R"), listOf(Ref.Obj("skite")))!!
         e3.activate("me", "skite", 0, listOf(Ref.Stack(naturalize.id))); e3.resolveAll()
         assertTrue(s3.outcomes.any { it.contains("target isn't changed") }, "already targeting Spellskite: nothing to change: " + s3.outcomes)
+    }
+
+    @Test
+    fun `blood artist sees itself and the other creatures die to the same state-based check`() {
+        val s = state(); s.put("artist", bloodArtist, "me"); s.put("bears", bears, "me"); s.put("bears2", bears, "me"); val e = Engine(s)
+        e.cast("opp", pyroclasm, emptyList()); e.resolveAll()
+        assertEquals(17, s.player("opp").life, "three deaths at once, three triggers"); assertTrue("603.10a" in s.cited())
+    }
+
+    @Test
+    fun `meddling mage stops the named spell and mind twist empties a hand`() {
+        val s = state(); s.put("mage", meddlingMage, "opp"); s.obj("mage").chosenName = "Lightning Bolt"; val e = Engine(s)
+        assertTrue(e.cast("me", bolt, listOf(Ref.Player("opp"))) == null); assertTrue(s.outcomes.any { it.contains("can't be cast (Meddling Mage names it)") }, s.outcomes.toString())
+        assertTrue(e.cast("me", card("Shock", "Instant", "Shock deals 2 damage to any target.", "{R}", "R"), listOf(Ref.Player("opp"))) != null)
+        val s2 = state(); s2.player("opp").handSize = 5; val e2 = Engine(s2)
+        e2.cast("me", mindTwist, listOf(Ref.Player("opp")), x = 3); e2.resolveAll(); assertEquals(2, s2.player("opp").handSize); assertTrue("701.9a" in s2.cited())
     }
 
     @Test

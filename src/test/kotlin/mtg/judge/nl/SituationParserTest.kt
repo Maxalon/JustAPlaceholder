@@ -271,6 +271,8 @@ class SituationParserTest {
         assertTrue(r.unread.isEmpty(), r.unread.toString())
         val v = parser.parse("My opponent controls Sol Ring. I cast Stifle on it and they respond by bouncing it with Time Vault.")
         val bounce = v.situation.events.last { it.verb == "cast" }; assertEquals("opp", bounce.player); assertEquals("Time Vault", bounce.card?.name); assertTrue(bounce.targets.any { "sol_ring" in it }, bounce.targets.toString())
+        val n = parser.parse("My opponent controls Sol Ring naming Stifle. Can I cast Stifle?")
+        assertEquals("Stifle", n.situation.objects.first { it.card.name == "Sol Ring" }.named); assertTrue(n.situation.events.any { it.verb == "cast" && it.card?.name == "Stifle" })
         val w = parser.parse("I control Sol Ring. My opponent casts Stifle on it in response to my attack.")
         assertTrue(w.situation.events.indexOfFirst { it.verb == "attack" } < w.situation.events.indexOfFirst { it.verb == "cast" }, w.situation.events.toString()); assertTrue(w.unread.isEmpty(), w.unread.toString())
     }

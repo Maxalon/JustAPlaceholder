@@ -86,6 +86,8 @@ data class ObjectSpec(
     val commander: Boolean = false,
     /** Times this commander was already cast from the command zone (903.8). */
     val commanderCasts: Int = 0,
+    /** A card name this permanent names ("Meddling Mage naming Lightning Bolt"). */
+    val named: String? = null,
 )
 
 @Serializable
