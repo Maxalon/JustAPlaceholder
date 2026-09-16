@@ -7522,5 +7522,27 @@
       "I couldn't find"
     ],
     "cite": []
+  },
+  {
+    "id": "blockers-named-before-the-attack",
+    "text": "They've got two blockers and I attack with a 5/5. What happens?",
+    "expect": [
+      "blocks"
+    ],
+    "notExpect": [
+      "opponent takes 5 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "he-is-at-two-life",
+    "text": "He's at 2 life and I attack with a 3/3. Does he die?",
+    "expect": [
+      "Yes"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
   }
 ]

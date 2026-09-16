@@ -24,6 +24,8 @@ class SituationParser(private val names: NameIndex) {
     data class Parsed(val situation: Situation, val unread: List<String>, val notes: List<String>)
 
     private class Ctx {
+        /** Creatures the asker called "blockers" before anything was attacking: matched up at the end. */
+        val pendingBlockers = mutableMapOf<String, MutableList<String>>()
         val objects = LinkedHashMap<String, ObjectSpec>()
         val events = mutableListOf<EventSpec>()
         val unread = mutableListOf<String>()
@@ -103,6 +105,17 @@ class SituationParser(private val names: NameIndex) {
             if (already >= cards.count { it.oracleId == card.oracleId }) continue
             var id = slug(card.display); var k = 2; while (ctx.objects.containsKey(id)) id = slug(card.display) + "_" + (k++)
             ctx.objects[id] = ObjectSpec(id, CardRef(name = card.display, oracleId = card.oracleId), zone = "hand", controller = who)
+        }
+        // "They've got two blockers and I attack with a 5/5": the blockers were named before the attack, so the
+        // rule that makes them block had nothing to block yet. Match them up once the whole question is read.
+        if (ctx.pendingBlockers.isNotEmpty()) {
+            for ((who, ids) in ctx.pendingBlockers) {
+                val attacks = ctx.events.filter { it.verb == "attack" && (it.targets.contains(who) || it.targets.isEmpty()) }
+                val free = ids.filter { id -> ctx.events.none { e -> e.verb == "block" && e.obj == id } }
+                if (attacks.isEmpty() || free.isEmpty()) continue
+                free.forEachIndexed { i, id -> attacks.getOrNull(i)?.obj?.let { atk -> ctx.events += EventSpec("block", player = who, obj = id, targets = listOf(atk)) } }
+                ctx.notes += "\"${if (free.size == 1) "a blocker" else "${free.size} blockers"}\" is read as blocking${if (free.size > 1) ", one attacker each" else ""}; say otherwise if they don't block."
+            }
         }
         // An explicit "it resolves" mid-situation settles what was on the stack then; anything cast after it still needs to resolve.
         val tail = ctx.events.lastOrNull()?.verb
@@ -327,12 +340,16 @@ class SituationParser(private val names: NameIndex) {
             if (step != null) ctx.events += EventSpec("step", player = ctx.activePlayer, to = step)
         }
         Regex("""\b(i'm|i am|i'm at|my life is|i have|i've got) (\d+) life\b|^(i'm at|i am at|i'm on|i am on|i'm sitting at) (\d+)$""").find(t2)?.let { ctx.life["me"] = (it.groupValues[2].ifEmpty { it.groupValues[4] }).toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
+        // "we're both at 20 life", "we are both at 3": one life total for each player.
+        Regex("""\b(?:we're|we are|we|both of us|everyone|everybody) (?:both |each |all )?(?:is |are |'re )?(?:at|on) (\d+)(?: life)?\b""").find(t2)?.let {
+            val n = it.groupValues[1].toInt(); ctx.life["me"] = n; ctx.life[pronounPlayer(ctx)] = n; ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range)
+        }
         // "I go to 0 life", "they drop to 3": a life total after something, said as a change.
         Regex("""\b(?:i|we) (?:go|goes|went|drop|drops|dropped|fall|falls|fell) (?:to|down to) (\d+)(?: life)?\b""").find(t2)?.let { ctx.life["me"] = it.groupValues[1].toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
         Regex("""\b(?:they|he|she|my opponent|the opponent|opponent) (?:go|goes|went|drop|drops|dropped|fall|falls|fell) (?:to|down to) (\d+)(?: life)?\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = it.groupValues[1].toInt(); any = true; t2 = t2.removeRange(it.range) }
         Regex("""\s*\b(?:with|at|and) (\d+) life (?:left|remaining|to go)(?: for me| on my side)?\b""").find(t2)?.let { ctx.life["me"] = it.groupValues[1].toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
         Regex("""\s*\b(?:with|and) (?:them|my opponent|the opponent|opponent) (?:at|on) (\d+)(?: life)?\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = it.groupValues[1].toInt(); any = true; t2 = t2.removeRange(it.range) }
-        Regex("""\b(opponent|they|they're|opp|my opponent)(?: who)? (?:(?:is at|are at|at|is on|are on|'re at|'s at) (\d+)(?: life)?|(?:has|have) (\d+) life)\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = (it.groupValues[2].ifEmpty { it.groupValues[3] }).toInt(); any = true; t2 = t2.replaceRange(it.range, it.groupValues[1]) }
+        Regex("""\b(opponent|they|they're|opp|my opponent|he|he's|she|she's)(?: who)? (?:(?:is at|are at|at|is on|are on|'re at|'s at) (\d+)(?: life)?|(?:has|have) (\d+) life)\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = (it.groupValues[2].ifEmpty { it.groupValues[3] }).toInt(); any = true; t2 = t2.replaceRange(it.range, it.groupValues[1]) }
         Regex("""@(\w+) (?:is at|is on|has|at|sits at|is) (\d+)(?: life)?\b""").findAll(t2).toList().asReversed().forEach { ctx.life[it.groupValues[1]] = it.groupValues[2].toInt(); ctx.players.putIfAbsent(it.groupValues[1], m.players[it.groupValues[1]] ?: it.groupValues[1]); any = true; t2 = t2.removeRange(it.range) }
         // "I cast Brainstorm with 1 card in my library" / "with no cards left in their library": library sizes, wherever they sit.
         Regex("""\s*\b(?:with|and|at|having) (\d+|no|one|two|three|four|five|six|seven) cards? (?:left )?in (?:(my|their|his|her|the) )?library\b""").find(t2)?.let { r ->
@@ -1051,6 +1068,8 @@ class SituationParser(private val names: NameIndex) {
                     ctx.notes += "\"${if (made.size == 1) "a blocker" else "${made.size} blockers"}\" is read as blocking${if (made.size > 1) ", one attacker each" else ""}; say otherwise if they don't block."
                     ctx.lastVerb = "block"; ctx.lastOwner = who; ctx.lastActor = who; return true
                 }
+                // Nothing is attacking yet; remember them and match them up once the whole question is read.
+                made.forEach { ctx.pendingBlockers.getOrPut(who) { mutableListOf() } += it }
             }
             ctx.lastVerb = "have"; ctx.lastOwner = who; ctx.lastActor = who; return true
         }
