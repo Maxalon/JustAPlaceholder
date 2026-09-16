@@ -6626,5 +6626,31 @@
       "0 card types"
     ],
     "cite": []
+  },
+  {
+    "id": "cast-it-means-the-spell-not-the-land",
+    "text": "I have Lightning Bolt and two Mountains in hand. Can I cast it?",
+    "expect": [
+      "You cast Lightning Bolt"
+    ],
+    "notExpect": [
+      "You play Mountain"
+    ],
+    "cite": [
+      "601.2a"
+    ]
+  },
+  {
+    "id": "casting-a-fourth-spell-this-turn",
+    "text": "I control Aetherflux Reservoir and have cast three spells this turn. What happens when I cast a fourth?",
+    "expect": [
+      "you gain 4 life"
+    ],
+    "notExpect": [
+      "Go Forth"
+    ],
+    "cite": [
+      "608.2h"
+    ]
   }
 ]

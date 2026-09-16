@@ -1004,11 +1004,11 @@ class SituationParser(private val names: NameIndex) {
             val who = actor ?: subject ?: "me"
             ctx.events += EventSpec("cast", player = who, card = CardRef(name = "a spell")); ctx.lastActor = who; ctx.lastVerb = "cast"; return true
         }
-        Regex("""^(?:$castVerbs)\s+(a|an|another|\d+|two|three|four|five)(?: more| other)? (spells?|instants?|sorcer(?:y|ies)|creature spells?|creatures?|noncreature spells?|artifacts?|enchantments?|one|(?:second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth) (?:one|spell))(?: this turn| in a row| in one turn| on their turn| on my turn)?((?:,? (?:paying for none of them|paying for nothing|without paying|not paying|and pays? for none|never paying|declining to pay each time|and doesn't pay|and never pays)(?: for (?:any|each|all) of them)?)?)$""").find(c)?.let { r ->
+        Regex("""^(?:$castVerbs)\s+(a|an|another|\d+|two|three|four|five)(?: more| other)? (spells?|instants?|sorcer(?:y|ies)|creature spells?|creatures?|noncreature spells?|artifacts?|enchantments?|one|(?:second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)(?: one| spell)?)(?: this turn| in a row| in one turn| on their turn| on my turn)?((?:,? (?:paying for none of them|paying for nothing|without paying|not paying|and pays? for none|never paying|declining to pay each time|and doesn't pay|and never pays)(?: for (?:any|each|all) of them)?)?)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val n = number(r.groupValues[1]) ?: 1
             if (r.groupValues[3].isNotEmpty()) ctx.events += EventSpec("pay", player = who, to = "no")
-            val kind = r.groupValues[2].removeSuffix("s").replace("sorceries", "sorcery").replace(Regex("""^(?:(?:second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth) )?(?:one|spell)$"""), "spell").let { if (it == "creature" || it == "artifact" || it == "enchantment") "$it spell" else it }
+            val kind = r.groupValues[2].removeSuffix("s").replace("sorceries", "sorcery").replace(Regex("""^(?:second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)(?: (?:one|spell))?$"""), "spell").replace(Regex("""^(?:one|spell)$"""), "spell").let { if (it == "creature" || it == "artifact" || it == "enchantment") "$it spell" else it }
             repeat(n) { ctx.events += EventSpec("cast", player = who, card = CardRef(name = "a $kind")) }
             ctx.lastActor = who; ctx.lastVerb = "cast"; return true
         }
@@ -1287,7 +1287,9 @@ class SituationParser(private val names: NameIndex) {
             // sitting in that graveyard, not one in hand.
             val fromYard = if (!Regex("""\b(?:with flashback|from (?:my|their) graveyard|using flashback)\b""").containsMatchIn(c)) null
                 else ctx.objects.values.lastOrNull { it.zone == "graveyard" && it.controller == who && it.card.oracleId != null }
-            val card = ctx.inHand[who]?.lastOrNull()
+            // "I have Lightning Bolt and two Mountains in hand. Can I cast it?": "it" is the spell, not the land that
+            // happened to be named last — a land isn't cast at all.
+            val card = ctx.inHand[who]?.lastOrNull { !it.typeLine.contains("Land", true) } ?: ctx.inHand[who]?.lastOrNull()
                 ?: fromYard?.card?.name?.let { n -> names.lookup(Names.normalize(n)) }?.also { ctx.objects.remove(fromYard.id) }
                 ?: return@let
             val life = r.groupValues[1].ifEmpty { r.groupValues[2] }
