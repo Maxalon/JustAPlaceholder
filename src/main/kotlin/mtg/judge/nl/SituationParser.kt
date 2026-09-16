@@ -127,8 +127,12 @@ class SituationParser(private val names: NameIndex) {
         val candidates = LinkedHashMap<String, MutableSet<NameIndex.Entry>>()
         val typeCandidates = LinkedHashMap<String, MutableSet<NameIndex.Entry>>()
         for (sentence in sentences) {
-            val words = sentence.split(Regex("\\s+")).filter { it.isNotEmpty() }.map { w -> Names.normalize(stripPossessive(w)).ifEmpty { "_" } }
-            for (f in names.findAll(words)) {
+            val rawWords = sentence.split(Regex("\\s+")).filter { it.isNotEmpty() }
+            val words = rawWords.map { w -> Names.normalize(stripPossessive(w)).ifEmpty { "_" } }
+            // "Ashnod's Altar" is only found with the possessive kept, so both readings are collected.
+            val keptWords = rawWords.map { w -> Names.normalize(w.trimEnd(',', '.', ';', '!', '?')).ifEmpty { "_" } }
+            val foundAll = (names.findAll(keptWords) + names.findAll(words)).distinctBy { it.entry.oracleId }
+            for (f in foundAll) {
                 if (f.entry.alternatives.isNotEmpty()) continue   // a bare first name isn't a card named in full
                 val display = f.entry.display
                 val head = display.substringBefore(",")   // "Jace, the Mind Sculptor" -> "Jace"
@@ -1483,6 +1487,13 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("resolveAll"); ctx.events += EventSpec("step", player = ctx.activePlayer ?: who, to = "cleanup"); ctx.explicitResolve = true; ctx.note(who)
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by playing the turn out to its cleanup step, where hand size is checked (514.1)."; return true
         }
+        // "what color mana can it make?" / "what does it tap for?": the permanent's mana abilities as they stand.
+        Regex("""^(?:what (?:colou?r )?(?:of )?mana (?:can|does|do|will) (?:it|that|(?:my |their |the |@\w+'s )?(c\d+)) (?:make|produce|add|tap for)|what (?:does|do|can) (?:it|that|(?:my |their |the )?(c\d+)) tap for)(?: now| then)?$""").find(clause0)?.let { q ->
+            val ph = q.groupValues[1].ifEmpty { q.groupValues[2] }
+            val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
+                     else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.card?.name?.let { slug(it) } ?: return@let
+            ctx.asks += EventSpec("ask", obj = id, to = "mana"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
         // "what are my Bears now?" / "what is it now?": the creature's size once everything is done.
         Regex("""^what (?:are|is|'s) (?:my |their |the |@\w+'s )?(c\d+|it|they)(?: now| then| after that| after this| at that point)?$""").find(clause0)?.let { q ->
             val id = if (q.groupValues[1] == "it" || q.groupValues[1] == "they") ctx.lastMentioned?.takeIf { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) } ?: return@let else m.cards[q.groupValues[1]]?.takeIf { it.typeLine.contains("Creature") }?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
@@ -1606,6 +1617,8 @@ class SituationParser(private val names: NameIndex) {
         }
         // "Healing Salve gaining 3 life": the life is theirs, so the spell targets its caster.
         if (targets.isEmpty() && modeWord == "gain" && Regex("""\bgaining \d+ life\b""").containsMatchIn(rest)) targets = listOf(who)
+        // "Prey Upon on my Bears targeting theirs": the fight's other creature.
+        secondTarget(rest, targets.firstOrNull(), ctx)?.let { second -> if (targets.size == 1 && second !in targets) targets = targets + second }
         ctx.castingCounter = false
         repeat(n) { i -> ctx.events += EventSpec("cast", player = who, card = CardRef(name = card.display, oracleId = card.oracleId), targets = targets, modes = modes, to = if (overload) "overload" else if (kicked) "kicked" else if (evoked) "evoke" else if (revolt != null) "revolt" else if (mastery != null) "spellmastery" else modeWord?.let { "mode:$it" }, amount = xValue); if (secondTime != null && i == 0) ctx.events += EventSpec("resolveAll") }
         if (n > 1) ctx.notes += "${card.display} is cast $n times, one copy after another (each is its own spell)." 
@@ -1616,6 +1629,14 @@ class SituationParser(private val names: NameIndex) {
     }
 
     /** "targeting the C2 trigger", "on my C3", "at me", "targeting it". */
+    /** "on my Bears targeting theirs": the second phrase names a creature of the other player's, matched by the first's name. */
+    private fun secondTarget(rest: String, firstId: String?, ctx: Ctx): String? {
+        if (firstId == null || firstId !in ctx.objects) return null
+        if (!Regex("""\b(?:targeting|at|against|to fight|fighting|and) (?:their|theirs|his|her|my opponent's|the opponent's|opponent's)\b""").containsMatchIn(rest)) return null
+        val mine = ctx.objects.getValue(firstId)
+        return ctx.objects.values.lastOrNull { it.id != firstId && it.controller != mine.controller && isCreatureName(it.card.name) }?.id
+    }
+
     private fun targetsIn(rest: String, m: Marked, ctx: Ctx): List<String> {
         val r = rest.trim().replace(Regex("""\s+(?:again|once more|a second time|for a second time)$"""), "")
         if (r.isEmpty()) return emptyList()

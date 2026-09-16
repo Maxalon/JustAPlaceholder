@@ -3992,5 +3992,40 @@
     "cite": [
       "704.5g"
     ]
+  },
+  {
+    "id": "prey-upon-fight",
+    "text": "I attack with Grizzly Bears. My opponent blocks with Hill Giant. I cast Prey Upon on my Bears targeting theirs before damage.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "not modeled",
+      "needs 0 targets"
+    ],
+    "cite": [
+      "701.14a"
+    ]
+  },
+  {
+    "id": "ashnods-altar-short-name",
+    "text": "I have Ashnod's Altar and Grizzly Bears. My opponent casts Doom Blade on the Bears. I sacrifice it to the Altar in response. How much mana do I get?",
+    "expect": [
+      "Ashnod's Altar's mana ability: add {C}{C}",
+      "Doom Blade doesn't resolve (all targets illegal)"
+    ],
+    "cite": [
+      "605.3b"
+    ]
+  },
+  {
+    "id": "blood-moon-steam-vents-mana",
+    "text": "I control Blood Moon. My opponent plays Steam Vents. What color mana can it make?",
+    "expect": [
+      "Steam Vents is a Mountain under Blood Moon, so it taps for {R} and nothing else"
+    ],
+    "cite": [
+      "305.7"
+    ]
   }
 ]

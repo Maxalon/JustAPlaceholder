@@ -83,7 +83,7 @@ object OracleParser {
         if (isSpell && spellLines.isNotEmpty()) spellEffect = parseEffect(spellLines.joinToString(" "))
         val kws = keywords.map { it.lowercase() }.toSet()
         // Basic land types carry intrinsic mana abilities (305.6): "({T}: Add {G} or {U}.)" is reminder text, so add them from the type line.
-        if ("Land" in types) for (sub in subs) basicLandMana[sub]?.let { sym -> if (abilities.none { it is ActivatedAbility && it.cost == "{T}" && (it.effect as? Effect.AddMana)?.text == sym }) abilities += ActivatedAbility("{T}", Effect.AddMana(sym), "{T}: Add $sym. (intrinsic, from being a $sub)") }
+        if ("Land" in types) for (sub in subs) basicLandMana[sub]?.let { sym -> if (abilities.none { it is ActivatedAbility && it.cost == "{T}" && (it.effect as? Effect.AddMana)?.text == sym }) abilities += ActivatedAbility("{T}", Effect.AddMana(sym), "{T}: Add $sym. (intrinsic, from being ${if (sub.first() in "AEIOU") "an" else "a"} $sub)") }
         return CardDef(oracleId, name, typeLine, supers, types, subs, manaCost, manaValue, if ("devoid" in kws) emptySet() else colors.toSet(), CardDef.parseStat(power), CardDef.parseStat(toughness),
             kws, abilities, spellEffect, oracleText, enchant, "changeling" in kws, loyalty?.toIntOrNull())
     }
@@ -762,6 +762,7 @@ object OracleParser {
         if (Regex("""^you gain life equal to the life lost this way\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.GainLifeLostThisWay
         if (Regex("""^if a (?:creature|permanent) dealt damage this way would die this turn, exile it instead\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.ExileIfDamagedDies
         Regex("""^change a target of (target spell or ability|target spell|target ability) to ~\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.RedirectToSelf(target(m.groupValues[1])) }
+        Regex("""^(target creature you control) fights (target creature (?:you don't control|an opponent controls))\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.Fight(target(m.groupValues[1], Kind.CREATURE), target(m.groupValues[2], Kind.CREATURE)) }
         Regex("""^put (target .+?) on the bottom of its owner's library\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.PutOnBottom(target(m.groupValues[1])) }
         if (Regex("""^its controller gains life equal to its toughness\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.GainLifeEqualToToughness(Who.CONTROLLER_OF_TARGET)
         return Effect.Unparsed(s)
