@@ -283,6 +283,8 @@ sealed interface StaticEffect {
     data class ExileIfEntersUncast(val filter: ObjFilter) : StaticEffect
     /** Grafdigger's Cage: "Creature cards in graveyards and libraries can't enter the battlefield." */
     data class CantEnterFrom(val filter: ObjFilter, val zones: Set<String>) : StaticEffect
+    /** Rule of Law, Ethersworn Canonist: a limit on how many spells a player may cast each turn. */
+    data class SpellsPerTurn(val count: Int, val filter: ObjFilter?) : StaticEffect
     /** Narset, Spirit of the Labyrinth: "Each opponent can't draw more than one card each turn." */
     data class CantDrawMoreThan(val count: Int, val who: Who) : StaticEffect
     /** Humility: "All creatures lose all abilities and have base power and toughness 1/1." */

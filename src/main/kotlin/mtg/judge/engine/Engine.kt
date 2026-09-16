@@ -29,6 +29,18 @@ class Engine(val state: GameState) {
             trace.step("${lock.name} says ${e.filter.raw}s${e.minManaValue?.let { " with mana value $it or greater" } ?: ""}${if (e.chosenNumber) " with mana value ${lock.chosenName}" else ""}${if (e.xInCost) " with {X} in their mana costs" else ""} can't be cast, and ${card.name} is one (mana value ${card.manaValue.toInt()}), so it can't be cast at all.", "604.2", "101.2")
             state.outcomes += "${card.name} can't be cast (${lock.name})."; return null
         }
+        // Rule of Law, Ethersworn Canonist: a spell too many this turn.
+        for (src in state.objects.values.filter { it.isOnBattlefield() }) {
+            for (e in src.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.filterIsInstance<StaticEffect.SpellsPerTurn>()) {
+                if (e.filter != null && !spellMatches(e.filter, card)) continue
+                val already = if (e.filter == null) (state.spellsThisTurn[playerId] ?: 0) else (state.matchingSpellsThisTurn[playerId] ?: emptyList()).count { spellMatches(e.filter, it) }
+                if (already >= e.count) {
+                    val what = e.filter?.raw ?: "spell"
+                    trace.step("${src.name} says each player can't cast more than ${e.count} $what${if (e.count == 1) "" else "s"} each turn, and ${state.player(playerId).subject.lowercase()} ${state.player(playerId).v("has", "have")} already cast $already this turn, so ${card.name} can't be cast.", "604.2", "101.2")
+                    state.outcomes += "${card.name} can't be cast (${src.name})."; return null
+                }
+            }
+        }
         state.objects.values.firstOrNull { it.isOnBattlefield() && it.chosenName?.equals(card.name, true) == true && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { s -> s is StaticEffect.CantCastNamed } }?.let { mage ->
             trace.step("${mage.name} names ${card.name}, and spells with the chosen name can't be cast, so ${card.name} can't be cast at all while ${mage.name} is on the battlefield.", "604.2", "101.2")
             state.outcomes += "${card.name} can't be cast (${mage.name} names it)."; return null
@@ -126,6 +138,7 @@ class Engine(val state: GameState) {
         obj.x = x
         state.spellsCast[card.name] = (state.spellsCast[card.name] ?: 0) + 1
         state.spellsThisTurn[playerId] = (state.spellsThisTurn[playerId] ?: 0) + 1
+        state.matchingSpellsThisTurn.getOrPut(playerId) { mutableListOf() } += card
         if ("Instant" !in card.types) {
             val offTiming = state.phase == "combat" || state.stack.isNotEmpty() || (state.activePlayer != null && state.activePlayer != playerId)
             val kind = card.types.firstOrNull { it in setOf("Creature", "Sorcery", "Enchantment", "Artifact", "Planeswalker", "Battle") } ?: "permanent"
@@ -1767,6 +1780,19 @@ class Engine(val state: GameState) {
     }
 
     /** What a "nonbasic lands are Mountains" permanent (Blood Moon) does to the nonbasic lands on the battlefield, said once. */
+    /** Rest in Peace and friends were already out when the situation was described, so nothing can be sitting in a graveyard. */
+    fun emptyGraveyardsUnderReplacement() {
+        val keeper = state.objects.values.firstOrNull { src ->
+            src.isOnBattlefield() && src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { e ->
+                ((e as? StaticEffect.Replace)?.replacement as? Replacement.GraveyardReplacement)?.let { it.fromAnywhere && !it.self && it.instead == "exile" && it.filter.controller == null } == true
+            }
+        } ?: return
+        val stuck = state.objects.values.filter { it.zone == Zone.GRAVEYARD }
+        if (stuck.isEmpty()) return
+        trace.step("${keeper.name} was already on the battlefield, so nothing can be in a graveyard: ${stuck.joinToString(", ") { it.name }} ${if (stuck.size == 1) "is" else "are"} in exile instead.", "614.1a", "614.6")
+        stuck.forEach { it.zone = Zone.EXILE }
+    }
+
     fun narrateLandTypeSetters(only: GameObject? = null, land: GameObject? = null) {
         val moons = state.objects.values.filter { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.NonbasicLandsAreMountains } && (only == null || it === only) }
         for (moon in moons) for (land in state.objects.values.filter { it.isOnBattlefield() && "Land" in it.def.types && "Basic" !in it.def.supertypes && (land == null || it === land) }) {

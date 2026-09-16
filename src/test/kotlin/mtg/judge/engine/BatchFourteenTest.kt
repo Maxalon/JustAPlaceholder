@@ -273,4 +273,38 @@ class BatchFourteenTest {
         // The Cage only stops graveyards and libraries, so a card from hand still enters.
         assertEquals(Zone.BATTLEFIELD, s.obj("bear").zone)
     }
+
+    private val ruleOfLaw = card("Rule of Law", "Enchantment", "Each player can't cast more than one spell each turn.", "{2}{W}", "W")
+    private val canonist = card("Ethersworn Canonist", "Artifact Creature — Human Cleric", "Each player who has cast a nonartifact spell this turn can't cast additional nonartifact spells.", "{1}{W}", "W", "2", "2")
+    private val solRing = card("Sol Ring", "Artifact", "{T}: Add {C}{C}.", "{1}")
+    private val restInPeace = card("Rest in Peace", "Enchantment", "When Rest in Peace enters, exile all cards from all graveyards.\nIf a card would be put into a graveyard from anywhere, exile it instead.", "{1}{W}", "W")
+    private val goyf = card("Tarmogoyf", "Creature — Lhurgoyf", "Tarmogoyf's power is equal to the number of card types among cards in all graveyards and its toughness is equal to that number plus 1.", "{1}{G}", "G")
+
+    @Test
+    fun `rule of law stops the second spell of a turn`() {
+        val s = state(); s.put("law", ruleOfLaw, "opp")
+        val e = Engine(s)
+        assertTrue(e.cast("me", bolt, listOf(Ref.Player("opp"))) != null)
+        assertTrue(e.cast("me", counterspell, emptyList()) == null)
+        assertTrue(s.outcomes.any { it.contains("can't be cast (Rule of Law)") }, s.outcomes.toString())
+    }
+
+    @Test
+    fun `ethersworn canonist counts only nonartifact spells`() {
+        val s = state(); s.put("can", canonist, "opp")
+        val e = Engine(s)
+        assertTrue(e.cast("me", bolt, listOf(Ref.Player("opp"))) != null)
+        assertTrue(e.cast("me", solRing, emptyList()) != null)
+        assertTrue(e.cast("me", counterspell, emptyList()) == null)
+        assertTrue(s.outcomes.any { it.contains("can't be cast (Ethersworn Canonist)") }, s.outcomes.toString())
+    }
+
+    @Test
+    fun `rest in peace means nothing sits in a graveyard`() {
+        val s = state(); s.put("rip", restInPeace, "me"); s.put("corpse", bolt, "me", Zone.GRAVEYARD)
+        val e = Engine(s); e.emptyGraveyardsUnderReplacement()
+        assertEquals(Zone.EXILE, s.obj("corpse").zone)
+        s.put("goyf", goyf, "me")
+        assertEquals(0, s.obj("goyf").power)
+    }
 }

@@ -307,6 +307,21 @@ object OracleParser {
             val zones = when (m.groupValues[2].lowercase()) { "graveyards" -> setOf("graveyard"); "libraries" -> setOf("library"); else -> setOf("graveyard", "library") }
             if (f.verifiable) return StaticEffect.CantEnterFrom(f, zones)
         }
+        // "Each player can't cast more than one spell each turn." (Rule of Law, Arcane Laboratory)
+        Regex("""^each player can't cast more than (one|two|three|\d+) spells? each turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            number(m.groupValues[1])?.let { return StaticEffect.SpellsPerTurn(it, null) }
+        }
+        // "Each player who has cast a nonartifact spell this turn can't cast additional nonartifact spells." (Ethersworn Canonist)
+        Regex("""^each player who has cast an? (.+?) spell this turn can't cast additional \1 spells\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val word = m.groupValues[1].lowercase()
+            val f = when (word) {
+                "nonartifact" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.ARTIFACT), raw = "nonartifact spell")
+                "noncreature" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE), raw = "noncreature spell")
+                "creature" -> ObjFilter(setOf(Kind.CREATURE), raw = "creature spell")
+                else -> return@let
+            }
+            return StaticEffect.SpellsPerTurn(1, f)
+        }
         // "Each opponent can't draw more than one card each turn." (Narset, Spirit of the Labyrinth)
         Regex("""^(each opponent|each player|your opponents|players) can't draw more than (one|two|three|\d+) cards? each turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val n = number(m.groupValues[2]) ?: return@let

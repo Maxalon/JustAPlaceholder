@@ -4778,5 +4778,66 @@
     "cite": [
       "115.1"
     ]
+  },
+  {
+    "id": "rule-of-law-stops-the-second",
+    "text": "My opponent controls Rule of Law. I cast Lightning Bolt targeting them and then Giant Growth. What happens?",
+    "expect": [
+      "Giant Growth can't be cast (Rule of Law)"
+    ],
+    "notExpect": [
+      "Rules text not modeled: Each player can't cast"
+    ],
+    "cite": [
+      "604.2"
+    ]
+  },
+  {
+    "id": "canonist-lets-an-artifact-through",
+    "text": "My opponent controls Ethersworn Canonist. I cast Lightning Bolt targeting them and then Sol Ring. What happens?",
+    "expect": [
+      "Sol Ring enters the battlefield"
+    ],
+    "notExpect": [
+      "Sol Ring can't be cast"
+    ],
+    "cite": []
+  },
+  {
+    "id": "canonist-stops-the-second-nonartifact",
+    "text": "My opponent controls Ethersworn Canonist. I cast Lightning Bolt targeting them and then Giant Growth. What happens?",
+    "expect": [
+      "Giant Growth can't be cast (Ethersworn Canonist)"
+    ],
+    "notExpect": [
+      "Rules text not modeled: Each player who has cast"
+    ],
+    "cite": [
+      "604.2"
+    ]
+  },
+  {
+    "id": "rest-in-peace-empties-graveyards",
+    "text": "I control Rest in Peace and cast Tarmogoyf. There is a land and an instant in my graveyard. What are its stats?",
+    "expect": [
+      "Tarmogoyf is 0/1"
+    ],
+    "notExpect": [
+      "Tarmogoyf is 2/3"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "goyf-stats-right-after-casting",
+    "text": "I cast Tarmogoyf. There is a land and an instant in my graveyard. What are its stats?",
+    "expect": [
+      "Tarmogoyf is 2/3"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
