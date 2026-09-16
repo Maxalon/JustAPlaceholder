@@ -5261,5 +5261,45 @@
     "cite": [
       "702.79a"
     ]
+  },
+  {
+    "id": "both-have-first-strike",
+    "text": "I attack with a 2/2 and my opponent blocks with a 2/2. Both have first strike. What happens?",
+    "expect": [
+      "a 2/2 creature with first strike: the battlefield → your graveyard",
+      "a 2/2 creature with first strike: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "510.4"
+    ]
+  },
+  {
+    "id": "mine-has-deathtouch",
+    "text": "I attack with a 2/2 and my opponent blocks with a 3/3. Mine has deathtouch. What happens?",
+    "expect": [
+      "a 3/3 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Players: you, Mine"
+    ],
+    "cite": [
+      "702.2b"
+    ]
+  },
+  {
+    "id": "theirs-has-first-strike",
+    "text": "I attack with a 2/2 and my opponent blocks with a 3/3. Theirs has first strike. What happens?",
+    "expect": [
+      "a 2/2 creature: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "a 3/3 creature: the battlefield → opponent's graveyard"
+    ],
+    "cite": [
+      "510.4"
+    ]
   }
 ]

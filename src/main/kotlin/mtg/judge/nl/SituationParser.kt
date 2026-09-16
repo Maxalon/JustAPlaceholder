@@ -195,7 +195,8 @@ class SituationParser(private val names: NameIndex) {
 
     private val playerNameStop = setOf("i", "my", "me", "we", "opponent", "opp", "they", "he", "she", "it", "the", "then", "now", "so", "if", "when", "what", "where", "why", "which", "who", "whom", "how", "will", "would", "could", "should", "am", "was", "were", "does", "do", "can", "is", "are", "at", "during", "on", "in", "after", "before", "also",
         "both", "each", "everyone", "nobody", "no", "yes", "player", "someone", "another", "his", "her", "their", "its", "next", "later", "finally", "meanwhile", "who", "whose", "which", "how", "why", "there", "here", "this", "that", "these", "those",
-        "one", "two", "three", "four", "first", "second", "third", "last", "turn", "upkeep", "combat", "stack", "response", "target", "counter", "damage", "life", "commander", "planeswalker", "creature", "spell", "ability", "trigger", "token", "land")
+        "one", "two", "three", "four", "first", "second", "third", "last", "turn", "upkeep", "combat", "stack", "response", "target", "counter", "damage", "life", "commander", "planeswalker", "creature", "spell", "ability", "trigger", "token", "land",
+        "mine", "theirs", "yours", "ours", "attacker", "blocker", "neither", "either", "everything", "nothing", "something", "anything")
     private val playerVerbs = setOf("casts", "cast", "plays", "played", "attacks", "attacked", "blocks", "blocked", "has", "have", "had", "controls", "control", "activates", "activated", "responds", "responded", "taps", "sacrifices",
         "is", "are", "was", "swings", "targets", "counters", "draws", "pays", "declines", "passes", "says", "wants", "does", "gets", "takes", "loses", "gains", "dies", "wins", "uses", "equips", "flashes", "resolves", "fires", "slams", "runs")
     private val playerPreps = setOf("at", "targeting", "target", "to", "attacks", "attack", "attacking", "and", "hits", "hit", "with", "against", "on", "of", "then", "meanwhile")
@@ -681,6 +682,31 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("sacrifice", player = who, obj = id, targets = targetsIn(r.groupValues[3], m, ctx))
             ctx.lastActor = who; return true
         }
+        // "Both have first strike" / "mine has deathtouch" / "the blocker has trample": keywords on creatures already described.
+        Regex("""^(both|both of them|they both|all of them|mine|theirs|yours|his|hers|the attacker|the blocker|my creature|their creature|it) (?:has|have|gets?|gained?|is|are) ($kwNouns)(?:,? (?:and )?($kwNouns))?$""").find(c)?.let { r ->
+            fun kw(x: String) = x.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink")
+            val kws = listOfNotNull(r.groupValues[2].takeIf { it.isNotEmpty() }, r.groupValues[3].takeIf { it.isNotEmpty() }).map { kw(it) }
+            if (kws.isEmpty()) return@let
+            val who = r.groupValues[1]
+            val attackerId = ctx.events.lastOrNull { it.verb == "attack" }?.obj
+            val blockerId = ctx.events.lastOrNull { it.verb == "block" }?.obj
+            val ids = when (who) {
+                "both", "both of them", "they both", "all of them" -> listOfNotNull(attackerId, blockerId).ifEmpty { ctx.objects.values.toList().takeLast(2).map { o -> o.id } }
+                "mine", "yours", "my creature" -> listOfNotNull(ctx.objects.values.lastOrNull { it.controller == "me" }?.id)
+                "theirs", "his", "hers", "their creature" -> listOfNotNull(ctx.objects.values.lastOrNull { it.controller != "me" }?.id)
+                "the attacker" -> listOfNotNull(attackerId)
+                "the blocker" -> listOfNotNull(blockerId)
+                else -> listOfNotNull(ctx.lastMentioned?.takeIf { it in ctx.objects })
+            }.filter { it in ctx.objects }
+            if (ids.isEmpty()) return@let
+            for (id in ids) {
+                val spec = ctx.objects.getValue(id)
+                val name = (spec.card.name ?: "").let { n -> if (n.startsWith("a ")) (if (n.contains(" with ")) "$n, ${kws.joinToString(", ")}" else "$n with ${kws.joinToString(", ")}") else n }
+                ctx.objects[id] = spec.copy(card = spec.card.copy(name = name))
+            }
+            ctx.notes += "Read as: ${ids.joinToString(" and ") { ctx.objects.getValue(it).card.name ?: it }}."
+            return true
+        }
         // "my opponent's 6/6 is attacking me" / "their 3/3 is attacking": a described creature already declared as an attacker.
         Regex("""^(?:(my opponent's|the opponent's|opponent's|their|his|her|my|the|@\w+'s) )?(an? |\d+ |two |three )?(\d+/\d+)s?(?: ($kwNouns))?(?: ($creatureKinds))? (?:is|are) attacking(?: (me|you|them|my opponent|the opponent|@\w+))?$""").find(c)?.let { r ->
             val head = r.groupValues[1]
@@ -1073,6 +1099,13 @@ class SituationParser(private val names: NameIndex) {
             ctx.commanderDamage.getOrPut(victim) { LinkedHashMap() }[id] = amount; ctx.note(victim); ctx.note(who)
             ctx.lastVerb = "have"; ctx.lastOwner = who; ctx.lastMentioned = id; return true
         }
+        return readClauseB(clause0, c, actor, subject, m, ctx)
+    }
+
+    /** The rest of the clause rules; split out only because one method may not exceed the JVM's size limit. */
+    private fun readClauseB(clause00: String, c0: String, actor: String?, subject: String?, m: Marked, ctx: Ctx): Boolean {
+        var clause0 = clause00
+        var c = c0
         // "hit them with Atraxa again unblocked" / "swing at Bob with Kaalia": an attack.
         Regex("""^(?:hits?|hitting|swings? at|swinging at|attacks?) (me|them|him|her|my opponent|the opponent|@\w+) with (?:my |the |an? |their )?(?:commander )?(c\d+)(?: again| once more)?( unblocked| and (?:it's|it is|they're) (?:not|un)blocked)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
@@ -1372,6 +1405,13 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("enter", obj = id); ctx.lastMentioned = id; return true
         }
 
+        return readClauseC(clause0, c, actor, subject, m, ctx)
+    }
+
+    /** The last of the clause rules; see readClauseB. */
+    private fun readClauseC(clause00: String, c0: String, actor: String?, subject: String?, m: Marked, ctx: Ctx): Boolean {
+        var clause0 = clause00
+        var c = c0
         // Casting, possibly with targets: "casts C1 (targeting|on|at) <ref>".
         Regex("""^(?:then )?(?:$castVerbs|$respondVerbs)\s+(?:an? |the |another |their |my |a second |a third |my second )?(kicked |overloaded )?(c\d+)(.*)$""").find(c)?.let { r ->
             emitCast(subject ?: "opp", m.cards.getValue(r.groupValues[2]), r.groupValues[3] + (if (r.groupValues[1].isNotEmpty()) " " + r.groupValues[1].trim() else "") + (if (c.startsWith("kick")) " kicked" else "") + (if (c.startsWith("evok")) " with evoke" else ""), m, ctx); return true
