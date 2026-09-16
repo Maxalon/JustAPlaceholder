@@ -7658,5 +7658,27 @@
       "I couldn't find"
     ],
     "cite": []
+  },
+  {
+    "id": "blocked-said-from-the-attackers-side",
+    "text": "They attack with Grizzly Bears. Their Grizzly Bears is blocked by my Hill Giant. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "You take 2 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "a-blocker-thrown-in-front",
+    "text": "They attack with Grizzly Bears. I throw Hill Giant in front of their Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "You take 2 damage"
+    ],
+    "cite": []
   }
 ]

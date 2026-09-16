@@ -352,6 +352,11 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(?:has|have|had) (?=(?:cast|played|attacked|blocked|activated|targeted|countered|killed|destroyed|exiled|sacrificed|bounced|drawn|discarded|tapped|untapped)\b)"""), "")
             .replace(Regex("""\bwill (?=(?:cast|play|attack|block|activate|target|counter|kill|destroy|exile|sacrifice|bounce|draw|discard|tap|untap|gain|lose|deal|take|die|trigger|remove|ping|nuke|zap)\b)"""), "")
             .replace(Regex("""\b(?:is|are|'s|'re) casting\b"""), "casts")
+            // "I blocked", "I declared Hill Giant as a blocker", "I throw Hill Giant in front of their Bears":
+            // more ways to say a block that only the plain present tense was read from.
+            .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+|c\d+) blocked (?=(?:it|that|them|the|an?|my|their|his|her|with|c\d+)\b)"""), "$1 blocks ")
+            .replace(Regex("""\bdeclares? ((?:my |their |the |an? )?c\d+) as a blocker(?: on| against| for)? """), "$1 blocks ")
+            .replace(Regex("""\b(?:throws?|threw|puts?|drops?|chumps?) ((?:my |their |the |an? )?c\d+) in (?:front of|the way of) """), "$1 blocks ")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
         // "it's turn 3" / "on turn 2": the game's turn number.
@@ -2164,6 +2169,17 @@ class SituationParser(private val names: NameIndex) {
             if (r.groupValues[1].isNotEmpty()) ctx.objects[id] = ctx.objects.getValue(id).copy(commander = true)
             val r = object { val groupValues = listOf(r.groupValues[0], r.groupValues[2], r.groupValues[3]) }
             ctx.events += EventSpec("attack", player = who, obj = id, targets = targetsIn(r.groupValues[2], m, ctx).ifEmpty { listOf(ctx.other(who) ?: "opp") }); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
+        }
+        // "their Grizzly Bears is blocked by my Hill Giant": the same declaration, said from the attacker's side.
+        Regex("""^(?:(?:my|their|the|his|her) )?(c\d+|it|that) (?:is|are|was|were|gets?|got) (?:chump[- ]?)?blocked by (?:(?:my|their|the|his|her|an?|one) )?(c\d+|\d+/\d+(?: [a-z]+)*)$""").find(c)?.let { r ->
+            val attacker = if (r.groupValues[1] in setOf("it", "that")) ctx.events.lastOrNull { it.verb == "attack" }?.obj ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                           else m.cards[r.groupValues[1]]?.let { objectIdFor(it, ctx) } ?: return@let
+            val who = ctx.other(ctx.objects[attacker]?.controller ?: "opp") ?: "me"
+            val blocker = if (cardRef.matches(r.groupValues[2])) m.cards[r.groupValues[2]]?.let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) } ?: return@let
+                          else describedFrom("a ", Regex("""\d+/\d+""").find(r.groupValues[2])?.value ?: "", r.groupValues[2], who, ctx).firstOrNull() ?: return@let
+            ensureAttacker(ctx, who)
+            ctx.events += EventSpec("block", player = who, obj = blocker, targets = listOf(attacker))
+            ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
         // Bare "block" / "blocks (it)" / "block with it": the creature just mentioned blocks the last attacker.
         // Said the other way round ("it is blocked", "it gets chump blocked") it's the same statement, and the
