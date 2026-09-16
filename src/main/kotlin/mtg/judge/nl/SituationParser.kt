@@ -2077,6 +2077,18 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("block", player = who, obj = blocker, targets = listOf(attacker))
             ctx.lastActor = who; ctx.lastVerb = "block"; ctx.note(who); ctx.note(foe); return true
         }
+        // "their Wall of Omens blocks" with nothing after it: that creature blocks the attacker already described.
+        // (The leading possessive is taken as the actor before any rule sees the clause, so "c2 blocks" is what
+        // arrives here.)
+        Regex("""^(?:my |the |their )?(c\d+|it|that) (?:chump[- ]?)?blocks?$""").find(c)?.let { r ->
+            val attackerEvent = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" } ?: return@let
+            val who = actor ?: ctx.other(attackerEvent.player) ?: "me"
+            val id = if (r.groupValues[1] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) } ?: return@let
+            if (id == attackerEvent.obj) return@let
+            ctx.events += EventSpec("block", player = ctx.objects[id]?.controller ?: who, obj = id, targets = listOfNotNull(attackerEvent.obj))
+            ctx.lastActor = who; ctx.lastVerb = "block"; ctx.lastMentioned = id; return true
+        }
         // "… and blocks one": the creature just mentioned blocks one of the attackers.
         Regex("""^(?:chump[- ]?)?(?:blocks?|blocking) (?:one|one of them|the first|the first one|a single one)$""").find(c)?.let {
             val attacker = ctx.events.firstOrNull { it.verb == "attack" }?.obj ?: return@let

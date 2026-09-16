@@ -6924,5 +6924,18 @@
     "cite": [
       "707.2"
     ]
+  },
+  {
+    "id": "a-named-blocker-with-nothing-after-it",
+    "text": "My Grizzly Bears attacks and their Wall of Omens blocks. What happens?",
+    "expect": [
+      "opponent blocks Grizzly Bears with Wall of Omens"
+    ],
+    "notExpect": [
+      "unblocked"
+    ],
+    "cite": [
+      "509.1a"
+    ]
   }
 ]
