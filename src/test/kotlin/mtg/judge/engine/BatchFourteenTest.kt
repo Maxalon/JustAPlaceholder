@@ -348,4 +348,38 @@ class BatchFourteenTest {
         assertEquals(Zone.GRAVEYARD, s.obj("elf").zone)
         assertEquals(2, s.player("me").drew)
     }
+
+    private val youngWolf = card("Young Wolf", "Creature — Wolf", "Undying", "{G}", "G", "1", "1", "Undying")
+    private val finks = card("Kitchen Finks", "Creature — Ouphe Soldier", "When Kitchen Finks enters, you gain 2 life.\nPersist", "{1}{G/W}{G/W}", "GW", "3", "2", "Persist")
+    private val mikaeus = card("Mikaeus, the Unhallowed", "Legendary Creature — Zombie Cleric", "Intimidate\nOther non-Human creatures you control get +1/+1 and have undying.", "{3}{B}{B}", "B", "5", "5", "Intimidate")
+    private val human = card("Elite Vanguard", "Creature — Human Soldier", "", "{W}", "W", "2", "1")
+
+    @Test
+    fun `undying brings a creature back once`() {
+        val s = state(); s.put("wolf", youngWolf, "me")
+        val e = Engine(s); e.leave("wolf", Zone.GRAVEYARD)
+        val back = s.objects.values.last { it.def.name == "Young Wolf" && it.isOnBattlefield() }
+        assertEquals(2, back.power); assertEquals(1, back.counters["+1/+1"])
+        // With the counter already on it, it stays dead.
+        e.leave(back.id, Zone.GRAVEYARD)
+        assertEquals(0, s.objects.values.count { it.def.name == "Young Wolf" && it.isOnBattlefield() })
+    }
+
+    @Test
+    fun `persist brings a creature back smaller`() {
+        val s = state(); s.put("finks", finks, "me")
+        val e = Engine(s); e.leave("finks", Zone.GRAVEYARD)
+        val back = s.objects.values.last { it.def.name == "Kitchen Finks" && it.isOnBattlefield() }
+        assertEquals(2, back.power); assertEquals(1, back.toughness)
+    }
+
+    @Test
+    fun `mikaeus grants undying to non-humans only`() {
+        val s = state(); s.put("mik", mikaeus, "me"); s.put("bear", bears, "me"); s.put("vanguard", human, "me")
+        val e = Engine(s)
+        e.leave("vanguard", Zone.GRAVEYARD)
+        assertEquals(0, s.objects.values.count { it.def.name == "Elite Vanguard" && it.isOnBattlefield() })
+        e.leave("bear", Zone.GRAVEYARD)
+        assertEquals(1, s.objects.values.count { it.def.name == "Grizzly Bears" && it.isOnBattlefield() })
+    }
 }

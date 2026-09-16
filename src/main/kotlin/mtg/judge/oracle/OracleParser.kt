@@ -248,7 +248,7 @@ object OracleParser {
 
     private val anthemRe = Regex("""^(all |each |other )?(.+?) (?:get|gets) ([+-]\d+)/([+-]\d+)(?: and (?:have|has) (.+?))?\.?$""", RegexOption.IGNORE_CASE)
     private val grantRe = Regex("""^(all |each |other )?(.+?) (?:have|has) (.+?)\.?$""", RegexOption.IGNORE_CASE)
-    private val keywordList = setOf("flying", "first strike", "double strike", "deathtouch", "haste", "hexproof", "indestructible", "lifelink", "menace", "reach", "trample", "vigilance", "flash", "defender", "shroud", "fear", "intimidate", "skulk", "horsemanship", "shadow", "infect", "wither", "protection from everything", "ward 1", "ward 2",
+    private val keywordList = setOf("flying", "first strike", "double strike", "deathtouch", "haste", "hexproof", "indestructible", "lifelink", "menace", "reach", "trample", "vigilance", "flash", "defender", "shroud", "fear", "intimidate", "skulk", "horsemanship", "shadow", "infect", "wither", "protection from everything", "ward 1", "ward 2", "undying", "persist",
         "islandwalk", "swampwalk", "forestwalk", "mountainwalk", "plainswalk")
 
     private val preventStaticRe = Regex("""^prevent all (combat )?damage that would be dealt (to|by) (~|enchanted creature|equipped creature|you|creatures you control|other creatures you control|creatures|players|you and permanents you control)\.?$""", RegexOption.IGNORE_CASE)
@@ -979,7 +979,7 @@ object OracleParser {
             core = core.removeRange(m.range)
         }
         val kinds = mutableSetOf<Kind>(); val notKinds = mutableSetOf<Kind>(); val unknown = mutableListOf<String>()
-        val subtypes = mutableSetOf<String>(); val keywords = mutableSetOf<String>()
+        val subtypes = mutableSetOf<String>(); val keywords = mutableSetOf<String>(); val notSubtypes = mutableListOf<String>()
         var attacking: Boolean? = null; var tapped: Boolean? = null; var token: Boolean? = null; var legendary: Boolean? = null; var attachedToSource = false
         // "with flying" / "with reach or flying" -> keyword requirements
         var minPower: Int? = null; var maxPower: Int? = null; var maxManaValue: Int? = null
@@ -1001,6 +1001,8 @@ object OracleParser {
                 w in kindWords -> kinds += kindWords.getValue(w)
                 singular(w) in kindWords -> kinds += kindWords.getValue(singular(w))
                 w.startsWith("non") && w.removePrefix("non") in kindWords -> notKinds += kindWords.getValue(w.removePrefix("non"))
+                w.startsWith("non-") && w.removePrefix("non-") in kindWords -> notKinds += kindWords.getValue(w.removePrefix("non-"))
+                w.startsWith("non-") && w.length > 4 -> notSubtypes += singular(w.removePrefix("non-"))
                 w == "activated" || w == "triggered" -> { /* ability qualifiers: both counterable the same way */ }
                 w == "attacking" -> attacking = true
                 w == "tapped" -> tapped = true
@@ -1020,6 +1022,7 @@ object OracleParser {
         if (kinds.isEmpty() && subtypes.isNotEmpty()) kinds += if (subtypes.all { it in landTypes }) Kind.LAND else if (subtypes.all { it in setOf("instant", "sorcery") }) Kind.SPELL else Kind.CREATURE
         if (kinds.isEmpty() && notKinds.isNotEmpty()) kinds += defaultKind ?: Kind.PERMANENT
         if (kinds.isEmpty() && defaultKind != null) kinds += defaultKind
-        return ObjFilter(kinds, notKinds, controller, attacking, tapped, unknown, desc, subtypes, keywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1, colors = colors, notColors = notColors, maxManaValue = maxManaValue)
+        if (kinds.isEmpty() && notSubtypes.isNotEmpty()) kinds += defaultKind ?: Kind.CREATURE
+        return ObjFilter(kinds, notKinds, notSubtypes, controller, attacking, tapped, unknown, desc, subtypes, keywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1, colors = colors, notColors = notColors, maxManaValue = maxManaValue)
     }
 }

@@ -982,6 +982,30 @@ class Engine(val state: GameState) {
         try { return state.matches(f, o, controller, source) } finally { o.zone = z }
     }
 
+    /** Undying (702.92a) and persist (702.79a): a creature that died comes back with a counter, once. */
+    private fun undyingOrPersist(obj: GameObject, undying: Boolean, persist: Boolean) {
+        if (!undying && !persist) return
+        if (obj.zone != Zone.GRAVEYARD) return
+        val kw = if (undying) "undying" else "persist"
+        val kind = if (undying) "+1/+1" else "-1/-1"
+        val had = obj.counters[kind] ?: 0
+        if (had > 0) {
+            trace.step("${obj.name} has $kw, but it had ${had} $kind counter${if (had == 1) "" else "s"} on it when it died, so the ability does nothing.", if (undying) "702.92a" else "702.79a")
+            return
+        }
+        val def = obj.def
+        val back = state.add(GameObject(freshObjectId(def.name), def, Zone.BATTLEFIELD, obj.owner, obj.owner))
+        back.timestamp = state.tick(); back.summoningSick = def.isCreature
+        obj.successor = back.id
+        applyEntersReplacements(back)
+        val n = countersPlaced(back, 1, kind)
+        if (n > 0) back.counters[kind] = (back.counters[kind] ?: 0) + n
+        trace.step("${obj.name} had $kw, so it returns to the battlefield under its owner's control with ${if (n == 0) "no" else "a"} $kind counter on it. It comes back as a new object with no memory of the old one.", if (undying) "702.92a" else "702.79a", "400.7")
+        state.outcomes += "${def.name} comes back with ${if (n == 0) "no" else "a"} $kind counter ($kw); it's now ${back.power}/${back.toughness}."
+        onEvent(GameEvent.EntersBattlefield(back))
+        stateBasedActions()
+    }
+
     /** The evoke trigger (702.74a): "When this permanent enters, if its evoke cost was paid, its controller sacrifices it." It's an enters-the-battlefield trigger like any other, so Torpor Orb stops it. */
     private fun onEvokeEntered(obj: GameObject) {
         val ability = TriggeredAbility(Trigger.ThisEnters, Effect.SacrificeSource, "When this permanent enters, if its evoke cost was paid, its controller sacrifices it.")
@@ -1931,11 +1955,14 @@ class Engine(val state: GameState) {
             return
         }
         val from = obj.zone
+        // Undying and persist are read while it is still on the battlefield (603.10e).
+        val hadUndying = from == Zone.BATTLEFIELD && to == Zone.GRAVEYARD && state.hasKeyword(obj, "undying")
+        val hadPersist = from == Zone.BATTLEFIELD && to == Zone.GRAVEYARD && state.hasKeyword(obj, "persist")
         moveRaw(obj, to)
         trace.step(text, *rules)
         state.outcomes += "${obj.name}: ${zoneName(from, obj)} → ${zoneName(to, obj)}."
         if (from == Zone.BATTLEFIELD) {
-            if (to == Zone.GRAVEYARD) onEvent(GameEvent.Dies(obj)) else onEvent(GameEvent.LeavesBattlefield(obj))
+            if (to == Zone.GRAVEYARD) { onEvent(GameEvent.Dies(obj)); undyingOrPersist(obj, hadUndying, hadPersist) } else onEvent(GameEvent.LeavesBattlefield(obj))
             // Whatever was attached to it, or it was attached to, is checked by state-based actions (704.5m/n).
         }
     }

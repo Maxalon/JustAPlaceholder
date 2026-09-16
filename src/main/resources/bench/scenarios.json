@@ -5211,5 +5211,55 @@
     "cite": [
       "614.1c"
     ]
+  },
+  {
+    "id": "mikaeus-gives-undying",
+    "text": "I control Mikaeus, the Unhallowed and my Grizzly Bears dies. What happens?",
+    "expect": [
+      "comes back with a +1/+1 counter (undying)"
+    ],
+    "notExpect": [
+      "Rules text not modeled: Other non-Human creatures"
+    ],
+    "cite": [
+      "702.92a"
+    ]
+  },
+  {
+    "id": "mikaeus-skips-humans",
+    "text": "I control Mikaeus, the Unhallowed and my Elite Vanguard dies. What happens?",
+    "expect": [
+      "Elite Vanguard: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "comes back"
+    ],
+    "cite": []
+  },
+  {
+    "id": "young-wolf-undying",
+    "text": "I control Young Wolf and it dies. What happens?",
+    "expect": [
+      "comes back with a +1/+1 counter (undying)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.92a"
+    ]
+  },
+  {
+    "id": "kitchen-finks-persist",
+    "text": "I control Kitchen Finks and it dies. What happens?",
+    "expect": [
+      "comes back with a -1/-1 counter (persist)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.79a"
+    ]
   }
 ]

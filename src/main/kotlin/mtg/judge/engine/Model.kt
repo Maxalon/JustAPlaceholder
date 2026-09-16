@@ -14,6 +14,8 @@ enum class Kind { CREATURE, ARTIFACT, ENCHANTMENT, LAND, PLANESWALKER, BATTLE, P
 data class ObjFilter(
     val kinds: Set<Kind>,
     val notKinds: Set<Kind> = emptySet(),
+    /** Creature types the filter excludes ("non-Human creatures you control"). */
+    val notSubtypes: List<String> = emptyList(),
     val controller: Who? = null,
     val attacking: Boolean? = null,
     val tapped: Boolean? = null,
