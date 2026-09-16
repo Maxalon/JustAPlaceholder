@@ -1006,9 +1006,11 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastMentioned = ids.last(); return true
         }
         // Unnamed creatures: "I have three creatures", "control two other creatures" (stats unknown; assumed 1/1 and said so).
-        Regex("""^(?:(?:have|has|got|control|controls|controlling|'ve got)\s+)?(an? |\d+ |two |three |four |five )?(?:other |more |untapped )?(?:(\d+/\d+)s?\s*)?((?:first strike |double strike |[a-z]+ )*)($creatureKinds)?(?: with ([a-z ,&]+?|(?:an? |one |two |three |four |five |\d+ )?[+-]\d+/[+-]\d+ counters?(?: on it)?))?(?: plus .*)?(?: on the battlefield| in play| out)?((?: that (?:i|they|he|she) just (?:played|cast)(?: this turn)?| that just came down| i just played| with summoning sickness| that has been out| from last turn)?)$""").find(c)?.let { r ->
+        Regex("""^(?:(?:have|has|got|control|controls|controlling|'ve got)\s+)?(an? |one |\d+ |two |three |four |five )?(?:other |more |untapped )?(?:(\d+/\d+)s?\s*)?((?:first strike |double strike |[a-z]+ )*)($creatureKinds|blockers?|attackers?|guys?|dudes?|beaters?|bodies|body)?(?: with ([a-z ,&]+?|(?:an? |one |two |three |four |five |\d+ )?[+-]\d+/[+-]\d+ counters?(?: on it)?))?(?: plus .*)?(?: on the battlefield| in play| out)?((?: that (?:i|they|he|she) just (?:played|cast)(?: this turn)?| that just came down| i just played| with summoning sickness| that has been out| from last turn)?)$""").find(c)?.let { r ->
             val hasVerb = Regex("""^(?:have|has|got|control|controls|controlling|'ve got)\b""").containsMatchIn(c)
-            val pt = r.groupValues[2]; val adj = r.groupValues[3].trim(); val kind = r.groupValues[4]
+            val pt = r.groupValues[2]; val adj = r.groupValues[3].trim()
+            // "one blocker", "two beaters": words for a creature that aren't creature types.
+            val kind = r.groupValues[4].let { if (Regex("""^(?:blockers?|attackers?|guys?|dudes?|beaters?|bodies|body)$""").matches(it)) "creature" else it }
             // Needs a verb or a state context, and something creature-like: "a 3/3", "two goblins", "3 other goblins"; not "the", "it", or a lone number.
             if (kind.isEmpty() && pt.isEmpty()) return@let
             if (!hasVerb && ctx.lastVerb != "have" && ctx.lastOwner == null) return@let
@@ -2161,6 +2163,18 @@ class SituationParser(private val names: NameIndex) {
                 ctx.events += EventSpec("resolveAll"); ids.forEach { ctx.events += EventSpec("block", player = who, obj = it, targets = listOfNotNull(attacker)) }; ctx.lastVerb = "block"
             } else ctx.lastVerb = "cast"
             ctx.lastActor = who; return true
+        }
+        // "if I block one" / "I block one of them" with nothing named: one creature that player already has
+        // blocks the first attacker. Without this the whole clause went unread and every attacker got through.
+        Regex("""^(?:if )?(?:i |they |we |he |she )?(?:chump[- ]?)?(?:blocks?|blocking|chumps?)(?: one| one of them| the first| the first one| a single one| just one| only one)$""").find(c)?.let {
+            val attackEvent = ctx.events.firstOrNull { it.verb == "attack" } ?: return@let
+            val who = actor ?: ctx.other(attackEvent.player ?: "opp") ?: "me"
+            val blocker = ctx.objects.values.lastOrNull { o -> o.controller == who && o.zone == "battlefield" && isCreatureName(o.card.name) && ctx.events.none { e -> e.verb == "block" && e.obj == o.id } }?.id
+                ?: describedCreatures("a ", "", "creature", who, ctx, "").firstOrNull()?.also {
+                    ctx.notes += "Nothing was said about what ${if (who == "me") "you" else "they"} block with, so the blocker is read as an unnamed creature; name it for a precise answer."
+                } ?: return@let
+            ctx.events += EventSpec("block", player = who, obj = blocker, targets = listOfNotNull(attackEvent.obj))
+            ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
         // "blocks one with a 1/1": a described creature blocks one of the attackers.
         Regex("""^(?:chump[- ]?)?(?:blocks?|blocking|chumps?) (?:one|one of them|the first|the first one|a single one) with (an? |\d+ |two |three )?(?:(\d+/\d+)s?\s*)?(?:($kwNouns)\b ?)?($creatureKinds)?( tokens?)?$""").find(c)?.let { r ->

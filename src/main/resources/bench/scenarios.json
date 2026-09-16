@@ -7454,5 +7454,29 @@
     "cite": [
       "702.28b"
     ]
+  },
+  {
+    "id": "stifle-cannot-target-a-mana-ability",
+    "text": "My opponent taps Llanowar Elves for mana and I Stifle the mana ability. Does that work?",
+    "expect": [
+      "Stifle can't target a mana ability"
+    ],
+    "notExpect": [
+      "Stifle is countered"
+    ],
+    "cite": [
+      "605.3b"
+    ]
+  },
+  {
+    "id": "block-one-of-two-attackers-with-what-i-have",
+    "text": "I'm at 3 life. My opponent attacks with two 2/2s and I have one blocker. If I block one, do I survive?",
+    "expect": [
+      "Yes: You are still in the game at 1 life"
+    ],
+    "notExpect": [
+      "You lose the game"
+    ],
+    "cite": []
   }
 ]

@@ -129,6 +129,15 @@ class Engine(val state: GameState) {
         // The spell's own text names a target the engine couldn't model ("target creature loses all abilities …"): the target is kept, not queried.
         val unmodeledTarget = needed.isEmpty() && targets.isNotEmpty() && effect != null && effect.hasUnparsed() && Regex("""(?i)\btarget\b""").containsMatchIn(card.oracleText ?: "")
         if (unmodeledTarget) trace.step("${card.name}'s text names a target the engine can't model, so ${describeTargets(targets).removePrefix(" targeting ")} is kept as its target and what the spell does to it is reported as unsupported.", "601.2c")
+        // "I Stifle the mana ability": an activated mana ability never goes on the stack, so there is nothing to
+        // target. Before this the answer was a clarification asking which ability was meant.
+        if (needed.any { Regex("""(?i)\bability\b""").containsMatchIn(it.raw) } && targets.isEmpty() &&
+            state.stack.none { it.kind == StackKind.ACTIVATED || it.kind == StackKind.TRIGGERED } &&
+            trace.steps.any { it.text.contains("It's a mana ability, so it doesn't use the stack") }) {
+            trace.step("${card.name} targets an activated or triggered ability on the stack, and an activated mana ability never goes on the stack, so there is nothing for it to target.", "605.3b", "601.2c")
+            state.outcomes += "${card.name} can't target a mana ability: a mana ability doesn't use the stack, so it can't be targeted, countered or responded to."
+            return null
+        }
         if (needed.size != targets.size && !unmodeledTarget && effect !is Effect.Modal && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && effect != null && targetsAPlayer(effect))) {
             if (!asked) state.clarifications += Clarification("${card.name}'s target${if (needed.size == 1) "" else "s"}",
                 "${card.name} needs ${needed.size} target${if (needed.size == 1) "" else "s"} (${needed.joinToString("; ") { it.raw }}) but ${targets.size} ${if (targets.size == 1) "was" else "were"} given (601.2c).")
