@@ -4926,5 +4926,31 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "toxic-deluge-for-three",
+    "text": "I control Toxic Deluge and cast it for 3. My opponent has a 4/4 and a 2/2. What happens?",
+    "expect": [
+      "You pay 3 life",
+      "a 2/2 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "601.2b",
+      "119.4"
+    ]
+  },
+  {
+    "id": "what-happens-when-it-enters",
+    "text": "I control Reclamation Sage and my opponent has a Sol Ring. What happens when it enters?",
+    "expect": [
+      "Sol Ring: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]

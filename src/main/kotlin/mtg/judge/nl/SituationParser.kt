@@ -333,6 +333,17 @@ class SituationParser(private val names: NameIndex) {
         }
         // "choosing the counter mode and the draw mode": both modes stay in one clause.
         t2 = t2.replace(Regex("""\b(choosing|picking|selecting) (the )?(\w+)( mode)?,? and (the )?(\w+)( mode)?\b"""), "$1 $2$3$4 & $5$6$7")
+        // "What happens when it enters?": "it" is the permanent the asker described, not the last card named.
+        Regex("""^(?:what happens )?when (it|that|(?:my |their |the )?c\d+) (?:enters|enter|comes in|etbs)(?: the battlefield)?\??$""").find(t2)?.let { r ->
+            val named = Regex("""c\d+""").find(r.groupValues[1])?.value ?: Regex("""c\d+""").find(t2)?.value
+            if (named != null) { t2 = t2.substring(0, r.range.first) + "$named enters" }
+            else {
+                // Nothing named in this sentence: "it" is the first permanent the asker described, named by its id.
+                val own = ctx.objects.values.firstOrNull { it.controller == "me" } ?: ctx.objects.values.firstOrNull()
+                if (own != null) t2 = t2.substring(0, r.range.first) + "@@obj:${own.id} enters"
+            }
+            any = true
+        }
         // "a creature with deathtouch and first strike": a keyword list joined by "and" stays in one clause.
         run {
             val kw = """(?:flying|trample|deathtouch|lifelink|first strike|double strike|haste|vigilance|reach|menace|hexproof|indestructible|infect|wither|shroud|defender|flash|regenerate|protection from \w+)"""
@@ -1000,7 +1011,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("cast", player = who, obj = id); ctx.lastActor = who; ctx.lastVerb = "cast"; return true
         }
         // "cast it" after "I have X in hand": the card noted in hand.
-        Regex("""^(?:(?:$castVerbs) (?:it|that|the card)|flash(?:es)? (?:it|that) in|flash(?:es)? in (?:it|that))(?: after (?:blockers|blocks|attackers)| before damage| in response| on my end step| on their end step| at instant speed| at the end of my turn| at the end of their turn| during my turn| during their turn)?(?: paying (\d+) life| for (\d+) life)?(?: (?:on|at|targeting) (.*?))?((?: (?:with|for|where|at) x ?(?:=|equal to|equals|being|of|as) ?\d+| x ?= ?\d+| kicked| overloaded| with evoke)?)$""").find(c)?.let { r ->
+        Regex("""^(?:(?:$castVerbs) (?:it|that|the card)|flash(?:es)? (?:it|that) in|flash(?:es)? in (?:it|that))(?: after (?:blockers|blocks|attackers)| before damage| in response| on my end step| on their end step| at instant speed| at the end of my turn| at the end of their turn| during my turn| during their turn)?(?: paying (\d+) life| for (\d+) life)?(?: (?:on|at|targeting) (.*?))?((?: (?:with|for|where|at) x ?(?:=|equal to|equals|being|of|as) ?\d+| x ?= ?\d+| for \d+| kicked| overloaded| with evoke)?)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val card = ctx.inHand[who]?.lastOrNull() ?: return@let
             val life = r.groupValues[1].ifEmpty { r.groupValues[2] }
@@ -1312,6 +1323,12 @@ class SituationParser(private val names: NameIndex) {
         }
         Regex("""^(?:an? |the )?(c\d+) (?:is|are) (?:on the battlefield|in play|out|on board|on my side|on my board|on my field|on the field|under my control)""").find(c)?.let { r ->
             addObject(m.cards.getValue(r.groupValues[1]), actor ?: "me", clause0.contains("tapped"), ctx); return true
+        }
+        // "@@obj:<id> enters": the referent a question about entering already settled.
+        Regex("""^@@obj:(\S+) (?:enters|comes in|etbs)(?: the battlefield)?$""").find(c)?.let { r ->
+            val id = r.groupValues[1].takeIf { it in ctx.objects } ?: return@let
+            ctx.objects[id] = ctx.objects.getValue(id).copy(zone = "hand")
+            ctx.events += EventSpec("enter", obj = id); ctx.lastMentioned = id; return true
         }
         Regex("""^(?:it|that|he|she) (?:enters|comes in|etbs|enters the battlefield)(?: now| again)?$""").find(c)?.let {
             val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
