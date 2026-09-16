@@ -473,6 +473,17 @@ class Engine(val state: GameState) {
     }
 
     /** "Their Grizzly Bears untaps": the asker states it, rather than it happening in an untap step (701.26b). */
+    /** "I put a +1/+1 counter on my Bears": counters placed by an effect, so doublers and Solemnity apply (614.1a). */
+    fun putCounters(objectId: String, count: Int, kind: String) {
+        val obj = state.obj(objectId)
+        val placed = countersPlaced(obj, count, kind)
+        if (placed <= 0) { state.outcomes += "No $kind counters are put on ${obj.name}."; return }
+        obj.counters[kind] = (obj.counters[kind] ?: 0) + placed
+        trace.step("$placed $kind counter${if (placed == 1) "" else "s"} ${if (placed == 1) "is" else "are"} put on ${obj.name}${if (obj.def.isCreature) "; it is now ${state.describePt(obj)}" else ""}.", "122.1", "614.1a")
+        state.outcomes += "${obj.name} has ${obj.counters[kind]} $kind counter${if (obj.counters[kind] == 1) "" else "s"}."
+        stateBasedActions()
+    }
+
     /** "they tap my Grizzly Bears down": tapping a permanent, which is not the same as using a {T} ability. */
     fun tapObject(objectId: String) {
         val obj = state.obj(objectId)

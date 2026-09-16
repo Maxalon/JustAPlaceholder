@@ -125,6 +125,21 @@ class PhrasingFamiliesTest {
                 "They Swords my Grizzly Bears.", "My Grizzly Bears gets exiled.",
             ),
         ),
+        Family(
+            "a pump spell", "I control Grizzly Bears. ", "Grizzly Bears is 5/5",
+            listOf(
+                "They cast Giant Growth on my Grizzly Bears.", "They pump my Grizzly Bears with Giant Growth.",
+                "My Grizzly Bears gets +3/+3 from Giant Growth.", "They Giant Growth my Grizzly Bears.",
+            ),
+        ),
+        Family(
+            "putting a counter on something", "I control Grizzly Bears. ", "Grizzly Bears is 3/3",
+            listOf(
+                "I put a +1/+1 counter on my Grizzly Bears. What are its stats?",
+                "I add a +1/+1 counter to my Grizzly Bears. What are its stats?",
+                "I place a +1/+1 counter on it. What are its stats?",
+            ),
+        ),
     )
 
     @Test

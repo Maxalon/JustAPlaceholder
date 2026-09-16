@@ -7801,5 +7801,29 @@
       "I couldn't find"
     ],
     "cite": []
+  },
+  {
+    "id": "a-counter-put-on-under-doubling-season",
+    "text": "I control Grizzly Bears and Doubling Season and put a +1/+1 counter on my Grizzly Bears. What are its stats?",
+    "expect": [
+      "Grizzly Bears is 4/4"
+    ],
+    "notExpect": [
+      "Grizzly Bears is 3/3"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "a-counter-put-on-under-solemnity",
+    "text": "I control Grizzly Bears and Solemnity and put a +1/+1 counter on my Grizzly Bears. What are its stats?",
+    "expect": [
+      "Grizzly Bears is 2/2"
+    ],
+    "notExpect": [
+      "Grizzly Bears is 3/3"
+    ],
+    "cite": []
   }
 ]

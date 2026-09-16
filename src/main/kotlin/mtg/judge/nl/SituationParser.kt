@@ -419,6 +419,10 @@ class SituationParser(private val names: NameIndex) {
         t2 = Regex("""((?:my |their |the |his |her )?c\d+) (?:is|are|was|were|gets?|got) (?:bounced|exiled|destroyed|killed|removed) by ((?:an? |the |my |their )?)(c\d+)""").replace(t2) { r ->
             if (m.cards[r.groupValues[3]]?.isSpellOnly == true) "casts ${r.groupValues[2]}${r.groupValues[3]} targeting ${r.groupValues[1]}" else r.value
         }
+        // "my Bears gets +3/+3 from Giant Growth": the spell said as the source of the bonus rather than as a cast.
+        t2 = Regex("""((?:my |their |the |his |her )?c\d+|it|that) gets? [+-]\d+/[+-]\d+ from ((?:an? |the |my |their )?)(c\d+)""").replace(t2) { r ->
+            if (m.cards[r.groupValues[3]]?.isSpellOnly == true) "casts ${r.groupValues[2]}${r.groupValues[3]} targeting ${r.groupValues[1]}" else r.value
+        }
         // "it's turn 3" / "on turn 2": the game's turn number.
         Regex("""\b(?:it's|it is|this is|on|during|in) turn (\d+)\b|\bturn (\d+) of the game\b""").find(t2)?.let { r -> ctx.turnNumber = (r.groupValues[1].ifEmpty { r.groupValues[2] }).toInt(); any = true; t2 = t2.removeRange(r.range) }
         Regex("""\b(it's|it is|during|on|in) (my|their|the opponent's|opponent's|my opponent's|@\w+'s) (turn|upkeep|end step|main phase|combat|draw step|beginning of combat)\b""").find(t2)?.let { r ->
@@ -1287,6 +1291,14 @@ class SituationParser(private val names: NameIndex) {
             val id = if (r.groupValues[1] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
                      else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
             ctx.events += EventSpec("leave", obj = id, to = "library"); ctx.lastMentioned = id; return true
+        }
+        // "I put a +1/+1 counter on my Bears", "add two charge counters to it": counters placed now, which is not
+        // the same as a permanent that already has them — doublers and Solemnity apply to the placement.
+        Regex("""^(?:puts?|put|adds?|added|places?|placed) (an?|one|two|three|four|five|\d+) ([+-]\d+/[+-]\d+|[a-z]+) counters? (?:on|onto|to) (?:(?:my |their |the |his |her )?(c\d+)|it|that|itself)$""").find(c)?.let { r ->
+            val id = if (r.groupValues[3].isEmpty()) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else m.cards[r.groupValues[3]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
+            ctx.events += EventSpec("counters", obj = id, amount = number(r.groupValues[1]) ?: 1, to = r.groupValues[2])
+            ctx.lastMentioned = id; return true
         }
         // "I tap my Grizzly Bears", "they tap it down", "it becomes tapped": tapping a permanent, which is not the
         // same as using a {T} ability — a creature with no {T} ability can still be tapped by an effect.
