@@ -160,7 +160,9 @@ class SituationParser(private val names: NameIndex) {
     }
 
     /** Creature-type words people shorten a name to ("the Angel", "the Giant"); only used with "the"/"my"/"their" in front. */
-    private val typeShortNames = setOf("angel", "demon", "dragon", "giant", "wizard", "knight", "elf", "goblin", "sphinx", "beast", "bird", "cat", "wolf", "bear", "elemental", "spirit", "soldier", "warrior", "lord", "king", "queen", "rat", "dog", "zombie", "vampire", "hydra", "titan", "golem", "wurm", "drake", "djinn", "phoenix", "shaman", "druid", "cleric", "rogue", "archer")
+    /** Words that make the next word a description rather than a name: "a Goblin", "two Walls". */
+    private val indefiniteWords = setOf("a", "an", "another", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "some", "any", "no", "each", "every", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10")
+    private val typeShortNames = setOf("wall", "angel", "demon", "dragon", "giant", "wizard", "knight", "elf", "goblin", "sphinx", "beast", "bird", "cat", "wolf", "bear", "elemental", "spirit", "soldier", "warrior", "lord", "king", "queen", "rat", "dog", "zombie", "vampire", "hydra", "titan", "golem", "wurm", "drake", "djinn", "phoenix", "shaman", "druid", "cleric", "rogue", "archer")
 
     private val shortNameStop = setOf("the", "and", "with", "from", "into", "onto", "for", "that", "this", "your", "you", "all", "each", "any", "one", "two", "three", "of",
         "control", "controls", "cast", "casts", "have", "has", "play", "plays", "tap", "taps", "sacrifice", "return", "destroy", "exile", "draw", "gain", "lose", "pay", "attack", "block", "counter", "magic", "growth", "study",
@@ -214,6 +216,8 @@ class SituationParser(private val names: NameIndex) {
         val full = kept + names.findAll(normWords).filter { f -> (f.start until f.end).none { it in keptCovered } }.map { f -> if (f.end - f.start == 1) shortAt(f.start)?.let { f.copy(entry = it) } ?: f else f }
         val covered = full.flatMap { it.start until it.end }.toSet()
         val found = (full + normWords.indices.filter { it !in covered }.mapNotNull { i -> shortAt(i)?.let { NameIndex.Found(i, i + 1, it) } })
+            // "a Goblin", "two Walls": a bare creature type after an indefinite article or a count is a description, not the card of that name.
+            .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in typeShortNames && normWords.getOrNull(f.start - 1) in indefiniteWords) }
             // "a Charge counter", "two Shield tokens": the word before "counter"/"token" names the kind, not a card.
             .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.end) in setOf("token", "tokens", "counter", "counters") && normWords[f.start] !in short) }
             // "to protect it", "to save my Bears": a verb after "to" is a verb, not the card of that name.
@@ -2106,7 +2110,7 @@ class SituationParser(private val names: NameIndex) {
     /** Keyword words that are also card names ("Lifelink", "Flying"); in a keyword list they mean the keyword. */
     private val keywordWords = setOf("flying", "trample", "deathtouch", "lifelink", "haste", "vigilance", "reach", "menace", "hexproof", "indestructible", "infect", "defender", "flash", "shroud", "intimidate", "fear", "wither", "changeling", "banding", "horsemanship", "shadow", "persist", "undying", "exalted", "prowess")
     private val kwNouns = """(?:fliers?|flyers?|flying|tramplers?|trample|deathtouchers?|deathtouch|lifelinkers?|lifelink|first strikers?|first strike|double strikers?|double strike|haste|vigilance|reach|menace|hexproof|indestructible|infect)"""
-    private val creatureKinds = """(?:creatures?|goblins?|elves|elf|zombies?|soldiers?|spirits?|angels?|dragons?|humans?|vampires?|beasts?|birds?|cats?|dogs?|wolves|wolf|knights?|warriors?|wizards?|merfolk|dinosaurs?|hydras?|demons?|elementals?|insects?|rats?|snakes?|thopters?|servos?|saprolings?|squirrels?|bears?|giants?|orcs?|slivers?|faeries|faerie|treefolk|horrors?|constructs?|golems?)"""
+    private val creatureKinds = """(?:creatures?|walls?|goblins?|elves|elf|zombies?|soldiers?|spirits?|angels?|dragons?|humans?|vampires?|beasts?|birds?|cats?|dogs?|wolves|wolf|knights?|warriors?|wizards?|merfolk|dinosaurs?|hydras?|demons?|elementals?|insects?|rats?|snakes?|thopters?|servos?|saprolings?|squirrels?|bears?|giants?|orcs?|slivers?|faeries|faerie|treefolk|horrors?|constructs?|golems?)"""
     private val singularKind = mapOf("elves" to "elf", "wolves" to "wolf", "faeries" to "faerie")
 
     /** "a 3/3", "two 2/2 goblins", "3 other goblins", "a 4/4 flier": unnamed creatures with the stats given (else 1/1, and said so). */
@@ -2116,14 +2120,16 @@ class SituationParser(private val names: NameIndex) {
         val words = kindWord.trim().lowercase().split(' ').filter { it.isNotEmpty() }
         val kind = words.joinToString("") { w -> val k = singularKind[w] ?: w.removeSuffix("s"); if (k == "creature" || k == "flying") "" else "$k " }
         val extraKw = if ("flying" in words && "flying" !in keywords) (if (keywords.isEmpty()) "flying" else "$keywords, flying") else keywords
-        val name = "a " + (if (pt.isNotEmpty()) "$pt " else "") + kind + "creature" + (if (extraKw.isNotEmpty()) " with $extraKw" else "")
+        val described = (if (pt.isNotEmpty()) "$pt " else "") + kind + "creature" + (if (extraKw.isNotEmpty()) " with $extraKw" else "")
+        val article = if (described.first().lowercaseChar() in "aeiou") "an " else "a "
+        val name = article + described
         // "the 2/2" / "my 3/3": one already described, not a new one.
         if (count.trim() in setOf("the", "my", "their")) {
-            ctx.objects.values.lastOrNull { o -> o.controller == who && (o.card.name ?: "").startsWith("a " + (if (pt.isNotEmpty()) "$pt " else "")) }?.let { o ->
+            ctx.objects.values.lastOrNull { o -> o.controller == who && (o.card.name ?: "").startsWith(article + (if (pt.isNotEmpty()) "$pt " else "")) }?.let { o ->
                 ctx.lastMentioned = o.id; return listOf(o.id)
             }
         }
-        val ids = (1..n).map { var id = slug(name.removePrefix("a ")); var k = 2; while (ctx.objects.containsKey(id)) id = slug(name.removePrefix("a ")) + "_" + (k++); ctx.objects[id] = ObjectSpec(id, CardRef(name = name), controller = who); id }
+        val ids = (1..n).map { var id = slug(described); var k = 2; while (ctx.objects.containsKey(id)) id = slug(described) + "_" + (k++); ctx.objects[id] = ObjectSpec(id, CardRef(name = name), controller = who); id }
         if (pt.isEmpty()) ctx.notes += "$n unnamed ${kind}creature${if (n > 1) "s" else ""} assumed to be vanilla 1/1s; name them for a precise answer."
         ctx.lastMentioned = ids.last()
         return ids

@@ -5684,5 +5684,28 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "a-bare-creature-type-is-a-description-not-a-card",
+    "text": "I control a Goblin and a Wall. What happens?",
+    "expect": [
+      "a goblin creature",
+      "a wall creature"
+    ],
+    "notExpect": [
+      "_____ Goblin"
+    ],
+    "cite": []
+  },
+  {
+    "id": "described-creatures-get-the-right-article",
+    "text": "I control two Elves. What happens?",
+    "expect": [
+      "an elf creature"
+    ],
+    "notExpect": [
+      "a elf creature"
+    ],
+    "cite": []
   }
 ]

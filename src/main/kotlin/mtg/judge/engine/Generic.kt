@@ -57,7 +57,8 @@ object Generic {
         val colors = m.groupValues[3].trim().split(' ').mapNotNull { colorMap[it] }.joinToString("")
         val keywords = m.groupValues[4].split(Regex("""\s*,\s*|\s+and\s+""")).map { it.trim() }.filter { it.isNotEmpty() }
         val kwLine = keywords.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
-        return OracleParser.parse("generic-$n", "a $n", "Creature" + (if (subs.isEmpty()) "" else " — $subs"), "{1}", 1.0, colors,
+        val article = if (n.first().lowercaseChar() in "aeiou") "an" else "a"
+        return OracleParser.parse("generic-$n", "$article $n", "Creature" + (if (subs.isEmpty()) "" else " — $subs"), "{1}", 1.0, colors,
             m.groupValues[1].ifEmpty { "1" }, m.groupValues[2].ifEmpty { "1" }, keywords, kwLine)
     }
 
