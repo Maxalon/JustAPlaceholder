@@ -305,8 +305,10 @@ sealed interface StaticEffect {
     data object PreventOwnCombatDamage : StaticEffect
     /** "You control enchanted creature" (Mind Control): a control-changing static, layer 2. */
     data object ControlEnchanted : StaticEffect
-    /** Panharmonicon: artifacts and creatures entering make your triggered abilities trigger an additional time. */
-    data object ExtraEtbTrigger : StaticEffect
+    /** Panharmonicon (artifacts and creatures) and Elesh Norn (any permanent): entering makes your triggers trigger an additional time. */
+    data class ExtraEtbTrigger(val anyPermanent: Boolean = false) : StaticEffect
+    /** Elesh Norn, Mother of Machines: "Permanents entering don't cause abilities of permanents your opponents control to trigger." */
+    data object NoEtbTriggersForOpponents : StaticEffect
     /** Propaganda / Ghostly Prison: "Creatures can't attack you unless their controller pays [cost] for each creature …". */
     data class AttackTax(val cost: String) : StaticEffect
     /** "Creatures entering the battlefield (or dying) don't cause abilities to trigger." (Torpor Orb, Hushbringer) */

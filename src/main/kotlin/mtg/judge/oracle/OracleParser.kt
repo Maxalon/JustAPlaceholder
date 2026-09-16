@@ -353,7 +353,9 @@ object OracleParser {
             val cond = parseCondition(m.groupValues[1]) ?: return emptyList()
             return listOf(StaticEffect.EntersTapped(cond))
         }
-        Regex("""^if an artifact or creature entering(?: the battlefield)? causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.ExtraEtbTrigger) }
+        Regex("""^if an artifact or creature entering(?: the battlefield)? causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.ExtraEtbTrigger()) }
+        Regex("""^if a permanent entering(?: the battlefield)? causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.ExtraEtbTrigger(anyPermanent = true)) }
+        Regex("""^permanents entering(?: the battlefield)? don't cause abilities of permanents your opponents control to trigger\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.NoEtbTriggersForOpponents) }
         Regex("""^creatures can't attack you(?: or planeswalkers you control)? unless their controller pays (\{[^}]+\}(?:\{[^}]+\})*) for each creature they control that's attacking you(?: or planeswalkers you control)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.AttackTax(m.groupValues[1])) }
         Regex("""^creatures entering(?: the battlefield)?( or dying)? don't cause abilities to trigger\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.NoEtbTriggers(m.groupValues[1].isNotEmpty())) }
         Regex("""^~ can't be blocked by (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->

@@ -514,6 +514,12 @@ class SituationParser(private val names: NameIndex) {
                 }
                 return readClause("i attack with $what", m, ctx)
             }
+            // "can my 2/2 block it?" / "can I block with a 2/2?": a described blocker, when an attack is already on the table.
+            Regex("""^(?:(?:i|we|they|he|she|my opponent|the opponent|@\w+) (?:still |even )?blocks? with (?:an? |the |my |their )?((?:\d+/\d+)(?: [a-z]+)*)|(?:my |the |their |his |her )?((?:\d+/\d+)(?: [a-z]+)*) (?:still |even )?blocks?(?: it| that| the attacker)?)(?: (?:this|next) turn| now| right away| at all)?$""").find(r.groupValues[1])?.let { q ->
+                val desc = q.groupValues[1].ifEmpty { q.groupValues[2] }
+                if (ctx.events.none { it.verb == "attack" || it.verb == "attackAll" }) return@let
+                return readClause("blocks with a $desc", m, ctx)
+            }
             Regex("""^(?:i|they|my opponent|the opponent|opponent|he|she|@\w+) (?:still |even |then )?(block)(?: with)? (?:it|that|him|her|(?:my |the |their |his |her )?(c\d+))(?: (?:this|next) turn| now| right away| at all)?$|^(?:it|that|(?:my |the |their |his |her )?(c\d+)) (?:still |even )?(block)(?: (?:this|next) turn| now| right away| at all)?$""").find(r.groupValues[1])?.let { q0 ->
                 val q = object { val groupValues = listOf(q0.groupValues[0], q0.groupValues[1].ifEmpty { q0.groupValues[4] }, q0.groupValues[2].ifEmpty { q0.groupValues[3] }) }
                 val id = q.groupValues[2].takeIf { it.isNotEmpty() }?.let { m.cards.getValue(it) }?.let { objectIdFor(it, ctx) ?: addObject(it, actorOfClause(r.groupValues[1]) ?: ctx.lastActor ?: "me", false, ctx) } ?: ctx.lastMentioned?.takeIf { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) } ?: ctx.events.lastOrNull { it.verb == "cast" }?.targets?.firstOrNull { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) } ?: ctx.objects.values.lastOrNull { isCreatureName(it.card.name) }?.id ?: ctx.lastMentioned?.takeIf { it in ctx.objects }
@@ -649,6 +655,27 @@ class SituationParser(private val names: NameIndex) {
             // "sacrifice Hexmage targeting my Bears": the target belongs to the "Sacrifice this:" ability the sacrifice pays for.
             ctx.events += EventSpec("sacrifice", player = who, obj = id, targets = targetsIn(r.groupValues[3], m, ctx))
             ctx.lastActor = who; return true
+        }
+        // "my opponent's 6/6 is attacking me" / "their 3/3 is attacking": a described creature already declared as an attacker.
+        Regex("""^(?:(my opponent's|the opponent's|opponent's|their|his|her|my|the|@\w+'s) )?(an? |\d+ |two |three )?(\d+/\d+)s?(?: ($kwNouns))?(?: ($creatureKinds))? (?:is|are) attacking(?: (me|you|them|my opponent|the opponent|@\w+))?$""").find(c)?.let { r ->
+            val head = r.groupValues[1]
+            val who = when {
+                head.startsWith("my opponent") || head.startsWith("the opponent") || head.startsWith("opponent") || head in setOf("their", "his", "her") -> pronounPlayer(ctx, "their")
+                head == "my" -> "me"
+                head.startsWith("@") -> head.removePrefix("@").removeSuffix("'s")
+                else -> actor ?: ctx.lastOwner ?: "opp"
+            }
+            val kw = r.groupValues[4].let { k -> if (k.isEmpty()) "" else k.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") }
+            val ids = describedCreatures(r.groupValues[2], r.groupValues[3], r.groupValues[5], who, ctx, kw)
+            if (ids.isEmpty()) return@let
+            val defender = when (val d = r.groupValues[6]) {
+                "", "me", "you" -> ctx.other(who) ?: "me"
+                "them", "my opponent", "the opponent" -> pronounPlayer(ctx, "their")
+                else -> d.removePrefix("@")
+            }
+            for (id in ids) ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(defender))
+            ctx.lastVerb = "attack"; ctx.lastActor = who; ctx.lastOwner = who; ctx.lastMentioned = ids.last(); ctx.note(who); ctx.note(defender)
+            return true
         }
         // Unnamed creatures: "I have three creatures", "control two other creatures" (stats unknown; assumed 1/1 and said so).
         Regex("""^(?:(?:have|has|got|control|controls|controlling|'ve got)\s+)?(an? |\d+ |two |three |four |five )?(?:other |more |untapped )?(?:(\d+/\d+)s?\s*)?((?:[a-z]+ )?)($creatureKinds)?(?: with ([a-z ,&]+?))?(?: plus .*)?(?: on the battlefield| in play| out)?$""").find(c)?.let { r ->

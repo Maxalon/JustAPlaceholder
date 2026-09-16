@@ -307,4 +307,21 @@ class BatchFourteenTest {
         s.put("goyf", goyf, "me")
         assertEquals(0, s.obj("goyf").power)
     }
+
+    private val norn = card("Elesh Norn, Mother of Machines", "Legendary Creature — Phyrexian Praetor", "Vigilance\nIf a permanent entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.\nPermanents entering don't cause abilities of permanents your opponents control to trigger.", "{4}{W}", "W", "4", "7", "Vigilance")
+    private val soulWarden = card("Soul Warden", "Creature — Human Cleric", "Whenever another creature enters, you gain 1 life.", "{W}", "W", "1", "1")
+
+    @Test
+    fun `elesh norn doubles her controller's triggers and mutes the opponents'`() {
+        val s = state(); s.put("norn", norn, "me"); s.put("warden", soulWarden, "me")
+        s.put("newcomer", bears, "me", Zone.HAND)
+        val e = Engine(s); e.enter("newcomer"); e.resolveAll()
+        assertEquals(22, s.player("me").life)
+
+        val s2 = state(); s2.put("norn", norn, "me"); s2.put("warden", soulWarden, "opp")
+        s2.put("newcomer", bears, "opp", Zone.HAND)
+        val e2 = Engine(s2); e2.enter("newcomer"); e2.resolveAll()
+        assertEquals(20, s2.player("opp").life)
+        assertTrue(s2.trace.steps.any { it.text.contains("doesn't trigger at all") }, s2.trace.steps.joinToString("\n") { it.text })
+    }
 }

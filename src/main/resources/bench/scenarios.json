@@ -4874,5 +4874,57 @@
       "replaced by Anafenza"
     ],
     "cite": []
+  },
+  {
+    "id": "elesh-norn-mutes-an-opponent",
+    "text": "I control Elesh Norn, Mother of Machines and my opponent casts Reclamation Sage. What happens?",
+    "expect": [
+      "doesn't trigger at all"
+    ],
+    "notExpect": [
+      "Rules text not modeled: Permanents entering don't cause"
+    ],
+    "cite": [
+      "603.2",
+      "604.2"
+    ]
+  },
+  {
+    "id": "elesh-norn-doubles-mine",
+    "text": "I control Elesh Norn, Mother of Machines and Soul Warden. A creature enters under my control. What happens?",
+    "expect": [
+      "trigger an additional time",
+      "You gain 1 life. (×2)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "described-attacker-already-attacking",
+    "text": "My opponent's 6/6 is attacking me. I block with a 2/2. What happens?",
+    "expect": [
+      "a 2/2 creature: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "510.1c"
+    ]
+  },
+  {
+    "id": "described-blocker-cant-block-a-flier",
+    "text": "Their 3/3 flier is attacking. Can my 2/2 block it?",
+    "expect": [
+      "can't block a 3/3 creature with flying (flying)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

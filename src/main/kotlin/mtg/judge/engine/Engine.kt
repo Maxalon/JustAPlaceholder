@@ -849,10 +849,29 @@ class Engine(val state: GameState) {
                 if (matches(obj, ability.trigger, event)) triggered += obj to ability
             }
         }
-        // Panharmonicon: an artifact or creature entering makes its controller's triggers trigger an additional time.
-        if (event is GameEvent.EntersBattlefield && (event.obj.def.isCreature || "Artifact" in event.obj.def.types)) {
-            val extra = triggered.filter { (obj, _) -> state.objects.values.any { p -> p.isOnBattlefield() && p.controller == obj.controller && p.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.ExtraEtbTrigger } } }
-            if (extra.isNotEmpty()) { val src = state.objects.values.first { p -> p.isOnBattlefield() && p.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.ExtraEtbTrigger } }; trace.step("${src.name} makes ${extra.joinToString(" and ") { it.first.name + "'s ability" }} trigger an additional time.", "603.2"); triggered += extra }
+        // Elesh Norn: a permanent entering causes no abilities of her controller's opponents to trigger.
+        if (event is GameEvent.EntersBattlefield) {
+            val norn = state.objects.values.firstOrNull { p -> p.isOnBattlefield() && p.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.NoEtbTriggersForOpponents } }
+            if (norn != null) {
+                val muted = triggered.filter { it.first.controller != norn.controller }
+                if (muted.isNotEmpty()) {
+                    trace.step("${norn.name} says permanents entering don't cause abilities of ${state.player(norn.controller).possessive} opponents' permanents to trigger, so ${muted.joinToString(" and ") { it.first.name + "'s ability" }} doesn't trigger at all.", "603.2", "604.2")
+                    triggered.removeAll(muted)
+                }
+            }
+        }
+        // Panharmonicon and Elesh Norn: a permanent entering makes its controller's triggers trigger an additional time.
+        if (event is GameEvent.EntersBattlefield) {
+            fun doublerFor(owner: String) = state.objects.values.firstOrNull { p ->
+                p.isOnBattlefield() && p.controller == owner && p.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }
+                    .any { it is StaticEffect.ExtraEtbTrigger && (it.anyPermanent || event.obj.def.isCreature || "Artifact" in event.obj.def.types) }
+            }
+            val extra = triggered.filter { (obj, _) -> doublerFor(obj.controller) != null }
+            if (extra.isNotEmpty()) {
+                val src = doublerFor(extra[0].first.controller)!!
+                trace.step("${src.name} makes ${extra.joinToString(" and ") { it.first.name + "'s ability" }} trigger an additional time.", "603.2")
+                triggered += extra
+            }
         }
         if (triggered.isEmpty()) return
         // 603.3b: APNAP order; the active player's triggers go on the stack first (so they resolve last).
