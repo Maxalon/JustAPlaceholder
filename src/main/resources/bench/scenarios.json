@@ -7421,5 +7421,27 @@
     ],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "a-tapped-creature-cant-block",
+    "text": "I control a tapped Grizzly Bears. Can it block?",
+    "expect": [
+      "No: Grizzly Bears is tapped"
+    ],
+    "notExpect": [
+      "Yes: Grizzly Bears can block"
+    ],
+    "cite": []
+  },
+  {
+    "id": "menace-needs-two-blockers",
+    "text": "They attack with a 2/2 with menace and I control Grizzly Bears. Can my Grizzly Bears block?",
+    "expect": [
+      "can't block a 2/2 creature with menace on its own"
+    ],
+    "notExpect": [],
+    "cite": [
+      "702.111b"
+    ]
   }
 ]

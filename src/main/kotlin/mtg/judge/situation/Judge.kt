@@ -228,6 +228,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         e.to == "attack" && state.hasKeyword(o, "defender") -> "No: ${o.name} has defender, so it can't attack (702.3b)."
                         // Attacking taps it, so a creature that is already attacking is tapped and could attack.
                         e.to == "attack" && o.tapped == true && o.attacking == null -> "No: ${o.name} is tapped, so it can't be declared as an attacker (508.1a)."
+                        e.to == "block" && o.tapped == true && o.blocking == null -> "No: ${o.name} is tapped, and a tapped creature can't be declared as a blocker (509.1a)."
+                        e.to == "block" && o.attacking != null -> "No: ${o.name} is attacking, so it isn't there to block (509.1a)."
                         else -> engine.cantWhy(o.id, e.to)?.let { why -> "No: ${o.name} can't ${e.to} (${if (why == o.name) "its own ability" else why} says so)." }
                             ?: if (o.isOnBattlefield()) "Yes: ${o.name} can ${e.to}${if (e.to == "attack" && o.summoningSick == true && !o.has("haste")) ", but not this turn: it's summoning sick (302.6)" else ""}." else "No: ${o.name} isn't on the battlefield."
                     }

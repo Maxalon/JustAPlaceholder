@@ -892,7 +892,7 @@ class Engine(val state: GameState) {
         // Menace: a single blocker is not a legal block.
         for (a in attackers) if (a.has("menace")) {
             val bs = blockersOf(a)
-            if (bs.size == 1) { trace.step("${a.name} has menace and can't be blocked except by two or more creatures; blocking it with only ${bs[0].name} isn't a legal block, so ${a.name} is unblocked.", "702.111b", "509.1a"); bs[0].blocking = null; a.wasBlocked = false }
+            if (bs.size == 1) { trace.step("${a.name} has menace and can't be blocked except by two or more creatures; blocking it with only ${bs[0].name} isn't a legal block, so ${a.name} is unblocked.", "702.111b", "509.1a"); state.outcomes += "${bs[0].name} can't block ${a.name} on its own (menace)."; bs[0].blocking = null; a.wasBlocked = false }
         }
         val strikers = (attackers + attackers.flatMap { blockersOf(it) }).filter { it.has("first strike") || it.has("double strike") }
         if (strikers.isNotEmpty()) {
