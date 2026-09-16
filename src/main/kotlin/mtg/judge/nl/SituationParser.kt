@@ -350,9 +350,11 @@ class SituationParser(private val names: NameIndex) {
             t2 = t2.substring(0, r.range.first).trim().let { if (it.isEmpty()) "" else "$it, " }.replace(Regex("""(?:i|they|he|she|my opponent|the opponent|opponent|@\w+), $"""), "") + cards.joinToString(", ") { "${if (who == "me") "i have" else if (who == "opp") "they have" else "@$who has"} $it in hand" }
         }
         // "they have an instant and a creature in their graveyard": card types in a graveyard (Tarmogoyf), kept together before the clause split.
-        Regex("""\b(?:has|have|with|got|holds?|there is|there are|there's) ((?:an? |two |three |\d+ )?(?:instant|sorcery|sorceries|creature|land|artifact|enchantment|planeswalker|battle)s?(?: cards?)?(?:,? (?:and )?(?:an? |two |three |\d+ )?(?:instant|sorcery|sorceries|creature|land|artifact|enchantment|planeswalker|battle)s?(?: cards?)?)*) in (my|their|his|her|the) graveyard\b""").find(t2)?.let { r ->
+        Regex("""\b(?:has|have|with|got|holds?|there is|there are|there's) ((?:an? |two |three |\d+ )?(?:instant|sorcery|sorceries|creature|land|artifact|enchantment|planeswalker|battle)s?(?: cards?)?(?:,? (?:and )?(?:an? |two |three |\d+ )?(?:instant|sorcery|sorceries|creature|land|artifact|enchantment|planeswalker|battle)s?(?: cards?)?)*) in (?:(my|their|his|her|the) )?graveyards?\b""").find(t2)?.let { r ->
             val before = t2.substring(0, r.range.first)
-            val who = when (r.groupValues[2]) { "my" -> "me"; "the" -> if (Regex("""\b(?:there is|there are|there's)\s*$""").containsMatchIn(before.trim() + " ") || before.isBlank()) "me" else actorOfClause(t2.trim()) ?: "me"; else -> if (Regex("""\b(?:i|my|i've|i'm)\b""").containsMatchIn(before)) "me" else pronounPlayer(ctx, "their") }
+            // "in the graveyards" with no owner: the card types are all that matter, and the engine counts every
+            // graveyard, so which one holds them doesn't change the answer.
+            val who = when (r.groupValues[2]) { "my", "" -> "me"; "the" -> if (Regex("""\b(?:there is|there are|there's)\s*$""").containsMatchIn(before.trim() + " ") || before.isBlank()) "me" else actorOfClause(t2.trim()) ?: "me"; else -> if (Regex("""\b(?:i|my|i've|i'm)\b""").containsMatchIn(before)) "me" else pronounPlayer(ctx, "their") }
             for (part in r.groupValues[1].split(Regex(""",\s*(?:and\s+)?|\s+and\s+"""))) {
                 val pm = Regex("""^(?:(an?|two|three|\d+) )?(\w+?)(?:s)?(?: cards?)?$""").find(part.trim()) ?: continue
                 val n = pm.groupValues[1].let { if (it.isEmpty() || it == "a" || it == "an") 1 else number(it) ?: 1 }

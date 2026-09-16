@@ -6615,5 +6615,16 @@
     "cite": [
       "603.2"
     ]
+  },
+  {
+    "id": "card-types-across-both-graveyards",
+    "text": "I control Tarmogoyf and there is a land, an instant and a creature in the graveyards. What are its stats?",
+    "expect": [
+      "Tarmogoyf is 3/4"
+    ],
+    "notExpect": [
+      "0 card types"
+    ],
+    "cite": []
   }
 ]
