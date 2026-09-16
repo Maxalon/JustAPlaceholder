@@ -3714,5 +3714,54 @@
     "cite": [
       "119.3"
     ]
+  },
+  {
+    "id": "boros-charm-giving-indestructible",
+    "text": "I control Grizzly Bears. My opponent casts Lightning Bolt on it. I respond with Boros Charm giving it indestructible. Does it die?",
+    "expect": [
+      "Grizzly Bears has indestructible until end of turn",
+      "No: Grizzly Bears is still on the battlefield"
+    ],
+    "notExpect": [
+      "Which mode"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "wall-blocks-trampler-how-much",
+    "text": "I have Wall of Omens and my opponent attacks with a 3/3 trample. I block. How much damage do I take?",
+    "expect": [
+      "No: you take no damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sphere-of-resistance-one-mountain",
+    "text": "My opponent has Sphere of Resistance. I cast Lightning Bolt with 1 Mountain untapped.",
+    "expect": [
+      "Sphere of Resistance makes Lightning Bolt cost {1} more"
+    ],
+    "notExpect": [
+      "opponent takes 3 damage"
+    ],
+    "cite": [
+      "601.2f"
+    ]
+  },
+  {
+    "id": "spellskite-redirects-bolt",
+    "text": "I control Spellskite. My opponent casts Lightning Bolt targeting my Grizzly Bears. I activate Spellskite.",
+    "expect": [
+      "Lightning Bolt now targets Spellskite instead of Grizzly Bears",
+      "Spellskite has 3 damage marked"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield"
+    ],
+    "cite": [
+      "115.7"
+    ]
   }
 ]

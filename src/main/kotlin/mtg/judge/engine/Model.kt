@@ -120,6 +120,8 @@ sealed interface Effect {
     data class SacrificeEach(val who: Who, val filter: ObjFilter, val greatestPower: Boolean = false) : Effect
     /** Cloudshift, Ephemerate: "Exile target creature you control, then return it to the battlefield under your / its owner's control." */
     data class Blink(val target: TargetSpec, val ownersControl: Boolean) : Effect
+    /** Spellskite: "Change a target of target spell or ability to ~." */
+    data class RedirectToSelf(val target: TargetSpec) : Effect
     /** "Repeat the following process X times." followed by the process. */
     data class Repeat(val body: Effect, val times: Int, val x: Boolean) : Effect
     /** "Each opponent loses N life unless that player sacrifices a [filter] of their choice or discards a card." (Torment of Hailfire) */
@@ -201,7 +203,7 @@ sealed interface Effect {
 
     /** Every target specification this effect (recursively) needs, in order. */
     fun targets(): List<TargetSpec> = when (this) {
-        is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target); is Blink -> listOf(target)
+        is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target); is Blink -> listOf(target); is RedirectToSelf -> listOf(target)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
         is PutCounters -> listOfNotNull(target); is RemoveAllCounters -> listOf(target); is PutOnBottom -> listOf(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is GainLifePerSpellThisTurn -> emptyList(); is WinIfDevotionCoversLibrary -> emptyList(); is CopySpell -> listOf(target); is PreventCombatToAndBy -> listOf(target); is WinIfCastBefore -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target

@@ -39,6 +39,7 @@ class BatchThirteenTest {
     private val recall = card("Ancestral Recall", "Instant", "Target player draws three cards.", "{U}", "U")
     private val exsanguinate = card("Exsanguinate", "Sorcery", "Each opponent loses X life. You gain life equal to the life lost this way.", "{X}{B}{B}", "B")
     private val condemn = card("Condemn", "Instant", "Put target attacking creature on the bottom of its owner's library. Its controller gains life equal to its toughness.", "{W}", "W")
+    private val spellskite = card("Spellskite", "Artifact Creature — Phyrexian Horror", "{U/P}: Change a target of target spell or ability to Spellskite.", "{2}", "", "0", "4")
     private val serra = card("Serra Angel", "Creature — Angel", "Flying, vigilance", "{3}{W}{W}", "W", "4", "4", "Flying", "Vigilance")
     private val viper = card("Ambush Viper", "Creature — Snake", "Flash\nDeathtouch", "{1}{G}", "G", "2", "1", "Flash", "Deathtouch")
     private val krenko = card("Krenko, Mob Boss", "Legendary Creature — Goblin Warrior", "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.", "{2}{R}{R}", "R", "3", "3")
@@ -429,6 +430,22 @@ class BatchThirteenTest {
         e2.beginDeclaringAttackers(); e2.declareAttacker("me", "serra", Ref.Player("opp")); e2.finishDeclaringAttackers()
         e2.cast("opp", condemn, listOf(Ref.Obj("serra"))); e2.resolveAll()
         assertEquals(Zone.LIBRARY, s2.obj("serra").zone); assertEquals(24, s2.player("me").life, "its controller, not Condemn's, gains the toughness")
+    }
+
+    @Test
+    fun `spellskite redirects a bolt to itself but not a spell it isn't a legal target for`() {
+        val s = state(); s.put("skite", spellskite, "me"); s.put("bears", bears, "me"); val e = Engine(s)
+        val boltItem = e.cast("opp", bolt, listOf(Ref.Obj("bears")))!!
+        assertTrue(e.activate("me", "skite", 0, listOf(Ref.Stack(boltItem.id))) != null); e.resolveAll()
+        assertEquals(0, s.obj("bears").damage); assertEquals(3, s.obj("skite").damage); assertEquals(Zone.BATTLEFIELD, s.obj("skite").zone); assertTrue("115.7" in s.cited())
+        val s2 = state(); s2.put("skite", spellskite, "me"); s2.put("bears", bears, "me"); val e2 = Engine(s2)
+        val blade = e2.cast("opp", card("Doom Blade", "Instant", "Destroy target nonblack creature.", "{1}{B}", "B"), listOf(Ref.Obj("bears")))!!
+        e2.activate("me", "skite", 0, listOf(Ref.Stack(blade.id))); e2.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s2.obj("skite").zone, "Spellskite is a colorless creature, a legal Doom Blade target, so it takes the Blade"); assertEquals(Zone.BATTLEFIELD, s2.obj("bears").zone)
+        val s3 = state(); s3.put("skite", spellskite, "me"); s3.put("bears", bears, "me"); val e3 = Engine(s3)
+        val naturalize = e3.cast("opp", card("Shatter", "Instant", "Destroy target artifact.", "{1}{R}", "R"), listOf(Ref.Obj("skite")))!!
+        e3.activate("me", "skite", 0, listOf(Ref.Stack(naturalize.id))); e3.resolveAll()
+        assertTrue(s3.outcomes.any { it.contains("target isn't changed") }, "already targeting Spellskite: nothing to change: " + s3.outcomes)
     }
 
     @Test

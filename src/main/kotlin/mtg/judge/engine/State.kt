@@ -94,7 +94,7 @@ class StackItem(
     /** The card on the stack (spells) or the permanent whose ability this is. */
     val source: GameObject,
     val effect: Effect?,
-    val targets: List<Ref>,
+    var targets: List<Ref>,
     /** Zone each object target was in when chosen, for the 608.2b legality check. */
     val targetZones: Map<String, Zone>,
     val text: String,
