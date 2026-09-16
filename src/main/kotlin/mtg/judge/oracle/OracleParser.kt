@@ -357,6 +357,23 @@ object OracleParser {
     fun parseStatic(line: String): List<StaticEffect> {
         parseReplacementStatic(line)?.let { return listOf(it) }
         Regex("""^~ enters(?: the battlefield)? tapped\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.EntersTapped()) }
+        // "Artifacts and creatures your opponents control enter tapped." (Blind Obedience, Urabrask, Kismet)
+        Regex("""^(.+?) (your opponents control|you control|)\s*enters?(?: the battlefield)? tapped\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val what = m.groupValues[1].trim().lowercase()
+            if (what == "~") return@let
+            val f = when (what) {
+                "artifacts and creatures" -> ObjFilter(setOf(Kind.ARTIFACT, Kind.CREATURE), raw = "artifact or creature")
+                "creatures" -> ObjFilter(setOf(Kind.CREATURE), raw = "creature")
+                "artifacts" -> ObjFilter(setOf(Kind.ARTIFACT), raw = "artifact")
+                "lands" -> ObjFilter(setOf(Kind.LAND), raw = "land")
+                "nonbasic lands" -> ObjFilter(setOf(Kind.LAND), raw = "nonbasic land")
+                "permanents" -> ObjFilter(setOf(Kind.PERMANENT), raw = "permanent")
+                "artifacts, creatures, and lands" -> ObjFilter(setOf(Kind.ARTIFACT, Kind.CREATURE, Kind.LAND), raw = "artifact, creature, or land")
+                else -> return@let
+            }
+            val nonbasic = what == "nonbasic lands"
+            return listOf(StaticEffect.OthersEnterTapped(if (nonbasic) f.copy(raw = "nonbasic land") else f, m.groupValues[2].trim().equals("your opponents control", true)))
+        }
         Regex("""^~ enters(?: the battlefield)? tapped unless (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val cond = parseCondition(m.groupValues[1]) ?: return emptyList()
             return listOf(StaticEffect.EntersTapped(cond))

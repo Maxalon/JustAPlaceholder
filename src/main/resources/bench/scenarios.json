@@ -5174,5 +5174,42 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "blind-obedience-taps-mine",
+    "text": "My opponent controls Blind Obedience and I cast Grizzly Bears. Is it tapped?",
+    "expect": [
+      "Grizzly Bears is tapped"
+    ],
+    "notExpect": [
+      "Rules text not modeled: Artifacts and creatures your opponents control"
+    ],
+    "cite": [
+      "614.1c"
+    ]
+  },
+  {
+    "id": "blind-obedience-leaves-its-own",
+    "text": "I control Blind Obedience and cast Grizzly Bears. Is it tapped?",
+    "expect": [
+      "Grizzly Bears is untapped"
+    ],
+    "notExpect": [
+      "Grizzly Bears is tapped"
+    ],
+    "cite": []
+  },
+  {
+    "id": "urabrask-taps-opposing-creatures",
+    "text": "My opponent controls Urabrask the Hidden and I cast Grizzly Bears. Is it tapped?",
+    "expect": [
+      "Grizzly Bears is tapped"
+    ],
+    "notExpect": [
+      "Rules text not modeled: Creatures your opponents control enter tapped"
+    ],
+    "cite": [
+      "614.1c"
+    ]
   }
 ]

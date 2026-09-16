@@ -1624,6 +1624,15 @@ class Engine(val state: GameState) {
     /** "Enters tapped" / "enters with N counters": replacement effects that modify how it enters (614.1c, 614.12). */
     private fun applyEntersReplacements(o: GameObject) {
         if (o.def.isPlaneswalker && o.def.loyalty != null) { val n = countersPlaced(o, o.def.loyalty, "loyalty"); o.counters["loyalty"] = n; trace.step("${o.name} enters with $n loyalty counters.", "306.5b"); state.outcomes += "${o.name} has $n loyalty." }
+        // Blind Obedience and friends: someone else's static makes this enter tapped.
+        for (src in state.objects.values.filter { it.isOnBattlefield() && it !== o }) {
+            for (e in src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.OthersEnterTapped>()) {
+                if (e.opponentsOnly && src.controller == o.controller) continue
+                if (e.filter.raw == "nonbasic land" && ("Basic" in o.def.supertypes || "Land" !in o.def.types)) continue
+                if (e.filter.raw != "nonbasic land" && !state.matches(e.filter, o, src.controller, src, anyZone = true)) continue
+                if (o.tapped != true) { o.tapped = true; trace.step("${src.name} makes each ${e.filter.raw} ${if (e.opponentsOnly) "${state.player(src.controller).possessive} opponents control " else ""}enter tapped, so ${o.name} enters tapped.", "614.1c", "614.12") }
+            }
+        }
         for (e in o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }) when (e) {
             is StaticEffect.EntersTapped -> {
                 if (e.unless != null && state.conditionHolds(e.unless, o)) trace.step("${o.name} would enter tapped unless its condition is met; it is, so it enters untapped.", "614.1c", "614.12")

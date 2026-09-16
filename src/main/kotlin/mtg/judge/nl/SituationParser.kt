@@ -1743,7 +1743,9 @@ class SituationParser(private val names: NameIndex) {
         }
         // "does Serra Angel untap?" / "is the Angel tapped?" / "is it still untapped?": whether it's tapped once everything is done.
         Regex("""^(?:does|do|did|will|would|is|are)\b.*?\b(?:my |their |his |her |the |@\w+'s )?(c\d+|it)(?:'s)?\b.*?\b(untap|untaps|untapped|tapped|tap|taps|stay tapped|stay untapped|still tapped|still untapped)\b""").find(clause0)?.let { q ->
-            val id = if (q.groupValues[1] == "it") ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let else m.cards[q.groupValues[1]]?.let { objectIdFor(it, ctx) } ?: return@let
+            val id = if (q.groupValues[1] == "it") (ctx.lastMentioned?.takeIf { it in ctx.objects }
+                ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.card?.name?.let { slug(it) } ?: return@let)
+                else m.cards[q.groupValues[1]]?.let { objectIdFor(it, ctx) ?: slug(it.display) } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, to = "tapped"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "does my creature survive?" / "does their token die?": the last creature that player described.
