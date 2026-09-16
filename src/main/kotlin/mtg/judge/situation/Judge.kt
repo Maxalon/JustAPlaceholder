@@ -134,7 +134,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 val gone = engine.printedAbilitiesGone(o)
                 if (sacAbility >= 0 && o.isOnBattlefield() && gone == null) engine.activate(e.player ?: o.controller, objId, sacAbility, targets)
                 else {
-                    if (sacAbility >= 0 && gone != null) state.trace.step("${o.name} has no ability of its own under $gone, so sacrificing it is just that: it goes to the graveyard and nothing else happens.", "613.1d", "701.21a")
+                    if (sacAbility >= 0 && gone != null) state.trace.step("${o.name} has no ability of its own under $gone, so sacrificing it is just that: it goes to the graveyard and nothing else happens.", "613.1f", "701.21a")
                     engine.sacrifice(e.player ?: o.controller, objId)
                 }
             }
