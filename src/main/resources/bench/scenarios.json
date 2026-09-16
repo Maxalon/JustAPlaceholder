@@ -7544,5 +7544,50 @@
       "I couldn't find"
     ],
     "cite": []
+  },
+  {
+    "id": "remove-is-a-verb-not-a-card",
+    "text": "They remove my Grizzly Bears with Swords to Plowshares. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → exile",
+      "You gain 2 life"
+    ],
+    "notExpect": [
+      "Remove can't target"
+    ],
+    "cite": []
+  },
+  {
+    "id": "ping-and-nuke-are-removal-verbs",
+    "text": "I ping their Grizzly Bears with Shock. Does it die?",
+    "expect": [
+      "Yes"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
+  },
+  {
+    "id": "alpha-strike-with-several-sizes",
+    "text": "I alpha strike with two 2/2s and a 3/3. How much damage does my opponent take?",
+    "expect": [
+      "7 damage in all"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
+  },
+  {
+    "id": "attack-with-my-team",
+    "text": "I have Grizzly Bears and Hill Giant and I attack with my team. How much damage does my opponent take?",
+    "expect": [
+      "5 damage in all"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
   }
 ]

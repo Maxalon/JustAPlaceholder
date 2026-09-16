@@ -234,7 +234,7 @@ class SituationParser(private val names: NameIndex) {
     private val playerVerbs = setOf("casts", "cast", "plays", "played", "attacks", "attacked", "blocks", "blocked", "has", "have", "had", "controls", "control", "activates", "activated", "responds", "responded", "taps", "sacrifices",
         "is", "are", "was", "swings", "targets", "counters", "draws", "pays", "declines", "passes", "says", "wants", "does", "gets", "takes", "loses", "gains", "dies", "wins", "uses", "equips", "flashes", "resolves", "fires", "slams", "runs",
         // What one player does to another's things: "Alice kills Bob's Bears", "Bob bounces Alice's Titan".
-        "kills", "killed", "destroys", "destroyed", "exiles", "exiled", "bounces", "bounced", "blinks", "blinked", "flickers", "flickered", "removes", "removed", "pumps", "pumped", "shrinks", "answers", "sacs", "discards", "mills", "returns", "steals", "copies", "untaps", "reveals", "searches", "makes", "creates", "attacks", "blocks", "swings", "wipes", "scoops", "concedes")
+        "kills", "killed", "destroys", "destroyed", "exiles", "exiled", "bounces", "bounced", "blinks", "blinked", "flickers", "flickered", "removes", "removed", "nukes", "nuked", "pings", "pinged", "zaps", "zapped", "pumps", "pumped", "shrinks", "answers", "sacs", "discards", "mills", "returns", "steals", "copies", "untaps", "reveals", "searches", "makes", "creates", "attacks", "blocks", "swings", "wipes", "scoops", "concedes")
     private val playerPreps = setOf("at", "targeting", "target", "to", "attacks", "attack", "attacking", "and", "hits", "hit", "with", "against", "on", "of", "then", "meanwhile")
 
     private fun mark(sentence: String, short: Map<String, NameIndex.Entry> = emptyMap(), named: Map<String, String> = emptyMap()): Marked {
@@ -256,9 +256,11 @@ class SituationParser(private val names: NameIndex) {
             // Unless the word is the verb: "their Counterspell counters it" is a spell doing something, not a kind of counter.
             .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.end) in setOf("token", "tokens", "counter", "counters") && normWords[f.start] !in short &&
                 !(normWords.getOrNull(f.end) in setOf("counters", "tokens") && normWords.getOrNull(f.end + 1) in setOf("it", "that", "them", "this", "my", "their", "the", "his", "her", "its"))) }
-            // "can they redirect it?", "do they steal it?": a card name used as a verb on a pronoun object is the
-            // verb. Asking whether Spellskite can redirect a Bolt turned up the card Redirect in the answer.
-            .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in verbsOnPronouns && normWords.getOrNull(f.end) in setOf("it", "that", "them", "this") && normWords[f.start] !in short) }
+            // "can they redirect it?", "they remove my Bears with Swords to Plowshares": a card name used as a
+            // verb on an object is the verb. "Remove" turned up as a card in an answer about Swords to Plowshares,
+            // and the spell the asker did name never resolved.
+            .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in verbsBeforeAnObject && normWords[f.start] !in short &&
+                normWords.getOrNull(f.end) in setOf("it", "that", "them", "this", "my", "their", "his", "her", "the", "a", "an", "its")) }
             // "to protect it", "to save my Bears": a verb after "to" is a verb, not the card of that name.
             .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.start - 1) == "to" && normWords[f.start] in verbsAfterTo && normWords[f.start] !in short) }
             // "protection from black", "a black creature", "a red card": a colour word describes something here,
@@ -330,7 +332,10 @@ class SituationParser(private val names: NameIndex) {
         var any = false
 
         // Turn / life statements (removed from the text once read).
-        var t2 = t0
+        // "I alpha strike", "I go wide with three 1/1s": table talk for attacking with everything and for having
+        // a wide board. Said this way the whole clause went unread, so it is turned into plain words first.
+        var t2 = t0.replace(Regex("""\balpha[- ]?strikes\b"""), "attacks").replace(Regex("""\balpha[- ]?strike\b"""), "attack")
+            .replace(Regex("""\b(?:go|goes|going|went) wide with\b"""), "have")
         // "it's turn 3" / "on turn 2": the game's turn number.
         Regex("""\b(?:it's|it is|this is|on|during|in) turn (\d+)\b|\bturn (\d+) of the game\b""").find(t2)?.let { r -> ctx.turnNumber = (r.groupValues[1].ifEmpty { r.groupValues[2] }).toInt(); any = true; t2 = t2.removeRange(r.range) }
         Regex("""\b(it's|it is|during|on|in) (my|their|the opponent's|opponent's|my opponent's|@\w+'s) (turn|upkeep|end step|main phase|combat|draw step|beginning of combat)\b""").find(t2)?.let { r ->
@@ -417,7 +422,7 @@ class SituationParser(private val names: NameIndex) {
             t2 = t2.replace(Regex("""\b(with $kw(?:(?:,| &) $kw)*) and ($kw)\b"""), "$1 & $2")
         }
         // "attack with a 3/3 and a 2/2" / "blocks with two 2/2s and a 1/1": described creatures joined by "and" stay in one clause.
-        if (Regex("""\b(?:attacks?|attacking|swings?|swinging|blocks?|blocking|chumps?)\b""").containsMatchIn(t2)) t2 = t2.replace(Regex("""\b((?:an? |\d+ |two |three |four |five )?\d+/\d+(?: (?!and\b)[a-z]+){0,3}) and ((?:an? |\d+ |two |three |four |five )?\d+/\d+)(?!\s+(?:chump[- ]?)?blocks?\b)"""), "$1 plus $2")
+        if (Regex("""\b(?:attacks?|attacking|swings?|swinging|blocks?|blocking|chumps?)\b""").containsMatchIn(t2)) t2 = t2.replace(Regex("""\b((?:an? |\d+ |two |three |four |five )?\d+/\d+s?(?: (?!and\b)[a-z]+){0,3}) and ((?:an? |\d+ |two |three |four |five )?\d+/\d+s?)(?!\s+(?:chump[- ]?)?blocks?\b)"""), "$1 plus $2")
         // "… with Grizzly Bears and Hill Giant on the battlefield (under my control)": one "with X out" per card, before the clause split takes the "and".
         Regex("""(?:^|\s+)with ((?:(?:an? |the |my |their )?c\d+)(?:,? (?:and )?(?:an? |the |my |their )?c\d+)*) (?:out|on the battlefield|in play|on board|on the field)(?: under (my|their|@\w+'s) control)?$""").find(t2)?.let { r ->
             val cards = Regex("""c\d+""").findAll(r.groupValues[1]).map { it.value }.toList()
@@ -1550,7 +1555,7 @@ class SituationParser(private val names: NameIndex) {
         }
         if (Regex("""^draws?(?: a card| for it| off it)?$""").matches(c) && ctx.events.any { it.verb == "cast" }) return true   // the engine draws for the trigger
         // "kills the Bears with Doom Blade" / "removes X with Y": the spell is cast at the creature.
-        Regex("""^(?:kills?|killed|destroys?|destroyed|exiles?|exiled|removes?|removed|answers?|deals? with|bounces?|bounced|blinks?|flickers?|shrinks?|pumps?|targets?|targeting) (an? |the |my |their |his |her |my opponent's |@\w+'s |(?:my|their|his|her|its) own )?(c\d+|(?:their |my |the )?(?:blocker|attacker|creature)) (?:with|using|via) (?:an? |the |my )?(c\d+)$""").find(c)?.let { r ->
+        Regex("""^(?:kills?|killed|destroys?|destroyed|exiles?|exiled|removes?|removed|answers?|deals? with|bounces?|bounced|blinks?|flickers?|shrinks?|pumps?|targets?|targeting|nukes?|nuked|pings?|pinged|zaps?|zapped|burns?|burned) (an? |the |my |their |his |her |my opponent's |@\w+'s |(?:my|their|his|her|its) own )?(c\d+|(?:their |my |the )?(?:blocker|attacker|creature)) (?:with|using|via) (?:an? |the |my )?(c\d+)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val spell = m.cards.getValue(r.groupValues[3])
             // "blink MY Solemn Simulacrum": a creature named as the speaker's is theirs, not the other player's.
@@ -2059,7 +2064,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("step", player = who, to = step); return true
         }
         // "attack with everything" / "no blocks".
-        if (Regex("""^(?:attacks?|attacking|swings?|swinging)(?: with)? (?:everything|everyone|all(?: of)?(?: my)?(?: creatures)?|the team|with everything)$""").matches(c) || Regex("""^(?:attacks?|swings?|go to combat)$""").matches(c)) {
+        if (Regex("""^(?:attacks?|attacking|swings?|swinging)(?: with)? (?:everything|everyone|all(?: of)?(?: my)?(?: creatures)?|(?:the|my|their|his|her) (?:whole |entire )?(?:team|board|squad|side)|with everything)$""").matches(c) || Regex("""^(?:attacks?|swings?|go to combat)$""").matches(c)) {
             val who = actor ?: subject ?: "me"
             ctx.events += EventSpec("attackAll", player = who, targets = listOf(ctx.other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"; return true
         }
@@ -2849,8 +2854,9 @@ class SituationParser(private val names: NameIndex) {
     /** Verbs that are also card names ("Protect", "Bloodrush"); right after "to" they are verbs. */
     private val verbsAfterTo = setOf("protect", "save", "shield", "defend", "keep", "destroy", "kill", "draw", "search", "block", "attack",
         "sacrifice", "regenerate", "bounce", "exile", "tap", "untap", "pay", "cast", "play", "target", "fight", "counter", "discard", "mill", "scry", "activate", "stop", "answer", "remove", "trigger")
-    /** Verbs that are also card names and take a pronoun object ("can they redirect it?"); there they are verbs. */
-    private val verbsOnPronouns = setOf("redirect", "redirects", "reflect", "reflects", "deflect", "deflects", "steal", "steals", "swap", "swaps")
+    /** Verbs that are also card names and take an object ("can they redirect it?", "they remove my Bears"). */
+    private val verbsBeforeAnObject = setOf("redirect", "redirects", "reflect", "reflects", "deflect", "deflects", "steal", "steals",
+        "swap", "swaps", "remove", "removes", "nuke", "nukes", "ping", "pings", "zap", "zaps", "answer", "answers", "shrink", "shrinks", "wipe", "wipes")
     /** Colour words that are also the start of card names ("Black Knight"); after "protection from" they are colours. */
     private val colorWords = setOf("white", "blue", "black", "red", "green")
     /** Nouns a colour word describes ("a black creature"), as opposed to naming a card that begins with that colour. */
