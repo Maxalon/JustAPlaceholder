@@ -14,7 +14,7 @@ class Engine(val state: GameState) {
 
     // ---- events ----------------------------------------------------------------------------
 
-    fun cast(playerId: String, card: CardDef, targets: List<Ref>, objectId: String? = null, modes: List<Int> = emptyList(), overload: Boolean = false, x: Int? = null, kicked: Boolean = false, evoked: Boolean = false, choice: String? = null): StackItem? {
+    fun cast(playerId: String, card: CardDef, targets: List<Ref>, objectId: String? = null, modes: List<Int> = emptyList(), overload: Boolean = false, x: Int? = null, kicked: Boolean = false, evoked: Boolean = false, flashback: Boolean = false, choice: String? = null): StackItem? {
         val player = state.player(playerId)
         val obj = objectId?.let { state.objects[it] } ?: state.add(GameObject(objectId ?: freshObjectId(card.name), card, Zone.HAND, playerId))
         state.stack.firstOrNull { it.kind == StackKind.SPELL && it.source.def.has("split second") }?.let { ss ->
@@ -175,8 +175,10 @@ class Engine(val state: GameState) {
         if (modeEffect != null && targets.isEmpty() && modeEffect.targets().size == 1) {
             inferTarget(card.name, modeEffect.targets()[0], playerId, harmful = isHarmful(modeEffect), source = obj, beneficial = isBeneficial(modeEffect))?.takeIf { it.isNotEmpty() }?.let { targets = it }
         }
-        val item = StackItem(state.newStackId(), StackKind.SPELL, playerId, obj, effect, targets, zonesOf(targets), card.oracleText, modes, x = x, kicked = kicked, evoked = evoked && card.has("evoke"), choice = choice, targetsUnknown = targetsUnknown)
+        val item = StackItem(state.newStackId(), StackKind.SPELL, playerId, obj, effect, targets, zonesOf(targets), card.oracleText, modes, x = x, kicked = kicked, evoked = evoked && card.has("evoke"), flashback = flashback && card.has("flashback"), choice = choice, targetsUnknown = targetsUnknown)
         state.stack += item
+        if (flashback && !card.has("flashback")) state.assumptions += "${card.name} doesn't have flashback, so something else must be allowing it to be cast from a graveyard (escape, for instance); it is shown going to the graveyard afterwards as usual."
+        if (item.flashback) { obj.zone = Zone.STACK; trace.step("${card.name} is cast from ${player.possessive} graveyard for its flashback cost, an alternative cost paid instead of its mana cost.", "702.34a", "601.2b") }
         if (evoked && !card.has("evoke")) { state.clarifications += Clarification("${card.name}'s evoke", "${card.name} doesn't have evoke, so it can't be cast for an evoke cost; treating it as cast normally.") }
         if (item.evoked) trace.step("${card.name} is cast for its evoke cost, an alternative cost paid instead of its mana cost. It's still a creature spell and resolves normally; its evoke trigger will sacrifice it once it has entered.", "702.74a", "601.2b")
         if (kicked) trace.step("${card.name} is kicked: its controller paid the kicker cost as an additional cost, so its \"if this spell was kicked\" parts apply.", "702.33a", "702.33d")
@@ -603,8 +605,9 @@ class Engine(val state: GameState) {
                 if (def.isInstantOrSorcery) {
                     if (item.targetsUnknown) trace.step("${def.name} resolves, but its target was never stated, so what it does to it isn't shown.", "608.2c")
                     else item.effect?.let { applyEffect(it, item) } ?: if (!Generic.isGeneric(def)) state.unsupported.add(Unsupported(def.name, "The spell has no modeled effect.")) else Unit
-                    item.source.zone = Zone.GRAVEYARD
+                    item.source.zone = if (item.flashback) Zone.EXILE else Zone.GRAVEYARD
                     if (item.source.token) trace.step("The copy of ${def.name} finishes resolving; a copy of a spell ceases to exist once it leaves the stack.", "608.2c", "707.10a")
+                    else if (item.flashback) { trace.step("${def.name} was cast with flashback, so it is exiled instead of going to its owner's graveyard; it can't be cast again.", "702.34a", "608.2n"); state.outcomes += "${def.name} is exiled (flashback)." }
                     else trace.step("${def.name} finishes resolving and is put into its owner's graveyard.", "608.2c", "608.2n")
                 } else {
                     item.source.zone = Zone.BATTLEFIELD; item.source.tapped = false; item.source.summoningSick = def.isCreature; item.source.timestamp = state.tick()

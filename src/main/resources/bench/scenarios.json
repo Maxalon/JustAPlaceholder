@@ -6536,5 +6536,30 @@
     "cite": [
       "120.3a"
     ]
+  },
+  {
+    "id": "a-spell-cast-with-flashback-is-exiled",
+    "text": "I cast Faithless Looting from my graveyard. What happens?",
+    "expect": [
+      "cast from your graveyard for its flashback cost",
+      "exiled instead of going to its owner's graveyard"
+    ],
+    "notExpect": [
+      "Faithless Looting finishes resolving and is put into its owner's graveyard"
+    ],
+    "cite": [
+      "702.34a"
+    ]
+  },
+  {
+    "id": "flashing-back-a-card-in-the-graveyard",
+    "text": "Faithless Looting is in my graveyard and I cast it with flashback. What happens?",
+    "expect": [
+      "is exiled (flashback)"
+    ],
+    "notExpect": [],
+    "cite": [
+      "702.34a"
+    ]
   }
 ]

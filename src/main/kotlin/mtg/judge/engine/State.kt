@@ -122,6 +122,8 @@ class StackItem(
     val causedObject: String? = null,
     /** Cast for its evoke cost (702.74a): sacrificed by its own trigger when it enters. */
     val evoked: Boolean = false,
+    /** Cast from the graveyard for its flashback cost: it is exiled as it resolves rather than going back there (702.34a). */
+    val flashback: Boolean = false,
     /** The value chosen for X when this was cast or activated (107.3a). */
     val x: Int? = null,
     /** Whether the kicker cost was paid (702.33d). */

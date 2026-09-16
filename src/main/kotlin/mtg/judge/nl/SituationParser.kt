@@ -397,6 +397,8 @@ class SituationParser(private val names: NameIndex) {
         }
         // "has only one untapped creature, Grizzly Bears, and …": the appositive name belongs to the noun before the comma.
         t2 = t2.replace(Regex("""\b(creature|blocker|attacker|permanent|artifact|enchantment|land|thing|card), (c\d+),?(?= and | which | that |$)"""), "$1 $2")
+        // "I flash back Faithless Looting": the same as casting it with flashback, which is read.
+        t2 = t2.replace(Regex("""\b(?:flash(?:es)? back|flashing back|flashbacks?) ((?:an? |the |my |their )?c\d+)"""), "casts $1 with flashback")
         // "There is a Lightning Bolt on the stack targeting my Bears" and "my Bears has a Bolt on the stack
         // targeting it" say the same thing as "they have a Bolt on the stack targeting my Bears", which is read.
         // Whose spell it is follows from whose permanent it points at.
@@ -1277,9 +1279,15 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("cast", player = who, obj = id); ctx.lastActor = who; ctx.lastVerb = "cast"; return true
         }
         // "cast it" after "I have X in hand": the card noted in hand.
-        Regex("""^(?:(?:$castVerbs) (?:it|that|the card)|flash(?:es)? (?:it|that) in|flash(?:es)? in (?:it|that))(?: after (?:blockers|blocks|attackers)| before damage| in response| on my end step| on their end step| at instant speed| at the end of my turn| at the end of their turn| during my turn| during their turn)?(?: paying (\d+) life| for (\d+) life)?(?: (?:on|at|targeting) (.*?))?(?: paying \d+ life| for \d+ life)?((?: (?:with|for|where|at) x ?(?:=|equal to|equals|being|of|as) ?\d+| x ?= ?\d+| for \d+| kicked| overloaded| with evoke)?)$""").find(c)?.let { r ->
+        Regex("""^(?:(?:$castVerbs) (?:it|that|the card)|flash(?:es)? (?:it|that) in|flash(?:es)? in (?:it|that))(?: after (?:blockers|blocks|attackers)| before damage| in response| on my end step| on their end step| at instant speed| at the end of my turn| at the end of their turn| during my turn| during their turn)?(?: paying (\d+) life| for (\d+) life)?(?: (?:on|at|targeting) (.*?))?(?: paying \d+ life| for \d+ life)?((?: (?:with|for|where|at) x ?(?:=|equal to|equals|being|of|as) ?\d+| x ?= ?\d+| for \d+| kicked| overloaded| with evoke| with flashback| from (?:my|their) graveyard)?)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
-            val card = ctx.inHand[who]?.lastOrNull() ?: return@let
+            // "Faithless Looting is in my graveyard and I cast it with flashback": the card being cast is the one
+            // sitting in that graveyard, not one in hand.
+            val fromYard = if (!Regex("""\b(?:with flashback|from (?:my|their) graveyard|using flashback)\b""").containsMatchIn(c)) null
+                else ctx.objects.values.lastOrNull { it.zone == "graveyard" && it.controller == who && it.card.oracleId != null }
+            val card = ctx.inHand[who]?.lastOrNull()
+                ?: fromYard?.card?.name?.let { n -> names.lookup(Names.normalize(n)) }?.also { ctx.objects.remove(fromYard.id) }
+                ?: return@let
             val life = r.groupValues[1].ifEmpty { r.groupValues[2] }
             if (life.isNotEmpty()) { ctx.events += EventSpec("loseLife", player = who, amount = life.toInt()); ctx.notes += "${card.display}: ${if (who == "me") "you pay" else "they pay"} $life life as its additional cost, so X is $life." }
             emitCast(who, card, (if (r.groupValues[3].isEmpty()) "" else " targeting " + r.groupValues[3]) + r.groupValues[4] + (if (life.isNotEmpty()) " with x = $life" else ""), m, ctx)
@@ -2252,6 +2260,8 @@ class SituationParser(private val names: NameIndex) {
         if (secondTime != null) ctx.notes += "\"For the second time\": the first ${card.display} is shown resolving earlier this game, then this one."
 
         val evoked = Regex("""\b(?:with evoke|evoked|for (?:its|the) evoke cost|via evoke|evoking it|using evoke)\b""").containsMatchIn(rest)
+        // "with flashback", "from my graveyard", "flashing it back": cast from the graveyard, so it is exiled afterwards.
+        val flashedBack = Regex("""\b(?:with flashback|for (?:its|the) flashback cost|via flashback|flashing it back|using flashback|from (?:my|their|his|her|the) graveyard)\b""").containsMatchIn(rest)
         // "choosing the second mode", "mode 2", "choosing modes 1 and 3"
         val modes = Regex("""(?:choosing |with |picking )?(?:the )?(?:mode|modes) (\d+(?:(?:,| and) \d+)*)|(?:choosing |picking )(?:the )?(first|second|third|fourth) (?:mode|option)""").find(rest)?.let { mm ->
             if (mm.groupValues[1].isNotEmpty()) Regex("""\d+""").findAll(mm.groupValues[1]).map { it.value.toInt() }.toList()
@@ -2299,7 +2309,7 @@ class SituationParser(private val names: NameIndex) {
         // "Prey Upon on my Bears targeting theirs": the fight's other creature.
         secondTarget(rest, targets.firstOrNull(), ctx)?.let { second -> if (targets.size == 1 && second !in targets) targets = targets + second }
         ctx.castingCounter = false; ctx.castingCounterName = null
-        repeat(n) { i -> ctx.events += EventSpec("cast", player = who, card = CardRef(name = card.display, oracleId = card.oracleId), targets = targets, modes = modes, to = if (copyOf != null) "copy:$copyOf" else if (overload) "overload" else if (kicked) "kicked" else if (evoked) "evoke" else if (revolt != null) "revolt" else if (mastery != null) "spellmastery" else namedCard?.let { "name:$it" } ?: modeWord?.let { "mode:" + List(modeRepeat) { _ -> it }.joinToString("|") }, amount = xValue); if (secondTime != null && i == 0) ctx.events += EventSpec("resolveAll") }
+        repeat(n) { i -> ctx.events += EventSpec("cast", player = who, card = CardRef(name = card.display, oracleId = card.oracleId), targets = targets, modes = modes, to = if (copyOf != null) "copy:$copyOf" else if (flashedBack) "flashback" else if (overload) "overload" else if (kicked) "kicked" else if (evoked) "evoke" else if (revolt != null) "revolt" else if (mastery != null) "spellmastery" else namedCard?.let { "name:$it" } ?: modeWord?.let { "mode:" + List(modeRepeat) { _ -> it }.joinToString("|") }, amount = xValue); if (secondTime != null && i == 0) ctx.events += EventSpec("resolveAll") }
         if (n > 1) ctx.notes += "${card.display} is cast $n times, one copy after another (each is its own spell)." 
         ctx.lastActor = who
         ctx.lastVerb = "cast"
