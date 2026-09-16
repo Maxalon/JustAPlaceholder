@@ -117,6 +117,8 @@ class StackItem(
     /** The situation named no target for a spell that needs one: it's on the stack (so it can be countered or responded to) but its effect can't be shown. */
     val targetsUnknown: Boolean = false,
 ) {
+    /** Life lost by players as this resolves ("the life lost this way"). */
+    var lifeLost: Int = 0
     val describe: String get() = when (kind) {
         StackKind.SPELL -> source.name
         StackKind.TRIGGERED -> "${source.name}'s triggered ability"

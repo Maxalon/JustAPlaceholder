@@ -3655,5 +3655,64 @@
     "cite": [
       "702.11b"
     ]
+  },
+  {
+    "id": "condemn-attacking-angel",
+    "text": "I attack with Serra Angel. My opponent casts Condemn on it.",
+    "expect": [
+      "Serra Angel: the battlefield → your library",
+      "You gain 4 life"
+    ],
+    "notExpect": [
+      "not modeled",
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "400.7"
+    ]
+  },
+  {
+    "id": "duress-two-cards-in-hand",
+    "text": "I cast Duress targeting my opponent. They have Counterspell and Grizzly Bears in hand.",
+    "expect": [
+      "Duress: You choose a noncreature, nonland card from it"
+    ],
+    "notExpect": [
+      "Not understood",
+      "needs 0 targets"
+    ],
+    "cite": [
+      "701.20a"
+    ]
+  },
+  {
+    "id": "vapor-snag-loses-life",
+    "text": "I control Grizzly Bears with two +1/+1 counters. My opponent casts Vapor Snag on it. What happens to the counters?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your hand",
+      "You lose 1 life"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "400.7",
+      "119.3"
+    ]
+  },
+  {
+    "id": "exsanguinate-two-opponents",
+    "text": "I cast Exsanguinate for X=4 against two opponents.",
+    "expect": [
+      "opponent loses 4 life",
+      "Opponent 2 loses 4 life",
+      "You gain 8 life"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "119.3"
+    ]
   }
 ]

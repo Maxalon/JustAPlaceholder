@@ -37,6 +37,8 @@ class BatchThirteenTest {
     private val doomBlade = card("Doom Blade", "Instant", "Destroy target nonblack creature.", "{1}{B}", "B")
     private val cracklingDoom = card("Crackling Doom", "Instant", "Crackling Doom deals 2 damage to each opponent. Each opponent sacrifices a creature with the greatest power among creatures that player controls.", "{R}{W}{B}", "RWB")
     private val recall = card("Ancestral Recall", "Instant", "Target player draws three cards.", "{U}", "U")
+    private val exsanguinate = card("Exsanguinate", "Sorcery", "Each opponent loses X life. You gain life equal to the life lost this way.", "{X}{B}{B}", "B")
+    private val condemn = card("Condemn", "Instant", "Put target attacking creature on the bottom of its owner's library. Its controller gains life equal to its toughness.", "{W}", "W")
     private val serra = card("Serra Angel", "Creature — Angel", "Flying, vigilance", "{3}{W}{W}", "W", "4", "4", "Flying", "Vigilance")
     private val viper = card("Ambush Viper", "Creature — Snake", "Flash\nDeathtouch", "{1}{G}", "G", "2", "1", "Flash", "Deathtouch")
     private val krenko = card("Krenko, Mob Boss", "Legendary Creature — Goblin Warrior", "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.", "{2}{R}{R}", "R", "3", "3")
@@ -416,6 +418,17 @@ class BatchThirteenTest {
         assertEquals(Zone.GRAVEYARD, s.obj("serra").zone); assertEquals(Zone.BATTLEFIELD, s.obj("bears").zone); assertEquals(18, s.player("opp").life)
         val s2 = state(); val e2 = Engine(s2); e2.cast("me", recall, emptyList()); e2.resolveAll()
         assertEquals(3, s2.player("me").drew); assertTrue(s2.assumptions.any { it.contains("assuming its controller") }, s2.assumptions.toString())
+    }
+
+    @Test
+    fun `exsanguinate drains each opponent for X and condemn tucks an attacker for life`() {
+        val s = GameState(listOf(Player("me", "me", 20), Player("a", "Alice", 20), Player("b", "Bob", 20)), LinkedHashMap(), activePlayer = "me"); val e = Engine(s)
+        e.cast("me", exsanguinate, emptyList(), x = 4); e.resolveAll()
+        assertEquals(16, s.player("a").life); assertEquals(16, s.player("b").life); assertEquals(28, s.player("me").life)
+        val s2 = state(); s2.put("serra", serra, "me"); val e2 = Engine(s2)
+        e2.beginDeclaringAttackers(); e2.declareAttacker("me", "serra", Ref.Player("opp")); e2.finishDeclaringAttackers()
+        e2.cast("opp", condemn, listOf(Ref.Obj("serra"))); e2.resolveAll()
+        assertEquals(Zone.LIBRARY, s2.obj("serra").zone); assertEquals(24, s2.player("me").life, "its controller, not Condemn's, gains the toughness")
     }
 
     @Test
