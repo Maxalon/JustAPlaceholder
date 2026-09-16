@@ -23,6 +23,25 @@ class ClauseShapesTest {
         "enters the battlefield", "leaves the battlefield", "has two +1/+1 counters", "has protection from black",
     )
 
+    /** The same sweep for things a player does. "I play a land" going unread meant landfall never triggered. */
+    private val playerStatements = listOf(
+        "draw two cards", "draw", "gain 3 life", "lose 3 life", "take 3 damage", "discard a card",
+        "mill three cards", "get a poison counter", "play a land", "put a land onto the battlefield",
+        "shuffle my library", "scry 2", "pass the turn", "have 3 cards in hand", "have 10 cards in my library",
+    )
+
+    @Test
+    fun `a short statement about a player is read, for either player`() {
+        val dbPath = System.getenv("MTG_JUDGE_DB") ?: run { println("MTG_JUDGE_DB not set; skipping"); return }
+        val parser = Db.open(File(dbPath).toPath(), readOnly = true).use { SituationParser(NameIndex.load(it)) }
+        val unread = mutableListOf<String>()
+        for (statement in playerStatements) for (who in listOf("I", "They")) {
+            val parsed = parser.parse("I control Blood Artist. $who $statement.")
+            if (parsed.unread.isNotEmpty()) unread += "\"$who $statement\" -> ${parsed.unread}"
+        }
+        assertTrue(unread.isEmpty(), "Statements about a player that went unread:\n" + unread.joinToString("\n"))
+    }
+
     @Test
     fun `a short statement about a permanent is read, whichever side it is on`() {
         val dbPath = System.getenv("MTG_JUDGE_DB") ?: run { println("MTG_JUDGE_DB not set; skipping"); return }

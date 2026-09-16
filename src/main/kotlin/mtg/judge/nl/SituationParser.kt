@@ -709,6 +709,13 @@ class SituationParser(private val names: NameIndex) {
             for (id in ids) ctx.events += if (sacrificed) EventSpec("sacrifice", player = who ?: "me", obj = id) else EventSpec("leave", obj = id, to = "graveyard")
             ctx.lastActor = who ?: ctx.lastActor; ctx.lastMentioned = ids.last(); return true
         }
+        // Said, and nothing follows from it: the engine doesn't track library order, so a shuffle or a scry
+        // changes nothing it can show. Read rather than dropped, with a note saying why nothing came of it.
+        Regex("""^(?:(?:i|we|they|he|she|my opponent|the opponent|@\w+) )?(?:shuffles?(?: my| their| his| her| the)? (?:library|deck)|scr(?:y|ies) \d+|looks? at the top (?:\d+ )?cards? of (?:my|their|his|her|the) library|pass(?:es)?(?: the turn| priority| it back)?)$""").find(c)?.let {
+            ctx.notes += "\"${restore(clause0, m)}\" is read, but the engine doesn't track library order, so nothing in the answer turns on it."
+            actorOfClause(c)?.let { a -> ctx.lastActor = a; ctx.note(a) }
+            return true
+        }
         // "I discard a card", "they mill three cards", "I get a poison counter": no card named, so only the count
         // is known — which is still enough for hand size, library size and the poison loss condition.
         Regex("""^(?:(?:i|we|they|he|she|my opponent|the opponent|@\w+) )?(?:discards?|discarded) (an?|one|two|three|four|five|\d+) cards?(?: at random| of my choice| of their choice)?$""").find(c)?.let { r ->
