@@ -6117,5 +6117,16 @@
     "cite": [
       "601.2a"
     ]
+  },
+  {
+    "id": "a-game-verb-is-not-the-card-of-that-name",
+    "text": "I blink my Solemn Simulacrum with Restoration Angel. What happens?",
+    "expect": [
+      "you cast Restoration Angel targeting Solemn Simulacrum"
+    ],
+    "notExpect": [
+      "Blink enters the battlefield"
+    ],
+    "cite": []
   }
 ]
