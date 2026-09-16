@@ -555,6 +555,27 @@ class BatchFourteenTest {
         assertTrue(s.trace.steps.any { "X is 2" in it.text }, s.trace.steps.joinToString("\n") { it.text })
     }
 
+    private val primarch = card("Kavu Primarch", "Creature \u2014 Kavu", "Kicker {5}\nIf Kavu Primarch was kicked, it enters with four +1/+1 counters on it.", "{3}{G}", "G", "3", "3", "Kicker")
+    private val eomer = card("Eomer", "Legendary Creature \u2014 Human Noble", "Eomer enters with a +1/+1 counter on it for each other Human you control.", "{2}{R}", "R", "2", "2")
+
+    @Test
+    fun `kicker decides the counters a permanent enters with`() {
+        val kicked = state(); kicked.put("kp", primarch, "me", Zone.HAND)
+        Engine(kicked).let { it.cast("me", primarch, emptyList(), "kp", kicked = true); it.resolveAll() }
+        assertEquals(4, kicked.obj("kp").counters["+1/+1"])
+
+        val plain = state(); plain.put("kp", primarch, "me", Zone.HAND)
+        Engine(plain).let { it.cast("me", primarch, emptyList(), "kp"); it.resolveAll() }
+        assertEquals(null, plain.obj("kp").counters["+1/+1"])
+    }
+
+    @Test
+    fun `a counter for each other one counts the others, not itself`() {
+        val s = state(); s.put("h1", human, "me"); s.put("h2", human, "me"); s.put("eomer", eomer, "me", Zone.HAND)
+        Engine(s).let { it.cast("me", eomer, emptyList(), "eomer"); it.resolveAll() }
+        assertEquals(2, s.obj("eomer").counters["+1/+1"])
+    }
+
     @Test
     fun `the germ dies once the equipment leaves`() {
         val s = state(); s.put("skull", batterskull, "me", Zone.HAND)

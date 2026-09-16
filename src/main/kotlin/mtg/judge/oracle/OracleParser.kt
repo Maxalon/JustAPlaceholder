@@ -407,6 +407,16 @@ object OracleParser {
             val n = if (m.groupValues[1].equals("x", true)) null else (number(m.groupValues[1]) ?: return emptyList())
             return listOf(StaticEffect.EntersWithCounters(m.groupValues[2], n))
         }
+        // Chasm Skulker: "~ enters with a +1/+1 counter on it for each creature you control."
+        Regex("""^~ enters(?: the battlefield)? with (?:a|an|\w+) ([+-]\d/[+-]\d|\w+) counters? on it for each (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val per = parseCount("the number of " + m.groupValues[2].trim())
+            if (per !is CountExpr.Unknown) return listOf(StaticEffect.EntersWithCounters(m.groupValues[1], null, per = per))
+        }
+        // Kavu Primarch: "If ~ was kicked, it enters with four +1/+1 counters on it."
+        Regex("""^if ~ was kicked, it enters(?: the battlefield)? with (a|an|\w+) ([+-]\d/[+-]\d|\w+) counters? on it\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val n = number(m.groupValues[1]) ?: return emptyList()
+            return listOf(StaticEffect.EntersWithCounters(m.groupValues[2], n, onlyIfKicked = true))
+        }
         Regex("""^~ can't (block|attack|be countered|be blocked|attack or block)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.Cant(it.groupValues[1].lowercase())) }
         Regex("""^(enchanted|equipped) (creature|permanent) can't (block|attack|attack or block|be blocked)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             return listOf(StaticEffect.Cant(m.groupValues[3].lowercase(), applies = ObjFilter(setOf(Kind.PERMANENT), raw = "${m.groupValues[1].lowercase()} ${m.groupValues[2].lowercase()}", attachedToSource = true)))
@@ -537,7 +547,10 @@ object OracleParser {
     fun parseCount(text: String): CountExpr {
         val t = text.trim().trimEnd('.')
         Regex("""^the number of (.+?) you control$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m ->
-            val f = parseFilter(m.groupValues[1], Kind.PERMANENT).copy(controller = Who.YOU)
+            // parseFilter skips the word "other" without recording it, and "for each other Human you control"
+            // must not count the permanent doing the counting.
+            val other = Regex("""^(?:other|another)\b""", RegexOption.IGNORE_CASE).containsMatchIn(m.groupValues[1].trim())
+            val f = parseFilter(m.groupValues[1], Kind.PERMANENT).copy(controller = Who.YOU, other = other)
             return if (f.verifiable) CountExpr.Permanents(f) else CountExpr.Unknown(t)
         }
         if (Regex("""^the number of card types among cards in all graveyards$""", RegexOption.IGNORE_CASE).matches(t)) return CountExpr.CardTypesInGraveyards
@@ -786,10 +799,7 @@ object OracleParser {
         }
         // Muxus: "~ gets +1/+1 until end of turn for each other Goblin you control."
         Regex("""^~ gets ([+-]\d+)/([+-]\d+)(?: until end of turn)? for each (.+?)(?: until end of turn)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
-            val what = m.groupValues[3].trim()
-            val count = parseCount("the number of $what").let { c ->
-                if (c is CountExpr.Permanents && Regex("""^(?:other|another)\b""", RegexOption.IGNORE_CASE).containsMatchIn(what)) c.copy(filter = c.filter.copy(other = true)) else c
-            }
+            val count = parseCount("the number of " + m.groupValues[3].trim())
             if (count !is CountExpr.Unknown) return Effect.PumpSelfCount(count, m.groupValues[1].toInt(), m.groupValues[2].toInt())
         }
         // Waterknot, Kasmina's Transmutation: "tap enchanted creature."

@@ -146,6 +146,7 @@ class Engine(val state: GameState) {
         } }
         obj.zone = Zone.STACK
         obj.x = x
+        obj.wasKicked = kicked
         state.spellsCast[card.name] = (state.spellsCast[card.name] ?: 0) + 1
         state.spellsThisTurn[playerId] = (state.spellsThisTurn[playerId] ?: 0) + 1
         state.matchingSpellsThisTurn.getOrPut(playerId) { mutableListOf() } += card
@@ -1776,7 +1777,21 @@ class Engine(val state: GameState) {
                 if (e.unless != null && state.conditionHolds(e.unless, o)) trace.step("${o.name} would enter tapped unless its condition is met; it is, so it enters untapped.", "614.1c", "614.12")
                 else { o.tapped = true; trace.step("${o.name} enters tapped (a replacement effect on how it enters${if (e.unless != null) "; its condition isn't met" else ""}).", "614.1c", "614.12") }
             }
-            is StaticEffect.EntersWithCounters -> if (e.count != null) { val n = countersPlaced(o, e.count, e.kind); o.counters[e.kind] = (o.counters[e.kind] ?: 0) + n; trace.step("${o.name} enters with $n ${e.kind} counter${if (n > 1) "s" else ""} on it.", "614.1c", "122.6") }
+            is StaticEffect.EntersWithCounters -> if (e.onlyIfKicked && !o.wasKicked) {
+                trace.step("${o.name} wasn't kicked, so it enters with no ${e.kind} counters.", "614.1c", "702.33d")
+            } else if (e.per != null) {
+                val x = when (val c = e.per) {
+                    is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, o.controller, o) }
+                    is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size
+                    is CountExpr.YourLifeTotal -> state.player(o.controller).life
+                    is CountExpr.Unknown -> null
+                    null -> null
+                }
+                if (x == null) state.clarifications += Clarification("${o.name}'s counters", "${o.name} enters with a ${e.kind} counter for each ${(e.per as? CountExpr.Unknown)?.text ?: "thing"}, which isn't tracked; say how many.")
+                else { val n = countersPlaced(o, x, e.kind); o.counters[e.kind] = (o.counters[e.kind] ?: 0) + n
+                    trace.step("${o.name} enters with $n ${e.kind} counter${if (n == 1) "" else "s"} on it, counted as it enters.", "614.1c", "122.6")
+                    state.outcomes += "${o.name} enters with $n ${e.kind} counter${if (n == 1) "" else "s"}." }
+            } else if (e.count != null) { val n = countersPlaced(o, e.count, e.kind); o.counters[e.kind] = (o.counters[e.kind] ?: 0) + n; trace.step("${o.name} enters with $n ${e.kind} counter${if (n > 1) "s" else ""} on it.", "614.1c", "122.6") }
                 else if (o.x != null) { val n = countersPlaced(o, o.x!!, e.kind); o.counters[e.kind] = (o.counters[e.kind] ?: 0) + n; trace.step("${o.name} enters with $n ${e.kind} counter${if (n == 1) "" else "s"} on it (X was ${o.x}).", "614.1c", "107.3a"); state.outcomes += "${o.name} enters with $n ${e.kind} counter${if (n == 1) "" else "s"}." }
                 else { state.clarifications += Clarification("${o.name}'s X", "${o.name} enters with X ${e.kind} counters; what was X?") }
             else -> {}

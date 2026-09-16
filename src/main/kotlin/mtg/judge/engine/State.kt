@@ -54,6 +54,8 @@ class GameObject(
     var etbTargets: List<Ref>? = null,
     /** X chosen when this was cast ("enters with X counters"). */
     var x: Int? = null,
+    /** Whether the spell that became this permanent was kicked (702.33d): "if this was kicked, it enters with …". */
+    var wasKicked: Boolean = false,
 ) {
     /** Until-end-of-turn power/toughness modifications from resolved effects (611.2a). */
     val pumps = mutableListOf<Pair<Int, Int>>()

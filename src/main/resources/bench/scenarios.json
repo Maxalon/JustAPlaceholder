@@ -5890,5 +5890,47 @@
     "cite": [
       "509.1a"
     ]
+  },
+  {
+    "id": "kicker-decides-the-counters-it-enters-with",
+    "text": "I cast Kavu Primarch with the kicker. What happens?",
+    "expect": [
+      "Kavu Primarch enters with 4 +1/+1 counters on it",
+      "as a 7/7"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "614.1c",
+      "122.6"
+    ]
+  },
+  {
+    "id": "unkicked-means-no-counters",
+    "text": "I cast Kavu Primarch. What happens?",
+    "expect": [
+      "wasn't kicked, so it enters with no +1/+1 counters",
+      "as a 3/3"
+    ],
+    "notExpect": [
+      "enters with 4"
+    ],
+    "cite": [
+      "702.33d"
+    ]
+  },
+  {
+    "id": "enters-with-a-counter-for-each-other-human",
+    "text": "I control two Humans and cast Eomer, King of Rohan. What happens?",
+    "expect": [
+      "Éomer, King of Rohan enters with 2 +1/+1 counters on it, counted as it enters"
+    ],
+    "notExpect": [
+      "enters with 3 +1/+1"
+    ],
+    "cite": [
+      "614.1c"
+    ]
   }
 ]

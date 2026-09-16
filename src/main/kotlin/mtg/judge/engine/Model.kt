@@ -319,7 +319,8 @@ sealed interface StaticEffect {
     /** Blind Obedience, Urabrask, Kismet: "[Permanents] your opponents control enter tapped." */
     data class OthersEnterTapped(val filter: ObjFilter, val opponentsOnly: Boolean) : StaticEffect
     /** "~ enters with N +1/+1 counters on it" (614.1c). count null = X. */
-    data class EntersWithCounters(val kind: String, val count: Int?) : StaticEffect
+    /** [per] counts them as it enters (Chasm Skulker); [onlyIfKicked] is the "if this spell was kicked" form (Kavu Primarch). */
+    data class EntersWithCounters(val kind: String, val count: Int?, val per: CountExpr? = null, val onlyIfKicked: Boolean = false) : StaticEffect
     /** "~ can't block" / "~ can't attack" / "~ can't be countered" / "~ can't be blocked". */
     /** "You have hexproof" (Leyline of Sanctity): the controller can't be targeted by opponents (702.11c). */
     data object PlayerHexproof : StaticEffect
