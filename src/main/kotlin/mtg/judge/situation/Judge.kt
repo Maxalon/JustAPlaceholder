@@ -80,8 +80,11 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
         // Rules text on the described permanents that the engine can't model is said up front, so a silent "nothing changes" is never a lie.
         for (o in state.objects.values.filter { it.isOnBattlefield() }) {
-            val unparsed = o.def.abilities.filterIsInstance<mtg.judge.engine.UnparsedAbility>().map { it.text }
-            if (unparsed.isNotEmpty()) state.unsupported += mtg.judge.engine.Unsupported(o.name, "Rules text not modeled: " + unparsed.joinToString(" | "))
+            val unparsed = o.def.abilities.filterIsInstance<mtg.judge.engine.UnparsedAbility>().map { it.text }.toMutableList()
+            // A trigger the parser couldn't read is as invisible as text it couldn't read at all: it can never fire,
+            // so the answer would say "nothing changes" while the card sat there doing its thing.
+            for (a in o.def.abilities) if (a is mtg.judge.engine.TriggeredAbility && a.trigger is mtg.judge.engine.Trigger.Unknown) unparsed += a.text
+            if (unparsed.isNotEmpty()) state.unsupported += mtg.judge.engine.Unsupported(o.name, "Rules text not modeled: " + unparsed.distinct().joinToString(" | "))
         }
         engine.narrateLandTypeSetters()
         engine.narratePainter()

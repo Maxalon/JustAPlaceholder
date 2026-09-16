@@ -1476,7 +1476,7 @@ class Engine(val state: GameState) {
                 val def = Generic.token("0/0 black Phyrexian Germ creature token") ?: run { state.unsupported += Unsupported(item.describe, "Couldn't read the Germ token."); return }
                 val t = state.add(GameObject(freshObjectId(def.name), def, Zone.BATTLEFIELD, who.id, token = true)); t.timestamp = state.tick(); t.summoningSick = true
                 trace.step("${who.subject} ${who.v("creates", "create")} a ${def.name} (0/0); it enters the battlefield under ${who.possessive} control.", "702.92a", "701.7a")
-                state.outcomes += "${who.subject} ${who.v("gets", "get")} a ${def.name}."
+                state.outcomes += "${who.subject} ${who.v("gets", "get")} ${withArticle(def.name)}."
                 onEvent(GameEvent.EntersBattlefield(t))
                 if (item.source.isOnBattlefield()) {
                     item.source.attachedTo = t.id
@@ -1524,8 +1524,8 @@ class Engine(val state: GameState) {
                     .forEach { (o, m) -> trace.step("${o.name} replaces the token creation: ${n * m.factor} tokens instead of $n.", "614.1a", "614.6"); n *= m.factor }
                 repeat(n) {
                     val t = state.add(GameObject(freshObjectId(def.name), def, Zone.BATTLEFIELD, who.id, token = true)); t.timestamp = state.tick(); t.summoningSick = def.isCreature
-                    trace.step("${who.subject} ${who.v("creates", "create")} a ${def.name}${if (def.isCreature) " (${state.describePt(t)})" else ""}; it enters the battlefield under ${who.possessive} control.", "701.7a", "111.1")
-                    state.outcomes += "${who.subject} ${who.v("gets", "get")} a ${def.name}."
+                    trace.step("${who.subject} ${who.v("creates", "create")} ${withArticle(def.name)}${if (def.isCreature) " (${state.describePt(t)})" else ""}; it enters the battlefield under ${who.possessive} control.", "701.7a", "111.1")
+                    state.outcomes += "${who.subject} ${who.v("gets", "get")} ${withArticle(def.name)}."
                     onEvent(GameEvent.EntersBattlefield(t))
                 }
             }

@@ -7281,5 +7281,16 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "a-token-gets-the-right-article",
+    "text": "I control Young Pyromancer and I cast Lightning Bolt. What happens?",
+    "expect": [
+      "You get an Elemental token"
+    ],
+    "notExpect": [
+      "get a Elemental"
+    ],
+    "cite": []
   }
 ]
