@@ -930,6 +930,7 @@ class Engine(val state: GameState) {
             is Effect.ForAllTargeted -> forEachLegalTarget(item, effect.target) { ref ->
                 val pid = (ref as? Ref.Player)?.id ?: return@forEachLegalTarget
                 val affected = state.objects.values.filter { it.controller == pid && state.matches(effect.filter, it, pid) }
+                item.lastCount = affected.size
                 if (affected.isEmpty()) trace.step("${state.nameOf(ref)} ${if (state.player(pid).you) "control" else "controls"} no ${effect.filter.raw}, so nothing happens.")
                 if (affected.size > 1 && effect.action in setOf("destroy", "exile", "bounce")) leavingTogether = affected.map { it.id }.toSet()
                 try { for (o in affected) when (effect.action) {
@@ -1278,6 +1279,8 @@ class Engine(val state: GameState) {
             }
             is Effect.AddMana -> trace.step("${describeManaEffect(effect)}.", "605.1a")
             is Effect.Narrated -> {
+                // "that many": the count of what the previous part affected (Settle the Wreckage's exiled attackers).
+                val effect = item.lastCount?.takeIf { effect.text.contains("that many") }?.let { n -> effect.copy(text = effect.text.replace("that many", "$n (that many)")) } ?: effect
                 state.lastCountered?.let { c -> if (effect.text.contains("that spell's mana value")) { val mv = c.def.manaValue.toInt(); trace.step("That spell was ${c.name}, mana value $mv. ${effect.text.replace("that spell's mana value", "$mv").replaceFirstChar { it.uppercase() }} (a delayed triggered ability created as ${item.source.name} resolves).", "202.3", "608.2h", *effect.rules.toTypedArray()); state.outcomes += "${item.source.name}: ${effect.text.replace("that spell's mana value", "$mv (${c.name}'s mana value)").replace("~", item.source.name).replaceFirstChar { it.uppercase() }.trimEnd('.')}."; return } }
                 // Text with its own subject ("You choose…", "That player discards…", "Its controller may…") is quoted as the instruction it is.
                 val ownSubject = Regex("""^(you|that player|its controller|each|the|its|their|if|search)\b""", RegexOption.IGNORE_CASE).containsMatchIn(effect.text)
@@ -1287,6 +1290,7 @@ class Engine(val state: GameState) {
             }
             is Effect.ForAll -> {
                 val affected = state.objects.values.filter { state.matches(effect.filter, it, item.controller) }
+                item.lastCount = affected.size
                 if (affected.isEmpty()) trace.step("Nothing matches \"${effect.filter.raw}\", so ${effect.action} affects nothing.")
                 // Everything leaves at once: abilities of permanents leaving simultaneously still see the others go (603.10a).
                 if (effect.action in setOf("destroy", "exile", "bounce", "tuck") && affected.size > 1) { leavingTogether = affected.map { it.id }.toSet(); trace.step("All of them leave the battlefield simultaneously, so abilities that trigger on creatures dying or leaving look back and see every one of them.", "603.10a") }

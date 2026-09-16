@@ -113,7 +113,7 @@ class SituationParser(private val names: NameIndex) {
         // "Bob then bolts my Bears": a lone subject before "then" belongs to what follows.
         val out = mutableListOf<String>()
         var carry: String? = null
-        for (p in pieces) { if (p.split(' ').size == 1 && Regex("""^(?:[A-Z][a-z]+|I|They|He|She|We|Opponent)$""").matches(p)) { carry = (carry?.let { "$it " } ?: "") + p; continue }; out += (carry?.let { "$it " } ?: "") + p; carry = null }
+        for (p in pieces) { if (p.split(' ').size == 1 && Regex("""^(?:[A-Z][a-z]+|I|They|He|She|We|Opponent)$""").matches(p) && names.lookup(Names.normalize(p)) == null) { carry = (carry?.let { "$it " } ?: "") + p; continue }; out += (carry?.let { "$it " } ?: "") + p; carry = null }
         carry?.let { out += it }
         return out
     }

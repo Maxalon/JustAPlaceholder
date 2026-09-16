@@ -3918,5 +3918,28 @@
     "cite": [
       "510.1b"
     ]
+  },
+  {
+    "id": "settle-how-many-lands",
+    "text": "My opponent attacks with Grizzly Bears. I cast Settle the Wreckage. How many lands do they get?",
+    "expect": [
+      "Search their library for 1 (that many) basic land cards"
+    ],
+    "cite": [
+      "701.13a"
+    ]
+  },
+  {
+    "id": "ponder-then-brainstorm-tutelage",
+    "text": "I cast Ponder, then Brainstorm. I control Sphinx's Tutelage.",
+    "expect": [
+      "You draw 3 cards"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "121.1"
+    ]
   }
 ]

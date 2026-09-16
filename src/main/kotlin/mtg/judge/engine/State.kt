@@ -125,6 +125,8 @@ class StackItem(
     var lifeLost: Int = 0
     /** Objects this item dealt damage to ("a creature dealt damage this way"). */
     val damaged = mutableSetOf<String>()
+    /** How many objects the last "all …" part of this item affected ("that many"). */
+    var lastCount: Int? = null
     val describe: String get() = when (kind) {
         StackKind.SPELL -> source.name
         StackKind.TRIGGERED -> "${source.name}'s triggered ability"
