@@ -254,6 +254,14 @@ object OracleParser {
             val who = when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "an opponent" -> Who.OPPONENT; else -> Who.ANY_PLAYER }
             return Trigger.NthSpellEachTurn(mapOf("second" to 2, "third" to 3, "fourth" to 4).getValue(m.groupValues[2].lowercase()), who)
         }
+        // "you attack with two or more creatures" / "with one or more Elves"
+        Regex("""^you attack with (one|two|three|four|five|\d+) or more (.+?)$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
+            val n = number(m.groupValues[1]) ?: m.groupValues[1].toIntOrNull() ?: 1
+            val what = m.groupValues[2].trim()
+            val f = parseFilter(what.split(" ").joinToString(" ") { w -> singular(w) }, Kind.CREATURE)
+            if (!f.verifiable) return@let
+            return Trigger.AttackWithNOrMore(n, f)
+        }
         spellCastRe.matchEntire(c)?.let { m ->
             val who = when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "an opponent" -> Who.OPPONENT; else -> Who.ANY_PLAYER }
             val what = m.groupValues[3].trim().lowercase()

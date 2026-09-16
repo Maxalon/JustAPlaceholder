@@ -1030,6 +1030,8 @@ class Engine(val state: GameState) {
             Who.OPPONENT -> event.item.controller != obj.controller
             else -> true
         } && (state.spellsThisTurn[event.item.controller] ?: 0) == trigger.n
+        is Trigger.AttackWithNOrMore -> event is GameEvent.PlayerAttacks && onBf() && event.playerId == obj.controller &&
+            state.objects.values.count { it.attacking != null && it.controller == event.playerId && (trigger.filter == null || state.matches(trigger.filter, it, obj.controller, obj)) } >= trigger.n
         is Trigger.SpellCastMvEqualsCounters -> event is GameEvent.SpellCast && onBf() &&
             event.item.source !== obj && event.item.source.def.manaValue.toInt() == (obj.counters[trigger.counter] ?: 0)
         Trigger.ThisEnters -> event is GameEvent.EntersBattlefield && event.obj === obj

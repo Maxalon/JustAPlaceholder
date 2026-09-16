@@ -69,6 +69,8 @@ sealed interface Trigger {
     data object YouAttack : Trigger
     /** Exalted: "Whenever a creature you control attacks alone". */
     data object CreatureAttacksAlone : Trigger
+    /** "Whenever you attack with two or more creatures" / "with one or more Elves": once per combat, on the declaration. */
+    data class AttackWithNOrMore(val n: Int, val filter: ObjFilter?) : Trigger
     /** "Whenever you gain life". */
     data object YouGainLife : Trigger
     /** "Whenever a [filter] dies". */

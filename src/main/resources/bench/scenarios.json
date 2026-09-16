@@ -6680,5 +6680,32 @@
     "cite": [
       "701.6a"
     ]
+  },
+  {
+    "id": "attacking-with-two-or-more-creatures",
+    "text": "I control Military Intelligence and attack with Grizzly Bears and Serra Angel. What happens?",
+    "expect": [
+      "Military Intelligence's ability triggers",
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "attacking-with-one-creature-is-not-enough",
+    "text": "I control Military Intelligence and attack with Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears is unblocked"
+    ],
+    "notExpect": [
+      "Military Intelligence's ability triggers"
+    ],
+    "cite": [
+      "510.1b"
+    ]
   }
 ]

@@ -80,6 +80,12 @@ class StaysParsedTest {
     }
 
     @Test
+    fun `attack-with-N-or-more wordings stay modelled`() {
+        check("Military Intelligence", "Enchantment", "Whenever you attack with two or more creatures, draw a card.")
+        check("Hired Claw", "Creature — Lizard Mercenary", "Whenever you attack with one or more Lizards, ~ gets +1/+0 until end of turn.")
+    }
+
+    @Test
     fun `becomes-the-target wordings stay modelled`() {
         check("Shimmering Glasskite", "Creature — Bird Spirit", "Flying\nWhenever ~ becomes the target of a spell or ability for the first time each turn, counter that spell or ability.", listOf("flying"))
         check("Scaled Hulk", "Creature — Dinosaur", "Whenever ~ becomes the target of a spell or ability an opponent controls, put a +1/+1 counter on ~.")
