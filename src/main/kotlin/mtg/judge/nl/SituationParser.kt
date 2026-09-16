@@ -402,6 +402,11 @@ class SituationParser(private val names: NameIndex) {
         }
         // "has only one untapped creature, Grizzly Bears, and …": the appositive name belongs to the noun before the comma.
         t2 = t2.replace(Regex("""\b(creature|blocker|attacker|permanent|artifact|enchantment|land|thing|card), (c\d+),?(?= and | which | that |$)"""), "$1 $2")
+        // "There are two Grizzly Bears on the battlefield, mine and theirs": one on each side, which is what the
+        // rest of the grammar already reads when it is said that way round.
+        t2 = t2.replace(Regex("""^there (?:is|are|'s) (?:two|2|a pair of) (c\d+)(?: on the battlefield| in play| out)?,? (?:one )?(?:mine|yours) and (?:one )?theirs$"""), "both of us control $1")
+        t2 = t2.replace(Regex("""^there (?:is|are|'s) (?:two|2|a pair of) (c\d+)(?: on the battlefield| in play| out)?,? (?:one )?theirs and (?:one )?(?:mine|yours)$"""), "both of us control $1")
+        t2 = t2.replace(Regex("""^(?:we|both of us) each (?:control|have) (?:an? |the )?(c\d+)$"""), "both of us control $1")
         // "I flash back Faithless Looting": the same as casting it with flashback, which is read.
         t2 = t2.replace(Regex("""\b(?:flash(?:es)? back|flashing back|flashbacks?) ((?:an? |the |my |their )?c\d+)"""), "casts $1 with flashback")
         // "There is a Lightning Bolt on the stack targeting my Bears" and "my Bears has a Bolt on the stack

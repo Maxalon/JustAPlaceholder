@@ -6873,5 +6873,19 @@
     "cite": [
       "903.10a"
     ]
+  },
+  {
+    "id": "one-of-each-on-the-battlefield",
+    "text": "There are two Grizzly Bears on the battlefield, mine and theirs. I cast Doom Blade on theirs. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "your graveyard",
+      "target that wasn't stated"
+    ],
+    "cite": [
+      "701.8a"
+    ]
   }
 ]
