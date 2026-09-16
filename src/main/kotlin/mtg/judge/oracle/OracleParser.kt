@@ -787,7 +787,8 @@ object OracleParser {
     // The "to" part is read as a filter rather than matched against a fixed list, so "creatures and planeswalkers
     // you control" and "creature tokens you control" work without their own entries. Anything parseFilter can't
     // verify is still reported unparsed.
-    private val preventAllTurnRe = Regex("""^prevent all (combat )?damage that would be dealt(?: to (?!and\b)([a-z][a-z' ]*?))?(?: by ([a-z][a-z' ]*?))?(?: this turn)?\.?$""", RegexOption.IGNORE_CASE)
+    // "this turn" sits either after what the damage is dealt to or right at the end, depending on the card.
+    private val preventAllTurnRe = Regex("""^prevent all (combat )?damage that would be dealt(?: to (?!and\b)([a-z][a-z' ]*?))?(?: this turn)?(?: by ([a-z][a-z' ]*?))?(?: this turn)?\.?$""", RegexOption.IGNORE_CASE)
     private val regenerateRe = Regex("""^regenerate (~|target .+?)\.?$""", RegexOption.IGNORE_CASE)
 
     private fun parseSentence(s: String): Effect {

@@ -36,6 +36,9 @@ class StaysParsedTest {
     fun `prevention wordings stay apart from one another`() {
         check("Fog", "Instant", "Prevent all combat damage that would be dealt this turn.")
         check("Angelsong", "Instant", "Prevent all combat damage that would be dealt to players this turn.")
+        // "this turn" sits in the middle on some cards and at the end on others.
+        check("Thwart the Enemy", "Instant", "Prevent all damage that would be dealt this turn by creatures your opponents control.")
+        check("Deep Wood", "Instant", "Prevent all damage that would be dealt to you this turn by attacking creatures.")
         check("Shelter the Weak", "Instant", "Prevent all damage that would be dealt to creatures and planeswalkers you control this turn.")
         // Maze of Ith's "to and dealt by" has its own handler; a broader prevention rule must not take it first.
         check("Maze of Ith", "Land", "{T}: Untap target attacking creature. Prevent all combat damage that would be dealt to and dealt by that creature this turn.")

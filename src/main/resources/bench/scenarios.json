@@ -5977,10 +5977,10 @@
     ]
   },
   {
-    "id": "angelsong-fogs-the-players",
+    "id": "angelsong-fogs-all-combat-damage",
     "text": "My opponent attacks me with a 5/5 and I cast Angelsong. What happens?",
     "expect": [
-      "prevent all combat damage that would be dealt to players",
+      "prevent all combat damage that would be dealt",
       "Damage to you from a 5/5 creature is prevented"
     ],
     "notExpect": [
@@ -6832,5 +6832,20 @@
     ],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "prevention-with-this-turn-in-the-middle",
+    "text": "They attack with Grizzly Bears and I cast Thwart the Enemy. I am at 5 life. What happens?",
+    "expect": [
+      "prevent all damage that would be dealt by creatures your opponents control",
+      "prevention shield prevents 2 of the 2 damage"
+    ],
+    "notExpect": [
+      "Not modeled",
+      "you lose 2 life"
+    ],
+    "cite": [
+      "615.7"
+    ]
   }
 ]
