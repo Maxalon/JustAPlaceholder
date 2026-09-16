@@ -207,7 +207,9 @@ class SituationParser(private val names: NameIndex) {
         "one", "two", "three", "four", "first", "second", "third", "last", "turn", "upkeep", "combat", "stack", "response", "target", "counter", "damage", "life", "commander", "planeswalker", "creature", "spell", "ability", "trigger", "token", "land",
         "mine", "theirs", "yours", "ours", "attacker", "blocker", "neither", "either", "everything", "nothing", "something", "anything")
     private val playerVerbs = setOf("casts", "cast", "plays", "played", "attacks", "attacked", "blocks", "blocked", "has", "have", "had", "controls", "control", "activates", "activated", "responds", "responded", "taps", "sacrifices",
-        "is", "are", "was", "swings", "targets", "counters", "draws", "pays", "declines", "passes", "says", "wants", "does", "gets", "takes", "loses", "gains", "dies", "wins", "uses", "equips", "flashes", "resolves", "fires", "slams", "runs")
+        "is", "are", "was", "swings", "targets", "counters", "draws", "pays", "declines", "passes", "says", "wants", "does", "gets", "takes", "loses", "gains", "dies", "wins", "uses", "equips", "flashes", "resolves", "fires", "slams", "runs",
+        // What one player does to another's things: "Alice kills Bob's Bears", "Bob bounces Alice's Titan".
+        "kills", "killed", "destroys", "destroyed", "exiles", "exiled", "bounces", "bounced", "blinks", "blinked", "flickers", "flickered", "removes", "removed", "pumps", "pumped", "shrinks", "answers", "sacs", "discards", "mills", "returns", "steals", "copies", "untaps", "reveals", "searches", "makes", "creates", "attacks", "blocks", "swings", "wipes", "scoops", "concedes")
     private val playerPreps = setOf("at", "targeting", "target", "to", "attacks", "attack", "attacking", "and", "hits", "hit", "with", "against", "on", "of", "then", "meanwhile")
 
     private fun mark(sentence: String, short: Map<String, NameIndex.Entry> = emptyMap(), named: Map<String, String> = emptyMap()): Marked {
@@ -1204,17 +1206,21 @@ class SituationParser(private val names: NameIndex) {
         }
         if (Regex("""^draws?(?: a card| for it| off it)?$""").matches(c) && ctx.events.any { it.verb == "cast" }) return true   // the engine draws for the trigger
         // "kills the Bears with Doom Blade" / "removes X with Y": the spell is cast at the creature.
-        Regex("""^(?:kills?|killed|destroys?|destroyed|exiles?|exiled|removes?|removed|answers?|deals? with|bounces?|bounced|blinks?|flickers?|shrinks?|pumps?) (an? |the |my |their |my opponent's )?(c\d+|(?:their |my |the )?(?:blocker|attacker|creature)) (?:with|using|via) (?:an? |the |my )?(c\d+)$""").find(c)?.let { r ->
+        Regex("""^(?:kills?|killed|destroys?|destroyed|exiles?|exiled|removes?|removed|answers?|deals? with|bounces?|bounced|blinks?|flickers?|shrinks?|pumps?) (an? |the |my |their |his |her |my opponent's |@\w+'s |(?:my|their|his|her|its) own )?(c\d+|(?:their |my |the )?(?:blocker|attacker|creature)) (?:with|using|via) (?:an? |the |my )?(c\d+)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val spell = m.cards.getValue(r.groupValues[3])
             // "blink MY Solemn Simulacrum": a creature named as the speaker's is theirs, not the other player's.
             // Without this a "creature you control" trigger has no legal target and the answer says it fizzles.
             // The possessive belongs to whoever is speaking, not to whoever is acting: in "my opponent kills my
             // Bears" the actor is the opponent and "my" is still the asker.
-            val victimOwner = when (r.groupValues[1].trim()) {
+            val victimOwner = when (val poss = r.groupValues[1].trim()) {
+                // "blinks her own Solemn Simulacrum": "own" means the player doing it, whoever that is.
+                "my own", "their own", "his own", "her own", "its own" -> who
                 "my" -> "me"
-                "their", "my opponent's" -> pronounPlayer(ctx, "their")
-                else -> ctx.other(who) ?: "opp"
+                "their", "his", "her", "my opponent's" -> pronounPlayer(ctx, "their")
+                // "Alice kills Bob's Grizzly Bears": a named player owns it.
+                else -> Regex("""^@(\w+)'s$""").find(poss)?.groupValues?.get(1)?.also { ctx.players.putIfAbsent(it, m.players[it] ?: it); ctx.note(it) }
+                    ?: ctx.other(who) ?: "opp"
             }
             // "their blocker" / "my attacker": the creature in that combat role.
             val roleId = if (!r.groupValues[2].startsWith("c")) { val role = r.groupValues[2].substringAfterLast(' '); val ev = if (role == "blocker") ctx.events.lastOrNull { it.verb == "block" } else ctx.events.lastOrNull { it.verb == "attack" }; ev?.obj ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let } else null

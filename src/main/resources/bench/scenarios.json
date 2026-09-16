@@ -6178,5 +6178,30 @@
       "all targets illegal"
     ],
     "cite": []
+  },
+  {
+    "id": "a-named-player-kills-another-named-players-creature",
+    "text": "Alice kills Bob's Grizzly Bears with Murder. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → Bob's graveyard",
+      "Alice casts Murder"
+    ],
+    "notExpect": [
+      "Alice's graveyard"
+    ],
+    "cite": [
+      "701.8a"
+    ]
+  },
+  {
+    "id": "a-named-player-acts-on-their-own-creature",
+    "text": "Alice blinks her own Solemn Simulacrum with Restoration Angel. What happens?",
+    "expect": [
+      "Solemn Simulacrum [solemn_simulacrum] (Alice's"
+    ],
+    "notExpect": [
+      "all targets illegal"
+    ],
+    "cite": []
   }
 ]
