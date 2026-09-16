@@ -927,6 +927,9 @@ class Engine(val state: GameState) {
 
     // ---- effects ---------------------------------------------------------------------------
 
+    /** Where each creature's "has N damage marked" outcome line sits, so a second hit updates it instead of adding another. */
+    private val damageOutcome = mutableMapOf<String, Int>()
+
     private fun applyEffect(effect: Effect, item: StackItem) {
         val you = state.player(item.controller)
         when (effect) {
@@ -1548,7 +1551,14 @@ class Engine(val state: GameState) {
             is Ref.Obj -> { val o = state.obj(target.id)
                 if (o.def.isPlaneswalker) { val before = o.counters["loyalty"] ?: 0; o.counters["loyalty"] = maxOf(0, before - amount); trace.step("$sourceName deals $amount damage to ${o.name}, so $amount loyalty counters are removed from it (${o.counters["loyalty"]} left).", "306.8", "120.3c"); state.outcomes += "${o.name} has ${o.counters["loyalty"]} loyalty." }
                 else if (infect || wither) { o.counters["-1/-1"] = (o.counters["-1/-1"] ?: 0) + amount; trace.step("$sourceName has ${if (infect) "infect" else "wither"}, so the $amount damage to ${o.name} is dealt as $amount -1/-1 counter${if (amount > 1) "s" else ""}; it's now ${o.power}/${o.toughness}.", if (infect) "702.90c" else "702.80a", "120.3d"); state.outcomes += "${o.name} has ${o.counters["-1/-1"]} -1/-1 counter(s)." }
-                else { o.damage += amount; trace.step("$sourceName deals $amount damage to ${o.name}; it now has ${o.damage} damage marked (toughness ${o.toughness ?: "?"}).", "120.3e"); state.outcomes += "${o.name} has ${o.damage} damage marked." } }
+                else {
+                    o.damage += amount
+                    trace.step("$sourceName deals $amount damage to ${o.name}; it now has ${o.damage} damage marked (toughness ${o.toughness ?: "?"}).", "120.3e")
+                    val line = "${o.name} has ${o.damage} damage marked."
+                    val slot = damageOutcome[o.id]
+                    if (slot != null && slot < state.outcomes.size) state.outcomes[slot] = line
+                    else { damageOutcome[o.id] = state.outcomes.size; state.outcomes += line }
+                } }
             is Ref.Stack -> { state.unsupported += Unsupported(sourceName, "Damage can't be dealt to something on the stack."); return 0 }
         }
         if (source != null && target !is Ref.Stack) onEvent(GameEvent.DamageDealt(source, target, amount, inCombatDamage))
@@ -1581,8 +1591,11 @@ class Engine(val state: GameState) {
     private var inCombatDamage = false
 
     /** "If X would die, exile it instead" (614.1a) and Rest-in-Peace style effects: the replaced destination, with the source's name. */
-    private fun graveyardReplacement(obj: GameObject, from: Zone): Pair<Zone, String>? {
-        if (from == Zone.BATTLEFIELD && obj.exileOnDeath != null) return Zone.EXILE to "${obj.exileOnDeath}'s \"exile it instead\""
+    /** A "would die/would be put into a graveyard, instead …" effect that applies to [obj], and whatever else it does. */
+    private class GyRepl(val zone: Zone, val by: String, val source: GameObject?, val alsoDo: Effect?)
+
+    private fun graveyardReplacement(obj: GameObject, from: Zone): GyRepl? {
+        if (from == Zone.BATTLEFIELD && obj.exileOnDeath != null) return GyRepl(Zone.EXILE, "${obj.exileOnDeath}'s \"exile it instead\"", null, null)
         for (o in state.objects.values) {
             if (!o.isOnBattlefield()) continue
             for (e in o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }) {
@@ -1593,7 +1606,7 @@ class Engine(val state: GameState) {
                 if (r.filter.other && o === obj) continue
                 if (r.filter.controller == Who.OPPONENT && obj.owner == o.controller) continue
                 val zone = when (r.instead) { "exile" -> Zone.EXILE; "hand" -> Zone.HAND; else -> Zone.LIBRARY }
-                return zone to o.name
+                return GyRepl(zone, o.name, o, r.alsoDo)
             }
         }
         return null
@@ -1621,11 +1634,16 @@ class Engine(val state: GameState) {
     }
 
     private fun move(obj: GameObject, to: Zone, text: String, vararg rules: String) {
-        if (to == Zone.GRAVEYARD) graveyardReplacement(obj, obj.zone)?.let { (zone, by) ->
+        if (to == Zone.GRAVEYARD) graveyardReplacement(obj, obj.zone)?.let { r ->
             val from = obj.zone
-            trace.step("$text But $by replaces that: instead of going to the graveyard, ${obj.name} is put into ${zoneName(zone, obj)}. The graveyard event never happens, so nothing triggers on it.", *rules, "614.1a", "614.6")
-            moveRaw(obj, zone); state.outcomes += "${obj.name}: ${zoneName(from, obj)} → ${zoneName(zone, obj)} (replaced by $by)."
+            trace.step("$text But ${r.by} replaces that: instead of going to the graveyard, ${obj.name} is put into ${zoneName(r.zone, obj)}. The graveyard event never happens, so nothing triggers on it.", *rules, "614.1a", "614.6")
+            moveRaw(obj, r.zone); state.outcomes += "${obj.name}: ${zoneName(from, obj)} → ${zoneName(r.zone, obj)} (replaced by ${r.by})."
             if (from == Zone.BATTLEFIELD) onEvent(GameEvent.LeavesBattlefield(obj))
+            if (r.alsoDo != null && r.source != null) {
+                // The rest of the replacement effect ("… and create a 2/2 black Zombie") happens as part of the same event, not as a trigger.
+                trace.step("${r.by}'s replacement effect also does the rest of what it says; it's one event, not a separate trigger.", "614.1", "616.1")
+                applyEffect(r.alsoDo, StackItem(state.newStackId(), StackKind.TRIGGERED, r.source.controller, r.source, r.alsoDo, emptyList(), emptyMap(), r.by))
+            }
             return
         }
         val from = obj.zone

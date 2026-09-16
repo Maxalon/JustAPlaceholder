@@ -249,6 +249,8 @@ object OracleParser {
 
     private val preventStaticRe = Regex("""^prevent all (combat )?damage that would be dealt (to|by) (~|enchanted creature|equipped creature|you|creatures you control|other creatures you control|creatures|players|you and permanents you control)\.?$""", RegexOption.IGNORE_CASE)
     private val diesReplRe = Regex("""^if (~|a creature|a nontoken creature|a creature you control|another creature|a creature an opponent controls|a permanent|a nontoken permanent|an? (.+?)) would die, (exile it|return it to its owner's hand|put it on the bottom of its owner's library|put it on top of its owner's library|shuffle it into its owner's library|exile it instead)(?: instead)?\.?$""", RegexOption.IGNORE_CASE)
+    /** Kalitas: "If a nontoken creature an opponent controls would die, instead exile that card and create a 2/2 black Zombie creature token." */
+    private val diesInsteadRe = Regex("""^if (~|another .+?|an? .+?) would die, instead (exile that card|exile it|return that card to its owner's hand|put that card on the bottom of its owner's library|put that card on top of its owner's library|shuffle that card into its owner's library)(?: and (.+?))?\.?$""", RegexOption.IGNORE_CASE)
     private val gyReplRe = Regex("""^if (a card or token|a card|a creature card|a nontoken creature|a permanent|a nontoken permanent|a creature) would be put into (a|an opponent's|your|a player's) graveyard from anywhere, exile it instead\.?$""", RegexOption.IGNORE_CASE)
     private val doublerRe = Regex("""^if a source (you control |an opponent controls )?would deal damage to (?:a permanent or player|a creature or player|a player|a creature|a permanent|you|an opponent|a player or planeswalker|a creature or planeswalker|any target), it deals (double|twice) that damage(?: to that (?:permanent or player|creature or player|player|creature|permanent|player or planeswalker))? instead\.?$""", RegexOption.IGNORE_CASE)
     private val lifeDoubleRe = Regex("""^if you would gain life, you gain (twice|double) that much life instead\.?$""", RegexOption.IGNORE_CASE)
@@ -268,6 +270,15 @@ object OracleParser {
             }
         }
         Regex("""^if ~ would be put into a graveyard from anywhere, (?:reveal ~ and )?shuffle (?:it|~) into its owner's library instead\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return StaticEffect.Replace(Replacement.GraveyardReplacement(ObjFilter(setOf(Kind.PERMANENT), raw = "~"), true, "library_shuffle", true)) }
+        diesInsteadRe.matchEntire(line)?.let { m ->
+            val what = m.groupValues[1]; val self = what == "~"
+            val filter = if (self) ObjFilter(setOf(Kind.PERMANENT), raw = "~") else parseFilter(what.removePrefix("a ").removePrefix("an ").removePrefix("another "), Kind.CREATURE).let { if (what.startsWith("another", true)) it.copy(other = true) else it }
+            if (!filter.verifiable) return null
+            val instead = when { m.groupValues[2].startsWith("exile", true) -> "exile"; m.groupValues[2].contains("hand", true) -> "hand"; m.groupValues[2].contains("bottom", true) -> "library_bottom"; m.groupValues[2].contains("top", true) -> "library_top"; else -> "library_shuffle" }
+            val rider = m.groupValues[3].trim().takeIf { it.isNotEmpty() }?.let { parseSentence(it.replaceFirstChar { c -> c.lowercase() }) }
+            if (m.groupValues[3].trim().isNotEmpty() && (rider == null || rider.hasUnparsed())) return null
+            return StaticEffect.Replace(Replacement.GraveyardReplacement(filter, self, instead, false, rider))
+        }
         diesReplRe.matchEntire(line)?.let { m ->
             val what = m.groupValues[1]; val self = what == "~"
             val filter = if (self) ObjFilter(setOf(Kind.PERMANENT), raw = "~") else parseFilter(what.removePrefix("a ").removePrefix("an "), Kind.CREATURE).let { if (what.startsWith("another")) it.copy(other = true) else it }

@@ -318,7 +318,7 @@ sealed interface Replacement {
     /** Prevent [amount] (null = all) damage that would be dealt to things matching [to] (or the player [toPlayer]), optionally only combat damage / only from sources matching [from]. */
     data class PreventDamage(val amount: Int?, val to: ObjFilter?, val toPlayer: Who?, val combatOnly: Boolean, val from: ObjFilter?, val fromSelf: Boolean = false) : Replacement
     /** "If [filter] would die, [instead] instead" / "would be put into a graveyard from anywhere". instead: exile | hand | library_bottom | library_top */
-    data class GraveyardReplacement(val filter: ObjFilter, val self: Boolean, val instead: String, val fromAnywhere: Boolean) : Replacement
+    data class GraveyardReplacement(val filter: ObjFilter, val self: Boolean, val instead: String, val fromAnywhere: Boolean, val alsoDo: Effect? = null) : Replacement
     /** "If a source (you control) would deal damage …, it deals double that damage instead." */
     data class DamageMultiplier(val factor: Int, val sourceControl: Who?) : Replacement
     /** "If you would gain life, you gain twice that much life instead." */
