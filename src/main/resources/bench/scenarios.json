@@ -6561,5 +6561,20 @@
     "cite": [
       "702.34a"
     ]
+  },
+  {
+    "id": "one-sided-damage-after-a-pump",
+    "text": "I control Grizzly Bears and they control Serra Angel. I cast Nature's Way on my Grizzly Bears targeting their Serra Angel. What happens?",
+    "expect": [
+      "gains vigilance and trample",
+      "deals 2 damage to Serra Angel",
+      "Serra Angel deals none back"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "701.14a"
+    ]
   }
 ]

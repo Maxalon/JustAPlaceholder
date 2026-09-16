@@ -601,7 +601,9 @@ object OracleParser {
                 val cur0 = sentences[i]; val next = sentences.getOrNull(i + 1)
                 // Pronoun continuations: "It gets +1/+1 until end of turn." / "Put a +1/+1 counter on it." refer to the previous target.
                 val cur = if (lastTarget != null) cur0.replace(Regex("""^Prevent all combat damage that would be dealt to and dealt by (?:it|that creature) this turn"""), "Prevent all combat damage that would be dealt to and dealt by target ${lastTarget.raw} this turn").replace(Regex("""^(?:It|That (?:creature|permanent|artifact|enchantment|land)) (gets|gains) """), "Target ${lastTarget.raw} $1 ").replace(Regex("""(?i) on (?:it|that (?:creature|permanent))\.?$"""), " on target ${lastTarget.raw}.")
-                    .replace(Regex("""^(Untap|Tap|Destroy|Exile|Sacrifice) (?:it|that (?:creature|permanent|artifact|enchantment|land))\.?$"""), "$1 target ${lastTarget.raw}.") else cur0
+                    .replace(Regex("""^(Untap|Tap|Destroy|Exile|Sacrifice) (?:it|that (?:creature|permanent|artifact|enchantment|land))\.?$"""), "$1 target ${lastTarget.raw}.")
+                    // "Then that creature deals damage equal to its power to target creature an opponent controls."
+                    .replace(Regex("""^(?:Then )?(?:It|That creature) deals damage equal to its power to """), "Target ${lastTarget.raw} deals damage equal to its power to ") else cur0
                 // "That player may pay {2}. If they don't, you create a Treasure token." is an "unless they pay" effect.
                 val mayPay = Regex("""^(That player|Its controller|Target player|Each opponent|You) may pay (\{[^}]+\}(?:\{[^}]+\})*|\d+ life)\.?$""", RegexOption.IGNORE_CASE).matchEntire(cur)
                 val ifNot = Regex("""^If (?:they|that player|the player|you) (?:don't|doesn't|do not|does not), (.+)$""", RegexOption.IGNORE_CASE)
@@ -1061,7 +1063,9 @@ object OracleParser {
         if (Regex("""^if a (?:creature|permanent) dealt damage this way would die this turn, exile it instead\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.ExileIfDamagedDies
         Regex("""^change a target of (target spell or ability|target spell|target ability) to ~\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.RedirectToSelf(target(m.groupValues[1])) }
         Regex("""^(target creature you control) fights (target creature (?:you don't control|an opponent controls))\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.Fight(target(m.groupValues[1], Kind.CREATURE), target(m.groupValues[2], Kind.CREATURE)) }
-        Regex("""^(target creature you control) deals damage equal to its power to (target creature (?:you don't control|an opponent controls))\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.DealsPowerTo(target(m.groupValues[1], Kind.CREATURE), target(m.groupValues[2], Kind.CREATURE)) }
+        // "Target creature you control deals damage equal to its power to target creature an opponent controls"
+        // and its cousins ("target Dinosaur you control", "target creature or planeswalker you don't control").
+        Regex("""^(target [a-z' ]*?you control) deals damage equal to its power to (target [a-z' ]+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.DealsPowerTo(target(m.groupValues[1], Kind.CREATURE), target(m.groupValues[2], Kind.CREATURE)) }
         Regex("""^put (target .+?) on the bottom of its owner's library\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.PutOnBottom(target(m.groupValues[1])) }
         if (Regex("""^its controller gains life equal to its toughness\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.GainLifeEqualToToughness(Who.CONTROLLER_OF_TARGET)
         return Effect.Unparsed(s)
@@ -1071,7 +1075,7 @@ object OracleParser {
     private fun number(s: String): Int? = s.toIntOrNull() ?: numberWords[s.lowercase()]
 
     private fun target(desc: String, defaultKind: Kind? = null): TargetSpec {
-        val d = desc.trim().removePrefix("target ").trim()
+        val d = desc.trim().let { if (it.startsWith("target ", true)) it.drop(7) else it }.trim()
         return TargetSpec(parseFilter(d, defaultKind), d)
     }
 

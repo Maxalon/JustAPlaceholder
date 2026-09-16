@@ -61,6 +61,13 @@ class StaysParsedTest {
     }
 
     @Test
+    fun `one-sided damage wordings stay modelled`() {
+        check("Rabid Bite", "Sorcery", "Target creature you control deals damage equal to its power to target creature you don't control.")
+        check("Nature's Way", "Sorcery", "Target creature you control gains vigilance and trample until end of turn. It deals damage equal to its power to target creature you don't control.")
+        check("Pounce", "Instant", "Target creature you control fights target creature you don't control.", listOf("fight"))
+    }
+
+    @Test
     fun `copy wordings stay modelled`() {
         check("Clone", "Creature — Shapeshifter", "You may have ~ enter as a copy of any creature on the battlefield.")
         check("Vesuva", "Land", "You may have ~ enter tapped as a copy of any land on the battlefield.")
