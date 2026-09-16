@@ -357,6 +357,9 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(?:is|are|'s|'re) casting\b"""), "casts")
             .replace(Regex("""\b(?:i am|i'm|we are|we're) drawing\b"""), "i draw")
             .replace(Regex("""\b(?:am i|are we) losing\b"""), "do i lose").replace(Regex("""\b(?:are they|is he|is she) losing\b"""), "do they lose")
+            // "at the beginning of my upkeep", "my upkeep comes around": the step, said the long way round.
+            .replace(Regex("""^at the (?:beginning|start) of (my|their|his|her|the) """), "during $1 ")
+            .replace(Regex("""\b(my|their|his|her) (upkeep|end step|draw step|main phase|combat|untap step) (?:comes around|rolls around|arrives|begins|starts)"""), "it is $1 $2")
             .replace(Regex("""\b(?:is|are|'s|'re) drawing\b"""), "draws")
             .replace(Regex("""\b(?:takes?|took) (an?|one|two|three|\d+) cards? off the top\b"""), "draws $1 card")
             .replace(Regex("""\b(draws?|drew) one\b(?!\s+card)"""), "$1 a card")
