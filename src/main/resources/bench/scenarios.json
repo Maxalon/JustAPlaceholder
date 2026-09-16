@@ -6460,5 +6460,33 @@
     "cite": [
       "701.8a"
     ]
+  },
+  {
+    "id": "a-spell-already-on-the-stack",
+    "text": "They have a Lightning Bolt on the stack targeting my Grizzly Bears. What happens?",
+    "expect": [
+      "opponent casts Lightning Bolt targeting Grizzly Bears",
+      "Grizzly Bears has 3 damage marked"
+    ],
+    "notExpect": [
+      "noted as in hand"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "responding-to-a-spell-already-on-the-stack",
+    "text": "My Grizzly Bears has a Lightning Bolt on the stack targeting it. I cast Giant Growth on it in response. What happens?",
+    "expect": [
+      "Grizzly Bears gets +3/+3",
+      "it's now 5/5"
+    ],
+    "notExpect": [
+      "state-based action"
+    ],
+    "cite": [
+      "611.2a"
+    ]
   }
 ]

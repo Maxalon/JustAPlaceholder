@@ -397,6 +397,15 @@ class SituationParser(private val names: NameIndex) {
         }
         // "has only one untapped creature, Grizzly Bears, and …": the appositive name belongs to the noun before the comma.
         t2 = t2.replace(Regex("""\b(creature|blocker|attacker|permanent|artifact|enchantment|land|thing|card), (c\d+),?(?= and | which | that |$)"""), "$1 $2")
+        // "There is a Lightning Bolt on the stack targeting my Bears" and "my Bears has a Bolt on the stack
+        // targeting it" say the same thing as "they have a Bolt on the stack targeting my Bears", which is read.
+        // Whose spell it is follows from whose permanent it points at.
+        t2 = Regex("""^there(?:'s| is| are) (?:an? |the )?(c\d+) on the stack targeting (my|their|my opponent's|the) (c\d+)$""").replace(t2) { r ->
+            "${if (r.groupValues[2] == "my") "they have" else "i have"} a ${r.groupValues[1]} on the stack targeting ${r.groupValues[2]} ${r.groupValues[3]}"
+        }
+        t2 = Regex("""^(my|their|my opponent's|the) (c\d+) has (?:an? |the )?(c\d+) on the stack targeting it$""").replace(t2) { r ->
+            "${if (r.groupValues[1] == "my") "they have" else "i have"} a ${r.groupValues[3]} on the stack targeting ${r.groupValues[1]} ${r.groupValues[2]}"
+        }
         val t = t2.trim()
 
         // Pure questions carry no state; the engine answers "what happens" by default.
@@ -639,6 +648,27 @@ class SituationParser(private val names: NameIndex) {
             clause0 = clause0.removeRange(r.range)
         }
         var c = clause0.replace(Regex("""^(?:after (?:blockers|blocks|attackers|attacks)(?: are declared)?|before (?:combat )?damage|in the (?:declare blockers|declare attackers|end|combat damage|beginning of combat) step|during (?:combat|the combat phase)|at (?:that|this) point|with (?:that|it|the trigger|the spell) on the stack|in response|after that|afterwards|as soon as|then|next|now|so|when|if|after|once|later|finally|also|meanwhile)\s*,?\s+"""), "")
+        // "They have a Lightning Bolt on the stack targeting my Grizzly Bears": a spell already cast and waiting.
+        // Without this the spell was filed as a card in hand and its target was dropped, quietly.
+        Regex("""^(?:(?:i|they|he|she|my opponent|the opponent|@\w+) )?(?:has|have|got|'ve got) (?:an? |the )?(c\d+) on the stack(?: targeting (my |their |my opponent's |the |@\w+'s )?(c\d+))?$""").find(c)?.let { r ->
+            val spell = m.cards.getValue(r.groupValues[1])
+            val caster = actorOfClause(c) ?: ctx.lastActor ?: "opp"
+            val tgt = r.groupValues[3].takeIf { it.isNotEmpty() }?.let { ph ->
+                val card = m.cards.getValue(ph)
+                val owner = when (val w = r.groupValues[2].trim()) {
+                    "my" -> "me"
+                    "their", "my opponent's" -> pronounPlayer(ctx, "their")
+                    "", "the" -> ctx.other(caster) ?: "me"
+                    else -> if (w.startsWith("@")) w.removePrefix("@").removeSuffix("'s").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else ctx.other(caster) ?: "me"
+                }
+                objectIdFor(card, ctx) ?: addObject(card, owner, false, ctx)
+            }
+            emitCast(caster, spell, "", m, ctx)
+            if (tgt != null) ctx.events[ctx.events.lastIndex] = ctx.events.last().copy(targets = listOf(tgt))
+            // "…targeting my Bears. I cast Giant Growth on it": "it" is the permanent under threat, not the spell.
+            if (tgt != null) ctx.lastMentioned = tgt
+            ctx.lastActor = caster; ctx.lastVerb = "cast"; ctx.note(caster); return true
+        }
         // "… in response to them tapping Sol Ring for mana": the mana ability happens first (and can't be responded to, as the engine will say).
         Regex("""\s+in response to (?:them|my opponent|the opponent|me|@\w+) tapping (?:an? |the |their |my )?(c\d+|it)(?: for mana| for \{.*)?$""").find(c)?.let { r ->
             val ph = if (r.groupValues[1] == "it") Regex("""(?:on|targeting|at) (?:their |my |the |an? )?(c\d+)""").find(c)?.groupValues?.get(1) ?: return@let else r.groupValues[1]
