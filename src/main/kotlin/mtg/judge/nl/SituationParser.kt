@@ -884,6 +884,17 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:loses?|lost|losing) (\d+) life\b.*$""").find(c)?.let { r -> val who = actor ?: subject ?: "me"; ctx.events += EventSpec("loseLife", player = who, amount = r.groupValues[1].toInt()); ctx.lastActor = who; return true }
         // "X dies", "my opponent's X is destroyed", "X leaves the battlefield", "X gets exiled"
         // "it dies" / "that gets destroyed": the permanent just mentioned.
+        Regex("""^(an?|two|three|four|five|\d+) of (my|their|his|her|@\w+'s) (?:(\d+/\d+) )?(?:$creatureKinds) (dies|die|died|are destroyed|is destroyed|get destroyed|gets destroyed|go to the graveyard|goes to the graveyard|are sacrificed|is sacrificed)(?: at once| together| simultaneously| at the same time)?$""").find(c)?.let { r ->
+            val who = when (r.groupValues[2]) { "my" -> "me"; "their", "his", "her" -> pronounPlayer(ctx, "their"); else -> r.groupValues[2].removePrefix("@").removeSuffix("'s") }
+            val n = number(r.groupValues[1]) ?: 1
+            val ids = describedCreatures(if (n == 1) "a " else "$n ", r.groupValues[3], "creature", who, ctx, "")
+            if (ids.isEmpty()) return@let
+            val sacrificed = r.groupValues[4].contains("sacrific")
+            for (id in ids) ctx.events += if (sacrificed) EventSpec("sacrifice", player = who, obj = id) else EventSpec("leave", obj = id, to = "graveyard")
+            ctx.lastMentioned = ids.last(); ctx.lastActor = who; ctx.lastOwner = who; ctx.note(who)
+            ctx.notes += "\"${restore(c, m)}\" is read as ${ids.size} creature${if (ids.size == 1) "" else "s"} of ${if (who == "me") "yours" else "theirs"} going to the graveyard as one event."
+            return true
+        }
         Regex("""^(?:it|that|this|he|she|they) (dies|died|is destroyed|gets destroyed|goes to the graveyard|leaves the battlefield|is exiled|gets exiled|is bounced|is sacrificed|gets sacrificed)$""").find(c)?.let { r ->
             val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.objects.values.lastOrNull()?.id ?: return@let
             val to = when { r.groupValues[1].contains("exiled") -> "exile"; r.groupValues[1].contains("bounced") -> "hand"; else -> "graveyard" }

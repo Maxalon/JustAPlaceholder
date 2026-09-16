@@ -290,6 +290,10 @@ object OracleParser {
             val instead = when { m.groupValues[3].startsWith("exile", true) -> "exile"; m.groupValues[3].contains("hand", true) -> "hand"; m.groupValues[3].contains("bottom", true) -> "library_bottom"; m.groupValues[3].contains("top", true) -> "library_top"; else -> "library_shuffle" }
             return StaticEffect.Replace(Replacement.GraveyardReplacement(filter, self, instead, false))
         }
+        Regex("""^if an? (.+?) an opponent owns would die or a creature card not on the battlefield would be put into an opponent's graveyard, exile that card instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val f = parseFilter(m.groupValues[1], Kind.CREATURE)
+            if (f.verifiable) return StaticEffect.Replace(Replacement.GraveyardReplacement(f.copy(controller = Who.OPPONENT), false, "exile", true))
+        }
         gyReplRe.matchEntire(line)?.let { m ->
             val what = m.groupValues[1].lowercase()
             val filter = when (what) { "a card or token" -> ObjFilter(setOf(Kind.PERMANENT, Kind.CARD), raw = "card or token"); "a card" -> ObjFilter(setOf(Kind.PERMANENT, Kind.CARD), token = false, raw = "card"); else -> parseFilter(what.removePrefix("a "), Kind.CREATURE) }

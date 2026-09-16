@@ -4839,5 +4839,40 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "blood-artist-on-two-deaths",
+    "text": "I control Blood Artist and two of my creatures die at once. How much life does my opponent lose?",
+    "expect": [
+      "opponent loses 1 life. (×2)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "anafenza-exiles-an-opponents-creature",
+    "text": "I control Anafenza, the Foremost and my opponent's Grizzly Bears dies. What happens?",
+    "expect": [
+      "the battlefield → exile (replaced by Anafenza, the Foremost)"
+    ],
+    "notExpect": [
+      "Rules text not modeled: If a nontoken creature an opponent owns"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "anafenza-leaves-mine-alone",
+    "text": "I control Anafenza, the Foremost and my Grizzly Bears dies. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "replaced by Anafenza"
+    ],
+    "cite": []
   }
 ]
