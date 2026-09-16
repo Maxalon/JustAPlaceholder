@@ -402,7 +402,7 @@ class SituationParser(private val names: NameIndex) {
         // "attack with a 3/3 and a 2/2" / "blocks with two 2/2s and a 1/1": described creatures joined by "and" stay in one clause.
         if (Regex("""\b(?:attacks?|attacking|swings?|swinging|blocks?|blocking|chumps?)\b""").containsMatchIn(t2)) t2 = t2.replace(Regex("""\b((?:an? |\d+ |two |three |four |five )?\d+/\d+(?: (?!and\b)[a-z]+){0,3}) and ((?:an? |\d+ |two |three |four |five )?\d+/\d+)(?!\s+(?:chump[- ]?)?blocks?\b)"""), "$1 plus $2")
         // "… with Grizzly Bears and Hill Giant on the battlefield (under my control)": one "with X out" per card, before the clause split takes the "and".
-        Regex("""\s+with ((?:(?:an? |the |my |their )?c\d+)(?:,? (?:and )?(?:an? |the |my |their )?c\d+)*) (?:out|on the battlefield|in play|on board|on the field)(?: under (my|their|@\w+'s) control)?$""").find(t2)?.let { r ->
+        Regex("""(?:^|\s+)with ((?:(?:an? |the |my |their )?c\d+)(?:,? (?:and )?(?:an? |the |my |their )?c\d+)*) (?:out|on the battlefield|in play|on board|on the field)(?: under (my|their|@\w+'s) control)?$""").find(t2)?.let { r ->
             val cards = Regex("""c\d+""").findAll(r.groupValues[1]).map { it.value }.toList()
             if (cards.size > 1 || r.groupValues[2].isNotEmpty()) {
                 val owner = when (r.groupValues[2]) { "" -> null; "my" -> "me"; "their" -> pronounPlayer(ctx, "their"); else -> r.groupValues[2].removePrefix("@").removeSuffix("'s") }
@@ -497,6 +497,14 @@ class SituationParser(private val names: NameIndex) {
     }
 
     private fun readClause0(clauseIn: String, m: Marked, ctx: Ctx): Boolean {
+        // "… with a Wall of Omens out" left on its own once the life total was taken out of the sentence: it says
+        // what is on the battlefield, the same as "I have a Wall of Omens out".
+        Regex("""^(?:\s*with (?:an? |the |my |their )?c\d+(?:,? (?:and )?(?:an? |the |my |their )?c\d+)*(?: out| on the battlefield| in play| on board| on the field))+$""").find(clauseIn.trim())?.let {
+            var read = false
+            for (part in Regex("""with ((?:(?:an? |the |my |their )?c\d+)(?:,? (?:and )?(?:an? |the |my |their )?c\d+)*)(?: out| on the battlefield| in play| on board| on the field)""").findAll(clauseIn.trim()))
+                if (readClause("have " + part.groupValues[1] + " out", m, ctx)) read = true
+            if (read) return true
+        }
         // "taps out for Grizzly Bears": a cast, said the way players say it. The mana is spent, not available.
         Regex("""^(.*?)\btaps? out (?:for|to cast|casting|and casts?) (.+)$""", RegexOption.IGNORE_CASE).find(clauseIn.trim())?.let { r ->
             val read = readClause((r.groupValues[1].trim() + " casts " + r.groupValues[2].trim()).trim(), m, ctx)

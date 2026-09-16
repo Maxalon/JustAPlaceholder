@@ -7511,5 +7511,16 @@
       "You lose the game"
     ],
     "cite": []
+  },
+  {
+    "id": "life-total-and-a-permanent-in-one-breath",
+    "text": "I'm at 5 life with a Wall of Omens out. They attack with a 6/6. Do I survive?",
+    "expect": [
+      "Wall of Omens"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
   }
 ]
