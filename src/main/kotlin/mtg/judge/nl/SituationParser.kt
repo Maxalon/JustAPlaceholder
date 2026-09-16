@@ -1204,13 +1204,20 @@ class SituationParser(private val names: NameIndex) {
         }
         if (Regex("""^draws?(?: a card| for it| off it)?$""").matches(c) && ctx.events.any { it.verb == "cast" }) return true   // the engine draws for the trigger
         // "kills the Bears with Doom Blade" / "removes X with Y": the spell is cast at the creature.
-        Regex("""^(?:kills?|killed|destroys?|destroyed|exiles?|exiled|removes?|removed|answers?|deals? with|bounces?|bounced|blinks?|flickers?|shrinks?|pumps?) (?:an? |the |my |their |my opponent's )?(c\d+|(?:their |my |the )?(?:blocker|attacker|creature)) (?:with|using|via) (?:an? |the |my )?(c\d+)$""").find(c)?.let { r ->
+        Regex("""^(?:kills?|killed|destroys?|destroyed|exiles?|exiled|removes?|removed|answers?|deals? with|bounces?|bounced|blinks?|flickers?|shrinks?|pumps?) (an? |the |my |their |my opponent's )?(c\d+|(?:their |my |the )?(?:blocker|attacker|creature)) (?:with|using|via) (?:an? |the |my )?(c\d+)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
-            val spell = m.cards.getValue(r.groupValues[2])
+            val spell = m.cards.getValue(r.groupValues[3])
+            // "blink MY Solemn Simulacrum": a creature named as the speaker's is theirs, not the other player's.
+            // Without this a "creature you control" trigger has no legal target and the answer says it fizzles.
+            val victimOwner = when (r.groupValues[1].trim()) {
+                "my" -> who
+                "their", "my opponent's" -> ctx.other(who) ?: "opp"
+                else -> ctx.other(who) ?: "opp"
+            }
             // "their blocker" / "my attacker": the creature in that combat role.
-            val roleId = if (!r.groupValues[1].startsWith("c")) { val role = r.groupValues[1].substringAfterLast(' '); val ev = if (role == "blocker") ctx.events.lastOrNull { it.verb == "block" } else ctx.events.lastOrNull { it.verb == "attack" }; ev?.obj ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let } else null
-            val victim = if (roleId == null) m.cards.getValue(r.groupValues[1]) else null
-            val vid = roleId ?: (objectIdFor(victim!!, ctx) ?: addObject(victim, ctx.other(who) ?: "opp", false, ctx))
+            val roleId = if (!r.groupValues[2].startsWith("c")) { val role = r.groupValues[2].substringAfterLast(' '); val ev = if (role == "blocker") ctx.events.lastOrNull { it.verb == "block" } else ctx.events.lastOrNull { it.verb == "attack" }; ev?.obj ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let } else null
+            val victim = if (roleId == null) m.cards.getValue(r.groupValues[2]) else null
+            val vid = roleId ?: (objectIdFor(victim!!, ctx) ?: addObject(victim, victimOwner, false, ctx))
             emitCast(who, spell, "", m, ctx); ctx.events[ctx.events.lastIndex] = ctx.events.last().copy(targets = listOf(vid)); return true
         }
         // "can my opponent respond to my Bolt with Counterspell?" → the Bolt is cast, then the response.

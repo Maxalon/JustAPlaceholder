@@ -6128,5 +6128,31 @@
       "Blink enters the battlefield"
     ],
     "cite": []
+  },
+  {
+    "id": "blinking-my-own-creature-keeps-it-mine",
+    "text": "I blink my Solemn Simulacrum with Restoration Angel. What happens?",
+    "expect": [
+      "Solemn Simulacrum is exiled and returns as a new object (your control)",
+      "a basic land enters the battlefield"
+    ],
+    "notExpect": [
+      "all targets illegal",
+      "Blink enters the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "killing-their-creature-still-targets-theirs",
+    "text": "I kill their Grizzly Bears with Murder. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "your graveyard"
+    ],
+    "cite": [
+      "701.8a"
+    ]
   }
 ]
