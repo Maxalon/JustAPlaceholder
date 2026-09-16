@@ -360,6 +360,8 @@ class SituationParser(private val names: NameIndex) {
             // "I attacked", "I am attacking", "I declare Bears as an attacker", "I turn Bears sideways",
             // "I send Bears at my opponent": more ways to declare the same attack.
             .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+|c\d+) attacked (?=(?:with|it|that|them|me|the|an?|my|their|his|her|c\d+)\b)"""), "$1 attacks ")
+            .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+|c\d+) countered (?=(?:it|that|them|the|an?|my|their|his|her|c\d+)\b)"""), "$1 counters ")
+            .replace(Regex("""\b(?:fizzles?|fizzled) (?=(?:it|that|them|the|an?|my|their|his|her|c\d+)\b)"""), "counters ")
             .replace(Regex("""\b(?:i am|i'm|we are|we're) attacking\b"""), "i attack")
             .replace(Regex("""\b(?:they are|they're|he is|he's|she is|she's) attacking\b"""), "they attack")
             .replace(Regex("""\bdeclares? ((?:my |their |the |an? )?c\d+) as an attacker\b"""), "attacks with $1")
@@ -1726,7 +1728,11 @@ class SituationParser(private val names: NameIndex) {
             val who = when (val w = r.groupValues[1].trim()) {
                 "my" -> "me"
                 "their", "my opponent's" -> pronounPlayer(ctx, "their")
-                "" -> actor ?: subject ?: "me"
+                // "Counterspell counters my Lightning Bolt" with nobody named: whoever didn't cast the spell being
+                // countered. Read as the speaker's, it countered its own side and cast a second copy of the target.
+                "" -> (r.groupValues[3].takeIf { it.isNotEmpty() }?.let { ph -> m.cards[ph]?.display }
+                        ?.let { name -> ctx.events.lastOrNull { it.verb == "cast" && it.card?.name == name }?.player }?.let { ctx.other(it) }
+                    ?: ctx.events.lastOrNull { it.verb == "cast" }?.player?.let { ctx.other(it) }) ?: actor ?: subject ?: "me"
                 else -> if (w.startsWith("@")) w.removePrefix("@").removeSuffix("'s").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else actor ?: subject ?: "me"
             }
             val targetCard = r.groupValues[3].takeIf { it.isNotEmpty() }?.let { m.cards.getValue(it) }

@@ -7713,5 +7713,27 @@
       "I couldn't find"
     ],
     "cite": []
+  },
+  {
+    "id": "a-counterspell-as-the-bare-subject",
+    "text": "I cast Lightning Bolt at my opponent. Counterspell counters my Lightning Bolt. What happens?",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "notExpect": [
+      "opponent takes 3 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "countered-in-the-past-tense",
+    "text": "I cast Lightning Bolt at my opponent. They countered my Lightning Bolt with Counterspell. What happens?",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "notExpect": [
+      "opponent takes 3 damage"
+    ],
+    "cite": []
   }
 ]
