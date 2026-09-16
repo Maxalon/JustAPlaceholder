@@ -378,6 +378,7 @@ class SituationParser(private val names: NameIndex) {
             // "I activated it", "I turn on my Elves", "I fire off its ability", "Llanowar Elves taps for mana":
             // more ways to say the same activation.
             .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+) activated (?=(?:it|that|them|the|an?|my|their|his|her|c\d+)\b)"""), "$1 activates ")
+            .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+) tapped (?=(?:it|that|them|the|an?|my|their|his|her|c\d+)\b)"""), "$1 taps ")
             .replace(Regex("""\b(?:turns? on|fires? off|sets? off) (?=(?:my |their |the )?c\d+)"""), "activates ")
             .replace(Regex("""^((?:my |their |the )?c\d+) taps for (mana|\{)"""), "taps $1 for $2")
             // "I hit my opponent for 3 with Bolt", "my opponent takes 3 from Bolt", "Bolt hits my opponent":
@@ -1276,6 +1277,20 @@ class SituationParser(private val names: NameIndex) {
             val id = if (r.groupValues[1] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
                      else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
             ctx.events += EventSpec("leave", obj = id, to = "library"); ctx.lastMentioned = id; return true
+        }
+        // "I tap my Grizzly Bears", "they tap it down", "it becomes tapped": tapping a permanent, which is not the
+        // same as using a {T} ability — a creature with no {T} ability can still be tapped by an effect.
+        Regex("""^taps? (?:an? |the |my |their |his |her )?(c\d+|it|that)(?: down)?$|^(?:my |their |his |her |the |own )?(c\d+|it|that) (?:becomes tapped|gets tapped|is tapped|was tapped|got tapped|taps down)$""").find(c)?.let { r ->
+            val ph = r.groupValues[1].ifEmpty { r.groupValues[2] }
+            val id = if (ph in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else m.cards[ph]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
+            // "I tap Cabal Coffers" means using its ability, not turning it sideways for nothing. The bare active
+            // form is only a tap-down when it says "down" or when it is somebody else's permanent.
+            if (r.groupValues[1].isNotEmpty() && !c.endsWith(" down") && ctx.objects[id]?.controller == (actor ?: "me")) return@let
+            // Said before anything happens it is board state; said after, it is something that happened.
+            if (ctx.events.isEmpty()) ctx.objects[id] = ctx.objects.getValue(id).copy(tapped = true)
+            else ctx.events += EventSpec("tap", obj = id)
+            ctx.lastMentioned = id; return true
         }
         Regex("""^(?:my |their |his |her |the |own )?(c\d+|it|that) (?:untaps|is untapped|becomes untapped|gets untapped)$""").find(c)?.let { r ->
             val id = if (r.groupValues[1] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let

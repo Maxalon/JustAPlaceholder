@@ -94,6 +94,14 @@ class PhrasingFamiliesTest {
                 "I turn on Llanowar Elves.", "I fire off Llanowar Elves's ability.",
             ),
         ),
+        Family(
+            "tapping a permanent", "I control Grizzly Bears. ", "Grizzly Bears is tapped",
+            listOf(
+                "I tap my Grizzly Bears. Is it tapped?", "I tapped my Grizzly Bears. Is it tapped?",
+                "My Grizzly Bears is tapped. Is it tapped?", "My Grizzly Bears gets tapped. Is it tapped?",
+                "They tap my Grizzly Bears down. Is it tapped?", "My Grizzly Bears becomes tapped. Is it tapped?",
+            ),
+        ),
     )
 
     @Test

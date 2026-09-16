@@ -353,7 +353,12 @@ class Engine(val state: GameState) {
             trace.step("${lock.name} says activated abilities of ${e.filter.raw} can't be activated, and ${obj.name} is ${withArticle(e.filter.raw)}, so ${state.player(playerId).subject.lowercase()} can't begin to activate its ability${if (abilities.any { a -> isManaEffect(a.effect) }) " (mana abilities included: they are activated abilities too)" else ""}.", "602.5", "604.2", "101.2")
             state.outcomes += "${obj.name}'s ability can't be activated (${lock.name})."; return null
         }
-        if (abilities.isEmpty()) { state.unsupported += Unsupported(obj.name, "No activated ability was recognised on ${obj.name}."); return null }
+        if (abilities.isEmpty()) {
+            // "I tap my Grizzly Bears": a permanent with no activated ability can still be turned sideways, and
+            // that is the only thing the words can mean. Saying it is untapped afterwards contradicted the asker.
+            if (obj.def.abilities.none { it is ActivatedAbility }) { tapObject(obj.id); return null }
+            state.unsupported += Unsupported(obj.name, "No activated ability was recognised on ${obj.name}."); return null
+        }
         val pickedIndex = abilityIndex ?: if (abilities.size > 1) {
             // Nothing said which: take the first that isn't a mana ability, and say so.
             val first = abilities.indexOfFirst { a -> !(isManaEffect(a.effect)) }.takeIf { it >= 0 } ?: 0
@@ -468,6 +473,15 @@ class Engine(val state: GameState) {
     }
 
     /** "Their Grizzly Bears untaps": the asker states it, rather than it happening in an untap step (701.26b). */
+    /** "they tap my Grizzly Bears down": tapping a permanent, which is not the same as using a {T} ability. */
+    fun tapObject(objectId: String) {
+        val obj = state.obj(objectId)
+        if (obj.tapped == true) { trace.step("${obj.name} is already tapped.", "701.26a"); return }
+        tap(obj)
+        trace.step("${obj.name} becomes tapped.", "701.26a")
+        state.outcomes += "${obj.name} is tapped."
+    }
+
     fun untapObject(objectId: String) {
         val obj = state.obj(objectId)
         if (obj.tapped != true) { trace.step("${obj.name} isn't tapped, so untapping it does nothing.", "701.26b"); return }
