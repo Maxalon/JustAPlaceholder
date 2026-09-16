@@ -63,8 +63,10 @@ class Engine(val state: GameState) {
             if (commanderTax > 0) trace.step("${card.name} is ${player.possessive} commander and has been cast from the command zone ${obj.commanderCasts} time${if (obj.commanderCasts == 1) "" else "s"} before, so it costs an additional {${commanderTax}} this time (the \"commander tax\").", "903.8")
             val tax = taxes.sumOf { it.second.amount } + commanderTax
             val cost = card.manaValue.toInt() + (x ?: 0) * maxOf(0, Regex("""\{X\}""").findAll(card.manaCost ?: "").count() - 1) + tax
-            if (taxes.isNotEmpty() || commanderTax > 0) trace.step("${(taxes.map { "${it.first.name} makes ${card.name} cost {${kotlin.math.abs(it.second.amount)}} ${if (it.second.amount < 0) "less" else "more"}" } + (if (commanderTax > 0) listOf("the commander tax adds {$commanderTax}") else emptyList())).joinToString(" and ")}: its total cost is ${card.manaCost ?: "?"} plus {${tax}} (${cost} mana in all).", "601.2f", "118.7")
-            if (false) trace.step("${taxes.joinToString(" and ") { "${it.first.name} makes ${card.name} cost {${kotlin.math.abs(it.second.amount)}} ${if (it.second.amount < 0) "less" else "more"}" }}: its total cost is ${card.manaCost ?: "?"} plus {${tax}}${if (tax > 0) "" else ""} (${cost} mana in all).", "601.2f", "118.7")
+            if (taxes.isNotEmpty() || commanderTax > 0) {
+                val change = when { tax > 0 -> "plus {$tax}"; tax < 0 -> "less {${-tax}}"; else -> "unchanged" }
+                trace.step("${(taxes.map { "${it.first.name} makes ${card.name} cost {${kotlin.math.abs(it.second.amount)}} ${if (it.second.amount < 0) "less" else "more"}" } + (if (commanderTax > 0) listOf("the commander tax adds {$commanderTax}") else emptyList())).joinToString(" and ")}: its total cost is ${card.manaCost ?: "?"} $change (${cost} mana in all).", "601.2f", "118.7")
+            }
             player.mana?.let { avail -> if (cost > avail) { trace.step("${player.subject} ${player.v("has", "have")} only $avail mana available and ${card.name} costs $cost, so it can't be cast: the total cost can't be paid.", "601.2h", "601.2f"); state.outcomes += "${card.name} can't be cast (costs $cost, only $avail mana available)."; return null } else if (taxes.isNotEmpty() || commanderTax > 0) trace.step("${player.subject} ${player.v("has", "have")} $avail mana available, enough for the $cost.", "601.2h") }
         }
         card.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CantCastBeforeTurn>().firstOrNull()?.let { c ->
@@ -466,7 +468,8 @@ class Engine(val state: GameState) {
     private fun spellMatches(f: ObjFilter, card: CardDef): Boolean {
         val typeOk = f.kinds.any { k -> when (k) { Kind.SPELL -> true; Kind.CREATURE -> card.isCreature; Kind.ARTIFACT -> "Artifact" in card.types; Kind.ENCHANTMENT -> "Enchantment" in card.types; Kind.PLANESWALKER -> card.isPlaneswalker; else -> false } }
         val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> card.isCreature; Kind.ARTIFACT -> "Artifact" in card.types; Kind.ENCHANTMENT -> "Enchantment" in card.types; Kind.PLANESWALKER -> card.isPlaneswalker; Kind.LAND -> "Land" in card.types; else -> false } }
-        return typeOk && notOk
+        val colourOk = f.colors.all { it in card.colors } && f.notColors.none { it in card.colors }
+        return typeOk && notOk && colourOk
     }
     private fun usesX(e: Effect): Boolean = when (e) { is Effect.Damage -> e.x; is Effect.Draw -> e.x; is Effect.LoseLife -> e.x; is Effect.Discard -> e.x; is Effect.PumpAll -> e.x; is Effect.SetBasePtAll -> e.x; is Effect.Repeat -> e.x || usesX(e.body); is Effect.Seq -> e.effects.any { usesX(it) }; is Effect.May -> usesX(e.effect); is Effect.Modal -> e.modes.any { usesX(it) }; else -> false }
 

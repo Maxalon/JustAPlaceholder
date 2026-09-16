@@ -434,6 +434,12 @@ object OracleParser {
         }
         if (Regex("""^During your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsLockedOnYourTurn)
         Regex("""^You can't cast ~ during your first(?:, second)?(?:, or third| or second)? turns? of the game\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.CantCastBeforeTurn(if (line.contains("third")) 4 else if (line.contains("second")) 3 else 2)) }
+        Regex("""^(White|Blue|Black|Red|Green|Colorless|Multicolored) spells(?: your opponents cast| you cast)? cost \{(\d+)\} (more|less) to cast\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val c = mapOf("white" to 'W', "blue" to 'U', "black" to 'B', "red" to 'R', "green" to 'G')[m.groupValues[1].lowercase()] ?: return@let
+            val f = ObjFilter(setOf(Kind.SPELL), colors = setOf(c), raw = "${m.groupValues[1].lowercase()} spell")
+            val whose = when { line.contains("your opponents cast", true) -> Who.OPPONENT; line.contains("you cast", true) -> Who.YOU; else -> null }
+            return listOf(StaticEffect.CostTax(f, m.groupValues[2].toInt() * (if (m.groupValues[3].lowercase() == "less") -1 else 1), whose))
+        }
         Regex("""^(Noncreature spells|Creature spells|Instant and sorcery spells|Spells|Artifact spells|Enchantment spells|Artifact and enchantment spells|Artifact, creature, and enchantment spells)(?: your opponents cast| you cast)? cost \{(\d+)\} (more|less) to cast\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val f = when (m.groupValues[1].lowercase()) {
                 "artifact and enchantment spells" -> ObjFilter(setOf(Kind.ARTIFACT, Kind.ENCHANTMENT), raw = "artifact or enchantment spell")

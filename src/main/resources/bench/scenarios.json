@@ -4985,5 +4985,43 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "grand-arbiter-taxes-me",
+    "text": "My opponent controls Grand Arbiter Augustin IV and I cast Counterspell with 3 mana available. What happens?",
+    "expect": [
+      "cost {1} more"
+    ],
+    "notExpect": [
+      "Rules text not modeled: White spells you cast"
+    ],
+    "cite": [
+      "601.2f"
+    ]
+  },
+  {
+    "id": "electromancer-cuts-a-cost",
+    "text": "I control Goblin Electromancer and cast Counterspell with 1 mana available. What happens?",
+    "expect": [
+      "cost {1} less",
+      "less {1} (1 mana in all)"
+    ],
+    "notExpect": [
+      "can't be cast"
+    ],
+    "cite": [
+      "601.2f"
+    ]
+  },
+  {
+    "id": "sacrifice-a-described-creature-to-an-outlet",
+    "text": "I control Goblin Bombardment and sacrifice a 2/2 to it targeting my opponent. What happens?",
+    "expect": [
+      "opponent takes 1 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
