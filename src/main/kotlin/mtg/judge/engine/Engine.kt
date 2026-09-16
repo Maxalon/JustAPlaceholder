@@ -417,6 +417,19 @@ class Engine(val state: GameState) {
         onEvent(GameEvent.EntersBattlefield(obj))
     }
 
+    /** "I discard Vengevine": a named card goes from its owner's hand to their graveyard (701.9a). */
+    fun discard(playerId: String, objectId: String) {
+        val obj = state.obj(objectId)
+        val p = state.player(playerId)
+        if (obj.zone != Zone.HAND) { trace.step("${obj.name} isn't in ${p.possessive} hand, so it can't be discarded.", "701.9a"); return }
+        move(obj, Zone.GRAVEYARD, "${p.subject} ${p.v("discards", "discard")} ${obj.name}: it goes from ${p.possessive} hand to ${p.possessive} graveyard.", "701.9a")
+        p.handSize = p.handSize?.minus(1)?.coerceAtLeast(0)
+        obj.def.abilities.filterIsInstance<StaticAbility>().firstOrNull { it.keyword == "madness" }?.let {
+            trace.step("${obj.name} has madness, so it is still discarded, but it is exiled instead of going to the graveyard; its owner may then cast it for the madness cost, and if they don't, it goes to the graveyard after all — which is where this answer leaves it.", "702.35a")
+            state.assumptions += "${obj.name}'s madness cost was not paid, so it ends up in the graveyard (702.35a)."
+        }
+    }
+
     fun leave(objectId: String, to: Zone) {
         val obj = state.obj(objectId)
         move(obj, to, "${obj.name} is put into ${zoneName(to, obj)}.", "400.7")

@@ -6488,5 +6488,41 @@
     "cite": [
       "611.2a"
     ]
+  },
+  {
+    "id": "discarding-a-named-card",
+    "text": "I discard Vengevine. What happens?",
+    "expect": [
+      "Vengevine: your hand → your graveyard"
+    ],
+    "notExpect": [],
+    "cite": [
+      "701.9a"
+    ]
+  },
+  {
+    "id": "discarding-under-leyline-of-the-void",
+    "text": "They control Leyline of the Void and I discard Vengevine. What happens?",
+    "expect": [
+      "exile (replaced by Leyline of the Void)"
+    ],
+    "notExpect": [
+      "Vengevine: your hand → your graveyard"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "discarding-a-card-with-madness",
+    "text": "I discard Basking Rootwalla to Faithless Looting. What happens?",
+    "expect": [
+      "has madness",
+      "exiled instead of going to the graveyard"
+    ],
+    "notExpect": [],
+    "cite": [
+      "702.35a"
+    ]
   }
 ]

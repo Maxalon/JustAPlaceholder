@@ -669,6 +669,16 @@ class SituationParser(private val names: NameIndex) {
             if (tgt != null) ctx.lastMentioned = tgt
             ctx.lastActor = caster; ctx.lastVerb = "cast"; ctx.note(caster); return true
         }
+        // "I discard Vengevine", "they discard Lightning Bolt to Liliana": a named card leaves hand for the graveyard.
+        Regex("""^(?:(?:i|they|he|she|we|my opponent|the opponent|@\w+) )?discards? (?:an? |the |my |their )?(c\d+)(?: (?:to|for|with) (?:an? |the |my |their )?c\d+)?$""").find(c)?.let { r ->
+            val who = actorOfClause(c) ?: ctx.lastActor ?: "me"
+            val card = m.cards.getValue(r.groupValues[1])
+            val id = ctx.objects.values.firstOrNull { it.card.oracleId == card.oracleId && it.zone == "hand" && it.controller == who }?.id
+                ?: addObject(card, who, false, ctx, zone = "hand", allowDuplicate = true)
+            ctx.objects[id] = ctx.objects.getValue(id).copy(zone = "hand")
+            ctx.events += EventSpec("discard", player = who, obj = id)
+            ctx.lastActor = who; ctx.lastVerb = "discard"; ctx.lastMentioned = id; ctx.note(who); return true
+        }
         // "… in response to them tapping Sol Ring for mana": the mana ability happens first (and can't be responded to, as the engine will say).
         Regex("""\s+in response to (?:them|my opponent|the opponent|me|@\w+) tapping (?:an? |the |their |my )?(c\d+|it)(?: for mana| for \{.*)?$""").find(c)?.let { r ->
             val ph = if (r.groupValues[1] == "it") Regex("""(?:on|targeting|at) (?:their |my |the |an? )?(c\d+)""").find(c)?.groupValues?.get(1) ?: return@let else r.groupValues[1]
