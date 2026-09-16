@@ -214,6 +214,8 @@ class SituationParser(private val names: NameIndex) {
         val found = (full + normWords.indices.filter { it !in covered }.mapNotNull { i -> shortAt(i)?.let { NameIndex.Found(i, i + 1, it) } })
             // "a Charge counter", "two Shield tokens": the word before "counter"/"token" names the kind, not a card.
             .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.end) in setOf("token", "tokens", "counter", "counters") && normWords[f.start] !in short) }
+            // "a 2/2 with lifelink and deathtouch": a keyword in a keyword list is a keyword, not the card of that name.
+            .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in keywordWords && normWords.getOrNull(f.start - 1) in setOf("with", "and", "&", "gains", "gain", "has", "have", "granted") && normWords[f.start] !in short) }
             // A first name that could mean several cards ("Jace") means the one named in full earlier, however it was matched.
             .map { f -> if (f.end - f.start == 1 && f.entry.alternatives.isNotEmpty()) short[normWords[f.start]]?.let { f.copy(entry = it) } ?: f else f }.sortedBy { it.start }
         val keptSpans = kept.map { it.start to it.end }.toSet()
@@ -1860,6 +1862,8 @@ class SituationParser(private val names: NameIndex) {
 
     private val numberWords = mapOf("two" to 2, "three" to 3, "four" to 4, "five" to 5)
 
+    /** Keyword words that are also card names ("Lifelink", "Flying"); in a keyword list they mean the keyword. */
+    private val keywordWords = setOf("flying", "trample", "deathtouch", "lifelink", "haste", "vigilance", "reach", "menace", "hexproof", "indestructible", "infect", "defender", "flash", "shroud", "intimidate", "fear", "wither", "changeling", "banding", "horsemanship", "shadow", "persist", "undying", "exalted", "prowess")
     private val kwNouns = """(?:fliers?|flyers?|flying|tramplers?|trample|deathtouchers?|deathtouch|lifelinkers?|lifelink|first strikers?|first strike|double strikers?|double strike|haste|vigilance|reach|menace|hexproof|indestructible|infect)"""
     private val creatureKinds = """(?:creatures?|goblins?|elves|elf|zombies?|soldiers?|spirits?|angels?|dragons?|humans?|vampires?|beasts?|birds?|cats?|dogs?|wolves|wolf|knights?|warriors?|wizards?|merfolk|dinosaurs?|hydras?|demons?|elementals?|insects?|rats?|snakes?|thopters?|servos?|saprolings?|squirrels?|bears?|giants?|orcs?|slivers?|faeries|faerie|treefolk|horrors?|constructs?|golems?)"""
     private val singularKind = mapOf("elves" to "elf", "wolves" to "wolf", "faeries" to "faerie")

@@ -219,4 +219,22 @@ class BatchFourteenTest {
         val e2 = Engine(s2); e2.cast("opp", counterspell, emptyList()); e2.resolveAll()
         assertTrue(s2.outcomes.any { it == "Counterspell is countered." }, s2.outcomes.toString())
     }
+
+    private val nykthos = card("Nykthos, Shrine to Nyx", "Legendary Land", "{T}: Add {C}.\n{2}, {T}: Choose a color. Add an amount of mana of that color equal to your devotion to that color.", "")
+    private val elves = card("Llanowar Elves", "Creature — Elf Druid", "{T}: Add {G}.", "{G}", "G", "1", "1")
+
+    @Test
+    fun `nykthos counts devotion from mana costs`() {
+        val s = state(); s.put("nyk", nykthos, "me"); s.put("e1", elves, "me"); s.put("e2", elves, "me")
+        val e = Engine(s); e.activate("me", "nyk", 1, emptyList())
+        assertTrue(s.outcomes.any { it == "Nykthos, Shrine to Nyx's mana ability: add {G}{G}." }, s.outcomes.toString())
+        assertTrue("700.5" in s.cited())
+    }
+
+    @Test
+    fun `a stated devotion is used as given`() {
+        val s = state(); s.put("nyk", nykthos, "me"); s.player("me").devotion['G'] = 5
+        val e = Engine(s); e.activate("me", "nyk", 1, emptyList())
+        assertTrue(s.outcomes.any { it == "Nykthos, Shrine to Nyx's mana ability: add {G}{G}{G}{G}{G}." }, s.outcomes.toString())
+    }
 }

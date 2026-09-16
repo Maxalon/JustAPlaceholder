@@ -474,6 +474,11 @@ object OracleParser {
                 val chooseRe = Regex("""^You choose an? (.+?) card from it(?: with mana value (\d+) or less)?\.?$""", RegexOption.IGNORE_CASE)
                 val discardRe = Regex("""^(?:That player|They) discards? that card\.?$""", RegexOption.IGNORE_CASE)
                 val third = sentences.getOrNull(i + 2)
+                if (Regex("""^Choose a colou?r\.?$""", RegexOption.IGNORE_CASE).matches(cur) && next != null &&
+                    Regex("""^Add an amount of mana of that colou?r equal to your devotion to that colou?r\.?$""", RegexOption.IGNORE_CASE).matches(next)) {
+                    out += Effect.AddManaDevotion; i += 2
+                    continue
+                }
                 val nameRe = Regex("""^Choose an? (.+?) card name\.?$""", RegexOption.IGNORE_CASE)
                 val revealAllRe = Regex("""^(Target player|Target opponent|Each opponent|Each player|That player) reveals? their hand and discards? all cards with that name\.?$""", RegexOption.IGNORE_CASE)
                 if (nameRe.matches(cur) && next != null && revealAllRe.matches(next)) {

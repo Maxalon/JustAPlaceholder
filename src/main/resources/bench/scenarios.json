@@ -4585,5 +4585,44 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "nykthos-stated-devotion",
+    "text": "I control Nykthos, Shrine to Nyx and my devotion to green is 5. I activate its second ability. What do I get?",
+    "expect": [
+      "add {G}{G}{G}{G}{G}"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "700.5",
+      "605.1a"
+    ]
+  },
+  {
+    "id": "nykthos-counted-devotion",
+    "text": "I control Nykthos, Shrine to Nyx, two Llanowar Elves and a Kird Ape. I activate Nykthos's second ability. What do I get?",
+    "expect": [
+      "add {G}{G}"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "700.5"
+    ]
+  },
+  {
+    "id": "lifelink-deathtouch-trade",
+    "text": "I control a 2/2 with lifelink and deathtouch and attack. My opponent blocks with a 5/5. What happens?",
+    "expect": [
+      "You gain 2 life",
+      "a 5/5 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
