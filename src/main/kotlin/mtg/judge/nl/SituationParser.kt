@@ -378,6 +378,18 @@ class SituationParser(private val names: NameIndex) {
     private val activateVerbs = """(?:activates?|activating|uses?)"""
 
     private fun readClause(clauseIn: String, m: Marked, ctx: Ctx): Boolean {
+        // "… no wait, I cast Murder instead" / "I mean Murder on it": the last spell is taken back and this one replaces it.
+        Regex("""^(?:no,? wait|wait,? no|actually|scratch that|sorry|i mean|i meant|rather)[,:]?\s+(.*)$""").find(clauseIn.trim())?.let { r ->
+            val rest = r.groupValues[1].trim()
+            if (rest.isEmpty()) return true
+            val lastCast = ctx.events.indexOfLast { it.verb == "cast" }
+            if (lastCast >= 0) {
+                val undone = ctx.events.removeAt(lastCast)
+                undone.card?.name?.let { n -> ctx.castCards.remove(n); ctx.objects.values.firstOrNull { it.card.name == n }?.let { ctx.objects.remove(it.id) } }
+                ctx.notes += "\"${undone.card?.name ?: "The previous spell"}\" was taken back before anything happened; only what follows is read."
+            }
+            return readClause((if (Regex("""^(?:i|they|he|she|we|my opponent|the opponent|@\w+)\b""").containsMatchIn(rest)) "" else "i ") + rest, m, ctx)
+        }
         // "… but can't pay" / "… but doesn't pay": the action, then the declined payment.
         Regex("""^(.+?) but (?:can't|cannot|can not|couldn't|could not|doesn't|does not|don't|do not|won't|will not|declines? to|refuses? to|(?:am|is|are) unable to) pay(?: for (?:it|that|them|the tax)| the tax| the cost| \{?\d\}?)?$""").find(clauseIn.trim())?.let { r ->
             val first = readClause(r.groupValues[1], m, ctx)
@@ -1632,7 +1644,7 @@ class SituationParser(private val names: NameIndex) {
     /** "on my Bears targeting theirs": the second phrase names a creature of the other player's, matched by the first's name. */
     private fun secondTarget(rest: String, firstId: String?, ctx: Ctx): String? {
         if (firstId == null || firstId !in ctx.objects) return null
-        if (!Regex("""\b(?:targeting|at|against|to fight|fighting|and) (?:their|theirs|his|her|my opponent's|the opponent's|opponent's)\b""").containsMatchIn(rest)) return null
+        if (!Regex("""\b(?:targeting|at|against|to fight|fighting|to bite|biting|and) (?:their|theirs|his|her|my opponent's|the opponent's|opponent's)\b""").containsMatchIn(rest)) return null
         val mine = ctx.objects.getValue(firstId)
         return ctx.objects.values.lastOrNull { it.id != firstId && it.controller != mine.controller && isCreatureName(it.card.name) }?.id
     }

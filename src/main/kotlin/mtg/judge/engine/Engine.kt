@@ -71,6 +71,16 @@ class Engine(val state: GameState) {
             effect = d.copy(target = d.target.copy(filter = d.target.filter.copy(maxManaValue = 4, raw = "creature with mana value 4 or less"), raw = "creature with mana value 4 or less"))
         } }
         var targets = if (targets.isEmpty() && needed.size == 1) inferTarget(card.name, needed[0], playerId, harmful = isHarmful(effect), source = obj, beneficial = isBeneficial(effect)).also { asked = it == null && state.clarifications.any { c -> c.about == "${card.name}'s target" }; noLegalTarget = it != null && it.isEmpty() } ?: targets else targets
+        // Two targets and only one named ("Rabid Bite on my Bears"): the named one takes the spec it fits, the other is inferred.
+        if (targets.size == 1 && needed.size == 2) {
+            val given = targets[0]
+            val fit = needed.indexOfFirst { filterMatches(it.filter, given, playerId) }
+            if (fit >= 0) {
+                val other = needed[1 - fit]
+                val inferred = inferTarget(card.name, other, playerId, harmful = other.filter.controller != Who.YOU, source = obj, beneficial = other.filter.controller == Who.YOU)
+                if (inferred != null && inferred.size == 1) targets = if (fit == 0) listOf(given, inferred[0]) else listOf(inferred[0], given)
+            }
+        }
         // Two targets and none named ("target creature you control fights target creature you don't control"): each one inferred on its own.
         if (targets.isEmpty() && needed.size == 2) {
             val each = needed.map { spec -> inferTarget(card.name, spec, playerId, harmful = isHarmful(effect) && spec.filter.controller != Who.YOU, source = obj, beneficial = spec.filter.controller == Who.YOU) }
@@ -625,6 +635,10 @@ class Engine(val state: GameState) {
     /** The combat damage step (510), including a first-strike step when needed (510.4). */
     fun combatDamage() {
         state.step = "combat_damage"
+        // Fog Bank and the like: their own combat damage, given and taken, is prevented.
+        for (o in state.objects.values.filter { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { e -> e is StaticEffect.PreventOwnCombatDamage } }) {
+            if (state.combatDamageMuted.add(o.id)) trace.step("${o.name} prevents all combat damage that would be dealt to it and by it, so it neither deals nor takes combat damage.", "604.2", "615.1")
+        }
         val attackers = state.objects.values.filter { it.attacking != null && it.isOnBattlefield() }
         if (attackers.isEmpty()) { trace.step("No creatures are attacking, so there is no combat damage step.", "506.1"); return }
         // Menace: a single blocker is not a legal block.
@@ -1000,6 +1014,11 @@ class Engine(val state: GameState) {
                     applyDamage(a.name, Ref.Obj(b.id), pa, a); applyDamage(b.name, Ref.Obj(a.id), pb, b)
                     stateBasedActions()
                 }
+            }
+            is Effect.DealsPowerTo -> {
+                val a = item.targets.getOrNull(0)?.let { objOf(it) }; val b = item.targets.getOrNull(1)?.let { objOf(it) }
+                if (a == null || b == null || !a.isOnBattlefield() || !b.isOnBattlefield()) trace.step("One of the creatures is no longer on the battlefield, so no damage is dealt.", "608.2b")
+                else { val pw = a.power ?: 0; trace.step("${a.name}'s power is $pw, so it deals $pw damage to ${b.name}. This isn't a fight: ${b.name} deals none back.", "701.14a"); applyDamage(a.name, Ref.Obj(b.id), pw, a); stateBasedActions() }
             }
             is Effect.RedirectToSelf -> forEachLegalTarget(item, effect.target) { ref ->
                 val target = (ref as? Ref.Stack)?.let { state.stackItem(it.id) } ?: (ref as? Ref.Obj)?.let { r -> state.stack.firstOrNull { it.source.id == r.id } }
@@ -1762,7 +1781,7 @@ class Engine(val state: GameState) {
     private fun describe(effect: Effect, item: StackItem): String = when (effect) {
         is Effect.Draw -> "draw ${if (effect.x) "X" else effect.count.toString()} card${if (effect.count > 1 || effect.x) "s" else ""}"
         is Effect.Damage -> "deal ${effect.amount} damage to ${effect.target.raw}"
-        is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Fight -> "${effect.mine.raw} fights ${effect.theirs.raw}"; is Effect.RedirectToSelf -> "change a target of ${effect.target.raw} to ${item.source.name}"; is Effect.Blink -> "exile ${effect.target.raw}, then return it to the battlefield under ${if (effect.ownersControl) "its owner's" else "your"} control"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.PreventCombatToAndBy -> "prevent all combat damage dealt to and by ${effect.target.raw} this turn"; is Effect.WinIfCastBefore -> "win the game if another spell with this name was cast this game, otherwise tuck it seventh from the top and gain ${effect.life} life"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
+        is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Fight -> "${effect.mine.raw} fights ${effect.theirs.raw}"; is Effect.DealsPowerTo -> "${effect.mine.raw} deals damage equal to its power to ${effect.theirs.raw}"; is Effect.RedirectToSelf -> "change a target of ${effect.target.raw} to ${item.source.name}"; is Effect.Blink -> "exile ${effect.target.raw}, then return it to the battlefield under ${if (effect.ownersControl) "its owner's" else "your"} control"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.PreventCombatToAndBy -> "prevent all combat damage dealt to and by ${effect.target.raw} this turn"; is Effect.WinIfCastBefore -> "win the game if another spell with this name was cast this game, otherwise tuck it seventh from the top and gain ${effect.life} life"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
         is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
         is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.GainLifePerSpellThisTurn -> "gain ${effect.per} life for each spell cast this turn"; is Effect.WinIfDevotionCoversLibrary -> "look at the top X cards (X = your devotion) and win if X is at least your library size"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"} onto the battlefield"

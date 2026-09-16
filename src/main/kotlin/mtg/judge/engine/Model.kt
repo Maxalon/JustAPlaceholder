@@ -126,6 +126,8 @@ sealed interface Effect {
     data class RedirectToSelf(val target: TargetSpec) : Effect
     /** Prey Upon, Pounce: "Target creature you control fights target creature you don't control." (701.14a) */
     data class Fight(val mine: TargetSpec, val theirs: TargetSpec) : Effect
+    /** Rabid Bite: "Target creature you control deals damage equal to its power to target creature you don't control." */
+    data class DealsPowerTo(val mine: TargetSpec, val theirs: TargetSpec) : Effect
     /** "Target player discards X cards at random" / "each player discards two cards". */
     data class Discard(val who: Who, val count: Int, val x: Boolean = false, val random: Boolean = false) : Effect
     /** Anger of the Gods: "If a creature dealt damage this way would die this turn, exile it instead." */
@@ -211,7 +213,7 @@ sealed interface Effect {
 
     /** Every target specification this effect (recursively) needs, in order. */
     fun targets(): List<TargetSpec> = when (this) {
-        is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target); is Blink -> listOf(target); is RedirectToSelf -> listOf(target); is Fight -> listOf(mine, theirs)
+        is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target); is Blink -> listOf(target); is RedirectToSelf -> listOf(target); is Fight -> listOf(mine, theirs); is DealsPowerTo -> listOf(mine, theirs)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
         is PutCounters -> listOfNotNull(target); is RemoveAllCounters -> listOf(target); is PutOnBottom -> listOf(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is GainLifePerSpellThisTurn -> emptyList(); is WinIfDevotionCoversLibrary -> emptyList(); is CopySpell -> listOf(target); is PreventCombatToAndBy -> listOf(target); is WinIfCastBefore -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
@@ -267,6 +269,8 @@ sealed interface StaticEffect {
     data object CantLose : StaticEffect
     /** "Nonbasic lands are Mountains" (Blood Moon): a type-changing effect, layer 4 (613.1d, 305.7). */
     data object NonbasicLandsAreMountains : StaticEffect
+    /** Fog Bank: "Prevent all combat damage that would be dealt to and dealt by ~." as a static ability of the creature itself. */
+    data object PreventOwnCombatDamage : StaticEffect
     /** "You control enchanted creature" (Mind Control): a control-changing static, layer 2. */
     data object ControlEnchanted : StaticEffect
     /** Panharmonicon: artifacts and creatures entering make your triggered abilities trigger an additional time. */

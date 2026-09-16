@@ -342,6 +342,7 @@ object OracleParser {
         if (Regex("""^(?:Combat )?damage that would be dealt by (?:creatures|sources) you control can't be prevented\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("615.12")))
         if (Regex("""^Each opponent can cast spells only any time they could cast a sorcery\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsSorcerySpeed)
         if (Regex("""^Spells with the chosen name can't be cast\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.CantCastNamed)
+        if (Regex("""^Prevent all combat damage that would be dealt to and (?:dealt )?by ~\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.PreventOwnCombatDamage)
         // "Activated abilities of artifacts can't be activated." / "Activated abilities of creatures your opponents control can't be activated."
         if (Regex("""^Activated abilities of sources with the chosen name can't be activated unless they're mana abilities\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.CantActivate(ObjFilter(setOf(Kind.PERMANENT), raw = "sources with the chosen name"), named = true, exceptMana = true))
         Regex("""^Activated abilities of (.+?) can't be activated\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
@@ -682,6 +683,12 @@ object OracleParser {
             val f = parseFilter(greatest?.groupValues?.get(1) ?: m.groupValues[2], Kind.CREATURE)
             if (f.verifiable) return Effect.SacrificeEach(if (m.groupValues[1].lowercase() == "player") Who.EACH_PLAYER else Who.EACH_OPPONENT, f, greatestPower = greatest != null)
         }
+        // "create two 2/2 black Zombie creature tokens": modeled, so it goes before the narrated table.
+        createTokenRe.matchEntire(s)?.let { m ->
+            val n0 = m.groupValues[2]; val desc0 = m.groupValues[3]
+            val n = if (n0 == "a" || n0 == "an") 1 else number(n0) ?: n0.toIntOrNull() ?: 1
+            if (Generic.token(desc0) != null) return Effect.CreateToken(who(m.groupValues[1].ifEmpty { "you" }), n, desc0)
+        }
         for ((re, rules) in narratedRes) if (re.matches(s)) return Effect.Narrated(s.trimEnd('.'), rules)
         // "You draw a card and you lose 1 life." / "Each opponent loses 1 life and you gain 1 life.": two effects joined by "and".
         Regex("""^(.+?) and (you |each opponent |target player |that player |it |~ )(.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trimEnd('.'))?.let { m ->
@@ -763,6 +770,7 @@ object OracleParser {
         if (Regex("""^if a (?:creature|permanent) dealt damage this way would die this turn, exile it instead\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.ExileIfDamagedDies
         Regex("""^change a target of (target spell or ability|target spell|target ability) to ~\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.RedirectToSelf(target(m.groupValues[1])) }
         Regex("""^(target creature you control) fights (target creature (?:you don't control|an opponent controls))\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.Fight(target(m.groupValues[1], Kind.CREATURE), target(m.groupValues[2], Kind.CREATURE)) }
+        Regex("""^(target creature you control) deals damage equal to its power to (target creature (?:you don't control|an opponent controls))\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.DealsPowerTo(target(m.groupValues[1], Kind.CREATURE), target(m.groupValues[2], Kind.CREATURE)) }
         Regex("""^put (target .+?) on the bottom of its owner's library\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.PutOnBottom(target(m.groupValues[1])) }
         if (Regex("""^its controller gains life equal to its toughness\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.GainLifeEqualToToughness(Who.CONTROLLER_OF_TARGET)
         return Effect.Unparsed(s)

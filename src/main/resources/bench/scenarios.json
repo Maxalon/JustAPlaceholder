@@ -4027,5 +4027,60 @@
     "cite": [
       "305.7"
     ]
+  },
+  {
+    "id": "rabid-bite-one-way",
+    "text": "I control Grizzly Bears and my opponent controls Serra Angel. I cast Rabid Bite on my Bears targeting the Angel.",
+    "expect": [
+      "Serra Angel has 2 damage marked"
+    ],
+    "notExpect": [
+      "not modeled",
+      "Grizzly Bears has 4 damage"
+    ],
+    "cite": [
+      "701.14a"
+    ]
+  },
+  {
+    "id": "grave-titan-tokens",
+    "text": "I have Grave Titan. It enters. How many tokens do I get?",
+    "expect": [
+      "You get a Zombie token. (×2)"
+    ],
+    "notExpect": [
+      "not tracked"
+    ],
+    "cite": [
+      "701.7a"
+    ]
+  },
+  {
+    "id": "fog-bank-blocks-a-five-five",
+    "text": "I'm at 4 life and my opponent attacks with a 5/5. I have Fog Bank. I block.",
+    "expect": [
+      "Fog Bank prevents all combat damage that would be dealt to it and by it"
+    ],
+    "notExpect": [
+      "Fog Bank: the battlefield",
+      "not modeled"
+    ],
+    "cite": [
+      "615.1"
+    ]
+  },
+  {
+    "id": "self-correction-murder",
+    "text": "My opponent controls Grizzly Bears. I cast Eaten Alive... I mean Murder on it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood",
+      "exile"
+    ],
+    "cite": [
+      "701.8a"
+    ]
   }
 ]
