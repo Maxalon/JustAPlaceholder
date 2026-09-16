@@ -1344,7 +1344,9 @@ class SituationParser(private val names: NameIndex) {
         // "I put a +1/+1 counter on my Bears", "add two charge counters to it": counters placed now, which is not
         // the same as a permanent that already has them — doublers and Solemnity apply to the placement.
         Regex("""^(?:puts?|put|adds?|added|places?|placed) (an?|one|two|three|four|five|\d+) ([+-]\d+/[+-]\d+|[a-z]+) counters? (?:on|onto|to) (?:(?:my |their |the |his |her )?(c\d+)|it|that|itself)$""").find(c)?.let { r ->
-            val id = if (r.groupValues[3].isEmpty()) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+            // "I cast Grizzly Bears and put a +1/+1 counter on it": the Bears has to resolve before a counter can
+            // go on it, and until it does there is no object for "it" to mean.
+            val id = if (r.groupValues[3].isEmpty()) castPermanentObject(ctx) ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
                      else m.cards[r.groupValues[3]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
             ctx.events += EventSpec("counters", obj = id, amount = number(r.groupValues[1]) ?: 1, to = r.groupValues[2])
             ctx.lastMentioned = id; return true

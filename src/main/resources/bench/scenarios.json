@@ -7989,5 +7989,18 @@
       "can't attack"
     ],
     "cite": []
+  },
+  {
+    "id": "a-creature-spell-is-not-a-creature",
+    "text": "I cast Grizzly Bears and they Doom Blade it. What happens?",
+    "expect": [
+      "can't target Grizzly Bears while it's still a spell"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "109.2"
+    ]
   }
 ]

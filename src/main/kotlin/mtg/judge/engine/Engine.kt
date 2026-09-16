@@ -2532,6 +2532,12 @@ class Engine(val state: GameState) {
         val specs = item.effect?.targets() ?: return
         item.targets.zip(specs).forEach { (ref, spec) ->
             if (!spec.filter.verifiable) state.clarifications += Clarification("target legality", "Can't verify \"${spec.raw}\" for ${state.nameOf(ref)}: unrecognised qualifier(s) ${spec.filter.unknownWords.joinToString()}. Assuming it's a legal target.")
+            // A spell on the stack named as the target of something that wants a permanent: the asker almost
+            // certainly means the permanent it will become, so say what the words as given would do.
+            else if (ref is Ref.Stack && Kind.SPELL !in spec.filter.kinds && !filterMatches(spec.filter, ref, item.controller)) {
+                trace.step("${state.nameOf(ref)} is still a spell on the stack, and \"${spec.raw}\" names a permanent, so it isn't a legal target: a creature spell isn't a creature until it resolves. ${item.describe} will do nothing. If it was meant to answer the permanent, let the spell resolve first.", "109.2", "601.2c", "608.2b")
+                state.outcomes += "${item.describe} can't target ${state.nameOf(ref)} while it's still a spell on the stack."
+            }
             else if (!filterMatches(spec.filter, ref, item.controller)) trace.step("Note: ${state.nameOf(ref)} doesn't look like a legal target for \"${spec.raw}\" (601.2c); proceeding as described.", "601.2c")
         }
     }
@@ -2577,7 +2583,10 @@ class Engine(val state: GameState) {
 
     private fun filterMatchesSpell(f: ObjFilter, s: StackItem, controller: String): Boolean {
         if (s.kind != StackKind.SPELL) return Kind.ABILITY in f.kinds
-        if (Kind.SPELL !in f.kinds && f.kinds.none { it in setOf(Kind.CREATURE, Kind.ARTIFACT, Kind.ENCHANTMENT, Kind.PLANESWALKER) }) return false
+        // A creature spell on the stack is not a creature (109.2): only a filter that says "spell" can name it.
+        // Without this, "I cast Grizzly Bears and they Doom Blade it" let Doom Blade target the Bears while it was
+        // still a spell, resolve doing nothing at all, and leave the Bears alive without a word about it.
+        if (Kind.SPELL !in f.kinds) return false
         val d = s.source.def
         val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> d.isCreature; Kind.ARTIFACT -> "Artifact" in d.types; Kind.ENCHANTMENT -> "Enchantment" in d.types; Kind.LAND -> "Land" in d.types; else -> false } }
         val kindOk = Kind.SPELL in f.kinds || f.kinds.any { k -> when (k) { Kind.CREATURE -> d.isCreature; Kind.ARTIFACT -> "Artifact" in d.types; Kind.ENCHANTMENT -> "Enchantment" in d.types; else -> false } }
