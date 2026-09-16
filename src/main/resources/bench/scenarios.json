@@ -7825,5 +7825,27 @@
       "Grizzly Bears is 3/3"
     ],
     "cite": []
+  },
+  {
+    "id": "attacking-into-a-blocker",
+    "text": "My opponent is at 5 and I attack with an 8/8 trampler into a 2/2 blocker. How much damage do they take?",
+    "expect": [
+      "6 damage in all"
+    ],
+    "notExpect": [
+      "8 damage in all"
+    ],
+    "cite": []
+  },
+  {
+    "id": "x-said-before-the-target",
+    "text": "I cast Blaze for 3 targeting my opponent. How much damage do they take?",
+    "expect": [
+      "3 damage in all"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
   }
 ]

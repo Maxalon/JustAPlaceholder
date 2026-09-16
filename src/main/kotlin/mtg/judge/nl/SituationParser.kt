@@ -416,6 +416,8 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""(?<!to )(?<!trigger )(?<!ability )\bputs? ((?:an? |the |my |their )?c\d+) (?:onto|on to|into) (?:the battlefield|play)(?!\s+(?:with|using|off|from)\b)"""), "$1 enters the battlefield")
             .replace(Regex("""^with (?:the |an? |my |their )?c\d+ (?:still )?on the stack,? """), "in response ")
             .replace(Regex("""^before (?:it|that|the spell) resolves,? """), "in response ")
+            // "I attack with an 8/8 trampler into a 2/2 blocker": the thing attacked into is the blocker.
+            .replace(Regex("""\b(attacks?|attacking|swings?|swinging)((?: with)? .+?) into ((?:an? |the |their |his |her )?(?:\d+/\d+|c\d+)(?:\s+(?!blocker)[a-z]+)*)(?:\s+blockers?)?(?=[.,]|$)"""), "$1$2, they block with $3")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
         // "they use Doom Blade on my Bears": a cast, but only for a card that is cast — "they use Maze on it"
@@ -1308,6 +1310,14 @@ class SituationParser(private val names: NameIndex) {
                      else m.cards[r.groupValues[3]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
             ctx.events += EventSpec("counters", obj = id, amount = number(r.groupValues[1]) ?: 1, to = r.groupValues[2])
             ctx.lastMentioned = id; return true
+        }
+        // "and search for two basic lands", "I dig for a creature": what a tutor finds isn't tracked in detail, so
+        // the clause is read and said to be untracked rather than dropped as if it had never been said.
+        Regex("""^(?:and )?(?:searches?|search|digs?|dig|looks?|look|finds?|find|fetch(?:es)?|grabs?|tutors?)(?: (?:my|their|his|her|the) (?:library|deck))? for (.+?)(?: and (?:puts?|shuffles?).*)?$""").find(c)?.let { r ->
+            val what = restore(r.groupValues[1], m).trim()
+            if (what.isEmpty() || what.length > 60) return@let
+            ctx.notes += "Searching a library isn't tracked in detail; \"$what\" is taken to be found."
+            return true
         }
         // "I tap my Grizzly Bears", "they tap it down", "it becomes tapped": tapping a permanent, which is not the
         // same as using a {T} ability — a creature with no {T} ability can still be tapped by an effect.
@@ -2796,7 +2806,7 @@ class SituationParser(private val names: NameIndex) {
         val namedCard = Regex("""\b(?:naming|calling|and names?|which names) (?:an? |the )?(c\d+)\b""").find(rest)?.let { n -> m.cards[n.groupValues[1]]?.display }
         // "with X = 3", "for X of 3", and the bare "Mind Twist for 3" / "Fireball for 5" at the end of the clause.
         val xValue = Regex("""\b(?:with|for|where|at) x ?(?:=|equal to|equals|being|of|as) ?(\d+)\b|\bx ?= ?(\d+)\b""").find(rest)?.let { r -> (r.groupValues[1].ifEmpty { r.groupValues[2] }).toIntOrNull() }
-            ?: Regex("""\bfor (\d+)\s*$""").find(rest.trim())?.groupValues?.get(1)?.toIntOrNull()
+            ?: Regex("""\bfor (\d+)(?=\s*$|\s+(?:targeting|at|on|against)\b)""").find(rest.trim())?.groupValues?.get(1)?.toIntOrNull()
         val kicked = Regex("""\b(?:kicked|with (?:the )?kicker|with kicker paid|paying (?:the )?kicker|kicking it)\b""").containsMatchIn(rest)
         // "copying their Grizzly Bears", "as a copy of Serra Angel": which permanent a Clone enters as a copy of.
         val copyOf = Regex("""\b(?:copying|as a copy of|to copy) (?:it|that|them)\b""").find(rest)?.let { ctx.lastMentioned?.takeIf { lm -> lm in ctx.objects } }
