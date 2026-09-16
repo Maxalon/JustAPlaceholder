@@ -346,6 +346,14 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\btutor (?:up )?for (?:an? |the )?c\d+ with\b"""), "cast")
             // "… with Force of Will pitching a blue card": the alternative cost is its own clause.
             .replace(Regex("""\s+(?:by )?(pitching|exiling) (?=(?:an?|one|two) )"""), ", $1 ")
+            // Tense and mood: the judge's answer is the same whether the asker says it happened, has happened,
+            // will happen or is happening. Said any way but the plain present, the clause went unread.
+            .replace(Regex("""\bcasted\b"""), "cast")
+            .replace(Regex("""\b(?:has|have|had) (?=(?:cast|played|attacked|blocked|activated|targeted|countered|killed|destroyed|exiled|sacrificed|bounced|drawn|discarded|tapped|untapped)\b)"""), "")
+            .replace(Regex("""\bwill (?=(?:cast|play|attack|block|activate|target|counter|kill|destroy|exile|sacrifice|bounce|draw|discard|tap|untap|gain|lose|deal|take|die|trigger|remove|ping|nuke|zap)\b)"""), "")
+            .replace(Regex("""\b(?:is|are|'s|'re) casting\b"""), "casts")
+            // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
+            .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
         // "it's turn 3" / "on turn 2": the game's turn number.
         Regex("""\b(?:it's|it is|this is|on|during|in) turn (\d+)\b|\bturn (\d+) of the game\b""").find(t2)?.let { r -> ctx.turnNumber = (r.groupValues[1].ifEmpty { r.groupValues[2] }).toInt(); any = true; t2 = t2.removeRange(r.range) }
         Regex("""\b(it's|it is|during|on|in) (my|their|the opponent's|opponent's|my opponent's|@\w+'s) (turn|upkeep|end step|main phase|combat|draw step|beginning of combat)\b""").find(t2)?.let { r ->

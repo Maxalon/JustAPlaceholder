@@ -7636,5 +7636,27 @@
     "cite": [
       "903.10a"
     ]
+  },
+  {
+    "id": "a-hypothetical-is-the-same-question",
+    "text": "Suppose they cast Doom Blade on my Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
+  },
+  {
+    "id": "past-and-future-tense-read-the-same",
+    "text": "They have cast Doom Blade on my Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
   }
 ]
