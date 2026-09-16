@@ -7966,5 +7966,28 @@
       "mana ability: add {G}"
     ],
     "cite": []
+  },
+  {
+    "id": "lightning-greaves-on-a-fresh-creature",
+    "text": "I control Lightning Greaves and cast Grizzly Bears and equip Lightning Greaves to it and attack with it. What happens?",
+    "expect": [
+      "Lightning Greaves is attached to Grizzly Bears",
+      "opponent takes 2 damage"
+    ],
+    "notExpect": [
+      "can't attack"
+    ],
+    "cite": []
+  },
+  {
+    "id": "a-keyword-named-as-a-creature-is-cast",
+    "text": "I cast Serra Angel with haste and attack with it. How much damage does my opponent take?",
+    "expect": [
+      "4 damage in all"
+    ],
+    "notExpect": [
+      "can't attack"
+    ],
+    "cite": []
   }
 ]

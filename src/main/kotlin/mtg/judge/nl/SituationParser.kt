@@ -440,6 +440,8 @@ class SituationParser(private val names: NameIndex) {
             // "I play it as my land for turn": the land drop said the way players say it.
             .replace(Regex("""\s+as (?:my|their|his|her|the) land (?:for|of) (?:the )?turn\b"""), "")
             .replace(Regex("""\s+(?:as|for) (?:my|their|his|her) land drop\b"""), "")
+            // "I cast Serra Angel with haste": a keyword the asker says it has, not a way of casting it.
+            .replace(Regex("""\b(casts?|plays?) ((?:an? |the |my |their )?c\d+) with ((?:haste|flying|trample|lifelink|deathtouch|vigilance|first strike|double strike|menace|hexproof|indestructible|reach))\b"""), "$1 $2, $2 has $3")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
         // "they use Doom Blade on my Bears": a cast, but only for a card that is cast — "they use Maze on it"
@@ -1916,7 +1918,12 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:casts? |pays? |uses? |activates? )?equips? (?:on |for |with |the )?(?:an? |the |my )?(c\d+)(?:'s equip(?: ability)?)? (?:targeting|to|onto|on) (?:an? |the |my )?(c\d+|it|that)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val eq = m.cards.getValue(r.groupValues[1]).let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) }
-            val target = if (r.groupValues[2] == "it" || r.groupValues[2] == "that") (ctx.objects.values.lastOrNull { it.id != eq && it.controller == who && isCreatureName(it.card.name) }?.id ?: return@let) else m.cards.getValue(r.groupValues[2]).let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) }
+            // "I cast Grizzly Bears and equip Lightning Greaves to it": the Bears has to resolve before it can be
+            // equipped, and until it does there is no object for "it" to mean.
+            val target = if (r.groupValues[2] == "it" || r.groupValues[2] == "that")
+                (castPermanentObject(ctx)?.takeIf { ctx.objects[it]?.controller == who }
+                    ?: ctx.objects.values.lastOrNull { it.id != eq && it.controller == who && isCreatureName(it.card.name) }?.id ?: return@let)
+                else m.cards.getValue(r.groupValues[2]).let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) }
             ctx.events += EventSpec("activate", player = who, obj = eq, targets = listOf(target)); ctx.lastActor = who; ctx.lastMentioned = target; return true
         }
         // "tap Grizzly Bears with Icy Manipulator": Icy's ability targeting the Bears.
