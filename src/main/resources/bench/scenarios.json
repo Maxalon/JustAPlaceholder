@@ -6974,5 +6974,40 @@
     "cite": [
       "400.7"
     ]
+  },
+  {
+    "id": "a-summoning-sick-mana-creature-cannot-tap",
+    "text": "I control Llanowar Elves with summoning sickness. I tap it for mana. What happens?",
+    "expect": [
+      "doesn't have haste, so its {T} ability can't be activated"
+    ],
+    "notExpect": [
+      "add {G}"
+    ],
+    "cite": [
+      "302.6"
+    ]
+  },
+  {
+    "id": "a-creature-said-to-get-a-counter",
+    "text": "My Grizzly Bears gets a +1/+1 counter and they cast Infest. What happens?",
+    "expect": [
+      "(2/2 base, 1 +1/+1 counter)"
+    ],
+    "notExpect": [],
+    "cite": [
+      "611.2a"
+    ]
+  },
+  {
+    "id": "a-permanent-said-to-regenerate",
+    "text": "My Grizzly Bears regenerates and they cast Doom Blade on it. What happens?",
+    "expect": [
+      "instead of being destroyed, it's tapped"
+    ],
+    "notExpect": [],
+    "cite": [
+      "701.19a"
+    ]
   }
 ]

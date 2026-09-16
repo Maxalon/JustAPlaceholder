@@ -352,6 +352,11 @@ class Engine(val state: GameState) {
             first
         } else 0
         val ability = abilities[pickedIndex]
+        // A {T} cost is a {T} cost whether or not the ability makes mana: an already-tapped or summoning-sick
+        // creature can't pay it (302.6, 118.3). These used to sit below the mana-ability branch, which returns
+        // first, so Llanowar Elves made mana the turn it came down.
+        if (ability.cost.contains("{T}") && obj.tapped == true) { trace.step("${obj.name} is already tapped, so its {T} ability can't be activated.", "118.3", "701.26a"); state.outcomes += "${obj.name}'s {T} ability can't be activated (already tapped)."; return null }
+        if (ability.cost.contains("{T}") && obj.def.isCreature && obj.summoningSick == true && !obj.has("haste")) { trace.step("${obj.name} hasn't been under ${state.player(playerId).possessive} control since the turn began and doesn't have haste, so its {T} ability can't be activated.", "302.6"); state.outcomes += "${obj.name}'s {T} ability can't be activated (summoning sickness)."; return null }
         if (!paySacrificeCosts(playerId, obj, ability, choice)) return null
         val isMana = isManaEffect(ability.effect)
         if (!isMana) state.stack.firstOrNull { it.kind == StackKind.SPELL && it.source.def.has("split second") }?.let { ss ->
