@@ -97,7 +97,7 @@ class Engine(val state: GameState) {
         var noLegalTarget = false
         var targetsUnknown = false
         (effect as? Effect.Destroy)?.let { d -> if (choice == "revolt" && card.has("revolt") && d.target.filter.maxManaValue != null) {
-            trace.step("Revolt: a permanent left the battlefield under ${player.possessive} control this turn, so ${card.name} can destroy a creature with mana value 4 or less instead of 2 or less.", "702.120a")
+            trace.step("Revolt: a permanent left the battlefield under ${player.possessive} control this turn, so ${card.name} can destroy a creature with mana value 4 or less instead of 2 or less.", "207.2c")
             effect = d.copy(target = d.target.copy(filter = d.target.filter.copy(maxManaValue = 4, raw = "creature with mana value 4 or less"), raw = "creature with mana value 4 or less"))
         } }
         var targets = if (targets.isEmpty() && needed.size == 1) inferTarget(card.name, needed[0], playerId, harmful = isHarmful(effect), source = obj, beneficial = isBeneficial(effect)).also { asked = it == null && state.clarifications.any { c -> c.about == "${card.name}'s target" }; noLegalTarget = it != null && it.isEmpty() } ?: targets else targets
@@ -302,7 +302,7 @@ class Engine(val state: GameState) {
                 trace.step("${obj.name} no longer has \"${asked.text.replace("~", obj.name)}\", so it can't be activated.", "613.1d", "305.7")
                 state.outcomes += "${obj.name}'s own ability is gone under ${moon.name}, so it can't be activated."; return null
             }
-            if (obj.tapped == true) { trace.step("${obj.name} is already tapped, so it can't be tapped for mana.", "602.5a"); state.outcomes += "${obj.name} can't be tapped (already tapped)."; return null }
+            if (obj.tapped == true) { trace.step("${obj.name} is already tapped, so it can't be tapped for mana.", "118.3", "701.26a"); state.outcomes += "${obj.name} can't be tapped (already tapped)."; return null }
             tap(obj); trace.step("${p.subject} ${p.v("taps", "tap")} ${obj.name} for {R}; that's the only mana it can make under ${moon.name}.", "605.1a", "605.3b"); state.outcomes += "${obj.name} adds {R} (only), because of ${moon.name}."; return null
         }
         val isManaAbility: (ActivatedAbility) -> Boolean = { a -> isManaEffect(a.effect) }
@@ -1698,7 +1698,7 @@ class Engine(val state: GameState) {
                 val spell = item.causedObject?.let { id -> state.stack.firstOrNull { it.id == id } }
                 if (spell == null) trace.step("The spell that made ${item.source.name} trigger is no longer on the stack, so nothing is countered.", "701.6a", "608.2b")
                 else {
-                    trace.step("${spell.describe} is countered: it never resolves and goes to its owner's graveyard. Countering isn't damage or destruction, so nothing about the spell can stop it.", "701.6a", "608.2a")
+                    trace.step("${spell.describe} is countered: it never resolves and goes to its owner's graveyard. Countering isn't damage or destruction, so nothing about the spell can stop it.", "701.6a", "701.6b")
                     state.stack.remove(spell); state.lastCountered = spell.source
                     moveRaw(spell.source, Zone.GRAVEYARD)
                     state.outcomes += "${spell.source.name} is countered."
