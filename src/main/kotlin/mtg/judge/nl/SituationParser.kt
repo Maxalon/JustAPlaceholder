@@ -1076,6 +1076,27 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("activate", player = who, obj = src, to = "color:${r.groupValues[2]}")
             ctx.lastActor = who; return true
         }
+        // "My Grizzly Bears gets +2/+2", "it untaps", "their Serra Angel is returned to their hand": short
+        // statements about a permanent already on the battlefield. The leading possessive has been taken as the
+        // actor by now, so what arrives here starts with the card.
+        Regex("""^(?:my |their |his |her |the |own )?(c\d+|it|that) (?:gets?|gains?|gained|is given|has) ([+-]\d+/[+-]\d+)(?: until end of turn| this turn)?$""").find(c)?.let { r ->
+            val id = if (r.groupValues[1] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
+            val spec = ctx.objects.getValue(id)
+            ctx.objects[id] = spec.copy(pump = r.groupValues[2])
+            ctx.notes += "${spec.card.name ?: id} is read as having ${r.groupValues[2]} until end of turn (from an effect; say what gives it if that matters)."
+            ctx.lastMentioned = id; return true
+        }
+        Regex("""^(?:my |their |his |her |the |own )?(c\d+|it|that) (?:untaps|is untapped|becomes untapped|gets untapped)$""").find(c)?.let { r ->
+            val id = if (r.groupValues[1] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
+            ctx.events += EventSpec("untap", obj = id); ctx.lastMentioned = id; return true
+        }
+        Regex("""^(?:my |their |his |her |the |own )?(c\d+|it|that) (?:is|gets?|got|was) (?:returned|bounced|put back) to (?:its owner's|my|their|his|her|the owner's) hand$""").find(c)?.let { r ->
+            val id = if (r.groupValues[1] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
+            ctx.events += EventSpec("leave", obj = id, to = "hand"); ctx.lastMentioned = id; return true
+        }
         // "it deals combat damage to my opponent": the way to say a creature attacked and got through, which is
         // what abilities that trigger on combat damage need.
         Regex("""^(?:(my|their|his|her|the|my opponent's|@\w+'s) )?(c\d+|it|that) (?:deals?|dealt|connects? for) combat damage to (me|them|him|her|my opponent|the opponent|opponent|@\w+)$""").find(c)?.let { r ->
@@ -1100,7 +1121,7 @@ class SituationParser(private val names: NameIndex) {
         }
         // "my Grizzly Bears has flying", "their Serra Angel has protection from black": a keyword the asker states
         // rather than one the card is printed with. Said as a fact about the board, not as something happening now.
-        Regex("""^(?:(my|their|his|her|the|my opponent's|@\w+'s) )?(c\d+|it|that) (?:has|have|already has|is given|comes with|now has) ((?:$kwPhrase)(?:(?:,| and|, and) (?:$kwPhrase))*)$""").find(c)?.let { r ->
+        Regex("""^(?:(my|their|his|her|the|my opponent's|@\w+'s) )?(c\d+|it|that) (?:has|have|already has|is given|comes with|now has|gains?|gained|gets) ((?:$kwPhrase)(?:(?:,| and|, and) (?:$kwPhrase))*)$""").find(c)?.let { r ->
             val owner = when (val w = r.groupValues[1].trim()) {
                 "my" -> "me"
                 "their", "his", "her", "my opponent's" -> pronounPlayer(ctx, "their")

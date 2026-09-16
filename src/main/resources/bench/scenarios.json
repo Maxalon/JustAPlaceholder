@@ -6937,5 +6937,42 @@
     "cite": [
       "509.1a"
     ]
+  },
+  {
+    "id": "a-pump-stated-on-a-permanent",
+    "text": "My Grizzly Bears gets +2/+2 and they cast Infest. What happens?",
+    "expect": [
+      "(2/2 base, +2/+2 until end of turn)"
+    ],
+    "notExpect": [
+      "toughness 0"
+    ],
+    "cite": [
+      "611.2a"
+    ]
+  },
+  {
+    "id": "a-permanent-said-to-untap",
+    "text": "Their Grizzly Bears is tapped. Their Grizzly Bears untaps. What happens?",
+    "expect": [
+      "Grizzly Bears becomes untapped"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "701.26b"
+    ]
+  },
+  {
+    "id": "a-permanent-said-to-be-bounced",
+    "text": "Their Serra Angel is returned to their hand. What happens?",
+    "expect": [
+      "Serra Angel: the battlefield → opponent's hand"
+    ],
+    "notExpect": [],
+    "cite": [
+      "400.7"
+    ]
   }
 ]

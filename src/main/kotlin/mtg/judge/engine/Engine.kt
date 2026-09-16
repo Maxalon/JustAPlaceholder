@@ -440,6 +440,15 @@ class Engine(val state: GameState) {
         }
     }
 
+    /** "Their Grizzly Bears untaps": the asker states it, rather than it happening in an untap step (701.26b). */
+    fun untapObject(objectId: String) {
+        val obj = state.obj(objectId)
+        if (obj.tapped != true) { trace.step("${obj.name} isn't tapped, so untapping it does nothing.", "701.26b"); return }
+        obj.tapped = false
+        trace.step("${obj.name} becomes untapped.", "701.26b")
+        state.outcomes += "${obj.name} is untapped."
+    }
+
     fun leave(objectId: String, to: Zone) {
         val obj = state.obj(objectId)
         move(obj, to, "${obj.name} is put into ${zoneName(to, obj)}.", "400.7")

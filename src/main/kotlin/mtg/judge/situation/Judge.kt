@@ -160,6 +160,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 }
             }
             "discard" -> { val objId = e.obj ?: throw JudgeException("discard needs an object"); engine.discard(e.player ?: state.obj(objId).owner, objId) }
+            "untap" -> engine.untapObject(e.obj ?: throw JudgeException("untap needs an object"))
             "gainlife" -> engine.gainLifeEvent(e.player ?: throw JudgeException("gainLife needs a player"), e.amount ?: 1)
             "loselife" -> engine.loseLifeEvent(e.player ?: throw JudgeException("loseLife needs a player"), e.amount ?: 1)
             "regenerate" -> { val o = state.obj(e.obj ?: throw JudgeException("regenerate needs an object")); state.shields += mtg.judge.engine.Shield(mtg.judge.engine.Replacement.Regenerate, o.id, null, 1, "a regeneration effect") }
@@ -271,6 +272,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 "${who ?: "you"} ${if (land) (if (who == null || who == "you") "play" else "plays") else (if (who == null || who == "you") "cast" else "casts")} ${e.card ?: state.objects[e.obj]?.name ?: e.obj}${if (e.to == "overload") " overloaded" else if (e.to == "kicked") " kicked" else if (e.to == "evoke") " for its evoke cost" else ""}$tg" }
             "activate" -> "${who ?: "controller"} ${if (who == "you") "activate" else "activates"} ${state.objects[e.obj]?.name ?: e.obj}${e.to?.takeIf { e.abilityIndex == null && (it == "ultimate" || Regex("""^[+\u2212-]?\d+$""").matches(it)) }?.let { " ($it)" } ?: ""}$tg"
             "discard" -> "${who ?: "you"} ${if (who == null || who == "you") "discard" else "discards"} ${state.objects[e.obj]?.name ?: e.obj}"
+            "untap" -> "${state.objects[e.obj]?.name ?: e.obj} untaps"
             "trigger" -> "${state.objects[e.obj]?.name ?: e.obj}'s ability triggers$tg"
             "choose" -> "${who ?: "controller"} ${if (who == "you") "choose" else "chooses"} ${e.to?.substringAfter(':')?.let { state.objects[it]?.name ?: it } ?: "?"} for ${state.objects[e.obj]?.name ?: e.obj}'s ability"
             "regenerate" -> "${state.objects[e.obj]?.name ?: e.obj} has a regeneration shield"
