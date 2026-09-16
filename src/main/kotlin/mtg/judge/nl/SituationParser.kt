@@ -388,6 +388,19 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(me|them|my opponent|the opponent|@\w+) (?:is|are|was|were|gets?|got) dealt \d+ damage by ((?:an? |the |my |their )?c\d+)"""), "casts $2 targeting $1")
             .replace(Regex("""\b(?:throws?|threw|chucks?|lobs?) ((?:an? |the |my |their )?c\d+) at """), "casts $1 targeting ")
             .replace(Regex("""^((?:an? |the |my |their )?c\d+) (?:hits?|burns?) (?=(?:me|them|my opponent|the opponent|@\w+|my face|their face)\b)"""), "casts $1 targeting ")
+            // "I lose my Bears", "my Bears hits the bin", "my Bears is put into my graveyard": more ways to say
+            // a permanent died, and "I sacrificed it" / "I throw it away" for the sacrifice.
+            .replace(Regex("""\b(?:i|we|they|he|she|my opponent|the opponent|@\w+) loses? ((?:my |their |the |his |her )?c\d+)(?!\w)"""), "$1 dies")
+            .replace(Regex("""((?:my |their |the |his |her )?c\d+) (?:hits the bin|hits the yard|bites it|bites the dust|eats it)"""), "$1 dies")
+            .replace(Regex("""((?:my |their |the |his |her )?c\d+) (?:is|are|was|were|gets?|got) put into (?:my |their |its owner's |the )?graveyard"""), "$1 dies")
+            .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+) sacrificed (?=(?:it|that|them|the|an?|my|their|his|her|c\d+)\b)"""), "$1 sacrifices ")
+            .replace(Regex("""\b(?:throws?|threw|chucks?) ((?:my |their |the |his |her )?c\d+) away"""), "sacrifices $1")
+            // "my life total goes up by 3", "I go up 3": a life change said as a total rather than a gain.
+            .replace(Regex("""\bmy life total (?:goes up|rises|increases)(?: by)? (\d+)(?: life)?"""), "i gain $1 life")
+            .replace(Regex("""\bmy life total (?:goes down|drops|falls|decreases)(?: by)? (\d+)(?: life)?"""), "i lose $1 life")
+            .replace(Regex("""\b(?:their|his|her) life total (?:goes up|rises|increases)(?: by)? (\d+)(?: life)?"""), "they gain $1 life")
+            .replace(Regex("""\b(?:their|his|her) life total (?:goes down|drops|falls|decreases)(?: by)? (\d+)(?: life)?"""), "they lose $1 life")
+            .replace(Regex("""\bi go up (\d+)(?: life)?"""), "i gain $1 life").replace(Regex("""\bi go down (\d+)(?: life)?"""), "i lose $1 life")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
         // "they use Doom Blade on my Bears": a cast, but only for a card that is cast — "they use Maze on it"

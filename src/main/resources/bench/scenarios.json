@@ -7768,5 +7768,38 @@
       "I couldn't find"
     ],
     "cite": []
+  },
+  {
+    "id": "a-creature-put-into-the-graveyard",
+    "text": "I control Blood Artist and Grizzly Bears. My Grizzly Bears is put into my graveyard. What happens?",
+    "expect": [
+      "opponent loses 1 life"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
+  },
+  {
+    "id": "losing-a-creature-is-it-dying",
+    "text": "I control Blood Artist and Grizzly Bears. I lose my Grizzly Bears. What happens?",
+    "expect": [
+      "opponent loses 1 life"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
+  },
+  {
+    "id": "a-life-total-that-goes-up-by-a-number",
+    "text": "I am at 20 life. My life total goes up by 3. What is my life total?",
+    "expect": [
+      "23"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
   }
 ]
