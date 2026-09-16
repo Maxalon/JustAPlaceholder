@@ -466,7 +466,21 @@ object OracleParser {
                 val mayPay = Regex("""^(That player|Its controller|Target player|Each opponent|You) may pay (\{[^}]+\}(?:\{[^}]+\})*|\d+ life)\.?$""", RegexOption.IGNORE_CASE).matchEntire(cur)
                 val ifNot = Regex("""^If (?:they|that player|the player|you) (?:don't|doesn't|do not|does not), (.+)$""", RegexOption.IGNORE_CASE)
                 val repeatRe = Regex("""^Repeat the following process (X|\d+|\w+) times?\.?$""", RegexOption.IGNORE_CASE)
-                if (repeatRe.matches(cur) && next != null) {
+                val revealRe = Regex("""^(Target player|Target opponent|Each opponent|Each player|That player) reveals? their hand\.?$""", RegexOption.IGNORE_CASE)
+                val chooseRe = Regex("""^You choose an? (.+?) card from it(?: with mana value (\d+) or less)?\.?$""", RegexOption.IGNORE_CASE)
+                val discardRe = Regex("""^(?:That player|They) discards? that card\.?$""", RegexOption.IGNORE_CASE)
+                val third = sentences.getOrNull(i + 2)
+                if (revealRe.matches(cur) && next != null && chooseRe.matches(next) && third != null && discardRe.matches(third)) {
+                    val who = when (revealRe.find(cur)!!.groupValues[1].lowercase()) {
+                        "target player", "target opponent" -> Who.TARGET_PLAYER; "each opponent" -> Who.EACH_OPPONENT; "each player" -> Who.EACH_PLAYER; else -> Who.THAT_PLAYER
+                    }
+                    val cm = chooseRe.find(next)!!
+                    val what = cm.groupValues[1].trim()
+                    val mv = cm.groupValues[2].toIntOrNull()
+                    val f = parseFilter("$what card", Kind.CARD).let { if (mv == null) it else it.copy(maxManaValue = mv) }
+                    out += Effect.DiscardChosen(who, f.takeIf { it.verifiable }, "a $what card" + (mv?.let { " with mana value $it or less" } ?: ""))
+                    i += 3
+                } else if (repeatRe.matches(cur) && next != null) {
                     val w = repeatRe.find(cur)!!.groupValues[1]
                     out += Effect.Repeat(parseSentence(next), if (w.equals("X", true)) 0 else (w.toIntOrNull() ?: number(w) ?: 1), x = w.equals("X", true)); i += 2
                 } else if (mayPay != null && next != null && ifNot.containsMatchIn(next)) {

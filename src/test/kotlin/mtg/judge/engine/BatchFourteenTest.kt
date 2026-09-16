@@ -124,4 +124,33 @@ class BatchFourteenTest {
         val e = Engine(s); e.cast("me", bolt, listOf(Ref.Obj("angel"))); e.resolveAll()
         assertEquals(Zone.GRAVEYARD, s.obj("angel").zone)
     }
+
+    private val thoughtseize = card("Thoughtseize", "Sorcery", "Target player reveals their hand. You choose a nonland card from it. That player discards that card. You lose 2 life.", "{B}", "B")
+    private val inquisition = card("Inquisition of Kozilek", "Sorcery", "Target player reveals their hand. You choose a nonland card from it with mana value 3 or less. That player discards that card.", "{B}", "B")
+    private val forceOfWill = card("Force of Will", "Instant", "Counter target spell.", "{3}{U}{U}", "U")
+    private val forest = card("Forest", "Basic Land — Forest", "", "")
+
+    @Test
+    fun `thoughtseize takes the card the situation names`() {
+        val s = state(); s.put("bolt", bolt, "opp", Zone.HAND); s.put("land", forest, "opp", Zone.HAND)
+        val e = Engine(s); e.cast("me", thoughtseize, listOf(Ref.Player("opp"))); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("bolt").zone)
+        assertEquals(Zone.HAND, s.obj("land").zone)
+        assertEquals(18, s.player("me").life)
+        assertTrue("701.9a" in s.cited())
+    }
+
+    @Test
+    fun `inquisition leaves a card that costs too much`() {
+        val s = state(); s.put("fow", forceOfWill, "opp", Zone.HAND); s.put("bolt", bolt, "opp", Zone.HAND)
+        val e = Engine(s); e.cast("me", inquisition, listOf(Ref.Player("opp"))); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("bolt").zone)
+        assertEquals(Zone.HAND, s.obj("fow").zone)
+    }
+
+    @Test
+    fun `an unknown hand is asked about rather than guessed`() {
+        val s = state(); val e = Engine(s); e.cast("me", thoughtseize, listOf(Ref.Player("opp"))); e.resolveAll()
+        assertTrue(s.clarifications.any { it.why.contains("what is in it?") }, s.clarifications.toString())
+    }
 }

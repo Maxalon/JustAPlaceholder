@@ -93,6 +93,12 @@ class SituationParser(private val names: NameIndex) {
             marked.cards.values.filter { it.alternatives.isNotEmpty() }.distinctBy { it.oracleId }.forEach { e -> val note = "\"${e.display.substringBefore(",")}\" is read as ${e.display}; it could also be ${e.alternatives.joinToString(" or ")}. Use the full name if you meant another."; if (note !in ctx.notes) ctx.notes += note }
             if (!readSentence(marked, ctx)) ctx.unread += sentence.trim()
         }
+        // Cards the text put in a hand become objects in that hand, unless they were already used for something.
+        for ((who, cards) in ctx.inHand) for (card in cards) {
+            if (ctx.objects.values.any { it.card.oracleId == card.oracleId && it.controller == who }) continue
+            var id = slug(card.display); var k = 2; while (ctx.objects.containsKey(id)) id = slug(card.display) + "_" + (k++)
+            ctx.objects[id] = ObjectSpec(id, CardRef(name = card.display, oracleId = card.oracleId), zone = "hand", controller = who)
+        }
         if (ctx.events.isNotEmpty() && !ctx.explicitResolve) ctx.events += EventSpec("resolveAll")
         ctx.events += ctx.asks
         // Every player that took part; "me" and "opponent" only when the text spoke of them (or named nobody).

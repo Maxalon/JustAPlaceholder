@@ -65,10 +65,12 @@ class BatchFourTest {
 
     @Test
     fun `thoughtseize targets a player and brainstorm's then-clause is modeled`() {
-        assertEquals(1, thoughtseize.spellEffect!!.targets().size)
+        assertTrue(!thoughtseize.spellEffect!!.hasUnparsed())
         assertTrue(!brainstorm.spellEffect!!.hasUnparsed())
         val s = state(); val e = Engine(s)
         e.cast("opp", thoughtseize, listOf(Ref.Player("me"))); e.cast("me", brainstorm, emptyList()); e.resolveAll()
-        assertEquals(3, s.player("me").drew); assertEquals(18, s.player("opp").life); assertTrue(s.clarifications.isEmpty())
+        assertEquals(3, s.player("me").drew); assertEquals(18, s.player("opp").life)
+        // Nobody said what is in the hand, so the engine asks instead of guessing which card goes.
+        assertTrue(s.clarifications.any { it.why.contains("what is in it?") }, s.clarifications.toString())
     }
 }

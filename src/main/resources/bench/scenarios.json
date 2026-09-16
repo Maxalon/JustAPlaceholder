@@ -581,8 +581,7 @@
       "You draw 3 cards"
     ],
     "cite": [
-      "701.20a",
-      "701.9a"
+      "701.16a"
     ]
   },
   {
@@ -3676,14 +3675,15 @@
     "id": "duress-two-cards-in-hand",
     "text": "I cast Duress targeting my opponent. They have Counterspell and Grizzly Bears in hand.",
     "expect": [
-      "Duress: You choose a noncreature, nonland card from it"
+      "Counterspell: opponent's hand → opponent's graveyard"
     ],
     "notExpect": [
       "Not understood",
       "needs 0 targets"
     ],
     "cite": [
-      "701.20a"
+      "701.9a",
+      "701.16a"
     ]
   },
   {
@@ -4392,5 +4392,46 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "thoughtseize-names-the-card",
+    "text": "My opponent has Lightning Bolt, Brainstorm and an Island in hand. I cast Thoughtseize on them. What do they discard?",
+    "expect": [
+      "Lightning Bolt: opponent's hand → opponent's graveyard",
+      "You lose 2 life"
+    ],
+    "notExpect": [
+      "not tracked in detail"
+    ],
+    "cite": [
+      "701.9a",
+      "701.16a"
+    ]
+  },
+  {
+    "id": "inquisition-respects-mana-value",
+    "text": "My opponent has Lightning Bolt and Force of Will in hand. I cast Inquisition of Kozilek. What do they discard?",
+    "expect": [
+      "Lightning Bolt: opponent's hand → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Force of Will: opponent's hand"
+    ],
+    "cite": [
+      "701.9a"
+    ]
+  },
+  {
+    "id": "duress-finds-nothing",
+    "text": "My opponent has an Island and a Grizzly Bears in hand. I cast Duress on them. What happens?",
+    "expect": [
+      "discards nothing"
+    ],
+    "notExpect": [
+      "not tracked in detail"
+    ],
+    "cite": [
+      "701.9a"
+    ]
   }
 ]
