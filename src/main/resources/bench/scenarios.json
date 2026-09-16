@@ -5136,5 +5136,43 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "red-blast-cant-hit-a-green-creature",
+    "text": "I cast Red Elemental Blast on their Grizzly Bears. What happens?",
+    "expect": [
+      "can't target Grizzly Bears (no mode fits it)"
+    ],
+    "notExpect": [
+      "Grizzly Bears is countered"
+    ],
+    "cite": [
+      "601.2c",
+      "700.2a"
+    ]
+  },
+  {
+    "id": "red-blast-counters-a-blue-spell",
+    "text": "My opponent casts Counterspell and I cast Red Elemental Blast on it. What happens?",
+    "expect": [
+      "Counterspell is countered"
+    ],
+    "notExpect": [
+      "no mode fits"
+    ],
+    "cite": [
+      "700.2a"
+    ]
+  },
+  {
+    "id": "landfall-on-a-described-land",
+    "text": "I control Bloodghast and a land enters under my control. What happens?",
+    "expect": [
+      "Return Bloodghast from your graveyard to the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

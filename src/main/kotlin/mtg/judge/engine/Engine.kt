@@ -153,7 +153,13 @@ class Engine(val state: GameState) {
         // A modal spell with a target but no mode named: the mode whose target the given target fits ("Red Elemental Blast on Counterspell").
         val modes = if (modal != null && modes.isEmpty() && targets.size == 1) {
             val fits = modal.modes.withIndex().filter { (_, m) -> m.targets().size == 1 && m.targets()[0].filter.let { f -> when (val t = targets[0]) { is Ref.Stack -> Kind.SPELL in f.kinds || Kind.ABILITY in f.kinds; is Ref.Obj -> Kind.SPELL !in f.kinds && (!f.verifiable || filterMatches(f, t, playerId)); is Ref.Player -> Kind.PLAYER in f.kinds } } }
-            if (fits.size == 1) { state.assumptions += "${card.name}'s mode: \"${modal.modeTexts.getOrNull(fits[0].index) ?: "?"}\" (the one the target fits)."; listOf(fits[0].index + 1) } else modes
+            if (fits.size == 1) { state.assumptions += "${card.name}'s mode: \"${modal.modeTexts.getOrNull(fits[0].index) ?: "?"}\" (the one the target fits)."; listOf(fits[0].index + 1) }
+            else if (fits.isEmpty()) {
+                trace.step("${state.nameOf(targets[0])} doesn't fit any of ${card.name}'s modes (${modal.modeTexts.joinToString("; ")}), so there is nothing ${card.name} could legally target here and it can't be cast.", "601.2c", "700.2a")
+                state.outcomes += "${card.name} can't target ${state.nameOf(targets[0])} (no mode fits it)."
+                return null
+            }
+            else modes
         } else modes
         val modeEffect = modal?.let { m -> modes.mapNotNull { i -> m.modes.getOrNull(i - 1) }.let { if (it.isEmpty()) null else Effect.Seq(it) } }
         // A chosen mode needs a target nobody named: the one legal target is taken, as for any other spell.
