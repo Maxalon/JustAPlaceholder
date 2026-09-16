@@ -2053,12 +2053,25 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "$n unnamed ${r.groupValues[2]} assumed to be 1/1 tokens; name them for a precise answer."
             ctx.lastActor = who; ctx.lastVerb = "attack"; return true
         }
-        Regex("""^(?:attacks?|attacking|swings?|swinging)(?: (@\w+|me|them|him|her|my opponent|the opponent|opponent))?(?: with)?\s+(an? |the |my |their |\d+ |two |three |four |five )?(?:(\d+/\d+)s?\s*)?(?:(red|green|white|blue|black|colorless|flying) )?(?:($kwNouns)\b ?)?($creatureKinds)?( tokens?)?(?: with ([a-z ,&]+?))?(?: plus .*)?(?: but .*| and .*)?$""").find(c)?.let { r0 ->
+        Regex("""^(?:attacks?|attacking|swings?|swinging)(?: (@\w+|me|them|him|her|my opponent|the opponent|opponent|(?:my |their |his |her |the )?c\d+|it|that))?(?: with)?\s+(an? |the |my |their |\d+ |two |three |four |five )?(?:(\d+/\d+)s?\s*)?(?:(red|green|white|blue|black|colorless|flying) )?(?:($kwNouns)\b ?)?($creatureKinds)?( tokens?)?(?: with ([a-z ,&]+?))?(?: plus .*)?(?: but .*| and .*)?$""").find(c)?.let { r0 ->
             val kwNoun = r0.groupValues[5].let { if (it.isEmpty()) "" else it.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink").replace("striker", "strike") }
             val r = object { val groupValues = listOf(r0.groupValues[0], r0.groupValues[1], r0.groupValues[2], r0.groupValues[3], (r0.groupValues[4] + " " + r0.groupValues[6].ifEmpty { if (r0.groupValues[4].isEmpty() && kwNoun.isEmpty()) "" else "creature" }).trim(), r0.groupValues[7], listOf(r0.groupValues[8], kwNoun).filter { it.isNotEmpty() }.joinToString(", ")) }
             if (r.groupValues[3].isEmpty() && r.groupValues[4].isEmpty()) return@let
             val who = actor ?: subject ?: "opp"
-            val defender = r.groupValues[1].takeIf { it.isNotEmpty() }?.let { d -> if (d.startsWith("@")) d.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else if (d == "me") "me" else pronounPlayer(ctx, d.substringAfterLast(' ')) } ?: ctx.other(who) ?: "me"
+            // "they attack my Jace Beleren with a 3/3": the thing attacked is a planeswalker or battle, not a player.
+            // "they attack it with a 3/3" right after one was described means that planeswalker.
+            fun planeswalkerOf(): String? = ctx.objects.values.lastOrNull { o ->
+                o.controller != who && o.card.name?.let { n -> names.lookup(Names.normalize(n))?.typeLine?.contains("Planeswalker") == true } == true
+            }?.id
+            val defender: String = r.groupValues[1].takeIf { it.isNotEmpty() }?.let { d ->
+                when {
+                    d == "it" || d == "that" -> planeswalkerOf()
+                    Regex("""c\d+""").containsMatchIn(d) -> Regex("""c\d+""").find(d)!!.value.let { ph -> m.cards[ph]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, if (d.startsWith("my")) "me" else ctx.other(who) ?: "me", false, ctx) } }
+                    d.startsWith("@") -> d.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) }
+                    d == "me" -> "me"
+                    else -> pronounPlayer(ctx, d.substringAfterLast(' '))
+                }
+            } ?: ctx.other(who) ?: "me"
             val ids = (if (r.groupValues[5].isNotEmpty()) describedTokens(r.groupValues[2], r.groupValues[3], r.groupValues[4], who, ctx, r.groupValues[6]) else describedCreatures(r.groupValues[2], r.groupValues[3], r.groupValues[4], who, ctx, r.groupValues[6])) +
                 Regex(""" plus (an? |\d+ |two |three |four |five )?(\d+/\d+)s?(?: ($kwNouns))?(?: ($creatureKinds))?""").findAll(c).flatMap { x -> describedCreatures(x.groupValues[1], x.groupValues[2], x.groupValues[4], who, ctx, x.groupValues[3].let { k -> if (k.isEmpty()) "" else k.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") }) }.toList()
             val payFor = Regex("""\bcan (?:only )?(?:pay|afford)(?: the tax)?(?: for)? (\d+|one|two|three|four|five)\b""").find(c)?.let { number(it.groupValues[1]) }

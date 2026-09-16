@@ -7360,5 +7360,31 @@
       "Rules text not modeled"
     ],
     "cite": []
+  },
+  {
+    "id": "a-described-creature-attacks-a-planeswalker",
+    "text": "They attack my Jace Beleren with a 3/3 and I don't block.",
+    "expect": [
+      "3 loyalty counters are removed",
+      "Jace Beleren has 0 loyalty"
+    ],
+    "notExpect": [
+      "Jace Beleren can't attack",
+      "You take 3 damage"
+    ],
+    "cite": [
+      "306.8"
+    ]
+  },
+  {
+    "id": "a-described-creature-attacks-it-the-planeswalker",
+    "text": "I have Jace Beleren with 3 loyalty. They attack it with a 3/3 and I don't block.",
+    "expect": [
+      "Jace Beleren has 0 loyalty"
+    ],
+    "notExpect": [
+      "You take 3 damage"
+    ],
+    "cite": []
   }
 ]
