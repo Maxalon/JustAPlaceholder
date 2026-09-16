@@ -1257,6 +1257,14 @@ class Engine(val state: GameState) {
             if (inferred != null && inferred.isEmpty() && targets.isEmpty()) {
                 trace.step("${obj.name}'s triggered ability has no legal target, so it's removed from the stack and does nothing.", "603.3d"); state.outcomes += "${obj.name}'s triggered ability has no legal target and is removed from the stack."; return null
             }
+            // Several players could be the target and nothing says which: the part of the ability that needs one is
+            // skipped, and saying so is the difference between an incomplete answer and a wrong one. With one
+            // opponent it is assumed above; with two it is a real choice.
+            if (inferred == null && targets.isEmpty() && state.clarifications.none { it.about == "${obj.name}'s triggered ability's target" }) {
+                state.clarifications += Clarification("${obj.name}'s triggered ability's target",
+                    "${obj.name}'s triggered ability needs a target (${spec.raw}) and the situation doesn't say which${if (state.players.size > 2) " (${state.opponentsOf(obj.controller).joinToString(" or ") { if (it.you) "you" else it.name }})" else ""}; what the ability does to that target is left out. Say who it targets for a complete answer.")
+                trace.step("${obj.name}'s triggered ability needs a target (${spec.raw}) that the situation doesn't name, so what it does to that target isn't shown.", "603.3d", "601.2c")
+            }
             if (inferred != null) targets = inferred
         }
         if (needed.isEmpty() && targets.isEmpty() && targetsAPlayer(ability.effect)) {
@@ -2587,6 +2595,10 @@ class Engine(val state: GameState) {
             // "Target player loses 1 life" with no target named: assume the one opponent (the sensible choice), and say so.
             val opp = state.opponentsOf(item.controller).singleOrNull()
             if (opp != null) state.assumptions += "${item.describe} targets ${if (opp.you) "you" else opp.name} (\"target player\" wasn't specified; assuming the opponent)."
+            // Several opponents and nothing says which: with one it is assumed above, with two it is a real choice,
+            // and leaving it out silently made "target player loses 1 life" vanish from the answer.
+            else state.clarifications += Clarification("${item.describe}'s target player",
+                "${item.describe} says \"target player\" and the situation doesn't say which (${state.opponentsOf(item.controller).joinToString(" or ") { if (it.you) "you" else it.name }}); what it does to that player is left out. Say who it targets for a complete answer.")
             opp
         }
         Who.CONTROLLER_OF_TARGET -> item.targets.firstOrNull()?.let { ref -> when (ref) { is Ref.Obj -> state.player(state.obj(ref.id).controller); is Ref.Stack -> state.stackItem(ref.id)?.let { state.player(it.controller) }; is Ref.Player -> state.player(ref.id) } }

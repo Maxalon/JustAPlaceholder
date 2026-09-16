@@ -7858,5 +7858,17 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "target-player-with-several-opponents",
+    "text": "I control Blood Artist. Alice kills Bob's Grizzly Bears with Murder. What happens?",
+    "expect": [
+      "You gain 1 life"
+    ],
+    "notExpect": [
+      "Alice loses 1 life",
+      "Bob loses 1 life"
+    ],
+    "cite": []
   }
 ]
