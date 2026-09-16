@@ -2025,7 +2025,7 @@ class Engine(val state: GameState) {
     private fun inferTarget(what: String, spec: TargetSpec, controller: String, harmful: Boolean = false, source: GameObject? = null, beneficial: Boolean = false): List<Ref>? {
         if (!spec.filter.verifiable) return null
         val candidates = mutableListOf<Ref>()
-        for (o in state.objects.values) if (o.zone == Zone.BATTLEFIELD || o.zone == Zone.STACK) { val r = Ref.Obj(o.id); if (filterMatches(spec.filter, r, controller)) candidates += r }
+        for (o in state.objects.values) if (o.zone == Zone.BATTLEFIELD || o.zone == Zone.STACK) { val r = Ref.Obj(o.id); if (filterMatches(spec.filter, r, controller, source)) candidates += r }
         for (s in state.stack) if (s.kind != StackKind.SPELL) { val r = Ref.Stack(s.id); if (filterMatches(spec.filter, r, controller)) candidates += r }
         if (Kind.PLAYER in spec.filter.kinds) state.players.forEach { candidates += Ref.Player(it.id) }
         var distinct = candidates.distinctBy { when (it) { is Ref.Obj -> "o:" + it.id; is Ref.Stack -> "s:" + it.id; is Ref.Player -> "p:" + it.id } }
@@ -2043,6 +2043,11 @@ class Engine(val state: GameState) {
         if (beneficial && !harmful && distinct.size > 1) {
             val mine = distinct.filter { r -> r is Ref.Obj && state.objects[r.id]?.controller == controller }
             if (mine.isNotEmpty() && mine.size < distinct.size) distinct = mine
+            if (distinct.size > 1) {
+                // Something on the stack is already aiming at one of them: that's the one being saved.
+                val underThreat = distinct.filter { r -> r is Ref.Obj && state.stack.any { s -> s.controller != controller && s.targets.any { t -> t is Ref.Obj && t.id == r.id } } }
+                if (underThreat.size == 1) distinct = underThreat
+            }
             if (distinct.size > 1) { val fighting = distinct.filter { r -> r is Ref.Obj && state.objects[r.id]?.let { it.attacking != null || it.blocking != null } == true }; if (fighting.size == 1) distinct = fighting }
             if (distinct.size == 1) { state.assumptions += "$what targets ${state.nameOf(distinct[0])}: of the legal targets, it's the one ${state.player(controller).subject.lowercase()} would help (own creature${if (state.objects[(distinct[0] as Ref.Obj).id]?.let { it.attacking != null || it.blocking != null } == true) ", in combat" else ""}); say so if it's another."; return distinct }
         }
@@ -2108,14 +2113,14 @@ class Engine(val state: GameState) {
         if (isTargetLegal(item, ref)) block(ref) else trace.step("${state.nameOf(ref)} is an illegal target now, so that part of the effect doesn't affect it.", "608.2b")
     }
 
-    fun filterMatches(f: ObjFilter, ref: Ref, controller: String): Boolean = when (ref) {
+    fun filterMatches(f: ObjFilter, ref: Ref, controller: String, source: GameObject? = null): Boolean = when (ref) {
         is Ref.Player -> Kind.PLAYER in f.kinds
         is Ref.Stack -> { val s = state.stackItem(ref.id) ?: return false; if (s.kind == StackKind.SPELL) filterMatchesSpell(f, s, controller) else Kind.ABILITY in f.kinds }
         is Ref.Obj -> {
             val o = state.objects[ref.id] ?: return false
             if (o.zone == Zone.STACK) { val s = state.stack.firstOrNull { it.source.id == o.id }; s != null && filterMatchesSpell(f, s, controller) }
             else if (!o.isOnBattlefield()) Kind.CARD in f.kinds
-            else state.matches(f, o, controller)
+            else state.matches(f, o, controller, source)
         }
     }
 

@@ -837,6 +837,14 @@ class SituationParser(private val names: NameIndex) {
             for (pid in ctx.playerIds()) addObject(card, pid, false, ctx, allowDuplicate = true)
             ctx.lastVerb = "have"; return true
         }
+        // "activate Mother of Runes choosing black" / "use it naming white": the colour an ability asks its controller to choose.
+        Regex("""^(?:$activateVerbs) (?:my |the |their )?(c\d+|it|that)(?:'s ability)? (?:choosing|naming|picking|for|on) (white|blue|black|red|green|colou?rless)(?: in response)?$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: "me"
+            val src = if (r.groupValues[1] in setOf("it", "that")) (ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let)
+                      else m.cards[r.groupValues[1]]?.let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) } ?: return@let
+            ctx.events += EventSpec("activate", player = who, obj = src, to = "color:${r.groupValues[2]}")
+            ctx.lastActor = who; return true
+        }
         // "give it protection from black": the actor's other permanent grants it (Mother of Runes).
         Regex("""^(?:gives?|granting|grants?) (?:it|that|(?:the |my )?(c\d+)) protection from (white|blue|black|red|green)(?: in response)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"

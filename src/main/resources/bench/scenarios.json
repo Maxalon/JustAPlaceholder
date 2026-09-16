@@ -5339,5 +5339,33 @@
     "cite": [
       "608.2b"
     ]
+  },
+  {
+    "id": "giver-of-runes-saves-another",
+    "text": "I control Giver of Runes and my opponent casts Swords to Plowshares on my Bears. I activate Giver of Runes choosing white. What happens?",
+    "expect": [
+      "Grizzly Bears has protection from white until end of turn",
+      "Swords to Plowshares doesn't resolve"
+    ],
+    "notExpect": [
+      "protection from nothing"
+    ],
+    "cite": [
+      "608.2b"
+    ]
+  },
+  {
+    "id": "mother-of-runes-saves-a-creature",
+    "text": "I control Mother of Runes and my opponent casts Doom Blade on my Bears. I activate Mother of Runes choosing black. What happens?",
+    "expect": [
+      "Grizzly Bears has protection from black until end of turn",
+      "Doom Blade doesn't resolve"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "608.2b"
+    ]
   }
 ]

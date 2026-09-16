@@ -533,6 +533,9 @@ object OracleParser {
     }
 
     private fun keywordsIn(text: String): Set<String>? {
+        // "protection from colorless or from the color of your choice": one grant with a choice in it.
+        if (Regex("""^protection from colou?rless or from the colou?r of your choice$""", RegexOption.IGNORE_CASE).matches(text.trim().trimEnd('.')))
+            return setOf("protection from the color of your choice")
         val parts = text.lowercase().trimEnd('.').replace(" and from ", " and protection from ").split(Regex(""",\s*|\s+and\s+""")).map { it.trim() }.filter { it.isNotEmpty() }
         val ok = parts.isNotEmpty() && parts.all { it in keywordList || Regex("""^protection from (?:white|blue|black|red|green|colorless|everything|colored spells|spells|artifacts|creatures|instants|sorceries|planeswalkers|the color of your choice|[a-z]+)$""").matches(it) }
         return if (ok) parts.toSet() else null
@@ -632,7 +635,7 @@ object OracleParser {
     private val untapRe = Regex("""^untap target (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val pumpRe = Regex("""^target (.+?) gets ([+-]\d+)/([+-]\d+) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val pumpGainRe = Regex("""^target (.+?) gets ([+-]\d+)/([+-]\d+) and gains (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
-    private val gainRe = Regex("""^target (.+?) gains (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
+    private val gainRe = Regex("""^(another )?target (.+?) gains (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val gainSelfRe = Regex("""^~ gains (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val payRe = Regex("""^(?:you may )?pay (\{[^}]+\}(?:\{[^}]+\})*|\d+ life)\.?$""", RegexOption.IGNORE_CASE)
     private val gainLifeRe = Regex("""^(you|target player|that player|each player|each opponent) gains? (\d+) life\.?$""", RegexOption.IGNORE_CASE)
@@ -767,7 +770,7 @@ object OracleParser {
         gainControlRe.matchEntire(s)?.let { m -> return Effect.GainControl(target("target " + m.groupValues[1]), m.groupValues[2].isNotEmpty()) }
         // "Permanents you control gain indestructible until end of turn", "Creatures you control gain flying until end of turn"
         Regex("""^(?:all |each )?(.+?) (?:gain|gains) (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
-            if (!m.groupValues[1].startsWith("target", true) && m.groupValues[1] != "~") { val f = parseFilter(m.groupValues[1], Kind.PERMANENT); val kws = keywordsIn(m.groupValues[2]); if (f.verifiable && kws != null) return Effect.PumpAll(f, 0, 0, kws.toList()) }
+            if (!m.groupValues[1].startsWith("target", true) && !m.groupValues[1].startsWith("another target", true) && m.groupValues[1] != "~") { val f = parseFilter(m.groupValues[1], Kind.PERMANENT); val kws = keywordsIn(m.groupValues[2]); if (f.verifiable && kws != null) return Effect.PumpAll(f, 0, 0, kws.toList()) }
         }
         Regex("""^Remove all counters from (target .+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.RemoveAllCounters(target(m.groupValues[1])) }
         countersOnRe.matchEntire(s)?.let { m ->
@@ -934,7 +937,10 @@ object OracleParser {
         untapRe.matchEntire(s)?.let { return Effect.Untap(target(it.groupValues[1])) }
         pumpRe.matchEntire(s)?.let { return Effect.Pump(target(it.groupValues[1]), it.groupValues[2].toInt(), it.groupValues[3].toInt()) }
         pumpGainRe.matchEntire(s)?.let { m -> keywordsIn(m.groupValues[4])?.let { kws -> return Effect.Seq(listOf(Effect.Pump(target(m.groupValues[1]), m.groupValues[2].toInt(), m.groupValues[3].toInt()), Effect.GainKeywords(target(m.groupValues[1]), kws))) } }
-        gainRe.matchEntire(s)?.let { m -> keywordsIn(m.groupValues[2])?.let { kws -> return Effect.GainKeywords(target(m.groupValues[1]), kws) } }
+        gainRe.matchEntire(s)?.let { m -> keywordsIn(m.groupValues[3])?.let { kws ->
+            val t = target(m.groupValues[2])
+            return Effect.GainKeywords(if (m.groupValues[1].isNotEmpty()) t.copy(filter = t.filter.copy(other = true), raw = "another " + t.raw) else t, kws)
+        } }
         gainSelfRe.matchEntire(s)?.let { m -> keywordsIn(m.groupValues[1])?.let { kws -> return Effect.GainKeywordsSelf(kws) } }
         gainLifeRe.matchEntire(s)?.let { return Effect.GainLife(who(it.groupValues[1]), it.groupValues[2].toInt()) }
         loseLifeRe.matchEntire(s)?.let { return Effect.LoseLife(who(it.groupValues[1]), it.groupValues[2].toIntOrNull() ?: 0, x = it.groupValues[2].equals("X", true)) }
