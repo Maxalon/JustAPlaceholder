@@ -318,6 +318,9 @@ class SituationParser(private val names: NameIndex) {
             if (step != null) ctx.events += EventSpec("step", player = ctx.activePlayer, to = step)
         }
         Regex("""\b(i'm|i am|i'm at|my life is|i have|i've got) (\d+) life\b|^(i'm at|i am at|i'm on|i am on|i'm sitting at) (\d+)$""").find(t2)?.let { ctx.life["me"] = (it.groupValues[2].ifEmpty { it.groupValues[4] }).toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
+        // "I go to 0 life", "they drop to 3": a life total after something, said as a change.
+        Regex("""\b(?:i|we) (?:go|goes|went|drop|drops|dropped|fall|falls|fell) (?:to|down to) (\d+)(?: life)?\b""").find(t2)?.let { ctx.life["me"] = it.groupValues[1].toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
+        Regex("""\b(?:they|he|she|my opponent|the opponent|opponent) (?:go|goes|went|drop|drops|dropped|fall|falls|fell) (?:to|down to) (\d+)(?: life)?\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = it.groupValues[1].toInt(); any = true; t2 = t2.removeRange(it.range) }
         Regex("""\s*\b(?:with|at|and) (\d+) life (?:left|remaining|to go)(?: for me| on my side)?\b""").find(t2)?.let { ctx.life["me"] = it.groupValues[1].toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
         Regex("""\s*\b(?:with|and) (?:them|my opponent|the opponent|opponent) (?:at|on) (\d+)(?: life)?\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = it.groupValues[1].toInt(); any = true; t2 = t2.removeRange(it.range) }
         Regex("""\b(opponent|they|they're|opp|my opponent)(?: who)? (?:(?:is at|are at|at|is on|are on|'re at|'s at) (\d+)(?: life)?|(?:has|have) (\d+) life)\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = (it.groupValues[2].ifEmpty { it.groupValues[3] }).toInt(); any = true; t2 = t2.replaceRange(it.range, it.groupValues[1]) }
@@ -993,11 +996,25 @@ class SituationParser(private val names: NameIndex) {
             val id = if (r.groupValues[1] == "it") (ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller == who } ?: ctx.objects.values.lastOrNull { it.controller == who }?.id ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let) else m.cards.getValue(r.groupValues[1]).let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) }
             ctx.events += EventSpec("activate", player = who, obj = id, to = "mana"); ctx.lastActor = who; ctx.lastMentioned = id; return true
         }
+        // "they draw", "I draw": one card, said without saying so.
+        if (Regex("""^(?:draws?|drew|drawing)(?: a card)?(?: (?:during|in|for|at) (?:their|my|the|his|her) draw step)?$""").matches(c)) {
+            val who = actor ?: subject ?: "me"
+            if (c.contains("draw step")) { ctx.activePlayer = who; ctx.events += EventSpec("step", player = who, to = "draw") }
+            ctx.events += EventSpec("draw", player = who, amount = 1); ctx.lastActor = who; ctx.note(who); return true
+        }
         // "draws a card", "draws two cards (during their draw step)"
         Regex("""^(?:draws?|drew|drawing) (a|an|\d+|two|three|four|five)(?: cards?| more| again| more cards?)?(?: (?:during|in|for|at) (?:their|my|the|his|her) draw step)?(?: (?:from|off|with|thanks to) (?:an? |the |my |their )?(?:c\d+|[a-z ]+))?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             if (c.contains("draw step")) { ctx.activePlayer = who; ctx.events += EventSpec("step", player = who, to = "draw") }
             ctx.events += EventSpec("draw", player = who, amount = number(r.groupValues[1]) ?: 1); ctx.lastActor = who; return true
+        }
+        // "two spells are cast this turn": the same statement as "I have cast two spells this turn", in the passive.
+        Regex("""^(a|an|one|two|three|four|five|six|seven|eight|nine|ten|\d+) spells? (?:are|is|were|was|have been|has been) (?:already )?cast(?: by (me|them|my opponent|@\w+))?(?: this turn| so far this turn| already)$""").find(c)?.let { r ->
+            val who = r.groupValues[2].takeIf { it.isNotEmpty() }?.let { w -> if (w == "me") "me" else if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, "their") } ?: actor ?: subject ?: "me"
+            val n = number(r.groupValues[1]) ?: return@let
+            ctx.spellsThisTurn[who] = n
+            ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} cast $n spell${if (n == 1) "" else "s"} this turn; abilities that count spells start from there."
+            ctx.note(who); return true
         }
         // "casts three spells", "casts a creature spell", "plays two more instants"
         Regex("""^(?:$castVerbs) (?:one|another|another one|one too|one as well|one of their own|one of my own)$""").find(c)?.let {

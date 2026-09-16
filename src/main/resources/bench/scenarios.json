@@ -6743,5 +6743,28 @@
     "cite": [
       "704.5c"
     ]
+  },
+  {
+    "id": "a-bare-draw-still-triggers-sheoldred",
+    "text": "My opponent is at 1 life and I control Sheoldred, the Apocalypse. They draw. Do they lose?",
+    "expect": [
+      "opponent draws 1 card",
+      "opponent loses 2 life"
+    ],
+    "notExpect": [],
+    "cite": [
+      "119.3"
+    ]
+  },
+  {
+    "id": "a-life-total-said-as-a-change",
+    "text": "I control Platinum Angel and I go to 0 life. What happens?",
+    "expect": [
+      "Platinum Angel says you can't lose"
+    ],
+    "notExpect": [],
+    "cite": [
+      "704.5a"
+    ]
   }
 ]
