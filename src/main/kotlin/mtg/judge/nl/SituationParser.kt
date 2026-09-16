@@ -691,6 +691,19 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "No source was named for the $amount damage; it is read as coming from a source nobody named, which is enough to show what prevention and replacement effects do to it."
             ctx.note(victim); return true
         }
+        // "I sacrifice two creatures", "three creatures die": several creatures nobody named, described only by
+        // how many there are. The engine needs objects to move, so it gets that many unnamed ones.
+        Regex("""^(?:(?:i|we|they|he|she|my opponent|the opponent|@\w+) )?(?:(sacrifices?|sacs?|sacrificed)|(?:my |their |his |her )?(\d+|a|an|one|two|three|four|five) (?:other )?creatures? (?:die|dies|died|are destroyed|is destroyed|get destroyed)) ?(\d+|a|an|one|two|three|four|five)? ?(?:other )?(?:creatures?)?$""").find(c)?.let { r ->
+            val sacrificed = r.groupValues[1].isNotEmpty()
+            val count = (if (sacrificed) r.groupValues[3] else r.groupValues[2]).takeIf { it.isNotEmpty() } ?: return@let
+            val n = number(count) ?: return@let
+            if (n < 1 || n > 20) return@let
+            val who = actorOfClause(c) ?: (if (sacrificed) ctx.lastActor ?: "me" else ctx.lastOwner)
+            val ids = describedCreatures("$n ", "", "creature", who ?: "me", ctx)
+            if (ids.isEmpty()) return@let
+            for (id in ids) ctx.events += if (sacrificed) EventSpec("sacrifice", player = who ?: "me", obj = id) else EventSpec("leave", obj = id, to = "graveyard")
+            ctx.lastActor = who ?: ctx.lastActor; ctx.lastMentioned = ids.last(); return true
+        }
         // "I discard Vengevine", "they discard Lightning Bolt to Liliana": a named card leaves hand for the graveyard.
         Regex("""^(?:(?:i|they|he|she|we|my opponent|the opponent|@\w+) )?discards? (?:an? |the |my |their )?(c\d+)(?: (?:to|for|with) (?:an? |the |my |their )?c\d+)?$""").find(c)?.let { r ->
             val who = actorOfClause(c) ?: ctx.lastActor ?: "me"
@@ -817,7 +830,8 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastActor = who; ctx.lastMentioned = id; return true
         }
         // "activate it (targeting X)": the last-mentioned permanent's ability.
-        Regex("""^(?:$activateVerbs)\s+(?:it|that|its ability|it's ability)\b(.*)$""").find(c)?.let { r ->
+        // "use her +1" is a loyalty ability, read further down; this rule must not take it first.
+        Regex("""^(?:$activateVerbs)\s+(?:it|that|him|her|them|its ability|his ability|her ability|it's ability)\b(?!\s*[+\u2212-]?\d)(.*)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return false
             ctx.events += EventSpec("activate", player = who, obj = id, targets = targetsIn(r.groupValues[1], m, ctx)); ctx.lastActor = who; return true

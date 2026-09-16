@@ -6780,5 +6780,39 @@
     "cite": [
       "400.7"
     ]
+  },
+  {
+    "id": "activating-a-legend-by-pronoun",
+    "text": "I control Krenko, Mob Boss with 3 Goblins and activate him. What happens?",
+    "expect": [
+      "X is 4",
+      "You create a Goblin token"
+    ],
+    "notExpect": [],
+    "cite": [
+      "608.2h"
+    ]
+  },
+  {
+    "id": "several-creatures-dying-at-once-by-count",
+    "text": "I control Blood Artist and three creatures die. What happens?",
+    "expect": [
+      "Blood Artist's ability triggers"
+    ],
+    "notExpect": [],
+    "cite": [
+      "603.10a"
+    ]
+  },
+  {
+    "id": "sacrificing-a-number-of-creatures",
+    "text": "I control Ashnod's Altar and sacrifice two creatures. How much mana do I get?",
+    "expect": [
+      "a creature: the battlefield → your graveyard. (×2)"
+    ],
+    "notExpect": [],
+    "cite": [
+      "701.21a"
+    ]
   }
 ]
