@@ -663,6 +663,12 @@ object OracleParser {
             return Effect.May(Effect.Narrated("search ${if (m.groupValues[1].lowercase() == "you") "your" else "their"} library for ${m.groupValues[2]}, then shuffle", listOf("701.23a", "701.24a")), when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "target player" -> Who.TARGET_PLAYER; "its controller" -> Who.CONTROLLER_OF_TARGET; else -> Who.THAT_PLAYER })
         }
         tuckAllRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[1], Kind.PERMANENT); if (f.verifiable) return Effect.ForAll(f, "tuck") }
+        // "If you control an Urza's Mine and an Urza's Power-Plant, add {C}{C}{C} instead."
+        Regex("""^if you control (an?[^,]+?) and (an?[^,]+?), add ((?:\{[^}]+\})+) instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val a = m.groupValues[1].trim().removePrefix("an ").removePrefix("a ").trim()
+            val b = m.groupValues[2].trim().removePrefix("an ").removePrefix("a ").trim()
+            if (a.isNotEmpty() && b.isNotEmpty()) return Effect.AddManaInstead(listOf(a, b), m.groupValues[3])
+        }
         // "Exile target player's graveyard" (Bojuka Bog), "exile each opponent's graveyard".
         Regex("""^exile (target player|target opponent|that player|each player|each opponent|your)(?:'s)? graveyard\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             return Effect.ExileGraveyard(when (m.groupValues[1].lowercase()) { "target player", "target opponent" -> Who.TARGET_PLAYER; "that player" -> Who.THAT_PLAYER; "each player" -> Who.EACH_PLAYER; "each opponent" -> Who.EACH_OPPONENT; else -> Who.YOU })

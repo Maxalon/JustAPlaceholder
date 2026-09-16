@@ -158,6 +158,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "resolveall" -> engine.resolveAll()
             "ask" -> {
                 if (e.to == "playerDamage") { val p = state.player(e.player ?: throw JudgeException("ask needs a player")); val name = if (p.you) "you" else p.name; val total = state.trace.steps.sumOf { st -> Regex("""deals (\d+) (?:combat )?damage to ${Regex.escape(name)}\b""").findAll(st.text).sumOf { it.groupValues[1].toInt() } }; val prevented = state.trace.steps.any { it.text.contains("to $name") && it.text.contains("prevented") }; state.outcomes += if (total > 0) "Yes: $name ${p.v("takes", "take")} $total damage in all." else "No: $name ${p.v("takes", "take")} no damage${if (prevented) " (it's prevented)" else ""}."; return }
+                if (e.to == "manaAvailable") { state.outcomes += engine.manaAvailable(e.player ?: throw JudgeException("ask needs a player")); return }
                 if (e.to == "playerSurvive" || e.to == "playerDie" || e.to == "playerWin") { state.outcomes += playerAnswer(e.to, state.player(e.player ?: throw JudgeException("ask needs a player")), state); return }
                 val o = generateSequence(state.obj(e.obj ?: throw JudgeException("ask needs an object"))) { it.successor?.let { id -> state.objects[id] } }.last()
                 when (e.to) {
@@ -177,6 +178,22 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         if (o.controlRevertsTo != null) engine.beginStep("cleanup", e.targets.firstOrNull()?.takeIf { t -> state.players.any { it.id == t } } ?: state.activePlayer ?: o.controller)
                         val p = state.player(e.player ?: "me"); state.outcomes += if (o.controller == p.id) "Yes: ${o.name} is under ${p.possessive} control." else "No: ${o.name} is under ${state.player(o.controller).possessive} control${o.controlRevertsTo?.let { r -> " until end of turn (it goes back to ${state.player(r).possessive} at cleanup)" } ?: ""}." }
                     "mana" -> state.outcomes += engine.manaOptions(o.id)
+                    "activate" -> {
+                        val tapAbilities = o.def.abilities.filterIsInstance<mtg.judge.engine.ActivatedAbility>().filter { it.cost.contains("{T}") }
+                        val any = o.def.abilities.filterIsInstance<mtg.judge.engine.ActivatedAbility>()
+                        state.outcomes += when {
+                            !o.isOnBattlefield() -> "No: ${o.name} isn\'t on the battlefield, so its abilities can\'t be activated."
+                            any.isEmpty() -> "${o.name} has no activated abilities."
+                            o.tapped == true && tapAbilities.isNotEmpty() && tapAbilities.size == any.size -> "No: ${o.name} is already tapped, and every one of its abilities costs {T}."
+                            tapAbilities.isNotEmpty() && o.def.isCreature && o.summoningSick == true && !state.hasKeyword(o, "haste") ->
+                                "No: ${o.name} came under ${state.player(o.controller).possessive} control this turn and doesn\'t have haste, so its {T} ability can\'t be activated yet (302.6).${if (tapAbilities.size < any.size) " Its abilities without {T} in the cost still can be." else ""}"
+                            tapAbilities.isNotEmpty() && o.def.isCreature && o.summoningSick == true ->
+                                "Yes: ${o.name} has haste, so it can use its {T} ability the turn it came under ${state.player(o.controller).possessive} control (702.10b)."
+                            tapAbilities.isNotEmpty() && o.def.isCreature && o.summoningSick == null ->
+                                "Yes, if it has been under ${state.player(o.controller).possessive} control since the turn began; a {T} ability of a creature needs that or haste (302.6)."
+                            else -> "Yes: ${o.name} can activate ${if (any.size == 1) "its ability" else "its abilities"}, mana permitting."
+                        }
+                    }
                     "tapped" -> state.outcomes += if (o.tapped == true) "${o.name} is tapped." else "${o.name} is untapped${if (state.hasKeyword(o, "vigilance") && state.trace.steps.any { it.text.startsWith("${o.name} attacks") || it.text.contains("attack with ${o.name}") }) " (vigilance: attacking didn't tap it)" else ""}."
                     "survive", "die" -> {
                         val where = when (o.zone) { mtg.judge.engine.Zone.GRAVEYARD -> "the graveyard"; mtg.judge.engine.Zone.EXILE -> "exile"; mtg.judge.engine.Zone.HAND -> "its owner's hand"; mtg.judge.engine.Zone.LIBRARY -> "its owner's library"; mtg.judge.engine.Zone.COMMAND -> "the command zone"; else -> o.zone.name.lowercase() }

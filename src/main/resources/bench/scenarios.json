@@ -4273,5 +4273,77 @@
     "cite": [
       "510.1c"
     ]
+  },
+  {
+    "id": "deathrite-summoning-sick",
+    "text": "I control Deathrite Shaman. Can I activate it the turn it comes down?",
+    "expect": [
+      "can't be activated yet (302.6)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "birds-with-haste-taps",
+    "text": "I control Birds of Paradise with haste. Can I tap it the turn it comes down?",
+    "expect": [
+      "Yes: Birds of Paradise has haste"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "tron-makes-three",
+    "text": "I control Urza's Tower, Urza's Mine and Urza's Power Plant. I tap Urza's Tower for mana. What do I get?",
+    "expect": [
+      "add {C}{C}{C}"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "605.1a",
+      "605.3b"
+    ]
+  },
+  {
+    "id": "lone-tower-makes-one",
+    "text": "I control Urza's Tower. I tap it for mana. What do I get?",
+    "expect": [
+      "Urza's Tower's mana ability: add {C}."
+    ],
+    "notExpect": [
+      "mana ability: add {C}{C}{C}"
+    ],
+    "cite": [
+      "605.1a"
+    ]
+  },
+  {
+    "id": "mana-available-counts-sources",
+    "text": "I control two Islands, a Sol Ring and a tapped Mountain. How much mana can I make?",
+    "expect": [
+      "You can make 4 mana right now"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "mana-available-skips-sick-birds",
+    "text": "I control a Forest and a Birds of Paradise I just played this turn. How much mana do I have?",
+    "expect": [
+      "You can make 1 mana right now",
+      "summoning sick"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

@@ -64,4 +64,33 @@ class BatchFourteenTest {
         assertEquals(1, s.outcomes.count { it.contains("damage marked") }, s.outcomes.toString())
         assertTrue(s.outcomes.any { it.contains("6 damage marked") }, s.outcomes.toString())
     }
+
+    private val tower = card("Urza's Tower", "Land — Urza's Tower", "{T}: Add {C}. If you control an Urza's Mine and an Urza's Power-Plant, add {C}{C}{C} instead.", "")
+    private val mine = card("Urza's Mine", "Land — Urza's Mine", "{T}: Add {C}. If you control an Urza's Power-Plant and an Urza's Tower, add {C}{C} instead.", "")
+    private val plant = card("Urza's Power Plant", "Land — Urza's Power-Plant", "{T}: Add {C}. If you control an Urza's Mine and an Urza's Tower, add {C}{C} instead.", "")
+    private val island = card("Island", "Basic Land — Island", "{T}: Add {U}.", "")
+    private val birds = card("Birds of Paradise", "Creature — Bird", "Flying\n{T}: Add one mana of any color.", "{G}", "G", "0", "1", "Flying")
+
+    @Test
+    fun `urza lands make three only with the whole set`() {
+        val s = state(); s.put("tower", tower, "me")
+        val e = Engine(s); e.activate("me", "tower", 0, emptyList())
+        assertTrue(s.outcomes.any { it == "Urza's Tower's mana ability: add {C}." }, s.outcomes.toString())
+
+        val s2 = state(); s2.put("tower", tower, "me"); s2.put("mine", mine, "me"); s2.put("plant", plant, "me")
+        val e2 = Engine(s2); e2.activate("me", "tower", 0, emptyList())
+        assertTrue(s2.outcomes.any { it == "Urza's Tower's mana ability: add {C}{C}{C}." }, s2.outcomes.toString())
+    }
+
+    @Test
+    fun `available mana counts untapped sources and skips summoning-sick ones`() {
+        val s = state(); s.put("i1", island, "me"); s.put("i2", island, "me"); s.put("birds", birds, "me")
+        s.obj("birds").summoningSick = true
+        val e = Engine(s)
+        val said = e.manaAvailable("me")
+        assertTrue(said.startsWith("You can make 2 mana right now"), said)
+        assertTrue(said.contains("summoning sick"), said)
+        s.obj("i1").tapped = true
+        assertTrue(e.manaAvailable("me").startsWith("You can make 1 mana right now"), e.manaAvailable("me"))
+    }
 }

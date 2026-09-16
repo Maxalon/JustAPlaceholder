@@ -449,6 +449,12 @@ class SituationParser(private val names: NameIndex) {
         }
         // "After damage, does Serra Angel untap?": the time phrase adds nothing the ordering doesn't already say.
         clause0 = clause0.replace(Regex("""^(?:after|once|when) (?:combat )?(?:damage|blockers|blocks|combat|that|this|it resolves|everything resolves)(?: is dealt| are declared)?,?\s+"""), "")
+        // "how much mana do I have?" / "how much mana can I make?": every untapped source that player controls.
+        Regex("""^how (?:much|many) mana (?:do|does|can|could|would) (i|we|they|he|she|my opponent|the opponent|opponent|@\w+) (?:have|make|produce|get|tap for|generate|have available|have up)(?: (?:available|up|right now|now|in total|altogether))?$""").find(clause0)?.let { q ->
+            val who = when (val w = q.groupValues[1]) { "i", "we" -> "me"; "opponent", "my opponent", "the opponent" -> "opp"; else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w) }
+            ctx.asks += EventSpec("ask", player = who, to = "manaAvailable"); ctx.note(who)
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
         // "where does Rancor go?" / "what happens to the Bears?" / "how much does it cost?": the outcome answers it.
         if (Regex("""^how (?:much|many)(?: (?:combat )?(?:damage|life|cards?|mana|counters?))? (?:does|do|did|will|would|is|are)\b.*\b(?:cost|costs|pay|gain|lose|deal|draw|get|have|left)\b.*$""").matches(clause0) && !Regex("""\bdamage (?:do|does|will|would) .*\b(?:take|receive|suffer)\b""").containsMatchIn(clause0)) {
             // "… if I attack with everything": the attack is made so the answer can be shown.
@@ -855,12 +861,23 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastMentioned = id; return true
         }
         // Bare continuation: "… and Smothering Tithe" after a possession, "… and Counterspell" after a cast.
-        Regex("""^(?:an? |the |my |their |another |also |(\d+|two|three|four|five) )?(c\d+)(?:'s)?(?: out| in play| on the battlefield| on board| on the field)?$""").find(c)?.let { r ->
-            val card = m.cards.getValue(r.groupValues[2])
+        Regex("""^(?:an? |the |my |their |another |also |(\d+|two|three|four|five) )?(?:(tapped|untapped) )?(c\d+)(?:'s)?(?: out| in play| on the battlefield| on board| on the field)?((?: (?:i|they|he|she|we) (?:just )?(?:played|cast|dropped|resolved)(?: this turn| earlier this turn| earlier| last turn| a turn ago)?)?)$""").find(c)?.let { r ->
+            val card = m.cards.getValue(r.groupValues[3])
             val count = r.groupValues[1].let { numberWords[it] ?: it.toIntOrNull() ?: 1 }
+            val isTapped = r.groupValues[2] == "tapped"
+            // "a Birds of Paradise I just played this turn" / "a Bears they cast last turn": whether it is summoning sick.
+            val played = r.groupValues[4].trim()
+            val sick = if (played.isEmpty()) null else !Regex("""last turn|a turn ago""").containsMatchIn(played)
             when (ctx.lastVerb) {
-                "have" -> { repeat(count) { addObject(card, actor ?: ctx.lastOwner, false, ctx, allowDuplicate = count > 1) }; if (actor != null) { ctx.lastOwner = actor; ctx.lastActor = actor }; return true }
-                "cast" -> { if (Regex("""^(?:their|my|his|her|the|an?) """).containsMatchIn(clauseIn.trim())) { addObject(card, if (clauseIn.trim().startsWith("my")) (ctx.lastActor ?: "me") else ctx.other(ctx.lastActor) ?: "opp", false, ctx); return true }; emitCast(subject ?: "opp", card, "", m, ctx); return true }
+                "have" -> {
+                    repeat(count) { id0 ->
+                        val id = addObject(card, actor ?: ctx.lastOwner, isTapped, ctx, allowDuplicate = count > 1)
+                        if (isTapped) ctx.objects[id] = ctx.objects.getValue(id).copy(tapped = true)
+                        if (sick != null) ctx.objects[id] = ctx.objects.getValue(id).copy(summoningSick = sick)
+                    }
+                    if (actor != null) { ctx.lastOwner = actor; ctx.lastActor = actor }; return true
+                }
+                "cast" -> { if (Regex("""^(?:their|my|his|her|the|an?) """).containsMatchIn(clauseIn.trim())) { addObject(card, if (clauseIn.trim().startsWith("my")) (ctx.lastActor ?: "me") else ctx.other(ctx.lastActor) ?: "opp", isTapped, ctx); return true }; emitCast(subject ?: "opp", card, "", m, ctx); return true }
                 "attack" -> { val who = ctx.lastActor ?: "me"; val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx); ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(ctx.other(who) ?: "opp")); return true }
                 "block" -> { val who = ctx.lastActor ?: "opp"; val id = ctx.objects.values.firstOrNull { it.card.oracleId == card.oracleId && it.controller == who }?.id ?: addObject(card, who, false, ctx, allowDuplicate = true); val attacker = ctx.events.lastOrNull { it.verb == "attack" && who in it.targets }?.obj ?: ctx.events.lastOrNull { it.verb == "attack" }?.obj; ctx.events += EventSpec("block", player = who, obj = id, targets = listOfNotNull(attacker)); return true }
                 else -> return false
@@ -1549,6 +1566,17 @@ class SituationParser(private val names: NameIndex) {
             val who = when (val w = q.groupValues[1]) { "i" -> "me"; else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w.substringAfterLast(' ')) }
             ctx.events += EventSpec("resolveAll"); ctx.events += EventSpec("step", player = ctx.activePlayer ?: who, to = "cleanup"); ctx.explicitResolve = true; ctx.note(who)
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by playing the turn out to its cleanup step, where hand size is checked (514.1)."; return true
+        }
+        // "can I activate it the turn it comes down?" / "can I tap Deathrite Shaman right away?": summoning sickness and {T} costs.
+        Regex("""^can (?:i|we|they|he|she|my opponent|the opponent|@\w+) (?:activate|use|tap|fire off|crack) (?:it|that|its ability|its abilities|(?:my |their |his |her |the |@\w+'s )?(c\d+)(?:'s (?:ability|abilities))?)( the (?:same )?turn (?:it|i|they|he|she) (?:comes? down|came down|come down|enters?(?: the battlefield)?|entered(?: the battlefield)?|is played|was played|play it|played it|cast it)| right away| immediately| the turn it drops| straight away)?$""").find(clause0)?.let { q ->
+            val ph = q.groupValues[1]
+            val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
+                     else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.objects.values.lastOrNull()?.id ?: return@let
+            if (q.groupValues[2].isNotBlank()) {
+                ctx.objects[id] = ctx.objects.getValue(id).copy(summoningSick = true)
+                ctx.notes += "Read as: ${ctx.objects.getValue(id).card.name ?: id} came under its controller's control this turn."
+            }
+            ctx.asks += EventSpec("ask", obj = id, to = "activate"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "what color mana can it make?" / "what does it tap for?": the permanent's mana abilities as they stand.
         Regex("""^(?:what (?:colou?r )?(?:of )?mana (?:can|does|do|will) (?:it|that|(?:my |their |the |@\w+'s )?(c\d+)) (?:make|produce|add|tap for)|what (?:does|do|can) (?:it|that|(?:my |their |the )?(c\d+)) tap for)(?: now| then)?$""").find(clause0)?.let { q ->

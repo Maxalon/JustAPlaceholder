@@ -132,7 +132,7 @@ What happens next, in order. The engine applies these to the described state.
 | `attackAll` | `player`, `targets`: [defender] (every creature the player controls attacks) |
 | `block` | `player`, `object` (the blocker), `targets`: [attacker id] |
 | `choose` | `object`, `to` = `put:<objectId>` | Announces the card a permanent's next triggered ability will put onto the battlefield (Kaalia, Aether Vial as a trigger). |
-| `ask` | `object`, `to` = `trigger`, `survive`, `die`, `tapped`, `pt`, `mana` or `control` (with `player`); or `player`, `to` = `playerSurvive`, `playerDie` or `playerWin` | A question about that permanent, answered in the outcome once everything has resolved. |
+| `ask` | `object`, `to` = `trigger`, `survive`, `die`, `tapped`, `pt`, `mana`, `activate`, `block`, `attack`, `damage` or `control` (with `player`); or `player`, `to` = `playerSurvive`, `playerDie`, `playerWin`, `playerDamage` or `manaAvailable` | A question about that permanent or player, answered in the outcome once everything has resolved. `activate` says whether the permanent can use its abilities right now (summoning sickness, already tapped); `manaAvailable` lists every untapped mana source that player controls and the total. |
 | `combatDamage` | (deals combat damage now; otherwise it's dealt after the last event) |
 | `step` | `player` (the active player), `to`: `upkeep` / `draw` / `precombat_main` / `combat` / `end` (a step begins; its triggers fire) |
 | `pay` | `player`, `to`: `yes` / `no` (whether the player pays the next "unless … pays" cost asked of them) |
