@@ -259,6 +259,8 @@ sealed interface Effect {
 /** A condition on a static ability: "as long as you control a Swamp", "as long as it's your turn". */
 sealed interface Condition {
     data class ControlsMatching(val filter: ObjFilter, val atLeast: Int = 1) : Condition
+    /** Serra Ascendant: "as long as you have 30 or more life". */
+    data class LifeAtLeast(val amount: Int, val opponent: Boolean = false) : Condition
     data object YourTurn : Condition
     data object NotYourTurn : Condition
     data class Unknown(val text: String) : Condition

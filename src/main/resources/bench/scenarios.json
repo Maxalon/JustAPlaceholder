@@ -4952,5 +4952,38 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "serra-ascendant-at-thirty",
+    "text": "I control Serra Ascendant and I am at 30 life. What are its stats?",
+    "expect": [
+      "Serra Ascendant is 6/6"
+    ],
+    "notExpect": [
+      "Rules text not modeled: As long as you have 30"
+    ],
+    "cite": []
+  },
+  {
+    "id": "serra-ascendant-at-twenty",
+    "text": "I control Serra Ascendant and I am at 20 life. What are its stats?",
+    "expect": [
+      "Serra Ascendant is 1/1"
+    ],
+    "notExpect": [
+      "6/6"
+    ],
+    "cite": []
+  },
+  {
+    "id": "crack-lions-eye-diamond",
+    "text": "I control Lion's Eye Diamond and crack it. What happens?",
+    "expect": [
+      "Lion's Eye Diamond: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

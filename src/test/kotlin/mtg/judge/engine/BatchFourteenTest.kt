@@ -324,4 +324,16 @@ class BatchFourteenTest {
         assertEquals(20, s2.player("opp").life)
         assertTrue(s2.trace.steps.any { it.text.contains("doesn't trigger at all") }, s2.trace.steps.joinToString("\n") { it.text })
     }
+
+    private val ascendant = card("Serra Ascendant", "Creature — Human Monk", "Lifelink\nAs long as you have 30 or more life, Serra Ascendant gets +5/+5 and has flying.", "{W}", "W", "1", "1", "Lifelink")
+
+    @Test
+    fun `serra ascendant grows once its controller is high enough`() {
+        val s = state(); s.put("asc", ascendant, "me")
+        assertEquals(1, s.obj("asc").power)
+        assertTrue(!s.hasKeyword(s.obj("asc"), "flying"))
+        s.player("me").life = 30
+        assertEquals(6, s.obj("asc").power); assertEquals(6, s.obj("asc").toughness)
+        assertTrue(s.hasKeyword(s.obj("asc"), "flying"))
+    }
 }

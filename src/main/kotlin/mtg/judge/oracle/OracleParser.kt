@@ -376,6 +376,14 @@ object OracleParser {
         Regex("""^nonbasic lands are mountains\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.NonbasicLandsAreMountains) }
         Regex("""^creatures with power greater than the number of cards in your hand can't attack\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.Cant("attack", powerAboveHand = true)) }
         if (Regex("""^~ attacks each combat if able\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.MustAttack)
+        // "As long as you have 30 or more life, ~ gets +5/+5 and has flying." — the same thing said the other way round.
+        Regex("""^as long as (.+?), ~ gets ([+-]\d+)/([+-]\d+)(?: and has (.+?))?\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val cond = parseCondition(m.groupValues[1]) ?: return emptyList()
+            val self = ObjFilter(setOf(Kind.PERMANENT), raw = "~")
+            val out = mutableListOf<StaticEffect>(StaticEffect.PtModify(self, m.groupValues[2].toInt(), m.groupValues[3].toInt(), self = true, condition = cond))
+            if (m.groupValues[4].isNotEmpty()) keywordsIn(m.groupValues[4])?.let { out += StaticEffect.KeywordGrant(self, it) } ?: return emptyList()
+            return out
+        }
         Regex("""^~ gets ([+-]\d+)/([+-]\d+)(?: and has (.+?))? as long as (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val cond = parseCondition(m.groupValues[4]) ?: return emptyList()
             val self = ObjFilter(setOf(Kind.PERMANENT), raw = "~")
@@ -459,6 +467,8 @@ object OracleParser {
         val t = text.trim().trimEnd('.')
         if (Regex("""^it's your turn$""", RegexOption.IGNORE_CASE).matches(t)) return Condition.YourTurn
         if (Regex("""^it's not your turn$""", RegexOption.IGNORE_CASE).matches(t)) return Condition.NotYourTurn
+        Regex("""^you have (\d+) or more life$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m -> return Condition.LifeAtLeast(m.groupValues[1].toInt()) }
+        Regex("""^an opponent has (\d+) or (?:more|less) life$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m -> return Condition.LifeAtLeast(m.groupValues[1].toInt(), opponent = true) }
         Regex("""^you control (?:a|an|another|(one|two|three|four|five|six|seven|\d+) or more) (.+?)$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m ->
             val n = m.groupValues[1].takeIf { it.isNotEmpty() }?.let { number(it) } ?: 1
             // "a Plains or an Island": either land type counts.

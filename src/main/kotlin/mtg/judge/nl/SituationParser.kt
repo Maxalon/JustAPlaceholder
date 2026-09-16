@@ -401,7 +401,7 @@ class SituationParser(private val names: NameIndex) {
 
     private val castVerbs = """(?:casts?|casting|plays?|playing|fires? off|slams?|kicks?|kicked|evokes?|evoked|evoking)"""
     private val respondVerbs = """(?:respond(?:s|ed)? with|in response(?: i| they)? (?:casts?|plays?)|responds?|answers? with|counters? (?:it|that) with|flash(?:es)? in)"""
-    private val activateVerbs = """(?:activates?|activating|uses?)"""
+    private val activateVerbs = """(?:activates?|activating|uses?|using|cracks?|cracking|pops?|popping|fires? off)"""
 
     private fun readClause(clauseIn: String, m: Marked, ctx: Ctx): Boolean {
         // "… no wait, I cast Murder instead" / "I mean Murder on it": the last spell is taken back and this one replaces it.

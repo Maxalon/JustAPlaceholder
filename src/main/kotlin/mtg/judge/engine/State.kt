@@ -212,6 +212,10 @@ class GameState(
     /** Whether a static ability's condition currently holds for its source. */
     fun conditionHolds(c: Condition?, src: GameObject): Boolean = when (c) {
         null -> true
+        is Condition.LifeAtLeast -> {
+            val p = if (c.opponent) players.firstOrNull { it.id != src.controller } else players.firstOrNull { it.id == src.controller }
+            p?.life?.let { it >= c.amount } ?: false
+        }
         Condition.YourTurn -> activePlayer == src.controller
         Condition.NotYourTurn -> activePlayer != null && activePlayer != src.controller
         is Condition.ControlsMatching -> objects.values.count { it !== src && matches(c.filter, it, src.controller, src) || (it === src && matches(c.filter, it, src.controller, src)) } >= c.atLeast
