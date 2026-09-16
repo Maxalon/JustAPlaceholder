@@ -576,6 +576,36 @@ class BatchFourteenTest {
         assertEquals(2, s.obj("eomer").counters["+1/+1"])
     }
 
+    private val sentinels = card("Palace Sentinels", "Creature \u2014 Human Soldier", "When Palace Sentinels enters, you become the monarch.", "{3}{W}", "W", "2", "2")
+
+    @Test
+    fun `only one player is the monarch at a time`() {
+        val s = state(); s.put("ps", sentinels, "me", Zone.HAND)
+        val e = Engine(s); e.enter("ps"); e.resolveAll()
+        assertEquals("me", s.monarch)
+        s.put("ps2", sentinels, "opp", Zone.HAND)
+        e.enter("ps2"); e.resolveAll()
+        assertEquals("opp", s.monarch)
+    }
+
+    @Test
+    fun `the monarch draws at the beginning of their own end step only`() {
+        val s = state(); s.monarch = "me"
+        val e = Engine(s)
+        e.beginStep("end", "opp")
+        assertTrue(s.trace.steps.none { "monarch draws a card" in it.text }, "drew on the wrong player's end step")
+        e.beginStep("end", "me")
+        assertTrue(s.trace.steps.any { "monarch draws a card" in it.text }, s.trace.steps.joinToString("\n") { it.text })
+    }
+
+    @Test
+    fun `combat damage to the monarch hands over the crown`() {
+        val s = state(); s.monarch = "me"
+        val bear = s.put("bear", bears, "opp"); bear.summoningSick = false
+        val e = Engine(s); e.declareAttacker("opp", "bear", Ref.Player("me")); e.combatDamage()
+        assertEquals("opp", s.monarch)
+    }
+
     @Test
     fun `the germ dies once the equipment leaves`() {
         val s = state(); s.put("skull", batterskull, "me", Zone.HAND)

@@ -802,6 +802,12 @@ object OracleParser {
             val count = parseCount("the number of " + m.groupValues[3].trim())
             if (count !is CountExpr.Unknown) return Effect.PumpSelfCount(count, m.groupValues[1].toInt(), m.groupValues[2].toInt())
         }
+        // Palace Sentinels, Custodi Lich: "you become the monarch." / "that player becomes the monarch."
+        Regex("""^(you|target opponent|target player|that player|its controller|they) becomes? the monarch\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            return Effect.BecomeMonarch(when (m.groupValues[1].lowercase()) {
+                "you" -> Who.YOU; "target opponent", "target player" -> Who.TARGET_PLAYER; else -> Who.THAT_PLAYER
+            })
+        }
         // Waterknot, Kasmina's Transmutation: "tap enchanted creature."
         Regex("""^tap enchanted (?:creature|permanent)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.TapAttached }
         // Mutavault, Celestial Colonnade, Inkmoth Nexus: "until end of turn, ~ becomes a 4/4 white and blue Elemental creature with flying and vigilance."

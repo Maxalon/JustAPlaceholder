@@ -158,6 +158,8 @@ class GameState(
     val objects: LinkedHashMap<String, GameObject>,
     val stack: MutableList<StackItem> = mutableListOf(),
     var activePlayer: String? = null,
+    /** The player who is the monarch, if any (725.1). No monarch until an effect makes one. */
+    var monarch: String? = null,
     var phase: String? = null,
     var step: String? = null,
 ) {

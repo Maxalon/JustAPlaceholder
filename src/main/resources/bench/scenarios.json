@@ -5932,5 +5932,48 @@
     "cite": [
       "614.1c"
     ]
+  },
+  {
+    "id": "palace-sentinels-takes-the-crown",
+    "text": "I control Palace Sentinels and it enters the battlefield. What happens?",
+    "expect": [
+      "You become the monarch"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "725.1",
+      "725.3"
+    ]
+  },
+  {
+    "id": "the-monarch-draws-at-their-end-step",
+    "text": "I control Palace Sentinels and it enters the battlefield. Then it is my end step. What happens?",
+    "expect": [
+      "the monarch draws a card at the beginning of their end step",
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "725.2"
+    ]
+  },
+  {
+    "id": "combat-damage-to-the-monarch-steals-the-crown",
+    "text": "I control Palace Sentinels and it enters the battlefield. Then my opponent attacks me with a 2/2 and I don't block. What happens?",
+    "expect": [
+      "dealt combat damage to the monarch",
+      "opponent is the monarch"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "725.2",
+      "725.3"
+    ]
   }
 ]
