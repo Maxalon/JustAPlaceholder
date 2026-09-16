@@ -7847,5 +7847,16 @@
       "I couldn't find"
     ],
     "cite": []
+  },
+  {
+    "id": "a-creature-that-connects",
+    "text": "I have Vault Skirge equipped with Batterskull. How much life do I gain when it connects?",
+    "expect": [
+      "You gain 5 life"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]

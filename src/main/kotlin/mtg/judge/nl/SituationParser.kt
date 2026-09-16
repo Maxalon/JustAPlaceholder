@@ -418,6 +418,11 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""^before (?:it|that|the spell) resolves,? """), "in response ")
             // "I attack with an 8/8 trampler into a 2/2 blocker": the thing attacked into is the blocker.
             .replace(Regex("""\b(attacks?|attacking|swings?|swinging)((?: with)? .+?) into ((?:an? |the |their |his |her )?(?:\d+/\d+|c\d+)(?:\s+(?!blocker)[a-z]+)*)(?:\s+blockers?)?(?=[.,]|$)"""), "$1$2, they block with $3")
+            // "when it connects", "if my Skirge connects": table talk for dealing combat damage to a player.
+            .replace(Regex("""\b(?:when|if|after) ((?:their |his |her )c\d+) connects\b"""), "and $1 deals combat damage to me")
+            .replace(Regex("""\b(?:when|if|after) ((?:it|that|(?:my |the )?c\d+)) connects\b"""), "and $1 deals combat damage to my opponent")
+            .replace(Regex("""\b((?:their |his |her )c\d+) connects\b"""), "$1 deals combat damage to me")
+            .replace(Regex("""\b((?:it|that|(?:my |the )?c\d+)) connects\b"""), "$1 deals combat damage to my opponent")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
         // "they use Doom Blade on my Bears": a cast, but only for a card that is cast — "they use Maze on it"
