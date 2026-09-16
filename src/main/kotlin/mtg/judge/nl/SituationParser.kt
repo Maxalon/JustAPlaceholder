@@ -2375,6 +2375,17 @@ class SituationParser(private val names: NameIndex) {
                      else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.card?.name?.let { slug(it) } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, to = "mana"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
+        // "does my Serra Angel have flying?" / "is it still indestructible?": a question about a keyword, not a
+        // statement granting one. Read as a statement it granted the keyword and then answered "nothing changes".
+        Regex("""^(?:does|do|did|will|would|is|are) (?:it|that|they|(?:my |their |his |her |the |an? |@\w+'s )?(c\d+))(?:'s)? (?:still |even |really |actually |now )*(?:have |has |keep |keeps |retain |retains |got )?($kwPhrase)(?: any ?more| still| now| at all| right now| then| after that)?$""").find(clause0)?.let { q ->
+            val ph = q.groupValues[1]
+            val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
+                     else ctx.lastMentioned?.takeIf { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) }
+                         ?: ctx.events.lastOrNull { it.verb == "cast" || it.verb == "activate" }?.targets?.firstOrNull { it in ctx.objects }
+                         ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+            ctx.asks += EventSpec("ask", obj = id, to = "keyword:${q.groupValues[2]}")
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
         // "is Heliod a creature?" / "is it a creature right now?": the gods and anything else that turns creature-ness off.
         Regex("""^(?:is|are|'s) (?:it|that|(?:my |their |the |an? |@\w+'s )?(c\d+))(?:'s)? (?:still |currently |actually |even |really )?an? creature(?: right now| now| yet| at the moment| currently)?$""").find(clause0)?.let { q ->
             val ph = q.groupValues[1]

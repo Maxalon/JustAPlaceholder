@@ -195,6 +195,19 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 if (e.to == "spellCost") { state.outcomes += engine.spellCost(e.obj ?: throw JudgeException("ask needs an object")); return }
                 if (e.to == "playerSurvive" || e.to == "playerDie" || e.to == "playerWin") { state.outcomes += playerAnswer(e.to, state.player(e.player ?: throw JudgeException("ask needs a player")), state); return }
                 val o = generateSequence(state.obj(e.obj ?: throw JudgeException("ask needs an object"))) { it.successor?.let { id -> state.objects[id] } }.last()
+                // "does my Serra Angel still have flying?": whether it has that keyword once everything is done,
+                // and if it doesn't, what took it away.
+                e.to?.removePrefix("keyword:")?.takeIf { e.to!!.startsWith("keyword:") }?.let { kw ->
+                    val has = if (kw.startsWith("protection from ")) kw.removePrefix("protection from ") in state.protections(o) else state.hasKeyword(o, kw)
+                    val stripped = engine.printedAbilitiesGone(o)
+                    state.outcomes += when {
+                        !o.isOnBattlefield() -> "${o.name} isn't on the battlefield."
+                        has -> "Yes: ${o.name} has $kw."
+                        stripped != null -> "No: ${o.name} has no abilities under $stripped, so it doesn't have $kw."
+                        else -> "No: ${o.name} doesn't have $kw."
+                    }
+                    return
+                }
                 when (e.to) {
                     "trigger" -> {
                         val muted = state.trace.steps.firstOrNull { it.text.contains("doesn't cause any abilities to trigger") }?.text?.substringBefore(" is on the battlefield")

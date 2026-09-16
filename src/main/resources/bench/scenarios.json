@@ -7159,5 +7159,38 @@
       "I couldn't find"
     ],
     "cite": []
+  },
+  {
+    "id": "humility-takes-flying-away",
+    "text": "They control Humility and I control Serra Angel. Does my Serra Angel have flying?",
+    "expect": [
+      "No: Serra Angel has no abilities under Humility"
+    ],
+    "notExpect": [
+      "Nothing changes",
+      "Yes: Serra Angel has flying"
+    ],
+    "cite": []
+  },
+  {
+    "id": "asking-about-a-keyword-is-not-granting-it",
+    "text": "I control Grizzly Bears. Does my Grizzly Bears have flying?",
+    "expect": [
+      "No: Grizzly Bears doesn't have flying"
+    ],
+    "notExpect": [
+      "Yes: Grizzly Bears has flying",
+      "is read as having flying"
+    ],
+    "cite": []
+  },
+  {
+    "id": "rancor-gives-trample",
+    "text": "I cast Rancor on my Grizzly Bears. Does it have trample?",
+    "expect": [
+      "Yes: Grizzly Bears has trample"
+    ],
+    "notExpect": [],
+    "cite": []
   }
 ]
