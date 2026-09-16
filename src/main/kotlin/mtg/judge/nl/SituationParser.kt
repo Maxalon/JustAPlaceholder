@@ -669,6 +669,21 @@ class SituationParser(private val names: NameIndex) {
             if (tgt != null) ctx.lastMentioned = tgt
             ctx.lastActor = caster; ctx.lastVerb = "cast"; ctx.note(caster); return true
         }
+        // "They deal 3 damage to me", "I take 3 damage": damage from a source nobody named, so the answer can still
+        // show what prevention and replacement effects do to it.
+        Regex("""^(?:(i|they|he|she|we|my opponent|the opponent|@\w+) )?(?:deals?|dealt) (\d+) damage to (me|you|them|him|her|my opponent|the opponent|@\w+)$|^(?:(i|they|he|she|we|my opponent|the opponent|@\w+) )?(?:takes?|took) (\d+) damage$""").find(c)?.let { r ->
+            val dealt = r.groupValues[2].isNotEmpty()
+            val amount = (if (dealt) r.groupValues[2] else r.groupValues[5]).toIntOrNull() ?: return@let
+            val victimWord = if (dealt) r.groupValues[3] else r.groupValues[4].ifEmpty { "me" }
+            val victim = when (victimWord) {
+                "me", "you", "i" -> "me"
+                "them", "him", "her", "my opponent", "the opponent", "they", "he", "she" -> pronounPlayer(ctx, "their")
+                else -> if (victimWord.startsWith("@")) victimWord.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else "me"
+            }
+            ctx.events += EventSpec("damage", source = "a source", targets = listOf(victim), amount = amount)
+            ctx.notes += "No source was named for the $amount damage; it is read as coming from a source nobody named, which is enough to show what prevention and replacement effects do to it."
+            ctx.note(victim); return true
+        }
         // "I discard Vengevine", "they discard Lightning Bolt to Liliana": a named card leaves hand for the graveyard.
         Regex("""^(?:(?:i|they|he|she|we|my opponent|the opponent|@\w+) )?discards? (?:an? |the |my |their )?(c\d+)(?: (?:to|for|with) (?:an? |the |my |their )?c\d+)?$""").find(c)?.let { r ->
             val who = actorOfClause(c) ?: ctx.lastActor ?: "me"

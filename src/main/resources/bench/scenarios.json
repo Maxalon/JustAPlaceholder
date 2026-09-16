@@ -6524,5 +6524,17 @@
     "cite": [
       "702.35a"
     ]
+  },
+  {
+    "id": "damage-from-a-source-nobody-named",
+    "text": "I take 3 damage. I am at 4 life. What happens?",
+    "expect": [
+      "you lose 3 life (1)",
+      "You go from 4 to 1 life"
+    ],
+    "notExpect": [],
+    "cite": [
+      "120.3a"
+    ]
   }
 ]

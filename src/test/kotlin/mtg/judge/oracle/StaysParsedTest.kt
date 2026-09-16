@@ -59,4 +59,15 @@ class StaysParsedTest {
         check("Batterskull", "Artifact — Equipment", "Living weapon\nEquip {5}", listOf("Living weapon", "Equip"))
         check("Kor Skyfisher", "Creature — Kor Soldier", "When this creature enters, return a permanent you control to its owner's hand.")
     }
+
+    @Test
+    fun `copy wordings stay modelled`() {
+        check("Clone", "Creature — Shapeshifter", "You may have ~ enter as a copy of any creature on the battlefield.")
+        check("Vesuva", "Land", "You may have ~ enter tapped as a copy of any land on the battlefield.")
+        check("Phyrexian Metamorph", "Artifact Creature — Phyrexian Shapeshifter",
+            "You may have ~ enter as a copy of any artifact or creature on the battlefield, except it's an artifact in addition to its other types.")
+        check("Cackling Counterpart", "Instant", "Create a token that's a copy of target creature you control.")
+        check("Kiki-Jiki, Mirror Breaker", "Legendary Creature — Goblin Shaman",
+            "{T}: Create a token that's a copy of target nonlegendary creature you control, except it has haste. Sacrifice it at the beginning of the next end step.")
+    }
 }
