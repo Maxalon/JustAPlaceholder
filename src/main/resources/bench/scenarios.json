@@ -5788,5 +5788,44 @@
     "cite": [
       "701.26a"
     ]
+  },
+  {
+    "id": "the-blocker-can-lead-the-sentence",
+    "text": "I control Sakura-Tribe Elder and it blocks a 4/4. What happens?",
+    "expect": [
+      "You block a 4/4 creature with Sakura-Tribe Elder"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "509.1a"
+    ]
+  },
+  {
+    "id": "a-blocked-attacker-keeps-its-keywords",
+    "text": "My Grizzly Bears blocks a 4/4 with trample. How much damage do I take?",
+    "expect": [
+      "has trample: it assigns lethal damage (2) to Grizzly Bears and the remaining 2 to you"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.19b"
+    ]
+  },
+  {
+    "id": "a-wall-cannot-block-a-flier-named-first",
+    "text": "I control Wall of Omens and it blocks Serra Angel. What happens?",
+    "expect": [
+      "Wall of Omens can't block it"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.9b"
+    ]
   }
 ]

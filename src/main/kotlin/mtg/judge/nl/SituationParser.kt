@@ -1660,6 +1660,30 @@ class SituationParser(private val names: NameIndex) {
             val ids = if (r.groupValues[5].isNotEmpty()) describedTokens(r.groupValues[1], r.groupValues[2], r.groupValues[4], who, ctx, kw) else describedCreatures(r.groupValues[1], r.groupValues[2], r.groupValues[4], who, ctx, kw)
             ids.forEach { ctx.events += EventSpec("block", player = who, obj = it, targets = listOf(attacker)) }; ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
+        // "Sakura-Tribe Elder blocks a 4/4" / "it blocks their Hill Giant": the blocker leads and the attacker is named after it,
+        // which also says the attacker is attacking even when nobody said so.
+        Regex("""^(?:my |the |their )?(c\d+|it|that|they) (?:chump[- ]?)?blocks? (?:an? |the |my |their )?(?:(c\d+)|(\d+/\d+)((?: [a-z]+)*))$""").find(c)?.let { r ->
+            val blockerRef = r.groupValues[1]
+            val blocker = if (blockerRef in setOf("it", "that", "they")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                          else m.cards[blockerRef]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
+            val who = ctx.objects[blocker]?.controller ?: "me"
+            val foe = ctx.other(who) ?: "opp"
+            val attacker = if (r.groupValues[2].isNotEmpty()) m.cards[r.groupValues[2]]?.let { objectIdFor(it, ctx) ?: addObject(it, foe, false, ctx) } ?: return@let
+                           else {
+                               val trailer = r.groupValues[4].trim()
+                               val kws = Regex("""$kwNouns|flying|trample|deathtouch|lifelink|first strike|double strike|menace|vigilance|indestructible|infect|wither""").findAll(trailer)
+                                   .map { k -> k.value.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") }.distinct().joinToString(", ")
+                               val kind = Regex("""$creatureKinds""").find(trailer)?.value ?: "creature"
+                               describedCreatures("a ", r.groupValues[3], kind, foe, ctx, kws).firstOrNull() ?: return@let
+                           }
+            if (attacker == blocker) return@let
+            if (ctx.events.none { it.verb == "attack" && it.obj == attacker }) {
+                ctx.events += EventSpec("attack", player = foe, obj = attacker, targets = listOf(who))
+                ctx.notes += "${ctx.objects[attacker]?.card?.name ?: attacker} is read as attacking ${if (who == "me") "you" else who}, since something blocked it."
+            }
+            ctx.events += EventSpec("block", player = who, obj = blocker, targets = listOf(attacker))
+            ctx.lastActor = who; ctx.lastVerb = "block"; ctx.note(who); ctx.note(foe); return true
+        }
         // "… and blocks one": the creature just mentioned blocks one of the attackers.
         Regex("""^(?:chump[- ]?)?(?:blocks?|blocking) (?:one|one of them|the first|the first one|a single one)$""").find(c)?.let {
             val attacker = ctx.events.firstOrNull { it.verb == "attack" }?.obj ?: return@let
