@@ -255,7 +255,7 @@ object OracleParser {
     private val diesReplRe = Regex("""^if (~|a creature|a nontoken creature|a creature you control|another creature|a creature an opponent controls|a permanent|a nontoken permanent|an? (.+?)) would die, (exile it|return it to its owner's hand|put it on the bottom of its owner's library|put it on top of its owner's library|shuffle it into its owner's library|exile it instead)(?: instead)?\.?$""", RegexOption.IGNORE_CASE)
     /** Kalitas: "If a nontoken creature an opponent controls would die, instead exile that card and create a 2/2 black Zombie creature token." */
     private val diesInsteadRe = Regex("""^if (~|another .+?|an? .+?) would die, instead (exile that card|exile it|return that card to its owner's hand|put that card on the bottom of its owner's library|put that card on top of its owner's library|shuffle that card into its owner's library)(?: and (.+?))?\.?$""", RegexOption.IGNORE_CASE)
-    private val gyReplRe = Regex("""^if (a card or token|a card|a creature card|a nontoken creature|a permanent|a nontoken permanent|a creature) would be put into (a|an opponent's|your|a player's) graveyard from anywhere, exile it instead\.?$""", RegexOption.IGNORE_CASE)
+    private val gyReplRe = Regex("""^if (a card or token|a card|a creature card|a nontoken creature|a permanent|a nontoken permanent|a creature) would be put into (a|an opponent's|your|a player's) graveyard from anywhere, (?:exile it instead|instead exile it(?: with an? \w+ counter on it)?)\.?$""", RegexOption.IGNORE_CASE)
     private val doublerRe = Regex("""^if a source (you control |an opponent controls )?would deal damage to (?:a permanent or player|a creature or player|a player|a creature|a permanent|you|an opponent|a player or planeswalker|a creature or planeswalker|any target), it deals (double|twice) that damage(?: to that (?:permanent or player|creature or player|player|creature|permanent|player or planeswalker))? instead\.?$""", RegexOption.IGNORE_CASE)
     private val lifeDoubleRe = Regex("""^if you would gain life, you gain (twice|double) that much life instead\.?$""", RegexOption.IGNORE_CASE)
 
@@ -389,6 +389,14 @@ object OracleParser {
                 else -> ObjFilter(setOf(Kind.SPELL), raw = "spell")
             }
             return listOf(StaticEffect.CantCastFiltered(f, m.groupValues[2].toIntOrNull(), xInCost = line.contains("{X}")))
+        }
+        Regex("""^(noncreature spells|creature spells|spells) with mana value equal to the chosen number can't be cast\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val f = when (m.groupValues[1].lowercase()) {
+                "noncreature spells" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE), raw = "noncreature spell")
+                "creature spells" -> ObjFilter(setOf(Kind.CREATURE), raw = "creature spell")
+                else -> ObjFilter(setOf(Kind.SPELL), raw = "spell")
+            }
+            return listOf(StaticEffect.CantCastFiltered(f, chosenNumber = true))
         }
         // "Activated abilities of artifacts can't be activated." / "Activated abilities of creatures your opponents control can't be activated."
         if (Regex("""^Activated abilities of sources with the chosen name can't be activated unless they're mana abilities\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.CantActivate(ObjFilter(setOf(Kind.PERMANENT), raw = "sources with the chosen name"), named = true, exceptMana = true))

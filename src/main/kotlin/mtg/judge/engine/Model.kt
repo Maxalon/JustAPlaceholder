@@ -318,7 +318,7 @@ sealed interface StaticEffect {
     /** Meddling Mage: "Spells with the chosen name can't be cast." (the name is chosen as it enters and given in the situation). */
     data object CantCastNamed : StaticEffect
     /** Gaddock Teeg: "Noncreature spells with mana value 4 or greater can't be cast." */
-    data class CantCastFiltered(val filter: ObjFilter, val minManaValue: Int? = null, val xInCost: Boolean = false) : StaticEffect
+    data class CantCastFiltered(val filter: ObjFilter, val minManaValue: Int? = null, val xInCost: Boolean = false, val chosenNumber: Boolean = false) : StaticEffect
     /** Grand Abolisher: "During your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments." */
     data object OpponentsLockedOnYourTurn : StaticEffect
     /** Serra Avenger: "You can't cast this spell during your first, second, or third turns of the game." */

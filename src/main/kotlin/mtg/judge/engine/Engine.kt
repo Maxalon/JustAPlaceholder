@@ -21,9 +21,12 @@ class Engine(val state: GameState) {
             trace.step("${ss.source.name} has split second and is on the stack, so players can't cast spells or activate abilities that aren't mana abilities. ${card.name} can't be cast now.", "702.61a")
             state.outcomes += "${card.name} can't be cast while ${ss.source.name} is on the stack (split second)."; return null
         }
-        state.objects.values.firstOrNull { o -> o.isOnBattlefield() && o.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { e -> e is StaticEffect.CantCastFiltered && spellMatches(e.filter, card) && (e.minManaValue == null || card.manaValue.toInt() >= e.minManaValue) && (!e.xInCost || (card.manaCost ?: "").contains("{X}")) } }?.let { lock ->
-            val e = lock.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.filterIsInstance<StaticEffect.CantCastFiltered>().first { spellMatches(it.filter, card) && (it.minManaValue == null || card.manaValue.toInt() >= it.minManaValue) && (!it.xInCost || (card.manaCost ?: "").contains("{X}")) }
-            trace.step("${lock.name} says ${e.filter.raw}s${e.minManaValue?.let { " with mana value $it or greater" } ?: ""}${if (e.xInCost) " with {X} in their mana costs" else ""} can't be cast, and ${card.name} is one (mana value ${card.manaValue.toInt()}), so it can't be cast at all.", "604.2", "101.2")
+        fun castLockApplies(e: StaticEffect.CantCastFiltered, lock: GameObject): Boolean =
+            spellMatches(e.filter, card) && (e.minManaValue == null || card.manaValue.toInt() >= e.minManaValue) && (!e.xInCost || (card.manaCost ?: "").contains("{X}")) &&
+                (!e.chosenNumber || lock.chosenName?.toIntOrNull() == card.manaValue.toInt())
+        state.objects.values.firstOrNull { o -> o.isOnBattlefield() && o.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { e -> e is StaticEffect.CantCastFiltered && castLockApplies(e, o) } }?.let { lock ->
+            val e = lock.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.filterIsInstance<StaticEffect.CantCastFiltered>().first { castLockApplies(it, lock) }
+            trace.step("${lock.name} says ${e.filter.raw}s${e.minManaValue?.let { " with mana value $it or greater" } ?: ""}${if (e.chosenNumber) " with mana value ${lock.chosenName}" else ""}${if (e.xInCost) " with {X} in their mana costs" else ""} can't be cast, and ${card.name} is one (mana value ${card.manaValue.toInt()}), so it can't be cast at all.", "604.2", "101.2")
             state.outcomes += "${card.name} can't be cast (${lock.name})."; return null
         }
         state.objects.values.firstOrNull { it.isOnBattlefield() && it.chosenName?.equals(card.name, true) == true && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { s -> s is StaticEffect.CantCastNamed } }?.let { mage ->

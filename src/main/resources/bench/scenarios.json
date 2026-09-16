@@ -4676,5 +4676,57 @@
     "cite": [
       "614.1a"
     ]
+  },
+  {
+    "id": "sanctum-prelate-on-one",
+    "text": "My opponent controls Sanctum Prelate naming 1. I cast Lightning Bolt targeting them. What happens?",
+    "expect": [
+      "Lightning Bolt can't be cast (Sanctum Prelate)"
+    ],
+    "notExpect": [
+      "opponent takes 3 damage"
+    ],
+    "cite": [
+      "604.2"
+    ]
+  },
+  {
+    "id": "sanctum-prelate-on-two",
+    "text": "My opponent controls Sanctum Prelate naming 2. I cast Lightning Bolt targeting them. What happens?",
+    "expect": [
+      "opponent takes 3 damage"
+    ],
+    "notExpect": [
+      "can't be cast"
+    ],
+    "cite": [
+      "120.3a"
+    ]
+  },
+  {
+    "id": "dauthi-voidwalker-exiles",
+    "text": "I control Dauthi Voidwalker and my opponent's Grizzly Bears dies. What happens?",
+    "expect": [
+      "the battlefield → exile (replaced by Dauthi Voidwalker)"
+    ],
+    "notExpect": [
+      "Rules text not modeled: If a card would be put"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "block-with-both",
+    "text": "My opponent attacks with a 3/3 and I have a 2/2 and a 1/1. Can I block with both?",
+    "expect": [
+      "a 3/3 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "You take 3 damage"
+    ],
+    "cite": [
+      "510.1c"
+    ]
   }
 ]
