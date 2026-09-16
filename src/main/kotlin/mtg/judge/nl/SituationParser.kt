@@ -432,7 +432,15 @@ class SituationParser(private val names: NameIndex) {
         // "After damage, does Serra Angel untap?": the time phrase adds nothing the ordering doesn't already say.
         clause0 = clause0.replace(Regex("""^(?:after|once|when) (?:combat )?(?:damage|blockers|blocks|combat|that|this|it resolves|everything resolves)(?: is dealt| are declared)?,?\s+"""), "")
         // "where does Rancor go?" / "what happens to the Bears?" / "how much does it cost?": the outcome answers it.
-        if (Regex("""^how much (?:does|do|did|will|would|is|are)\b.*\b(?:cost|costs|pay|gain|lose|take|deal)\b.*$""").matches(clause0)) { ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true }
+        if (Regex("""^how (?:much|many)(?: (?:combat )?(?:damage|life|cards?|mana|counters?))? (?:does|do|did|will|would|is|are)\b.*\b(?:cost|costs|pay|gain|lose|deal|draw|get|have|left)\b.*$""").matches(clause0) && !Regex("""\bdamage (?:do|does|will|would) .*\b(?:take|receive|suffer)\b""").containsMatchIn(clause0)) {
+            // "… if I attack with everything": the attack is made so the answer can be shown.
+            Regex("""\bif (i|they|my opponent|the opponent|@\w+) attacks? with (?:everything|all|both|my team|all my creatures|the team)\b""").find(clause0)?.let { a ->
+                val who = when (val w = a.groupValues[1]) { "i" -> "me"; else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w.substringAfterLast(' ')) }
+                if (ctx.events.lastOrNull()?.verb in setOf("cast", "activate", "trigger")) ctx.events += EventSpec("resolveAll")
+                ctx.events += EventSpec("attackAll", player = who, targets = listOf(ctx.other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"
+            }
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
         if (Regex("""^(?:where|what) (?:does|do|did|will|would|happens? to|is|are)\b.*\b(?:go|end up|land|happen|happens|it|them|now)$""").matches(clause0) || Regex("""^what happens to\b""").containsMatchIn(clause0)) { ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true }
         // "Can my opponent respond …?" / "Could I block with …?": the question is read as the action.
         Regex("""^(?:can|could|may|should|is it legal for|am i allowed to|are they allowed to|do|does|will|would|am|is|are) ((?:i|my opponent|the opponent|opponent|they|he|she|we|it|that|@\w+|(?:my |the |their |his |her )?(?:c\d+|creature|token|guy|attacker|blocker|dude|beater))\b.*)$""").find(clause0)?.let { r ->
@@ -1011,6 +1019,14 @@ class SituationParser(private val names: NameIndex) {
             // "Grizzly Bears with hexproof" / "with flying and lifelink": keywords as a trailer.
             val trailerKws = Regex("""^ (?:with|that has|which has|having) ((?:hexproof|indestructible|flying|trample|lifelink|deathtouch|haste|vigilance|reach|menace|shroud|unblockable|first strike|double strike|infect|wither|protection from \w+)(?:(?:,| and|, and) (?:hexproof|indestructible|flying|trample|lifelink|deathtouch|haste|vigilance|reach|menace|shroud|unblockable|first strike|double strike|infect|wither|protection from \w+))*)$""").find(rest)?.groupValues?.get(1)?.split(Regex(""",? and |, """))?.map { it.trim() } ?: emptyList()
             (adjectives + trailerKws).filter { it != "tapped" && it != "untapped" }.takeIf { it.isNotEmpty() }?.let { kws -> ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(keywords = ctx.objects.getValue(hostId).keywords + kws); ctx.notes += "${m.cards.getValue(r.groupValues[2]).display} is read as having ${kws.joinToString(" and ")} (from an effect; say what gives it if that matters)." }
+            // "Grizzly Bears with Darksteel Plate" / "Bears with Rancor on it": the Equipment or Aura is attached to it.
+            Regex("""^ (?:with|wearing|carrying|equipped with|enchanted with) (?:an? |the |my |their )?(c\d+)(?: attached| equipped| on it| enchanting it)?$""").find(rest)?.let { a ->
+                val eqCard = m.cards.getValue(a.groupValues[1])
+                if (eqCard.typeLine.contains("Equipment") || eqCard.typeLine.contains("Aura")) {
+                    val eq = objectIdFor(eqCard, ctx) ?: addObject(eqCard, owner, false, ctx)
+                    ctx.objects[eq] = ctx.objects.getValue(eq).copy(attachedTo = hostId); ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner; ctx.lastMentioned = hostId; return true
+                }
+            }
             // "has Lightning Greaves on Grizzly Bears" / "has Rancor on their Bears": the first card is attached to the second.
             Regex("""^ (?:on|attached to|equipped to|enchanting|equipping) (my |their |the |an? |@\w+'s )?(c\d+)$""").find(rest)?.let { a ->
                 val hostOwner = when { a.groupValues[1].startsWith("@") -> a.groupValues[1].removePrefix("@").removeSuffix("'s "); a.groupValues[1] == "my " -> "me"; a.groupValues[1] == "their " -> pronounPlayer(ctx, "their"); else -> owner }
@@ -1511,11 +1527,15 @@ class SituationParser(private val names: NameIndex) {
     private fun needsSpellTarget(card: NameIndex.Entry) = card.display in setOf("Counterspell", "Negate", "Mana Drain", "Force of Will", "Swan Song", "Dovin's Veto", "Arcane Denial", "Mana Leak", "Dispel", "Miscast", "Spell Pierce", "Force of Negation", "Fierce Guardianship", "Mystical Dispute", "Memory Lapse", "Remand", "Daze", "Stubborn Denial", "Cancel", "Dissolve", "Absorb", "Essence Scatter", "Counterflux", "Render Silent", "Disallow", "Void Shatter", "Syncopate", "Power Sink", "Mana Tithe", "Delay", "Rewind", "Hinder", "Spell Snare", "An Offer You Can't Refuse", "Flusterstorm", "Red Elemental Blast", "Pyroblast", "Hydroblast", "Blue Elemental Blast")
 
     private fun emitCast(who: String, card: NameIndex.Entry, rest0000: String, m: Marked, ctx: Ctx) {
+        // "… with revolt" / "revolt is on": Fatal Push's condition has been met.
+        val revolt = Regex("""\s*\b(?:with revolt(?: (?:on|active|turned on|enabled))?|revolt (?:on|active)|and revolt is (?:on|active|met))\b""").find(rest0000)
+        if (revolt != null) ctx.notes += "Revolt is read as satisfied (a permanent you controlled left the battlefield this turn)."
+        val rest0000r = revolt?.let { rest0000.removeRange(it.range) } ?: rest0000
         // "… with 1 Mountain untapped" / "with only 2 lands open": the caster's mana, not a target.
-        val rest00000 = Regex("""\s*\bwith (?:only |just )?(\d+|one|two|three|four|five|six) (?:untapped |open )?(?:c\d+s?|lands?|mana(?: sources?)?)(?: untapped| open| available| up| left)?$""").find(rest0000)?.let { r ->
+        val rest00000 = Regex("""\s*\bwith (?:only |just )?(\d+|one|two|three|four|five|six) (?:untapped |open )?(?:c\d+s?|lands?|mana(?: sources?)?)(?: untapped| open| available| up| left)?$""").find(rest0000r)?.let { r ->
             val n = number(r.groupValues[1]) ?: return@let null
-            ctx.mana[who] = n; ctx.note(who); ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} $n mana available; costs are checked against that."; rest0000.removeRange(r.range)
-        } ?: rest0000
+            ctx.mana[who] = n; ctx.note(who); ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} $n mana available; costs are checked against that."; rest0000r.removeRange(r.range)
+        } ?: rest0000r
         // "… at 5 life" / "while at 5 life": the caster's life total.
         val rest000 = Regex("""\s*\b(?:while |when |sitting )?at (\d+) life\b""").find(rest00000)?.let { r -> ctx.life[who] = r.groupValues[1].toInt(); ctx.note(who); rest00000.removeRange(r.range) } ?: rest00000
         // "flashes in Ambush Viper to block it": the creature blocks once it has resolved.
@@ -1570,7 +1590,7 @@ class SituationParser(private val names: NameIndex) {
         // "Healing Salve gaining 3 life": the life is theirs, so the spell targets its caster.
         if (targets.isEmpty() && modeWord == "gain" && Regex("""\bgaining \d+ life\b""").containsMatchIn(rest)) targets = listOf(who)
         ctx.castingCounter = false
-        repeat(n) { i -> ctx.events += EventSpec("cast", player = who, card = CardRef(name = card.display, oracleId = card.oracleId), targets = targets, modes = modes, to = if (overload) "overload" else if (kicked) "kicked" else if (evoked) "evoke" else modeWord?.let { "mode:$it" }, amount = xValue); if (secondTime != null && i == 0) ctx.events += EventSpec("resolveAll") }
+        repeat(n) { i -> ctx.events += EventSpec("cast", player = who, card = CardRef(name = card.display, oracleId = card.oracleId), targets = targets, modes = modes, to = if (overload) "overload" else if (kicked) "kicked" else if (evoked) "evoke" else if (revolt != null) "revolt" else modeWord?.let { "mode:$it" }, amount = xValue); if (secondTime != null && i == 0) ctx.events += EventSpec("resolveAll") }
         if (n > 1) ctx.notes += "${card.display} is cast $n times, one copy after another (each is its own spell)." 
         ctx.lastActor = who
         ctx.lastVerb = "cast"

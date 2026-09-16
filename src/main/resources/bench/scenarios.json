@@ -3866,5 +3866,57 @@
     "cite": [
       "701.6a"
     ]
+  },
+  {
+    "id": "fatal-push-revolt-four-four",
+    "text": "I control Grizzly Bears and my opponent controls a 4/4. I attack and they block. I cast Fatal Push on the 4/4 with revolt.",
+    "expect": [
+      "a 4/4 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "needs 1 target"
+    ],
+    "cite": [
+      "702.120a"
+    ]
+  },
+  {
+    "id": "anger-of-the-gods-kitchen-finks",
+    "text": "I cast Anger of the Gods. My opponent controls Grizzly Bears and Kitchen Finks.",
+    "expect": [
+      "Kitchen Finks: the battlefield → exile (replaced by Anger of the Gods's \"exile it instead\")",
+      "Grizzly Bears: the battlefield → exile"
+    ],
+    "notExpect": [
+      "not modeled",
+      "Kitchen Finks enters the battlefield"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "darksteel-plate-doom-blade",
+    "text": "My opponent controls Grizzly Bears with Darksteel Plate. I cast Doom Blade on it.",
+    "expect": [
+      "Grizzly Bears is indestructible and isn't destroyed"
+    ],
+    "notExpect": [
+      "can't target Darksteel Plate"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "craterhoof-attack-with-everything",
+    "text": "I control two Grizzly Bears and cast Craterhoof Behemoth. How much damage do I deal if I attack with everything?",
+    "expect": [
+      "opponent takes 5 damage. (×2)",
+      "opponent takes 8 damage"
+    ],
+    "cite": [
+      "510.1b"
+    ]
   }
 ]

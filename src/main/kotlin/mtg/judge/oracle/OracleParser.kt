@@ -757,6 +757,7 @@ object OracleParser {
         gainLifeRe.matchEntire(s)?.let { return Effect.GainLife(who(it.groupValues[1]), it.groupValues[2].toInt()) }
         loseLifeRe.matchEntire(s)?.let { return Effect.LoseLife(who(it.groupValues[1]), it.groupValues[2].toIntOrNull() ?: 0, x = it.groupValues[2].equals("X", true)) }
         if (Regex("""^you gain life equal to the life lost this way\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.GainLifeLostThisWay
+        if (Regex("""^if a (?:creature|permanent) dealt damage this way would die this turn, exile it instead\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.ExileIfDamagedDies
         Regex("""^change a target of (target spell or ability|target spell|target ability) to ~\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.RedirectToSelf(target(m.groupValues[1])) }
         Regex("""^put (target .+?) on the bottom of its owner's library\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.PutOnBottom(target(m.groupValues[1])) }
         if (Regex("""^its controller gains life equal to its toughness\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.GainLifeEqualToToughness(Who.CONTROLLER_OF_TARGET)
@@ -804,7 +805,8 @@ object OracleParser {
         val subtypes = mutableSetOf<String>(); val keywords = mutableSetOf<String>()
         var attacking: Boolean? = null; var tapped: Boolean? = null; var token: Boolean? = null; var legendary: Boolean? = null; var attachedToSource = false
         // "with flying" / "with reach or flying" -> keyword requirements
-        var minPower: Int? = null; var maxPower: Int? = null
+        var minPower: Int? = null; var maxPower: Int? = null; var maxManaValue: Int? = null
+        Regex("""\s+(?:if it has|with) mana value (\d+) or less$""").find(core)?.let { m -> maxManaValue = m.groupValues[1].toInt(); core = core.removeRange(m.range) }
         val colors = mutableSetOf<Char>(); val notColors = mutableSetOf<Char>()
         Regex("""\s+with power (\d+) or (greater|less)$""").find(core)?.let { m ->
             if (m.groupValues[2] == "greater") minPower = m.groupValues[1].toInt() else maxPower = m.groupValues[1].toInt()
@@ -841,6 +843,6 @@ object OracleParser {
         if (kinds.isEmpty() && subtypes.isNotEmpty()) kinds += if (subtypes.all { it in landTypes }) Kind.LAND else if (subtypes.all { it in setOf("instant", "sorcery") }) Kind.SPELL else Kind.CREATURE
         if (kinds.isEmpty() && notKinds.isNotEmpty()) kinds += defaultKind ?: Kind.PERMANENT
         if (kinds.isEmpty() && defaultKind != null) kinds += defaultKind
-        return ObjFilter(kinds, notKinds, controller, attacking, tapped, unknown, desc, subtypes, keywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1, colors = colors, notColors = notColors)
+        return ObjFilter(kinds, notKinds, controller, attacking, tapped, unknown, desc, subtypes, keywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1, colors = colors, notColors = notColors, maxManaValue = maxManaValue)
     }
 }

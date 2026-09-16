@@ -60,11 +60,15 @@ class Engine(val state: GameState) {
             obj.controller = playerId; enter(obj.id); stateBasedActions(); state.outcomes += "${card.name} enters the battlefield."
             return null
         }
-        val effect = card.spellEffect ?: card.enchant?.takeIf { card.isAura }?.let { Effect.Attach(TargetSpec(it, "enchant ${it.raw}")) }
+        var effect = card.spellEffect ?: card.enchant?.takeIf { card.isAura }?.let { Effect.Attach(TargetSpec(it, "enchant ${it.raw}")) }
         val needed = effect?.targets() ?: emptyList()
         var asked = false
         var noLegalTarget = false
         var targetsUnknown = false
+        (effect as? Effect.Destroy)?.let { d -> if (choice == "revolt" && card.has("revolt") && d.target.filter.maxManaValue != null) {
+            trace.step("Revolt: a permanent left the battlefield under ${player.possessive} control this turn, so ${card.name} can destroy a creature with mana value 4 or less instead of 2 or less.", "702.120a")
+            effect = d.copy(target = d.target.copy(filter = d.target.filter.copy(maxManaValue = 4, raw = "creature with mana value 4 or less"), raw = "creature with mana value 4 or less"))
+        } }
         var targets = if (targets.isEmpty() && needed.size == 1) inferTarget(card.name, needed[0], playerId, harmful = isHarmful(effect), source = obj, beneficial = isBeneficial(effect)).also { asked = it == null && state.clarifications.any { c -> c.about == "${card.name}'s target" }; noLegalTarget = it != null && it.isEmpty() } ?: targets else targets
         if (noLegalTarget) { trace.step("${card.name} needs a target (${needed[0].raw}) and nothing can legally be chosen, so it can't be cast.", "601.2c", "115.1"); state.outcomes += "${card.name} can't be cast: no legal target."; return null }
         if (!card.isInstantOrSorcery && card.abilities.none { it is TriggeredAbility || it is ActivatedAbility || it is StaticAbility } && card.abilities.isNotEmpty()) {
@@ -385,7 +389,7 @@ class Engine(val state: GameState) {
                 state.outcomes += "${o.name} is back under ${back.possessive} control."
             }
             for (o in affected) { o.pumps.clear(); o.tempKeywords.clear(); o.basePt = null; o.damage = 0; trace.step("${o.name} is back to ${if (o.def.isCreature) state.describePt(o) else "normal"} with no damage.", "514.2"); state.outcomes += "${o.name}'s until-end-of-turn effects and damage are gone (cleanup)." }
-            state.shields.clear()
+            state.shields.clear(); state.objects.values.forEach { it.exileOnDeath = null }
             return
         }
         state.activePlayer = activePlayer
@@ -1198,6 +1202,11 @@ class Engine(val state: GameState) {
                 if (hand == null) { trace.step("${p.subject} ${p.v("discards", "discard")} $n card${if (n == 1) "" else "s"}${if (effect.random) " at random" else " of ${p.possessive} choice"} (${p.possessive} hand size wasn't given).", "701.9a"); state.outcomes += "${p.subject} ${p.v("discards", "discard")} $n card${if (n == 1) "" else "s"}." }
                 else { val d = minOf(n, hand); p.handSize = hand - d; trace.step("${p.subject} ${p.v("discards", "discard")} $d card${if (d == 1) "" else "s"}${if (effect.random) " at random" else " of ${p.possessive} choice"}${if (d < n) " (only $hand in hand)" else ""}, leaving ${p.handSize} in hand.", "701.9a"); state.outcomes += "${p.subject} ${p.v("discards", "discard")} $d card${if (d == 1) "" else "s"} ($hand → ${p.handSize} in hand)." }
             }
+            is Effect.ExileIfDamagedDies -> {
+                val hit = item.damaged.mapNotNull { state.objects[it] }.filter { it.isOnBattlefield() }
+                hit.forEach { it.exileOnDeath = item.source.name }
+                trace.step(if (hit.isEmpty()) "Nothing was dealt damage this way, so there's nothing to exile instead." else "${hit.joinToString(", ") { it.name }}: if ${if (hit.size == 1) "it" else "any of them"} would die this turn, ${if (hit.size == 1) "it's" else "it is"} exiled instead (a replacement effect: no death, so no dies-triggers, persist or undying).", "614.1a", "700.4")
+            }
             is Effect.GainLifeLostThisWay -> { val you = state.player(item.controller); if (item.lifeLost == 0) trace.step("No life was lost this way, so ${you.subject.lowercase()} ${you.v("gains", "gain")} none.", "608.2h") else { trace.step("${item.lifeLost} life was lost this way in total.", "608.2h"); gainLife(you, item.lifeLost) } }
             is Effect.PutOnBottom -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o -> move(o, Zone.LIBRARY, "${o.name} is put on the bottom of its owner's library. It becomes a new object with no memory of its previous existence.", "400.7") } }
             is Effect.GainLifeEqualToToughness -> {
@@ -1288,7 +1297,7 @@ class Engine(val state: GameState) {
                     "tuck" -> move(o, Zone.LIBRARY, "${o.name} is put on the bottom of its owner's library. It isn't destroyed, so indestructible doesn't help, and it isn't a death, so \"when this dies\" abilities don't trigger.", "400.7")
                     "tap" -> { o.tapped = true; trace.step("${o.name} becomes tapped.", "701.26a"); state.outcomes += "${o.name} is tapped." }
                     "untap" -> { o.tapped = false; trace.step("${o.name} becomes untapped.", "701.26b") }
-                    "damage" -> applyDamage(item.source.name, Ref.Obj(o.id), effect.amount, item.source)
+                    "damage" -> { applyDamage(item.source.name, Ref.Obj(o.id), effect.amount, item.source); item.damaged += o.id }
                 } } finally { leavingTogether = emptySet() }
             }
             is Effect.Unparsed -> trace.step("(Not modeled: \"${effect.text}\")")
@@ -1471,6 +1480,7 @@ class Engine(val state: GameState) {
 
     /** "If X would die, exile it instead" (614.1a) and Rest-in-Peace style effects: the replaced destination, with the source's name. */
     private fun graveyardReplacement(obj: GameObject, from: Zone): Pair<Zone, String>? {
+        if (from == Zone.BATTLEFIELD && obj.exileOnDeath != null) return Zone.EXILE to "${obj.exileOnDeath}'s \"exile it instead\""
         for (o in state.objects.values) {
             if (!o.isOnBattlefield()) continue
             for (e in o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }) {
@@ -1717,7 +1727,7 @@ class Engine(val state: GameState) {
         is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
         is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.GainLifePerSpellThisTurn -> "gain ${effect.per} life for each spell cast this turn"; is Effect.WinIfDevotionCoversLibrary -> "look at the top X cards (X = your devotion) and win if X is at least your library size"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"} onto the battlefield"
-        is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.GainLifeEqualToToughness -> "its controller gains life equal to its toughness"; is Effect.PutOnBottom -> "put ${effect.target.raw} on the bottom of its owner's library"; is Effect.GainLifeLostThisWay -> "gain life equal to the life lost this way"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"
+        is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.GainLifeEqualToToughness -> "its controller gains life equal to its toughness"; is Effect.PutOnBottom -> "put ${effect.target.raw} on the bottom of its owner's library"; is Effect.GainLifeLostThisWay -> "gain life equal to the life lost this way"; is Effect.ExileIfDamagedDies -> "exile a creature dealt damage this way instead if it would die this turn"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"
         is Effect.Tap -> "tap ${effect.target.raw}"; is Effect.Untap -> "untap ${effect.target.raw}"
         is Effect.Pump -> "${effect.target.raw} gets ${signed(effect.power)}/${signed(effect.toughness)}"
         is Effect.GainKeywords -> "${effect.target.raw} gains ${effect.keywords.joinToString(" and ")}"

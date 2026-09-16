@@ -64,6 +64,8 @@ class GameObject(
     var blocking: String? = null          // id of the attacker this creature blocks
     var wasBlocked = false                // declared blocked this combat: stays blocked even if the blocker leaves (509.1h)
     var dealtDeathtouchDamage = false     // for 704.5h
+    /** Set by "if a creature dealt damage this way would die this turn, exile it instead": the effect's name. */
+    var exileOnDeath: String? = null
     /** Power as it last was on the battlefield (last known information, 113.7a) for "equal to its power" after a zone change. */
     var lkiPower: Int? = null
 
@@ -121,6 +123,8 @@ class StackItem(
 ) {
     /** Life lost by players as this resolves ("the life lost this way"). */
     var lifeLost: Int = 0
+    /** Objects this item dealt damage to ("a creature dealt damage this way"). */
+    val damaged = mutableSetOf<String>()
     val describe: String get() = when (kind) {
         StackKind.SPELL -> source.name
         StackKind.TRIGGERED -> "${source.name}'s triggered ability"
@@ -290,7 +294,7 @@ class GameState(
         val tokenOk = f.token == null || f.token == o.token
         val legOk = f.legendary == null || f.legendary == ("Legendary" in o.def.supertypes)
         val stateOk = (f.tapped == null || o.tapped == f.tapped) && (f.attacking == null || (o.attacking != null) == f.attacking)
-        val powerOk = (f.minPower == null || (o.power ?: 0) >= f.minPower) && (f.maxPower == null || (o.power ?: 0) <= f.maxPower)
+        val powerOk = (f.minPower == null || (o.power ?: 0) >= f.minPower) && (f.maxPower == null || (o.power ?: 0) <= f.maxPower) && (f.maxManaValue == null || o.def.manaValue.toInt() <= f.maxManaValue)
         val colorOk = f.colors.all { it in o.def.colors } && f.notColors.none { it in o.def.colors }
         return typeOk && notOk && ctrlOk && subOk && kwOk && tokenOk && legOk && stateOk && powerOk && colorOk
     }

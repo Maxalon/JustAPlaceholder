@@ -38,7 +38,7 @@ class OracleParserTest {
         val flyer = OracleParser.parseFilter("creature with flying")
         assertTrue(flyer.verifiable && "flying" in flyer.keywords)
         val odd = OracleParser.parseFilter("creature with mana value 3 or less")
-        assertTrue(!odd.verifiable)
+        assertTrue(odd.verifiable && odd.maxManaValue == 3, odd.toString())
         val elves = OracleParser.parseFilter("Elves you control")
         assertEquals(setOf("elf"), elves.subtypes); assertEquals(setOf(Kind.CREATURE), elves.kinds)
     }

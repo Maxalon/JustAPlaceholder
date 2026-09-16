@@ -37,6 +37,8 @@ data class ObjFilter(
     /** "black creature" / "nonblack creature": colour letters (W U B R G) required / forbidden. */
     val colors: Set<Char> = emptySet(),
     val notColors: Set<Char> = emptySet(),
+    /** "creature with mana value 2 or less" / "if it has mana value 2 or less". */
+    val maxManaValue: Int? = null,
 ) {
     val verifiable get() = unknownWords.isEmpty()
 }
@@ -124,6 +126,8 @@ sealed interface Effect {
     data class RedirectToSelf(val target: TargetSpec) : Effect
     /** "Target player discards X cards at random" / "each player discards two cards". */
     data class Discard(val who: Who, val count: Int, val x: Boolean = false, val random: Boolean = false) : Effect
+    /** Anger of the Gods: "If a creature dealt damage this way would die this turn, exile it instead." */
+    data object ExileIfDamagedDies : Effect
     /** "Repeat the following process X times." followed by the process. */
     data class Repeat(val body: Effect, val times: Int, val x: Boolean) : Effect
     /** "Each opponent loses N life unless that player sacrifices a [filter] of their choice or discards a card." (Torment of Hailfire) */
@@ -213,7 +217,7 @@ sealed interface Effect {
         is Repeat -> body.targets()
         is LoseLifeUnlessSacOrDiscard -> emptyList()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
-        is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is GainLifeLostThisWay, is GainLifeEqualToToughness, is Discard, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
+        is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is GainLifeLostThisWay, is GainLifeEqualToToughness, is Discard, is ExileIfDamagedDies, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
     }
 
     fun hasUnparsed(): Boolean = when (this) {
