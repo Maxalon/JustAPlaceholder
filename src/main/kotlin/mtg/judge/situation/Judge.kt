@@ -118,8 +118,9 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 val existing = e.obj?.let { state.objects[it] }
                 val def = existing?.def ?: cardDef(e.card ?: throw JudgeException("cast needs a card"), state) ?: return
                 val modes = if (e.modes.isEmpty() && e.to?.startsWith("mode:") == true) {
-                    val word = e.to.removePrefix("mode:").lowercase()
-                    (def.spellEffect as? Effect.Modal)?.modeTexts?.indexOfFirst { it.lowercase().contains(word) }?.takeIf { it >= 0 }?.let { listOf(it + 1) } ?: emptyList()
+                    val words = e.to.removePrefix("mode:").lowercase().split("|").filter { it.isNotEmpty() }
+                    val texts = (def.spellEffect as? Effect.Modal)?.modeTexts ?: emptyList()
+                    words.mapNotNull { w -> texts.indexOfFirst { it.lowercase().contains(w) }.takeIf { it >= 0 }?.plus(1) }.distinct()
                 } else e.modes
                 engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", choice = e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" })
             }

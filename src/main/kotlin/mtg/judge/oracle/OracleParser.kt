@@ -652,6 +652,10 @@ object OracleParser {
             return Effect.May(Effect.Narrated("search ${if (m.groupValues[1].lowercase() == "you") "your" else "their"} library for ${m.groupValues[2]}, then shuffle", listOf("701.23a", "701.24a")), when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "target player" -> Who.TARGET_PLAYER; "its controller" -> Who.CONTROLLER_OF_TARGET; else -> Who.THAT_PLAYER })
         }
         tuckAllRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[1], Kind.PERMANENT); if (f.verifiable) return Effect.ForAll(f, "tuck") }
+        // "Exile target player's graveyard" (Bojuka Bog), "exile each opponent's graveyard".
+        Regex("""^exile (target player|target opponent|that player|each player|each opponent|your)(?:'s)? graveyard\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            return Effect.ExileGraveyard(when (m.groupValues[1].lowercase()) { "target player", "target opponent" -> Who.TARGET_PLAYER; "that player" -> Who.THAT_PLAYER; "each player" -> Who.EACH_PLAYER; "each opponent" -> Who.EACH_OPPONENT; else -> Who.YOU })
+        }
         Regex("""^(you |target player |that player |each player |each opponent )?mills? (\w+|\d+) cards?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             val who = when (m.groupValues[1].trim().lowercase()) { "target player" -> Who.TARGET_PLAYER; "that player" -> Who.THAT_PLAYER; "each player" -> Who.EACH_PLAYER; "each opponent" -> Who.EACH_OPPONENT; else -> Who.YOU }
             number(m.groupValues[2])?.let { return Effect.Mill(who, it) }
@@ -694,6 +698,8 @@ object OracleParser {
             val f = parseFilter(greatest?.groupValues?.get(1) ?: m.groupValues[2], Kind.CREATURE)
             if (f.verifiable) return Effect.SacrificeEach(if (m.groupValues[1].lowercase() == "player") Who.EACH_PLAYER else Who.EACH_OPPONENT, f, greatestPower = greatest != null)
         }
+        if (Regex("""^put ~ on top of its owner's library\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.PutSelfOnLibraryTop
+        Regex("""^~ deals (\d+) damage to you\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.DamagePlayer(Who.YOU, m.groupValues[1].toInt()) }
         if (Regex("""^reveal the top card of your library and put that card into your hand\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.RevealTopToHand(Who.YOU)
         if (Regex("""^you lose life equal to its mana value\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.LoseLifeEqualToRevealedMv(Who.YOU)
         // "create two 2/2 black Zombie creature tokens": modeled, so it goes before the narrated table.
@@ -704,7 +710,7 @@ object OracleParser {
         }
         for ((re, rules) in narratedRes) if (re.matches(s)) return Effect.Narrated(s.trimEnd('.'), rules)
         // "You draw a card and you lose 1 life." / "Each opponent loses 1 life and you gain 1 life.": two effects joined by "and".
-        Regex("""^(.+?) and (you |each opponent |target player |that player |it |~ |create |draw |gain |lose |put |exile |destroy |sacrifice |tap |untap |return |scry |mill |discard )(.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trimEnd('.'))?.let { m ->
+        Regex("""^(.+?)(?: and |, then |, and then )(you |each opponent |target player |that player |it |~ |create |draw |gain |lose |put |exile |destroy |sacrifice |tap |untap |return |scry |mill |discard )(.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trimEnd('.'))?.let { m ->
             if (!m.groupValues[1].contains(" and ", true) && !m.groupValues[1].startsWith("if ", true)) {
                 val left = parseSentence(m.groupValues[1].replaceFirstChar { it.uppercase() })
                 val right = parseSentence((m.groupValues[2] + m.groupValues[3]).replaceFirstChar { it.uppercase() })

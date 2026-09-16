@@ -4200,5 +4200,48 @@
     "cite": [
       "602.2a"
     ]
+  },
+  {
+    "id": "ancient-tomb-damage",
+    "text": "My opponent taps Ancient Tomb for mana. How much damage do they take?",
+    "expect": [
+      "Yes: opponent takes 2 damage in all"
+    ],
+    "notExpect": [
+      "narrated(text="
+    ],
+    "cite": [
+      "120.3a"
+    ]
+  },
+  {
+    "id": "sensei-top-second-ability",
+    "text": "I control Sensei's Divining Top and activate its second ability.",
+    "expect": [
+      "You draw 1 card",
+      "Sensei's Divining Top: the battlefield → your library"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "400.7"
+    ]
+  },
+  {
+    "id": "bojuka-bog-trigger",
+    "text": "My opponent plays Bojuka Bog. I have Emrakul, the Aeons Torn in my graveyard. What happens?",
+    "expect": [
+      "Bojuka Bog enters the battlefield",
+      "graveyard is exiled"
+    ],
+    "notExpect": [
+      "which? (603.3d)"
+    ],
+    "cite": [
+      "603.3d",
+      "701.13a",
+      "603.6a"
+    ]
   }
 ]
