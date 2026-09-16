@@ -5416,5 +5416,18 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "wurmcoil-makes-two-tokens",
+    "text": "I control Wurmcoil Engine and it dies. What happens?",
+    "expect": [
+      "You get a Phyrexian Wurm token. (\u00d72)"
+    ],
+    "notExpect": [
+      "not tracked in detail"
+    ],
+    "cite": [
+      "701.7a"
+    ]
   }
 ]

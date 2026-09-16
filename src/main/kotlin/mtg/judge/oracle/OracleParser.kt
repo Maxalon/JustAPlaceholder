@@ -865,6 +865,12 @@ object OracleParser {
             val n = if (n0 == "a" || n0 == "an") 1 else number(n0) ?: n0.toIntOrNull() ?: 1
             if (Generic.token(desc0) != null) return Effect.CreateToken(who(m.groupValues[1].ifEmpty { "you" }), n, desc0)
         }
+        // "create a 3/3 … token with deathtouch and a 3/3 … token with lifelink": two tokens, told as one sentence.
+        Regex("""^(?:(you|its controller|that player) )?creates? (a|an) (.+? tokens?(?: with [a-z ,]+?)?) and (?:a|an) (.+? tokens?(?: with [a-z ,]+?)?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val w = who(m.groupValues[1].ifEmpty { "you" })
+            val a = m.groupValues[3].trim(); val b = m.groupValues[4].trim()
+            if (Generic.token(a) != null && Generic.token(b) != null) return Effect.Seq(listOf(Effect.CreateToken(w, 1, a), Effect.CreateToken(w, 1, b)))
+        }
         for ((re, rules) in narratedRes) if (re.matches(s)) return Effect.Narrated(s.trimEnd('.'), rules)
         // "You draw a card and you lose 1 life." / "Each opponent loses 1 life and you gain 1 life.": two effects joined by "and".
         Regex("""^(.+?)(?: and |, then |, and then )(you |each opponent |target player |that player |it |~ |create |draw |gain |lose |put |exile |destroy |sacrifice |tap |untap |return |scry |mill |discard )(.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trimEnd('.'))?.let { m ->
