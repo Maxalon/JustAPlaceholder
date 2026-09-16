@@ -7882,5 +7882,58 @@
       "opponent loses 3 life"
     ],
     "cite": []
+  },
+  {
+    "id": "attacking-two-players-at-once",
+    "text": "Alice, Bob and I are playing. I attack Alice with a 5/5 and Bob with a 3/3. What happens?",
+    "expect": [
+      "Alice takes 5 damage",
+      "Bob takes 3 damage"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "an-amount-said-before-the-target",
+    "text": "Alice, Bob and I are playing and Alice has 3 cards in hand. I cast Mind Twist for 2 at Alice. What happens?",
+    "expect": [
+      "Alice discards"
+    ],
+    "notExpect": [
+      "doesn't say which"
+    ],
+    "cite": []
+  },
+  {
+    "id": "grave-pact-in-a-three-player-game",
+    "text": "Alice, Bob and I are playing. I control Grave Pact and Alice controls a 2/2 and Bob controls a 3/3. My Grizzly Bears dies. What happens?",
+    "expect": [
+      "a 2/2 creature: the battlefield → Alice's graveyard",
+      "a 3/3 creature: the battlefield → Bob's graveyard"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "a-named-players-hand-size",
+    "text": "Alice has 3 cards in hand. I cast Mind Twist at Alice for 2. What happens?",
+    "expect": [
+      "Alice discards"
+    ],
+    "notExpect": [
+      "Alice (3 life)"
+    ],
+    "cite": []
+  },
+  {
+    "id": "attacking-a-named-player-said-after",
+    "text": "Alice is at 3 life and I attack with a 4/4 at Alice. Does Alice die?",
+    "expect": [
+      "Yes"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
   }
 ]

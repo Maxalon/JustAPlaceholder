@@ -430,6 +430,13 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(?:when|if|after) ((?:it|that|(?:my |the )?c\d+)) connects\b"""), "and $1 deals combat damage to my opponent")
             .replace(Regex("""\b((?:their |his |her )c\d+) connects\b"""), "$1 deals combat damage to me")
             .replace(Regex("""\b((?:it|that|(?:my |the )?c\d+)) connects\b"""), "$1 deals combat damage to my opponent")
+            // "I attack Alice with a 5/5 and Bob with a 3/3": two attacks on two players, which the clause splitter
+            // can only see once the second one says "attacks" too.
+            .replace(Regex("""\b(attacks?|swings? at) ((?:@\w+|me|them|my opponent|the opponent)) with (.+?) and ((?:@\w+|me|them|my opponent|the opponent)) with """), "$1 $2 with $3, $1 $4 with ")
+            // "I attack with a 4/4 at Alice": the player named after the attacker rather than before it.
+            .replace(Regex("""\b(attacks?|swings?)(?: with)? (.+?) (?:at|into) (@\w+|me|them|my opponent|the opponent)(?=[.,]|$)"""), "$1 $3 with $2")
+            // "cast Mind Twist for 2 at Alice": the amount said before the target, where the grammar wants it after.
+            .replace(Regex("""\b(casts?|plays?) ((?:an? |the |my |their )?c\d+) (for \d+|with x ?= ?\d+|for x ?(?:=|equals|of) ?\d+) ((?:at|targeting|on|against) .+)$"""), "$1 $2 $4 $3")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
         // "they use Doom Blade on my Bears": a cast, but only for a card that is cast — "they use Maze on it"
@@ -465,7 +472,9 @@ class SituationParser(private val names: NameIndex) {
         Regex("""\s*\b(?:with|at|and) (\d+) life (?:left|remaining|to go)(?: for me| on my side)?\b""").find(t2)?.let { ctx.life["me"] = it.groupValues[1].toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
         Regex("""\s*\b(?:with|and) (?:them|my opponent|the opponent|opponent) (?:at|on) (\d+)(?: life)?\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = it.groupValues[1].toInt(); any = true; t2 = t2.removeRange(it.range) }
         Regex("""\b(opponent|they|they're|opp|my opponent|he|he's|she|she's)(?: who)? (?:(?:is at|are at|at|is on|are on|'re at|'s at) (\d+)(?: life)?|(?:has|have) (\d+) life)\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = (it.groupValues[2].ifEmpty { it.groupValues[3] }).toInt(); any = true; t2 = t2.replaceRange(it.range, it.groupValues[1]) }
-        Regex("""@(\w+) (?:is at|is on|has|at|sits at|is) (\d+)(?: life)?\b""").findAll(t2).toList().asReversed().forEach { ctx.life[it.groupValues[1]] = it.groupValues[2].toInt(); ctx.players.putIfAbsent(it.groupValues[1], m.players[it.groupValues[1]] ?: it.groupValues[1]); any = true; t2 = t2.removeRange(it.range) }
+        // "@alice has 3 cards in hand" is not a life total: without the lookahead it set Alice to 3 life and left
+        // "cards in hand" unread, so the answer quietly had her life wrong.
+        Regex("""@(\w+) (?:is at|is on|has|at|sits at|is) (\d+)(?: life)?\b(?!\s*(?:cards?|counters?|permanents?|creatures?|lands?|poison|mana|damage))""").findAll(t2).toList().asReversed().forEach { ctx.life[it.groupValues[1]] = it.groupValues[2].toInt(); ctx.players.putIfAbsent(it.groupValues[1], m.players[it.groupValues[1]] ?: it.groupValues[1]); any = true; t2 = t2.removeRange(it.range) }
         // "I cast Brainstorm with 1 card in my library" / "with no cards left in their library": library sizes, wherever they sit.
         Regex("""\s*\b(?:with|and|at|having) (\d+|no|one|two|three|four|five|six|seven) cards? (?:left )?in (?:(my|their|his|her|the) )?library\b""").find(t2)?.let { r ->
             val who = if (r.groupValues[2] == "my") "me" else if (r.groupValues[2] == "the" || r.groupValues[2].isEmpty()) (actorOfClause(t2.trim()) ?: "me") else pronounPlayer(ctx, "their")
