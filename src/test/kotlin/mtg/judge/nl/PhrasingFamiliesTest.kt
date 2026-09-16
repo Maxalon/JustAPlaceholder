@@ -102,6 +102,29 @@ class PhrasingFamiliesTest {
                 "They tap my Grizzly Bears down. Is it tapped?", "My Grizzly Bears becomes tapped. Is it tapped?",
             ),
         ),
+        Family(
+            "a draw an opponent takes", "I control Narset, Parter of Veils. ", "opponent draws",
+            listOf(
+                "My opponent draws a card.", "My opponent draws one.", "My opponent is drawing a card.",
+                "My opponent takes a card off the top.", "My opponent drew a card.",
+            ),
+        ),
+        Family(
+            "a bounce", "I control Grizzly Bears. ", "Grizzly Bears: the battlefield → your hand",
+            listOf(
+                "They bounce my Grizzly Bears with Unsummon.", "They return my Grizzly Bears to my hand with Unsummon.",
+                "My Grizzly Bears gets bounced by Unsummon.", "They Unsummon my Grizzly Bears.",
+                "My Grizzly Bears is returned to my hand.",
+            ),
+        ),
+        Family(
+            "an exile", "I control Grizzly Bears. ", "Grizzly Bears: the battlefield → exile",
+            listOf(
+                "They exile my Grizzly Bears with Swords to Plowshares.",
+                "My Grizzly Bears is exiled by Swords to Plowshares.",
+                "They Swords my Grizzly Bears.", "My Grizzly Bears gets exiled.",
+            ),
+        ),
     )
 
     @Test

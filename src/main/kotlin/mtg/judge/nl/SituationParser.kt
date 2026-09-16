@@ -355,6 +355,11 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(?:has|have|had) (?=(?:cast|played|attacked|blocked|activated|targeted|countered|killed|destroyed|exiled|sacrificed|bounced|drawn|discarded|tapped|untapped)\b)"""), "")
             .replace(Regex("""\bwill (?=(?:cast|play|attack|block|activate|target|counter|kill|destroy|exile|sacrifice|bounce|draw|discard|tap|untap|gain|lose|deal|take|die|trigger|remove|ping|nuke|zap)\b)"""), "")
             .replace(Regex("""\b(?:is|are|'s|'re) casting\b"""), "casts")
+            .replace(Regex("""\b(?:i am|i'm|we are|we're) drawing\b"""), "i draw")
+            .replace(Regex("""\b(?:is|are|'s|'re) drawing\b"""), "draws")
+            .replace(Regex("""\b(?:takes?|took) (an?|one|two|three|\d+) cards? off the top\b"""), "draws $1 card")
+            .replace(Regex("""\b(draws?|drew) one\b(?!\s+card)"""), "$1 a card")
+            .replace(Regex("""\breturns? ((?:my |their |the |his |her )?c\d+) to (?:my|their|its owner's|the owner's|his|her) hand with ((?:an? |the |my |their )?c\d+)"""), "bounces $1 with $2")
             // "they point Doom Blade at my Bears", "they use Doom Blade on it", "Doom Blade targets my Bears",
             // "Doom Blade is cast on my Bears": more ways to say a spell was cast at something.
             .replace(Regex("""\b(?:points?|pointed|aims?|aimed) ((?:an? |the |my |their )?c\d+) (?:at|on|against|targeting) """), "casts $1 targeting ")
@@ -408,6 +413,11 @@ class SituationParser(private val names: NameIndex) {
         // names a land whose ability is activated, and reading that as a cast loses the ability entirely.
         t2 = Regex("""\b(?:uses?|used|plays?|played) ((?:an? |the |my |their )?)(c\d+) (?:at|on|against|targeting) """).replace(t2) { r ->
             if (m.cards[r.groupValues[2]]?.typeLine?.let { it.contains("Instant") || it.contains("Sorcery") } == true) "casts ${r.groupValues[1]}${r.groupValues[2]} targeting " else r.value
+        }
+        // "my Bears is exiled by Swords to Plowshares", "my Bears gets bounced by Unsummon": the passive voice with
+        // the spell named. Only for a spell — "destroyed by their Giant" is combat, not a cast.
+        t2 = Regex("""((?:my |their |the |his |her )?c\d+) (?:is|are|was|were|gets?|got) (?:bounced|exiled|destroyed|killed|removed) by ((?:an? |the |my |their )?)(c\d+)""").replace(t2) { r ->
+            if (m.cards[r.groupValues[3]]?.isSpellOnly == true) "casts ${r.groupValues[2]}${r.groupValues[3]} targeting ${r.groupValues[1]}" else r.value
         }
         // "it's turn 3" / "on turn 2": the game's turn number.
         Regex("""\b(?:it's|it is|this is|on|during|in) turn (\d+)\b|\bturn (\d+) of the game\b""").find(t2)?.let { r -> ctx.turnNumber = (r.groupValues[1].ifEmpty { r.groupValues[2] }).toInt(); any = true; t2 = t2.removeRange(r.range) }
