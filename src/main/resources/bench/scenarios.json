@@ -6288,5 +6288,43 @@
     "cite": [
       "510.1b"
     ]
+  },
+  {
+    "id": "the-attacker-was-blocked-said-the-other-way-round",
+    "text": "I attack with Slith Firewalker and it is blocked. What happens?",
+    "expect": [
+      "Slith Firewalker is blocked"
+    ],
+    "notExpect": [
+      "Slith Firewalker is unblocked"
+    ],
+    "cite": [
+      "509.1a"
+    ]
+  },
+  {
+    "id": "an-unnamed-creature-can-carry-a-counter",
+    "text": "I have a 1/1 with a +1/+1 counter and they cast Infest. What happens?",
+    "expect": [
+      "(1/1 base, 1 +1/+1 counter)",
+      "toughness 0"
+    ],
+    "notExpect": [],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "counters-can-save-an-unnamed-creature",
+    "text": "I have a 2/2 with two +1/+1 counters and they cast Infest. What happens?",
+    "expect": [
+      "(2/2 base, 2 +1/+1 counters)"
+    ],
+    "notExpect": [
+      "toughness 0"
+    ],
+    "cite": [
+      "611.2a"
+    ]
   }
 ]

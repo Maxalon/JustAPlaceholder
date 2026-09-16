@@ -858,7 +858,7 @@ class SituationParser(private val names: NameIndex) {
             return true
         }
         // Unnamed creatures: "I have three creatures", "control two other creatures" (stats unknown; assumed 1/1 and said so).
-        Regex("""^(?:(?:have|has|got|control|controls|controlling|'ve got)\s+)?(an? |\d+ |two |three |four |five )?(?:other |more |untapped )?(?:(\d+/\d+)s?\s*)?((?:[a-z]+ )?)($creatureKinds)?(?: with ([a-z ,&]+?))?(?: plus .*)?(?: on the battlefield| in play| out)?$""").find(c)?.let { r ->
+        Regex("""^(?:(?:have|has|got|control|controls|controlling|'ve got)\s+)?(an? |\d+ |two |three |four |five )?(?:other |more |untapped )?(?:(\d+/\d+)s?\s*)?((?:[a-z]+ )?)($creatureKinds)?(?: with ([a-z ,&]+?|(?:an? |one |two |three |four |five |\d+ )?[+-]\d+/[+-]\d+ counters?(?: on it)?))?(?: plus .*)?(?: on the battlefield| in play| out)?$""").find(c)?.let { r ->
             val hasVerb = Regex("""^(?:have|has|got|control|controls|controlling|'ve got)\b""").containsMatchIn(c)
             val pt = r.groupValues[2]; val adj = r.groupValues[3].trim(); val kind = r.groupValues[4]
             // Needs a verb or a state context, and something creature-like: "a 3/3", "two goblins", "3 other goblins"; not "the", "it", or a lone number.
@@ -866,8 +866,12 @@ class SituationParser(private val names: NameIndex) {
             if (!hasVerb && ctx.lastVerb != "have" && ctx.lastOwner == null) return@let
             if (adj.isNotEmpty() && adj !in setOf("flying", "vanilla", "big", "small", "random", "red", "green", "white", "blue", "black")) return@let
             val who = actor ?: (if (hasVerb) subject else ctx.lastOwner ?: subject) ?: "me"
-            val kw = listOfNotNull(r.groupValues[5].takeIf { it.isNotEmpty() }, adj.takeIf { it == "flying" }).joinToString(", ")
-            describedCreatures(r.groupValues[1], pt, if (adj in setOf("red", "green", "white", "blue", "black")) "$adj ${kind.ifEmpty { "creature" }}" else kind, who, ctx, kw)
+            // "a 1/1 with a +1/+1 counter on it": that's a counter, not a keyword, and it goes on every creature described.
+            val withTail = r.groupValues[5]
+            val counterTail = withTail.takeIf { Regex("""[+-]\d+/[+-]\d+ counters?""").containsMatchIn(it) }
+            val kw = listOfNotNull(withTail.takeIf { it.isNotEmpty() && counterTail == null }, adj.takeIf { it == "flying" }).joinToString(", ")
+            val made = describedCreatures(r.groupValues[1], pt, if (adj in setOf("red", "green", "white", "blue", "black")) "$adj ${kind.ifEmpty { "creature" }}" else kind, who, ctx, kw)
+            if (counterTail != null) made.forEach { applyStateWords(it, "with $counterTail", ctx) }
             Regex(""" plus (an? |\d+ |two |three |four |five )?(\d+/\d+)s?(?: ($kwNouns))?(?: ($creatureKinds))?""").findAll(c).forEach { x ->
                 describedCreatures(x.groupValues[1], x.groupValues[2], x.groupValues[4], who, ctx, x.groupValues[3].let { k -> if (k.isEmpty()) "" else k.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") })
             }
@@ -1723,7 +1727,9 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("attack", player = who, obj = id, targets = targetsIn(r.groupValues[2], m, ctx).ifEmpty { listOf(ctx.other(who) ?: "opp") }); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
         }
         // Bare "block" / "blocks (it)" / "block with it": the creature just mentioned blocks the last attacker.
-        Regex("""^(?:chump[- ]?)?blocks?(?: it| that| the attacker| with it)?$""").find(c)?.let {
+        // Said the other way round ("it is blocked", "it gets chump blocked") it's the same statement, and the
+        // blocker is whatever the defending player has — or, if nobody said, a creature nobody named.
+        Regex("""^(?:chump[- ]?)?blocks?(?: it| that| the attacker| with it)?$|^(?:(?:it|that|they|the attacker|my attacker|their attacker|the creature) )?(?:is|are|was|were|gets?|got) (?:chump[- ]?)?blocked$""").find(c)?.let {
             val attackerEvent = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" } ?: return false
             val defender = actor ?: ctx.other(attackerEvent.player) ?: "me"
             // A creature just cast has no object yet; the judge gives it the id the engine will use (its slug). Otherwise the defender's last creature.
