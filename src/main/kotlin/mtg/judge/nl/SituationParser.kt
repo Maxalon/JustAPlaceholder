@@ -1290,6 +1290,16 @@ class SituationParser(private val names: NameIndex) {
             if (ctx.events.lastOrNull()?.verb in setOf("cast", "activate", "trigger")) ctx.events += EventSpec("resolveAll")
             ctx.events += EventSpec("attackAll", player = who, targets = targetsIn("at " + (r.groupValues[1].ifEmpty { "them" }), m, ctx).ifEmpty { listOf(ctx.other(who) ?: "opp") }); ctx.lastActor = who; ctx.lastVerb = "attack"; return true
         }
+        // "recast it this turn" / "cast it again" / "replay the Bears": the card, back in hand, is cast as the object it already is.
+        Regex("""^(?:re-?casts?|re-?plays?|casts? (?:it|that|(?:the |my )?c\d+) again|(?:casts?|plays?) (?:it|that|(?:the |my )?c\d+) (?:back|once more))(?: (?:it|that|(?:the |my )?(c\d+)))?(?: this turn| again| now| right away| the same turn)?$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: "me"
+            val ph = r.groupValues[1].ifEmpty { Regex("""(c\d+)""").find(r.groupValues[0])?.groupValues?.get(1) ?: "" }
+            val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) } ?: return@let else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.asReversed().firstNotNullOfOrNull { e -> if (e.verb == "cast" || e.verb == "activate") e.targets.firstOrNull { it in ctx.objects } else null } ?: return@let
+            if (ctx.events.lastOrNull()?.verb in setOf("cast", "activate", "trigger")) ctx.events += EventSpec("resolveAll")
+            ctx.events += EventSpec("cast", player = who, obj = id); ctx.lastActor = who; ctx.lastVerb = "cast"; return true
+        }
+        // "exiling a blue card" / "pitching a blue card": Force of Will's alternative cost, already part of the cast.
+        if (Regex("""^(?:by )?(?:exiling|pitching|removing) (?:an? )?(?:blue|red|green|white|black|colou?red)? ?card(?: from (?:my|their|his|her) hand)?(?: and paying 1 life| and losing 1 life)?$""").matches(c)) { ctx.notes += "The alternative cost (exiling a card from hand and paying 1 life) is paid as the spell is cast (118.9)."; return true }
         // "flashes in a 0/4 wall and blocks" / "flash in a 2/2 with flash": a described creature cast now (the engine says whether it can be, given flash), then it blocks.
         Regex("""^(?:flash(?:es)? in|casts?|plays?) (an? |\d+ |two |three )?(\d+/\d+)(?: ($kwNouns))? ?($creatureKinds|walls?)?(?: with ([a-z ,&]+?))?( (?:and|then) (?:blocks?|chumps?)(?: (?:it|the attacker|with it))?)?$""").find(c)?.let { r ->
             if (r.groupValues[2].isEmpty()) return@let

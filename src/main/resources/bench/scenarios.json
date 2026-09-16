@@ -3810,5 +3810,61 @@
     "cite": [
       "514.1"
     ]
+  },
+  {
+    "id": "pithing-needle-top",
+    "text": "I control Pithing Needle naming Sensei's Divining Top. My opponent activates Sensei's Divining Top.",
+    "expect": [
+      "Sensei's Divining Top's ability can't be activated (Pithing Needle names it)"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "602.5"
+    ]
+  },
+  {
+    "id": "aetherize-attackers",
+    "text": "I attack with Grizzly Bears and Serra Angel. My opponent casts Aetherize.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your hand",
+      "Serra Angel: the battlefield → your hand"
+    ],
+    "notExpect": [
+      "opponent takes",
+      "not modeled"
+    ],
+    "cite": [
+      "400.7"
+    ]
+  },
+  {
+    "id": "unsummon-then-recast",
+    "text": "I have Grizzly Bears and cast Unsummon on it in response to Doom Blade. Can I recast it this turn?",
+    "expect": [
+      "Doom Blade doesn't resolve (all targets illegal)",
+      "Grizzly Bears enters the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "608.2b"
+    ]
+  },
+  {
+    "id": "force-of-will-pitch",
+    "text": "My opponent casts Counterspell on my Grizzly Bears. I respond with Force of Will, exiling a blue card.",
+    "expect": [
+      "Counterspell is countered",
+      "Grizzly Bears enters the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "701.6a"
+    ]
   }
 ]

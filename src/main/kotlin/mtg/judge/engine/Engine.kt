@@ -184,8 +184,15 @@ class Engine(val state: GameState) {
             if (obj.tapped == true) { trace.step("${obj.name} is already tapped, so it can't be tapped for mana.", "602.5a"); state.outcomes += "${obj.name} can't be tapped (already tapped)."; return null }
             tap(obj); trace.step("${p.subject} ${p.v("taps", "tap")} ${obj.name} for {R}; that's the only mana it can make under ${moon.name}.", "605.1a", "605.3b"); state.outcomes += "${obj.name} adds {R} (only), because of ${moon.name}."; return null
         }
-        state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { e -> e is StaticEffect.CantActivate && (!e.opponentsOnly || it.controller != playerId) && state.matches(e.filter, obj, it.controller, it) } }?.let { lock ->
-            val e = lock.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.filterIsInstance<StaticEffect.CantActivate>().first { state.matches(it.filter, obj, lock.controller, lock) }
+        val isManaAbility: (ActivatedAbility) -> Boolean = { a -> a.effect is Effect.AddMana || (a.effect as? Effect.Seq)?.effects?.any { it is Effect.AddMana } == true }
+        val lockApplies: (GameObject, StaticEffect.CantActivate) -> Boolean = { lock, e ->
+            (!e.opponentsOnly || lock.controller != playerId) &&
+                (if (e.named) lock.chosenName?.equals(obj.name, true) == true else state.matches(e.filter, obj, lock.controller, lock)) &&
+                !(e.exceptMana && abilities.getOrNull(abilityIndex ?: 0)?.let(isManaAbility) == true)
+        }
+        state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { e -> e is StaticEffect.CantActivate && lockApplies(it, e) } }?.let { lock ->
+            val e = lock.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.filterIsInstance<StaticEffect.CantActivate>().first { lockApplies(lock, it) }
+            if (e.named) { trace.step("${lock.name} names ${obj.name}, and activated abilities of sources with the chosen name can't be activated${if (e.exceptMana) " unless they're mana abilities, which this isn't" else ""}, so ${state.player(playerId).subject.lowercase()} can't begin to activate it.", "602.5", "604.2", "101.2"); state.outcomes += "${obj.name}'s ability can't be activated (${lock.name} names it)."; return null }
             trace.step("${lock.name} says activated abilities of ${e.filter.raw} can't be activated, and ${obj.name} is ${withArticle(e.filter.raw)}, so ${state.player(playerId).subject.lowercase()} can't begin to activate its ability${if (abilities.any { a -> a.effect is Effect.AddMana || (a.effect as? Effect.Seq)?.effects?.any { it is Effect.AddMana } == true }) " (mana abilities included: they are activated abilities too)" else ""}.", "602.5", "604.2", "101.2")
             state.outcomes += "${obj.name}'s ability can't be activated (${lock.name})."; return null
         }
