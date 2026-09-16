@@ -891,6 +891,20 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("sacrifice", player = who, obj = id, targets = targetsIn(r.groupValues[3], m, ctx))
             ctx.lastActor = who; return true
         }
+        // "a creature enchanted with Pacifism", "a 2/2 equipped with Bonesplitter": a creature nobody named,
+        // carrying something that is named.
+        Regex("""^(?:(?:have|has|got|controls?|controlling)\s+)?(an? |\d+ |two |three )?(?:(\d+/\d+)s?\s*)?($creatureKinds)?\s*(?:enchanted with|equipped with|wearing|carrying) (?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->
+            if (r.groupValues[2].isEmpty() && r.groupValues[3].isEmpty()) return@let
+            val who = actor ?: subject ?: ctx.lastOwner ?: "me"
+            val ids = describedCreatures(r.groupValues[1], r.groupValues[2], r.groupValues[3], who, ctx)
+            if (ids.isEmpty()) return@let
+            val aura = m.cards.getValue(r.groupValues[4])
+            for (id in ids) {
+                val att = addObject(aura, who, false, ctx, allowDuplicate = true)
+                ctx.objects[att] = ctx.objects.getValue(att).copy(attachedTo = id)
+            }
+            ctx.lastVerb = "have"; ctx.lastOwner = who; ctx.lastActor = who; ctx.lastMentioned = ids.last(); return true
+        }
         // "Both have first strike" / "mine has deathtouch" / "the blocker has trample": keywords on creatures already described.
         Regex("""^(both|both of them|they both|all of them|mine|theirs|yours|his|hers|the attacker|the blocker|my creature|their creature|it) (?:has|have|gets?|gained?|is|are) ($kwNouns)(?:,? (?:and )?($kwNouns))?$""").find(c)?.let { r ->
             fun kw(x: String) = x.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink")

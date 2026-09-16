@@ -6814,5 +6814,23 @@
     "cite": [
       "701.21a"
     ]
+  },
+  {
+    "id": "an-aura-on-a-creature-nobody-named",
+    "text": "I control a creature enchanted with Pacifism. Can it block?",
+    "expect": [
+      "No: a creature can't block (Pacifism says so)"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "equipment-on-a-creature-given-by-size",
+    "text": "I control a 2/2 equipped with Bonesplitter. What are its stats?",
+    "expect": [
+      "4/2 (2/2 base, +2/+0 from Bonesplitter)"
+    ],
+    "notExpect": [],
+    "cite": []
   }
 ]
