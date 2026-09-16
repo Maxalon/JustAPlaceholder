@@ -198,6 +198,8 @@ sealed interface Effect {
     data class GainLifeEqualToToughness(val who: Who) : Effect
     /** "Target opponent loses that much life" after "whenever you gain life": the amount of the causing event. */
     data class LoseLifeThatMuch(val who: Who) : Effect
+    /** Questing Beast: "it deals that much damage to target planeswalker that player controls" — the amount comes from the trigger. */
+    data class DamageThatMuch(val target: TargetSpec) : Effect
     /** "Creatures you control get +X/+X (and gain trample) until end of turn, where X is the number of [count]." */
     data class PumpAllCount(val filter: ObjFilter, val count: CountExpr, val keywords: List<String>) : Effect
     /** "The owner of target permanent shuffles it into their library." */
@@ -243,7 +245,7 @@ sealed interface Effect {
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target); is Blink -> listOf(target); is RedirectToSelf -> listOf(target); is Fight -> listOf(mine, theirs); is DealsPowerTo -> listOf(mine, theirs)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
-        is PutCounters -> listOfNotNull(target); is RemoveAllCounters -> listOf(target); is PutOnBottom -> listOf(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is ExileGraveyard -> emptyList(); is DiscardChosen -> emptyList(); is BounceChosen -> emptyList(); is LivingWeapon -> emptyList(); is DiscardNamed -> emptyList(); is CounterThatSpell -> emptyList(); is AddManaInstead -> emptyList(); is AddManaPer -> emptyList(); is AddManaDevotion -> emptyList(); is GainLifePerSpellThisTurn -> emptyList(); is WinIfDevotionCoversLibrary -> emptyList(); is CopySpell -> listOf(target); is PreventCombatToAndBy -> listOf(target); is WinIfCastBefore -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
+        is PutCounters -> listOfNotNull(target); is RemoveAllCounters -> listOf(target); is PutOnBottom -> listOf(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is ExileGraveyard -> emptyList(); is DiscardChosen -> emptyList(); is BounceChosen -> emptyList(); is LivingWeapon -> emptyList(); is DiscardNamed -> emptyList(); is CounterThatSpell -> emptyList(); is AddManaInstead -> emptyList(); is AddManaPer -> emptyList(); is AddManaDevotion -> emptyList(); is GainLifePerSpellThisTurn -> emptyList(); is WinIfDevotionCoversLibrary -> emptyList(); is CopySpell -> listOf(target); is PreventCombatToAndBy -> listOf(target); is WinIfCastBefore -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is DamageThatMuch -> listOf(target); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
         is Repeat -> body.targets()
@@ -343,6 +345,8 @@ sealed interface StaticEffect {
     data object OpponentsLockedOnYourTurn : StaticEffect
     /** Serra Avenger: "You can't cast this spell during your first, second, or third turns of the game." */
     data class CantCastBeforeTurn(val turn: Int) : StaticEffect
+    /** Painter's Servant: "All cards that aren't on the battlefield, spells, and permanents are the chosen color in addition to their other colors." */
+    data object EverythingIsChosenColour : StaticEffect
     /** The Theros gods: "As long as your devotion to white is less than five, ~ isn't a creature." (It stays an enchantment and keeps its other abilities.) */
     data class NotACreatureUnlessDevotion(val colour: Char, val threshold: Int) : StaticEffect
     /** Thalia: "Noncreature spells cost {1} more to cast." (a tax on spells matching the filter; `yours` limits it to the controller's / opponents' spells) */

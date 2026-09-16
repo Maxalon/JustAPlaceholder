@@ -63,6 +63,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             if (unparsed.isNotEmpty()) state.unsupported += mtg.judge.engine.Unsupported(o.name, "Rules text not modeled: " + unparsed.joinToString(" | "))
         }
         engine.narrateLandTypeSetters()
+        engine.narratePainter()
         engine.emptyGraveyardsUnderReplacement()
         // The described state may already call for state-based actions (a 1/1 under an opposing Elesh Norn).
         engine.stateBasedActions()

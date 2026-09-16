@@ -224,6 +224,16 @@ class GameState(
         return if (have < god.threshold) "devotion to $colourName is $have, less than ${god.threshold}" else null
     }
 
+    /** The permanent naming a colour that everything is, if one is on the battlefield (Painter's Servant), paired with the colour it chose. */
+    fun painter(): Pair<GameObject, Char>? = objects.values.firstOrNull { o ->
+        o.isOnBattlefield() && o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.EverythingIsChosenColour }
+    }?.let { o -> colourChar(o.chosenName)?.let { o to it } }
+
+    private fun colourChar(name: String?): Char? = when (name?.lowercase()) { "white" -> 'W'; "blue" -> 'U'; "black" -> 'B'; "red" -> 'R'; "green" -> 'G'; else -> null }
+
+    /** An object's colours right now — printed, plus the colour Painter's Servant names (layer 5). */
+    fun colorsOf(o: GameObject): Set<Char> = painter()?.let { (_, c) -> o.def.colors + c } ?: o.def.colors
+
     /** Whether a permanent is a creature right now — printed type, minus anything currently turning it off. */
     fun isCreature(o: GameObject): Boolean = o.def.isCreature && notACreatureBecause(o) == null
 
@@ -362,7 +372,8 @@ class GameState(
         val legOk = f.legendary == null || f.legendary == ("Legendary" in o.def.supertypes)
         val stateOk = (f.tapped == null || o.tapped == f.tapped) && (f.attacking == null || (o.attacking != null) == f.attacking)
         val powerOk = (f.minPower == null || (o.power ?: 0) >= f.minPower) && (f.maxPower == null || (o.power ?: 0) <= f.maxPower) && (f.maxManaValue == null || o.def.manaValue.toInt() <= f.maxManaValue)
-        val colorOk = f.colors.all { it in o.def.colors } && f.notColors.none { it in o.def.colors }
+        val cols = colorsOf(o)
+        val colorOk = f.colors.all { it in cols } && f.notColors.none { it in cols }
         return typeOk && notOk && notSubOk && ctrlOk && subOk && kwOk && tokenOk && legOk && stateOk && powerOk && colorOk
     }
 

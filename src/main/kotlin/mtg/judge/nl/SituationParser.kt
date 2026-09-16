@@ -1279,6 +1279,13 @@ class SituationParser(private val names: NameIndex) {
                 ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner; return true
             }
             Regex("""\b(?:naming|that names|which names|named on|set to|choosing) (?:an? |the )?(c\d+)\b""").find(rest)?.let { n -> val named = m.cards.getValue(n.groupValues[1]); ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(named = named.display); ctx.notes += "${m.cards.getValue(r.groupValues[2]).display} names ${named.display}."; ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner; return true }
+            // "Painter's Servant naming blue" / "Iona choosing white": the chosen colour.
+            Regex("""\b(?:naming|that names|which names|set to|choosing|on) (white|blue|black|red|green)\b""").find(rest)?.let { n ->
+                val colour = n.groupValues[1].lowercase()
+                ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(named = colour)
+                ctx.notes += "${m.cards.getValue(r.groupValues[2]).display} names $colour."
+                ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner; return true
+            }
             // "Grizzly Bears with hexproof" / "with flying and lifelink": keywords as a trailer.
             val trailerKws = Regex("""^ (?:with|that has|which has|having) ((?:hexproof|indestructible|flying|trample|lifelink|deathtouch|haste|vigilance|reach|menace|shroud|unblockable|first strike|double strike|infect|wither|protection from \w+)(?:(?:,| and|, and) (?:hexproof|indestructible|flying|trample|lifelink|deathtouch|haste|vigilance|reach|menace|shroud|unblockable|first strike|double strike|infect|wither|protection from \w+))*)$""").find(rest)?.groupValues?.get(1)?.split(Regex(""",? and |, """))?.map { it.trim() } ?: emptyList()
             (adjectives + trailerKws).filter { it != "tapped" && it != "untapped" }.takeIf { it.isNotEmpty() }?.let { kws -> ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(keywords = ctx.objects.getValue(hostId).keywords + kws); ctx.notes += "${m.cards.getValue(r.groupValues[2]).display} is read as having ${kws.joinToString(" and ")} (from an effect; say what gives it if that matters)." }

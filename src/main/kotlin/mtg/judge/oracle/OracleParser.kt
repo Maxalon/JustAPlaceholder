@@ -358,6 +358,7 @@ object OracleParser {
     fun parseStatic(line: String): List<StaticEffect> {
         parseReplacementStatic(line)?.let { return listOf(it) }
         Regex("""^~ enters(?: the battlefield)? tapped\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.EntersTapped()) }
+        Regex("""^all cards that aren't on the battlefield, spells, and permanents are the chosen colou?r in addition to their other colou?rs\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.EverythingIsChosenColour) }
         // The Theros gods. This has to come before the "as long as" bail below.
         Regex("""^as long as your devotion to (white|blue|black|red|green) is less than (one|two|three|four|five|six|seven|\d+), ~ isn't a creature\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val colour = when (m.groupValues[1].lowercase()) { "white" -> 'W'; "blue" -> 'U'; "black" -> 'B'; "red" -> 'R'; else -> 'G' }
@@ -774,6 +775,12 @@ object OracleParser {
         }
         Regex("""^(target opponent|target player|that player|each opponent|you) loses? that much life\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             return Effect.LoseLifeThatMuch(when (m.groupValues[1].lowercase()) { "target opponent", "target player" -> Who.TARGET_PLAYER; "each opponent" -> Who.EACH_OPPONENT; "you" -> Who.YOU; else -> Who.THAT_PLAYER })
+        }
+        // Questing Beast: "it deals that much damage to target planeswalker that player controls."
+        Regex("""^(?:~|it) deals that much damage to target (.+?)(?: that player controls| that opponent controls)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val raw = m.groupValues[1].trim()
+            val t = target("target $raw")
+            if (t.filter.verifiable) return Effect.DamageThatMuch(if (m.groupValues[0].contains("that player controls", true) || m.groupValues[0].contains("that opponent controls", true)) t.copy(filter = t.filter.copy(controller = Who.OPPONENT, raw = "$raw that player controls"), raw = "target $raw that player controls") else t)
         }
         Regex("""^the owner of target (.+?) shuffles it into their library\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.ShuffleIntoLibrary(target(m.groupValues[1], Kind.PERMANENT)) }
         massPumpGainRe.matchEntire(s)?.let { m -> if (!m.groupValues[1].startsWith("target", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); val kws = keywordsIn(m.groupValues[4]); if (f.verifiable && kws != null) return Effect.PumpAll(f, m.groupValues[2].toInt(), m.groupValues[3].toInt(), kws.toList()) } }

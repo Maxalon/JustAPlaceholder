@@ -468,6 +468,19 @@ class BatchFourteenTest {
         assertTrue("Nothing on the battlefield changes it" in e.spellCost("bear"), e.spellCost("bear"))
     }
 
+    private val painter = card("Painter's Servant", "Artifact Creature \u2014 Scarecrow", "As Painter's Servant enters, choose a color.\nAll cards that aren't on the battlefield, spells, and permanents are the chosen color in addition to their other colors.", "{2}", "", "1", "3")
+
+    @Test
+    fun `painter's servant adds its colour to everything`() {
+        val s = state(); val p = s.put("painter", painter, "me"); s.put("bear", bears, "me")
+        assertEquals(setOf('G'), s.colorsOf(s.obj("bear")))
+        p.chosenName = "black"
+        assertEquals(setOf('G', 'B'), s.colorsOf(s.obj("bear")))
+        // A "nonblack creature" filter no longer matches it.
+        val nonblack = mtg.judge.oracle.OracleParser.parseFilter("nonblack creature", Kind.CREATURE)
+        assertTrue(!s.matches(nonblack, s.obj("bear"), "opp"))
+    }
+
     @Test
     fun `the germ dies once the equipment leaves`() {
         val s = state(); s.put("skull", batterskull, "me", Zone.HAND)

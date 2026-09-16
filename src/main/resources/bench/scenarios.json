@@ -5587,5 +5587,49 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "questing-beast-hits-a-planeswalker-for-the-same-amount",
+    "text": "My opponent attacks with Questing Beast and I have Jace Beleren. What happens?",
+    "expect": [
+      "\"That much\" is 4",
+      "Questing Beast deals 4 damage to Jace Beleren"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "608.2h",
+      "306.8"
+    ]
+  },
+  {
+    "id": "painter-makes-everything-black-so-doom-blade-misses",
+    "text": "I control Painter's Servant naming black and a Grizzly Bears. My opponent casts Doom Blade targeting my Grizzly Bears. What happens?",
+    "expect": [
+      "Painter's Servant names black",
+      "isn't a legal target for Doom Blade"
+    ],
+    "notExpect": [
+      "Grizzly Bears is destroyed"
+    ],
+    "cite": [
+      "601.2c",
+      "613.1e"
+    ]
+  },
+  {
+    "id": "painter-makes-a-green-bear-a-legal-red-blast-target",
+    "text": "I control Painter's Servant naming blue and a Grizzly Bears. My opponent casts Red Elemental Blast targeting my Grizzly Bears. What happens?",
+    "expect": [
+      "Painter's Servant names blue",
+      "Grizzly Bears is destroyed"
+    ],
+    "notExpect": [
+      "isn't a legal target"
+    ],
+    "cite": [
+      "613.1e"
+    ]
   }
 ]
