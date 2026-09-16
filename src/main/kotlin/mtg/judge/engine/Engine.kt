@@ -428,7 +428,16 @@ class Engine(val state: GameState) {
         val obj = state.obj(objectId)
         obj.zone = Zone.BATTLEFIELD; obj.tapped = false; obj.timestamp = state.tick()
         applyEntersReplacements(obj, choice)
+        // "a creature enters with two +1/+1 counters": stated by the asker rather than printed on a card, but the
+        // counters are still put on as it enters, so doublers and Hardened Scales apply (614.1c).
+        choice?.takeIf { it.startsWith("counters:") }?.split(":")?.takeIf { it.size == 3 }?.let { (_, n, kind) ->
+            val asked = n.toIntOrNull() ?: 1
+            val placed = countersPlaced(obj, asked, kind)
+            if (placed > 0) obj.counters[kind] = (obj.counters[kind] ?: 0) + placed
+            trace.step("${obj.name} enters with $placed $kind counter${if (placed == 1) "" else "s"} on it${if (placed != asked) " (the situation said $asked)" else ""}.", "614.1c", "122.6")
+        }
         trace.step("${obj.name} enters the battlefield under ${state.player(obj.controller).possessive} control${if (obj.tapped == true) " tapped" else ""}.", "110.5b")
+        state.outcomes += "${obj.name} enters the battlefield${obj.counters.entries.filter { it.value > 0 }.takeIf { it.isNotEmpty() }?.joinToString(", ", " with ") { (k, n) -> "$n $k counter${if (n == 1) "" else "s"}" } ?: ""}."
         onEvent(GameEvent.EntersBattlefield(obj))
     }
 

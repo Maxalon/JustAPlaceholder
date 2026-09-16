@@ -7054,5 +7054,31 @@
     "cite": [
       "701.9a"
     ]
+  },
+  {
+    "id": "doubling-season-then-hardened-scales",
+    "text": "I control Doubling Season and Hardened Scales and a creature enters with two +1/+1 counters. How many counters does it get?",
+    "expect": [
+      "4 +1/+1 counters are put on a creature instead of 2",
+      "5 +1/+1 counters are put on a creature instead of 4",
+      "enters the battlefield with 5 +1/+1 counters"
+    ],
+    "notExpect": [],
+    "cite": [
+      "614.6"
+    ]
+  },
+  {
+    "id": "solemnity-stops-the-counters-a-creature-would-enter-with",
+    "text": "I control Solemnity and a creature enters with two +1/+1 counters. What happens?",
+    "expect": [
+      "counters can't be put on a creature"
+    ],
+    "notExpect": [
+      "with 2 +1/+1 counters."
+    ],
+    "cite": [
+      "614.1a"
+    ]
   }
 ]

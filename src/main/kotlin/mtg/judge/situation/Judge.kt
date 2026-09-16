@@ -254,7 +254,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 }
             }
             "pass" -> engine.resolveTop()
-            "enter" -> engine.enter(e.obj ?: throw JudgeException("enter needs an object"))
+            "enter" -> engine.enter(e.obj ?: throw JudgeException("enter needs an object"), e.to)
             "leave" -> engine.leave(e.obj ?: throw JudgeException("leave needs an object"), zone(e.to ?: "graveyard"))
             "damage" -> engine.dealDamage(e.source?.let { state.objects[it]?.name } ?: e.source ?: "A source", targets.firstOrNull() ?: throw JudgeException("damage needs a target"), e.amount ?: throw JudgeException("damage needs an amount"))
             "statecheck" -> engine.stateBasedActions()

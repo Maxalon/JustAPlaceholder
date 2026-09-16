@@ -1888,7 +1888,7 @@ class SituationParser(private val names: NameIndex) {
             val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
             ctx.objects[id] = ctx.objects.getValue(id).copy(zone = "hand"); ctx.events += EventSpec("enter", obj = id); return true
         }
-        Regex("""^(an? |\d+ |two |three )?(?:(\d+/\d+)s?\s*)?($creatureKinds|artifact|enchantment|land|token|permanent)?s? ?(?:enters|enter|comes? in|etbs?)(?: the battlefield)?(?: under (my|their|his|her) control)?$""").find(c)?.let { r ->
+        Regex("""^(an? |\d+ |two |three )?(?:(\d+/\d+)s?\s*)?($creatureKinds|artifact|enchantment|land|token|permanent)?s? ?(?:enters|enter|comes? in|etbs?)(?: the battlefield)?(?: under (my|their|his|her) control)?(?: with (an?|one|two|three|four|five|\d+) ([+-]\d+/[+-]\d+|[a-z]+) counters?(?: on it)?)?$""").find(c)?.let { r ->
             val kind = r.groupValues[3]
             if (kind.isEmpty() && r.groupValues[2].isEmpty()) return@let
             if (kind.isNotEmpty() && kind !in setOf("artifact", "enchantment", "land", "token", "permanent") && !Regex("""^(?:$creatureKinds)$""").matches(kind)) return@let
@@ -1898,7 +1898,10 @@ class SituationParser(private val names: NameIndex) {
                 (1..n).map { var id = slug("a land"); var k = 2; while (ctx.objects.containsKey(id)) id = slug("a land") + "_" + (k++); ctx.objects[id] = ObjectSpec(id, CardRef(name = "a basic land"), controller = who); id }
             } else describedCreatures(r.groupValues[1], r.groupValues[2], if (kind.isEmpty() || kind in setOf("artifact", "enchantment", "token", "permanent")) "creature" else kind, who, ctx, "")
             if (ids.isEmpty()) return@let
-            for (id in ids) { ctx.objects[id] = ctx.objects.getValue(id).copy(zone = "hand"); ctx.events += EventSpec("enter", obj = id) }
+            // "a creature enters with two +1/+1 counters": the counters go on as it enters, so counter doublers
+            // and Hardened Scales apply to them. Left to the engine rather than put on the object here.
+            val entersWith = r.groupValues[5].takeIf { it.isNotEmpty() }?.let { n -> "counters:${number(n) ?: 1}:${r.groupValues[6]}" }
+            for (id in ids) { ctx.objects[id] = ctx.objects.getValue(id).copy(zone = "hand"); ctx.events += EventSpec("enter", obj = id, to = entersWith) }
             ctx.lastMentioned = ids.last(); ctx.lastActor = who; ctx.lastOwner = who; ctx.note(who); return true
         }
         // "I play a land" / "they put a land onto the battlefield": the same as a land entering, which is what
