@@ -227,6 +227,10 @@ object OracleParser {
             if (!f.verifiable) return Trigger.Unknown(c)
             return Trigger.PermanentDies(f, m.groupValues[1].trim().equals("another", true))
         }
+        // Chalice of the Void: "a player casts a spell with mana value equal to the number of charge counters on ~"
+        Regex("""^an? (?:player|opponent) casts a spell with mana value equal to the number of (\w+) counters on ~$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
+            return Trigger.SpellCastMvEqualsCounters(m.groupValues[1].lowercase())
+        }
         spellCastRe.matchEntire(c)?.let { m ->
             val who = when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "an opponent" -> Who.OPPONENT; else -> Who.ANY_PLAYER }
             val what = m.groupValues[3].trim().lowercase()
@@ -701,6 +705,7 @@ object OracleParser {
             val b = m.groupValues[2].trim().removePrefix("an ").removePrefix("a ").trim()
             if (a.isNotEmpty() && b.isNotEmpty()) return Effect.AddManaInstead(listOf(a, b), m.groupValues[3])
         }
+        if (Regex("""^counter that spell\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.CounterThatSpell
         // "Exile target player's graveyard" (Bojuka Bog), "exile each opponent's graveyard".
         Regex("""^exile (target player|target opponent|that player|each player|each opponent|your)(?:'s)? graveyard\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             return Effect.ExileGraveyard(when (m.groupValues[1].lowercase()) { "target player", "target opponent" -> Who.TARGET_PLAYER; "that player" -> Who.THAT_PLAYER; "each player" -> Who.EACH_PLAYER; "each opponent" -> Who.EACH_OPPONENT; else -> Who.YOU })

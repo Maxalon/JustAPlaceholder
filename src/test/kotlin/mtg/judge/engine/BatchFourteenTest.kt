@@ -196,4 +196,27 @@ class BatchFourteenTest {
         val e = Engine(s); e.activate("me", "coffers", 0, emptyList())
         assertTrue(s.outcomes.any { it == "Cabal Coffers's mana ability: add {B}{B}." }, s.outcomes.toString())
     }
+
+    private val chalice = card("Chalice of the Void", "Artifact", "Chalice of the Void enters with X charge counters on it.\nWhenever a player casts a spell with mana value equal to the number of charge counters on Chalice of the Void, counter that spell.", "{X}{X}")
+    private val counterspell = card("Counterspell", "Instant", "Counter target spell.", "{U}{U}", "U")
+
+    @Test
+    fun `chalice counters a spell whose mana value matches its counters`() {
+        val s = state(); s.put("chalice", chalice, "me"); s.obj("chalice").counters["charge"] = 1
+        val e = Engine(s); e.cast("opp", bolt, listOf(Ref.Player("me"))); e.resolveAll()
+        assertEquals(20, s.player("me").life)
+        assertTrue(s.outcomes.any { it == "Lightning Bolt is countered." }, s.outcomes.toString())
+        assertTrue("701.5a" in s.cited())
+    }
+
+    @Test
+    fun `chalice leaves a spell of another mana value alone`() {
+        val s = state(); s.put("chalice", chalice, "me"); s.obj("chalice").counters["charge"] = 2
+        val e = Engine(s); e.cast("opp", bolt, listOf(Ref.Player("me"))); e.resolveAll()
+        assertEquals(17, s.player("me").life)
+
+        val s2 = state(); s2.put("chalice", chalice, "me"); s2.obj("chalice").counters["charge"] = 2
+        val e2 = Engine(s2); e2.cast("opp", counterspell, emptyList()); e2.resolveAll()
+        assertTrue(s2.outcomes.any { it == "Counterspell is countered." }, s2.outcomes.toString())
+    }
 }

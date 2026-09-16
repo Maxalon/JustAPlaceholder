@@ -4537,5 +4537,53 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "chalice-counters-a-one-drop",
+    "text": "I control Chalice of the Void with one charge counter. My opponent casts Lightning Bolt. What happens?",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "notExpect": [
+      "You take 3 damage"
+    ],
+    "cite": [
+      "701.5a"
+    ]
+  },
+  {
+    "id": "chalice-misses-on-two",
+    "text": "I control Chalice of the Void with two charge counters. My opponent casts Lightning Bolt. What happens?",
+    "expect": [
+      "You take 3 damage"
+    ],
+    "notExpect": [
+      "Lightning Bolt is countered"
+    ],
+    "cite": [
+      "120.3a"
+    ]
+  },
+  {
+    "id": "ensnaring-bridge-stops-a-three",
+    "text": "My opponent controls Ensnaring Bridge with 2 cards in hand. Can my 3/3 attack?",
+    "expect": [
+      "can't attack (Ensnaring Bridge)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "dryad-arbor-is-summoning-sick",
+    "text": "I control Dryad Arbor. Can I attack with it the turn I play it?",
+    "expect": [
+      "can't attack (summoning sick)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
