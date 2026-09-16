@@ -1100,7 +1100,9 @@ object OracleParser {
             if (kws.all { it in keywordList }) { keywords += kws; core = core.removeRange(m.range) }
         }
         val subtypesAny = Regex("""\bor\b""").containsMatchIn(core)
-        for (w in core.split(Regex("""[\s,]+|\bor\b""")).map { it.trim() }.filter { it.isNotEmpty() }) {
+        // "creatures and planeswalkers you control": "and" joins two kinds the same way "or" does. Kinds are matched
+        // as a union (an object is one of them), while subtypes still have to all be present.
+        for (w in core.split(Regex("""[\s,]+|\bor\b|\band\b""")).map { it.trim() }.filter { it.isNotEmpty() }) {
             when {
                 w in colorWords -> colors += colorWords.getValue(w)
                 w.startsWith("non") && w.removePrefix("non") in colorWords -> notColors += colorWords.getValue(w.removePrefix("non"))
