@@ -694,6 +694,8 @@ object OracleParser {
             val f = parseFilter(greatest?.groupValues?.get(1) ?: m.groupValues[2], Kind.CREATURE)
             if (f.verifiable) return Effect.SacrificeEach(if (m.groupValues[1].lowercase() == "player") Who.EACH_PLAYER else Who.EACH_OPPONENT, f, greatestPower = greatest != null)
         }
+        if (Regex("""^reveal the top card of your library and put that card into your hand\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.RevealTopToHand(Who.YOU)
+        if (Regex("""^you lose life equal to its mana value\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.LoseLifeEqualToRevealedMv(Who.YOU)
         // "create two 2/2 black Zombie creature tokens": modeled, so it goes before the narrated table.
         createTokenRe.matchEntire(s)?.let { m ->
             val n0 = m.groupValues[2]; val desc0 = m.groupValues[3]

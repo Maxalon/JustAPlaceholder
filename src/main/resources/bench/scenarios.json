@@ -4124,5 +4124,42 @@
     "cite": [
       "509.1a"
     ]
+  },
+  {
+    "id": "counter-it-from-hand",
+    "text": "I have Mana Leak. My opponent casts Sol Ring and I counter it. They have 5 lands untapped.",
+    "expect": [
+      "Sol Ring is countered"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Sol Ring enters the battlefield"
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "dark-confidant-upkeep",
+    "text": "I control Dark Confidant. It's my upkeep and the top card of my library is Lightning Bolt.",
+    "expect": [
+      "You lose 1 life (Lightning Bolt's mana value)"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "202.3"
+    ]
+  },
+  {
+    "id": "song-of-the-dryads-unmodeled",
+    "text": "I control Grizzly Bears. My opponent casts Song of the Dryads on it.",
+    "expect": [
+      "Song of the Dryads enters the battlefield"
+    ],
+    "cite": [
+      "608.3a"
+    ]
   }
 ]

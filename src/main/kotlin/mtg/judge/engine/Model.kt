@@ -164,6 +164,10 @@ sealed interface Effect {
     data class LoseLife(val who: Who, val amount: Int, val x: Boolean = false) : Effect
     /** Exsanguinate: "You gain life equal to the life lost this way." */
     data object GainLifeLostThisWay : Effect
+    /** Dark Confidant: "Reveal the top card of your library and put that card into your hand." */
+    data class RevealTopToHand(val who: Who) : Effect
+    /** Dark Confidant: "You lose life equal to its mana value." (the card just revealed) */
+    data class LoseLifeEqualToRevealedMv(val who: Who) : Effect
     /** Condemn: "Put target attacking creature on the bottom of its owner's library." */
     data class PutOnBottom(val target: TargetSpec) : Effect
     /** Condemn: "Its controller gains life equal to its toughness." */
@@ -221,7 +225,7 @@ sealed interface Effect {
         is Repeat -> body.targets()
         is LoseLifeUnlessSacOrDiscard -> emptyList()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
-        is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is GainLifeLostThisWay, is GainLifeEqualToToughness, is Discard, is ExileIfDamagedDies, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
+        is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is GainLifeLostThisWay, is GainLifeEqualToToughness, is Discard, is ExileIfDamagedDies, is RevealTopToHand, is LoseLifeEqualToRevealedMv, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
     }
 
     fun hasUnparsed(): Boolean = when (this) {

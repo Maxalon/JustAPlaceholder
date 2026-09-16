@@ -705,6 +705,13 @@ class SituationParser(private val names: NameIndex) {
             }
             ctx.notes += "${if (who == "me") "Your" else (ctx.players[who] ?: "Your opponent") + "'s"} graveyard is read as holding: $list (only the card types matter to the engine)."; ctx.note(who); if (actor != null) ctx.lastActor = actor; return true
         }
+        // "the top card of my library is Lightning Bolt" / "my top card is X": that card sits on top of the library.
+        Regex("""^(?:the )?top (?:card )?(?:of (?:my|their|his|her|the) library )?is (?:an? |the )?(c\d+)$|^(?:my|their|his|her) top card is (?:an? |the )?(c\d+)$""").find(c)?.let { r ->
+            val ph = r.groupValues[1].ifEmpty { r.groupValues[2] }
+            val who = actor ?: (if (Regex("""\btheir|his|her\b""").containsMatchIn(clauseIn)) pronounPlayer(ctx, "their") else "me")
+            addObject(m.cards.getValue(ph), who, false, ctx, zone = "library", allowDuplicate = true)
+            ctx.notes += "${m.cards.getValue(ph).display} is on top of ${if (who == "me") "your" else "their"} library."; ctx.note(who); return true
+        }
         // "have 4 lands" / "with six lands": mana available, the lands assumed untapped.
         Regex("""^(?:only )?(?:has|have|with|got|control|controls)(?: only)? (\d+|two|three|four|five|six|seven|eight|nine|ten) lands?(?: in play| on the battlefield| out)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"; val n = number(r.groupValues[1]) ?: return@let
@@ -930,6 +937,17 @@ class SituationParser(private val names: NameIndex) {
             ctx.objects[id] = ctx.objects.getValue(id).copy(commander = true); ctx.lastVerb = "have"; ctx.lastOwner = who; ctx.lastMentioned = id; return true
         }
         // "counter my Grizzly Bears (with Counterspell)": the spell is cast (by its owner) and then countered, with the named counter or a generic one.
+        // "I counter it" / "counter that with Mana Leak": the last spell cast, countered by a named spell or one already in hand.
+        Regex("""^counters? (?:it|that|that spell|the spell)(?: with (?:an? |the |my |their )?(c\d+))?$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: "me"
+            val castEvent = ctx.events.lastOrNull { it.verb == "cast" && it.player != who } ?: return@let
+            val targetName = castEvent.card?.name ?: ctx.objects[castEvent.obj ?: ""]?.card?.name ?: return@let
+            val counter = r.groupValues[1].takeIf { it.isNotEmpty() }?.let { m.cards.getValue(it) }
+                ?: ctx.inHand[who]?.lastOrNull { needsSpellTarget(it) }?.also { ctx.notes += "\"Counter it\" is read as casting ${it.display} from ${if (who == "me") "your" else "their"} hand." }
+            if (counter != null) { ctx.inHand[who]?.remove(counter); emitCast(who, counter, " targeting " + slug(targetName) + ":spell", m, ctx) }
+            else { ctx.events += EventSpec("cast", player = who, card = CardRef(name = "a counterspell"), targets = listOf(slug(targetName) + ":spell")); ctx.lastActor = who; ctx.lastVerb = "cast"; ctx.notes += "No counterspell was named; assuming a plain \"counter target spell\"." }
+            return true
+        }
         Regex("""^counters? (my |their |the |my opponent's |@\w+'s )?(c\d+)(?: with (?:an? |the |my |their )?(c\d+))?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "opp"
             val target = m.cards.getValue(r.groupValues[2])
