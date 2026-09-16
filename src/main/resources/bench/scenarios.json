@@ -1555,7 +1555,8 @@
     "id": "named-then-bolts",
     "text": "I attack Alice with Grizzly Bears and she blocks with Hill Giant. Bob then bolts my Bears.",
     "expect": [
-      "Grizzly Bears: the battlefield → your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Lightning Bolt deals 3 damage to Grizzly Bears"
     ],
     "cite": [
       "704.5g"

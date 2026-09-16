@@ -92,7 +92,7 @@ class SituationParser(private val names: NameIndex) {
         for (sentence in sentences) {
             val marked = mark(sentence, short, named)
             marked.cards.values.filter { it.alternatives.isNotEmpty() }.distinctBy { it.oracleId }.forEach { e -> val note = "\"${e.display.substringBefore(",")}\" is read as ${e.display}; it could also be ${e.alternatives.joinToString(" or ")}. Use the full name if you meant another."; if (note !in ctx.notes) ctx.notes += note }
-            if (!readSentence(marked, ctx)) ctx.unread += sentence.trim()
+            if (!readSentence(marked, ctx) && !isNoise(marked.text)) ctx.unread += sentence.trim()
         }
         // Cards the text put in a hand become objects in that hand, unless they were already used for something.
         for ((who, cards) in ctx.inHand) for ((n, card) in cards.withIndex()) {
@@ -190,7 +190,10 @@ class SituationParser(private val names: NameIndex) {
                 val possessive = raw.contains("'s") || raw.contains("\u2019s")
                 val next = normWords.getOrNull(i + 1) ?: ""
                 val prev = normWords.getOrNull(i - 1) ?: ""
-                val actsLikePlayer = possessive || next in playerVerbs || prev in playerPreps
+                // "Bob bolts my Bears": the next word is a card name used as a verb, so the capitalised word before it is a player.
+                val nextIsVerbifiedCard = (i + 1) in covered &&
+                    rawWords.getOrNull(i + 1)?.trimEnd(',', '.', ';', '!', '?')?.lowercase()?.let { w -> (w.endsWith("s") && !w.endsWith("ss")) || w.endsWith("ed") } == true
+                val actsLikePlayer = possessive || next in playerVerbs || prev in playerPreps || nextIsVerbifiedCard
                 if (actsLikePlayer) out[norm] = core
             }
         }
@@ -421,7 +424,7 @@ class SituationParser(private val names: NameIndex) {
         return false
     }
 
-    private fun isNoise(clause: String) = Regex("""^(what happens|what now|so|then|now|ok|okay|right|they're|they are|i'm|i am|he's|she's|we're|it's|after (?:combat )?damage|after blockers|after blocks|after combat|after that|after this|before damage|do i draw|does it work|is that right|correct|and|but|also|too|as well|no wait|wait|never mind|nevermind|sorry|hmm|uh|um|actually)\??$""").matches(clause.trim()) ||
+    private fun isNoise(clause: String) = Regex("""(?i)^(what happens|what now|so|then|now|ok|okay|right|they're|they are|i'm|i am|he's|she's|we're|it's|does it wear off|do(?:es)? (?:it|that|they) (?:wear off|go away|end|stay)|after (?:combat )?damage|after blockers|after blocks|after combat|after that|after this|before damage|do i draw|does it work|is that right|correct|and|but|also|too|as well|no wait|wait|never mind|nevermind|sorry|hmm|uh|um|actually)\??$""").matches(clause.trim()) ||
         (!Regex("""c\d+""").containsMatchIn(clause) && Regex("""^(?:do|does|did|can|could|will|would|is|are|was|were|what|who|which|how|should|when|why|am)\b""").matches(clause.trim().substringBefore(' ')))
     private fun restore(text: String, m: Marked): String = m.cards.entries.fold(text) { acc, (ph, e) -> acc.replace(Regex("\\b$ph\\b"), e.display) }
 
@@ -436,6 +439,11 @@ class SituationParser(private val names: NameIndex) {
     }
 
     private fun readClause0(clauseIn: String, m: Marked, ctx: Ctx): Boolean {
+        // "it resolves" / "everything resolves": already acted on when the sentence was read, so it is not unread.
+        if (Regex("""^(?:and )?(?:it|they|that|this|both|all|everything)?\s*resolves?$|^(?:nobody|no one|nothing) responds?$|^no responses?$""").matches(clauseIn.trim())) return true
+        // "I already control one" after "a second Sheoldred": the first copy is already on the battlefield from that clause.
+        if (Regex("""^(?:i|they|he|she|we)?\s*(?:already )?(?:control|have|had|had out|got)\s*(?:one|another one|the other one|a copy|one already)$""").matches(clauseIn.trim()) &&
+            ctx.events.any { it.verb == "cast" }) return true
         // "… no wait, I cast Murder instead" / "I mean Murder on it": the last spell is taken back and this one replaces it.
         Regex("""^(?:no,? wait|wait,? no|actually|scratch that|sorry|i mean|i meant|rather)[,:]?\s+(.*)$""").find(clauseIn.trim())?.let { r ->
             val rest = r.groupValues[1].trim()
