@@ -5325,5 +5325,19 @@
     "cite": [
       "704.5f"
     ]
+  },
+  {
+    "id": "sylvan-safekeeper-saves-a-creature",
+    "text": "I control Sylvan Safekeeper and my opponent casts Doom Blade on my Bears. I sacrifice a land to protect it. What happens?",
+    "expect": [
+      "Grizzly Bears has shroud until end of turn",
+      "Doom Blade doesn't resolve (all targets illegal)"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "608.2b"
+    ]
   }
 ]

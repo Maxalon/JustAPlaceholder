@@ -216,6 +216,8 @@ class SituationParser(private val names: NameIndex) {
         val found = (full + normWords.indices.filter { it !in covered }.mapNotNull { i -> shortAt(i)?.let { NameIndex.Found(i, i + 1, it) } })
             // "a Charge counter", "two Shield tokens": the word before "counter"/"token" names the kind, not a card.
             .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.end) in setOf("token", "tokens", "counter", "counters") && normWords[f.start] !in short) }
+            // "to protect it", "to save my Bears": a verb after "to" is a verb, not the card of that name.
+            .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.start - 1) == "to" && normWords[f.start] in verbsAfterTo && normWords[f.start] !in short) }
             // "a 2/2 with lifelink and deathtouch": a keyword in a keyword list is a keyword, not the card of that name.
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in keywordWords && normWords.getOrNull(f.start - 1) in setOf("with", "and", "&", "gains", "gain", "has", "have", "granted") && normWords[f.start] !in short) }
             // A first name that could mean several cards ("Jace") means the one named in full earlier, however it was matched.
@@ -346,6 +348,8 @@ class SituationParser(private val names: NameIndex) {
             }
             any = true
         }
+        // "… to protect it" / "… to save my Bears": a purpose, not another action.
+        t2 = t2.replace(Regex("""\s+(?:in order )?to (?:protect|save|shroud|shield|defend|keep) (?:it|that|them|him|her|(?:my |the |their )?c\d+)(?=[.,]|$)"""), "")
         // "a creature with deathtouch and first strike": a keyword list joined by "and" stays in one clause.
         run {
             val kw = """(?:flying|trample|deathtouch|lifelink|first strike|double strike|haste|vigilance|reach|menace|hexproof|indestructible|infect|wither|shroud|defender|flash|regenerate|protection from \w+)"""
@@ -661,6 +665,27 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("regenerate", obj = id); return true
         }
         // "sacrifice a Bears (to Viscera Seer)": the sacrifice, then the ability it paid for.
+        // "sacrifice a land" / "sac an artifact to it": the cost of an ability of a permanent already out.
+        Regex("""^(?:sacrifices?|sacs?|sacrificing|saccing) (?:an? |one |another )(land|creature|artifact|enchantment|permanent|token)(?: (?:to|into|with) (?:it|that|(?:my |the )?(c\d+))(?:'s ability)?)?(?: to (?:protect|save|shroud|shield) (?:it|that|them|(?:my |the )?(c\d+)))?$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: "me"
+            val kind = r.groupValues[1]
+            val named = r.groupValues[2].takeIf { it.isNotEmpty() }?.let { m.cards[it] }?.let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) }
+            // The outlet is the other permanent that player controls; the engine checks whether the cost can actually be paid.
+            val protectedId = ctx.events.lastOrNull { it.verb == "cast" && it.player != who }?.targets?.firstOrNull { it in ctx.objects }
+            val outlet = named ?: ctx.objects.values.firstOrNull { o -> o.controller == who && o.id != protectedId && o.card.oracleId != null }?.id ?: return@let
+            val protectPh = r.groupValues[3]
+            val target = if (protectPh.isNotEmpty()) m.cards[protectPh]?.let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) }
+                         else protectedId ?: ctx.lastMentioned?.takeIf { it in ctx.objects && it != outlet }
+            // Nothing of that kind was described, so one is taken as read: the cost has to be payable for the question to make sense.
+            if (kind == "land" && ctx.objects.values.none { it.controller == who && (it.card.name ?: "").contains("land", true) }) {
+                var lid = slug("a land"); var k = 2; while (ctx.objects.containsKey(lid)) lid = slug("a land") + "_" + (k++)
+                ctx.objects[lid] = ObjectSpec(lid, CardRef(name = "a basic land"), controller = who)
+                ctx.notes += "No land was described, so one is taken as read for the sacrifice."
+            }
+            ctx.events += EventSpec("activate", player = who, obj = outlet, to = "sacrifice:$kind", targets = listOfNotNull(target))
+            ctx.notes += "\"Sacrifice a $kind\" is read as the cost of ${ctx.objects[outlet]?.card?.name ?: outlet}'s ability."
+            ctx.lastActor = who; return true
+        }
         Regex("""^(?:sacrifices?|sacs?|sacrificing|saccing) (?:an? |the |my |one |another )?(c\d+|it|itself|(?:\d+/\d+)(?: (?!to\b|into\b|targeting\b|at\b|on\b)[a-z]+)*)(?: (?:to|into) (?:an? |the |my )?(c\d+|it|that)(?:'s ability)?)?(.*)$""").find(c.replace(Regex("""\s+(?:in response(?: to (?:it|that|the spell))?|for mana|for value|instead|first|before it resolves|with (?:the )?(?:trigger|spell) on the stack)(?=\s|$)"""), ""))?.let { r ->
             val who = actor ?: subject ?: "me"
             val what = r.groupValues[1]
@@ -2031,6 +2056,9 @@ class SituationParser(private val names: NameIndex) {
 
     private val numberWords = mapOf("two" to 2, "three" to 3, "four" to 4, "five" to 5)
 
+    /** Verbs that are also card names ("Protect", "Bloodrush"); right after "to" they are verbs. */
+    private val verbsAfterTo = setOf("protect", "save", "shield", "defend", "keep", "destroy", "kill", "draw", "search", "block", "attack",
+        "sacrifice", "regenerate", "bounce", "exile", "tap", "untap", "pay", "cast", "play", "target", "fight", "counter", "discard", "mill", "scry", "activate", "stop", "answer", "remove", "trigger")
     /** Keyword words that are also card names ("Lifelink", "Flying"); in a keyword list they mean the keyword. */
     private val keywordWords = setOf("flying", "trample", "deathtouch", "lifelink", "haste", "vigilance", "reach", "menace", "hexproof", "indestructible", "infect", "defender", "flash", "shroud", "intimidate", "fear", "wither", "changeling", "banding", "horsemanship", "shadow", "persist", "undying", "exalted", "prowess")
     private val kwNouns = """(?:fliers?|flyers?|flying|tramplers?|trample|deathtouchers?|deathtouch|lifelinkers?|lifelink|first strikers?|first strike|double strikers?|double strike|haste|vigilance|reach|menace|hexproof|indestructible|infect)"""
