@@ -692,7 +692,11 @@ class Engine(val state: GameState) {
                     if (p.mana!! >= n) { p.mana = p.mana!! - n; trace.step("${src.name} says creatures can't attack ${state.nameOf(Ref.Player(defendingPlayer!!))} unless their controller pays ${tax.cost} for each. ${p.subject} ${p.v("has", "have")} the mana, so ${p.subject.lowercase()} ${p.v("pays", "pay")} ${tax.cost} for ${src.name} and ${a.name} attacks (${p.mana} mana left).", "508.1c"); state.outcomes += "${p.subject} ${p.v("pays", "pay")} ${tax.cost} for ${src.name} (${a.name} attacks)." }
                     else { trace.step("${src.name} says creatures can't attack ${state.nameOf(Ref.Player(defendingPlayer!!))} unless their controller pays ${tax.cost} for each; ${p.subject.lowercase()} ${p.v("has", "have")} only ${p.mana} mana left, so ${a.name} can't attack.", "508.1c"); state.outcomes += "${a.name} can't attack (can't pay ${tax.cost} for ${src.name})."; return }
                 }
-                else -> { trace.step("${src.name} says creatures can't attack ${state.nameOf(Ref.Player(defendingPlayer!!))} unless their controller pays ${tax.cost} for each; since ${a.name} attacks, ${p.subject.lowercase()} must be paying.", "508.1c"); state.assumptions += "${p.subject} ${p.v("pays", "pay")} ${tax.cost} for ${src.name} (otherwise ${a.name} couldn't attack)." }
+                else -> {
+                    trace.step("${src.name} says creatures can't attack ${state.nameOf(Ref.Player(defendingPlayer!!))} unless their controller pays ${tax.cost} for each; since ${a.name} attacks, ${p.subject.lowercase()} must be paying.", "508.1c")
+                    state.assumptions += "${p.subject} ${p.v("pays", "pay")} ${tax.cost} for ${src.name} for each attacker (otherwise they couldn't attack)."
+                    noteAttackTax(playerId, src.name, tax.cost, a.name)
+                }
             }
         }
         if (a.summoningSick == null && !a.has("haste")) state.assumptions += "${a.name} has been under ${p.possessive} control since the turn began (otherwise it couldn't attack, 508.1a)."
@@ -1119,6 +1123,21 @@ class Engine(val state: GameState) {
 
     /** Where each creature's "has N damage marked" outcome line sits, so a second hit updates it instead of adding another. */
     private val damageOutcome = mutableMapOf<String, Int>()
+    /** Attack taxes add up across attackers; the running total replaces its own outcome line rather than repeating. */
+    private val attackTaxTotal = mutableMapOf<String, Pair<Int, Int>>()   // "player|source" -> (attackers, total mana)
+
+    private fun noteAttackTax(playerId: String, srcName: String, cost: String, attackerName: String) {
+        val per = Regex("""\{(\d+)\}""").find(cost)?.groupValues?.get(1)?.toIntOrNull() ?: return
+        val p = state.player(playerId)
+        val key = "$playerId|$srcName"
+        val (count, _) = attackTaxTotal[key]?.let { (c, _) -> c to 0 } ?: (0 to 0)
+        val n = count + 1
+        val line = if (n == 1) "${p.subject} ${p.v("pays", "pay")} $cost for $srcName ($attackerName attacks)."
+                   else "${p.subject} ${p.v("pays", "pay")} {${per * n}} for $srcName in all — $cost for each of $n attackers."
+        val slot = attackTaxTotal[key]?.second
+        if (slot != null && slot < state.outcomes.size) { state.outcomes[slot] = line; attackTaxTotal[key] = n to slot }
+        else { attackTaxTotal[key] = n to state.outcomes.size; state.outcomes += line }
+    }
 
     private fun applyEffect(effect: Effect, item: StackItem) {
         val you = state.player(item.controller)

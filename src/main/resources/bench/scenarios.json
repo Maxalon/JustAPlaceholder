@@ -5990,5 +5990,32 @@
     "cite": [
       "615.1"
     ]
+  },
+  {
+    "id": "attack-tax-is-totalled",
+    "text": "My opponent has Ghostly Prison and I attack with three creatures. How much mana do I need?",
+    "expect": [
+      "You pay {6} for Ghostly Prison in all"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "a-stated-spell-count-feeds-storm-style-abilities",
+    "text": "I control Aetherflux Reservoir and I have cast four spells this turn. I cast Lightning Bolt. How much life do I gain?",
+    "expect": [
+      "You have cast 5 spells this turn (counting the one that triggered this), so you gain 5 life"
+    ],
+    "notExpect": [
+      "Not understood",
+      "gain 1 life"
+    ],
+    "cite": [
+      "608.2h"
+    ]
   }
 ]

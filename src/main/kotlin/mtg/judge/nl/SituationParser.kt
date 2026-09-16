@@ -39,6 +39,8 @@ class SituationParser(private val names: NameIndex) {
         val librarySize = LinkedHashMap<String, Int>()
         var turnNumber: Int? = null
         val devotion = LinkedHashMap<String, MutableMap<String, Int>>()
+        /** "I have cast four spells this turn": a storm-style count the situation stated rather than played out. */
+        val spellsThisTurn = LinkedHashMap<String, Int>()
         val commanderDamage = LinkedHashMap<String, MutableMap<String, Int>>()
         /** Named players in order of first mention: id -> display name. "me"/"opp" are added when the text uses them. */
         val players = LinkedHashMap<String, String>()
@@ -109,7 +111,7 @@ class SituationParser(private val names: NameIndex) {
         for (e in ctx.events) { e.player?.let { ctx.note(it) }; e.targets.forEach { if (it == "me" || it == "opp") ctx.note(it) } }
         for (o in ctx.objects.values) ctx.note(o.controller)
         val turnSpec = TurnSpec(ctx.activePlayer, null, null, ctx.turnNumber)
-        val players = ctx.playerIds().map { id -> PlayerSpec(id, when (id) { "me" -> "me"; "opp" -> "opponent"; else -> ctx.players[id] ?: id }, ctx.life[id], ctx.poison[id], ctx.handSize[id], ctx.librarySize[id], ctx.commanderDamage[id] ?: emptyMap(), ctx.mana[id], ctx.devotion[id] ?: emptyMap()) }
+        val players = ctx.playerIds().map { id -> PlayerSpec(id, when (id) { "me" -> "me"; "opp" -> "opponent"; else -> ctx.players[id] ?: id }, ctx.life[id], ctx.poison[id], ctx.handSize[id], ctx.librarySize[id], ctx.commanderDamage[id] ?: emptyMap(), ctx.mana[id], ctx.devotion[id] ?: emptyMap(), ctx.spellsThisTurn[id]) }
         if (ctx.players.isNotEmpty() && ctx.usesOpp && ctx.players.size >= 2) ctx.notes += "\"opponent\"/\"they\" was read as a separate player from ${ctx.players.values.joinToString(" and ")}; name the player instead if that's wrong."
         return Parsed(Situation(players, turnSpec, ctx.objects.values.toList(), emptyList(), ctx.events), ctx.unread, ctx.notes)
     }
@@ -912,6 +914,14 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "${if (who == "me") "Your" else (ctx.players[who] ?: "Your opponent") + "'s"} graveyard is read as holding: $list (only the card types matter to the engine)."; ctx.note(who); if (actor != null) ctx.lastActor = actor; return true
         }
         // "there is a Lightning Bolt in my opponent's graveyard" / "they have a Bolt in the yard": a named card in a graveyard.
+        // "I have cast four spells this turn" / "they've cast two spells already this turn": a count for storm-style abilities.
+        Regex("""^(?:i|we|they|he|she|my opponent|the opponent|opponent)?\s*(?:have|has|'ve|'s|had)?\s*(?:already )?cast (a|an|one|two|three|four|five|six|seven|eight|nine|ten|\d+) (?:other |more )?spells? (?:already )?(?:this turn|so far this turn|before this)$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: "me"
+            val n = number(r.groupValues[1]) ?: return@let
+            ctx.spellsThisTurn[who] = n
+            ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} cast $n spell${if (n == 1) "" else "s"} this turn; abilities that count spells start from there."
+            ctx.note(who); return true
+        }
         // "Stinkweed Imp is in my graveyard" / "Snapcaster Mage sits in their graveyard": the card named first.
         Regex("""^(?:an? |the |my |their )?(c\d+)(?: card)? (?:is|are|sits|sit|was|were|went|goes)(?: put)?(?: in| into|) (my|their|his|her|my opponent's|the opponent's|opponent's|the) (?:graveyard|yard|bin)$""").find(c)?.let { r ->
             val who = when (r.groupValues[2]) { "my", "the" -> "me"; else -> pronounPlayer(ctx, "their") }

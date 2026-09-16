@@ -35,7 +35,9 @@ data class PlayerSpec(val id: String, val name: String = id, val life: Int? = nu
                       /** Mana available right now, when stated ("only has one Mountain untapped"). */
                       val mana: Int? = null,
                       /** Devotion to colours (W/U/B/R/G), when stated. */
-                      val devotion: Map<String, Int> = emptyMap())
+                      val devotion: Map<String, Int> = emptyMap(),
+                      /** Spells already cast this turn, when stated ("I have cast four spells this turn") — storm-style counts. */
+                      val spellsThisTurn: Int? = null)
 
 @Serializable
 data class TurnSpec(val activePlayer: String? = null, val phase: String? = null, val step: String? = null,
