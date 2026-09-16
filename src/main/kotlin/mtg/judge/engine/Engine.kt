@@ -867,8 +867,15 @@ class Engine(val state: GameState) {
         val triggered = mutableListOf<Pair<GameObject, TriggeredAbility>>()
         for (obj in state.objects.values) {
             if (obj.isOnBattlefield() && state.abilitiesLostOn(obj) != null) continue
+            val jailer = if (obj.zone == Zone.GRAVEYARD) graveyardAbilitiesGone() else null
             for (ability in obj.def.abilities.filterIsInstance<TriggeredAbility>()) {
-                if (matches(obj, ability.trigger, event)) triggered += obj to ability
+                val fromGy = obj.zone == Zone.GRAVEYARD && functionsFromGraveyard(ability)
+                if (fromGy && jailer != null) {
+                    if (state.trace.steps.none { it.text.startsWith("${jailer.name} takes the abilities away") })
+                        trace.step("${jailer.name} takes the abilities away from every card in every graveyard, so ${obj.name} has no ability to trigger while it's there.", "604.2", "613.1f")
+                    continue
+                }
+                if (matches(obj, ability.trigger, event, fromGy)) triggered += obj to ability
             }
         }
         // Elesh Norn: a permanent entering causes no abilities of her controller's opponents to trigger.
@@ -946,42 +953,64 @@ class Engine(val state: GameState) {
         if (ordered.size > 1) trace.step("Multiple abilities triggered at once; they are put on the stack in APNAP order, each player choosing the order among their own.", "603.3b")
     }
 
-    private fun matches(obj: GameObject, trigger: Trigger, event: GameEvent): Boolean = when (trigger) {
-        is Trigger.SpellCast -> event is GameEvent.SpellCast && obj.isOnBattlefield() && when (trigger.who) {
+    private fun matches(obj: GameObject, trigger: Trigger, event: GameEvent, fromGraveyard: Boolean = false): Boolean {
+        // A trigger that functions from a graveyard (603.6e, Bloodghast) is live there; every other one needs its source on the battlefield.
+        fun onBf() = obj.isOnBattlefield() || (fromGraveyard && obj.zone == Zone.GRAVEYARD)
+        return when (trigger) {
+        is Trigger.SpellCast -> event is GameEvent.SpellCast && onBf() && when (trigger.who) {
             Who.YOU -> event.item.controller == obj.controller
             Who.OPPONENT -> event.item.controller != obj.controller
             else -> true
         } && (trigger.spellFilter == null || filterMatchesSpell(trigger.spellFilter, event.item, obj.controller))
-        is Trigger.SpellCastMvEqualsCounters -> event is GameEvent.SpellCast && obj.isOnBattlefield() &&
+        is Trigger.SpellCastMvEqualsCounters -> event is GameEvent.SpellCast && onBf() &&
             event.item.source !== obj && event.item.source.def.manaValue.toInt() == (obj.counters[trigger.counter] ?: 0)
         Trigger.ThisEnters -> event is GameEvent.EntersBattlefield && event.obj === obj
         Trigger.ThisDies -> event is GameEvent.Dies && event.obj === obj
         Trigger.ThisLeavesBattlefield -> (event is GameEvent.LeavesBattlefield || event is GameEvent.Dies) && (event as? GameEvent.LeavesBattlefield)?.obj === obj || (event as? GameEvent.Dies)?.obj === obj
         Trigger.ThisAttacks -> event is GameEvent.Attacks && event.obj === obj
         Trigger.ThisCast -> event is GameEvent.SpellCast && event.item.source === obj
-        is Trigger.BeginningOfStep -> event is GameEvent.StepBegins && event.step == trigger.step && obj.isOnBattlefield() && when (trigger.whose) {
+        is Trigger.BeginningOfStep -> event is GameEvent.StepBegins && event.step == trigger.step && onBf() && when (trigger.whose) {
             Who.YOU -> event.activePlayer == obj.controller; Who.OPPONENT -> event.activePlayer != obj.controller; else -> true }
         is Trigger.ThisDealsDamage -> event is GameEvent.DamageDealt && event.source === obj && (!trigger.combatOnly || event.combat) &&
             (trigger.toPlayer == null || trigger.toPlayer == (event.target is Ref.Player))
-        is Trigger.PermanentEnters -> event is GameEvent.EntersBattlefield && obj.isOnBattlefield() && !(trigger.other && event.obj === obj) && state.matches(trigger.filter, event.obj, obj.controller)
-        is Trigger.PermanentDies -> event is GameEvent.Dies && (obj.isOnBattlefield() || event.obj === obj || obj.id in leavingTogether) && !(trigger.other && event.obj === obj) && matchesLki(trigger.filter, event.obj, obj.controller, obj)
-        Trigger.YouAttack -> event is GameEvent.PlayerAttacks && event.playerId == obj.controller && obj.isOnBattlefield()
-        Trigger.CreatureAttacksAlone -> event is GameEvent.AttacksAlone && event.obj.controller == obj.controller && obj.isOnBattlefield()
-        Trigger.YouGainLife -> event is GameEvent.LifeGained && event.playerId == obj.controller && obj.isOnBattlefield()
-        Trigger.YouDraw -> event is GameEvent.Drew && event.playerId == obj.controller && obj.isOnBattlefield()
-        is Trigger.CardsToYourGraveyard -> event is GameEvent.Dies && obj.isOnBattlefield() && event.obj.owner == obj.controller && matchesLki(trigger.filter, event.obj, obj.controller)
-        is Trigger.PlayerDraws -> event is GameEvent.Drew && obj.isOnBattlefield() && when (trigger.who) { Who.YOU -> event.playerId == obj.controller; Who.OPPONENT -> event.playerId != obj.controller; else -> true }
-        is Trigger.YouDrawNth -> event is GameEvent.Drew && event.playerId == obj.controller && obj.isOnBattlefield() && state.player(event.playerId).drew == trigger.n
+        is Trigger.PermanentEnters -> event is GameEvent.EntersBattlefield && onBf() && !(trigger.other && event.obj === obj) && state.matches(trigger.filter, event.obj, obj.controller)
+        is Trigger.PermanentDies -> event is GameEvent.Dies && (onBf() || event.obj === obj || obj.id in leavingTogether) && !(trigger.other && event.obj === obj) && matchesLki(trigger.filter, event.obj, obj.controller, obj)
+        Trigger.YouAttack -> event is GameEvent.PlayerAttacks && event.playerId == obj.controller && onBf()
+        Trigger.CreatureAttacksAlone -> event is GameEvent.AttacksAlone && event.obj.controller == obj.controller && onBf()
+        Trigger.YouGainLife -> event is GameEvent.LifeGained && event.playerId == obj.controller && onBf()
+        Trigger.YouDraw -> event is GameEvent.Drew && event.playerId == obj.controller && onBf()
+        is Trigger.CardsToYourGraveyard -> event is GameEvent.Dies && onBf() && event.obj.owner == obj.controller && matchesLki(trigger.filter, event.obj, obj.controller)
+        is Trigger.PlayerDraws -> event is GameEvent.Drew && onBf() && when (trigger.who) { Who.YOU -> event.playerId == obj.controller; Who.OPPONENT -> event.playerId != obj.controller; else -> true }
+        is Trigger.YouDrawNth -> event is GameEvent.Drew && event.playerId == obj.controller && onBf() && state.player(event.playerId).drew == trigger.n
         Trigger.ThisIsDealtDamage -> event is GameEvent.DamageDealt && (event.target as? Ref.Obj)?.id == obj.id
         Trigger.ThisBecomesBlocked -> event is GameEvent.BecomesBlocked && event.obj === obj
         Trigger.ThisBlocks -> event is GameEvent.Blocks && event.obj === obj
         Trigger.ThisBecomesTarget -> event is GameEvent.BecomesTarget && event.obj === obj
         Trigger.ThisBecomesTapped -> event is GameEvent.BecomesTapped && event.obj === obj
         Trigger.ThisCycled -> event is GameEvent.Cycled && event.obj === obj
-        is Trigger.PermanentAttacks -> event is GameEvent.Attacks && obj.isOnBattlefield() && state.matches(trigger.filter, event.obj, obj.controller, obj)
-        is Trigger.PermanentDealsCombatDamageToPlayer -> event is GameEvent.DamageDealt && event.combat && event.target is Ref.Player && obj.isOnBattlefield() && state.matches(trigger.filter, event.source, obj.controller, obj)
-        Trigger.YourCreaturesDealCombatDamageToPlayer -> event is GameEvent.CreaturesDealtCombatDamageToPlayer && event.playerId == obj.controller && obj.isOnBattlefield()
+        is Trigger.PermanentAttacks -> event is GameEvent.Attacks && onBf() && state.matches(trigger.filter, event.obj, obj.controller, obj)
+        is Trigger.PermanentDealsCombatDamageToPlayer -> event is GameEvent.DamageDealt && event.combat && event.target is Ref.Player && onBf() && state.matches(trigger.filter, event.source, obj.controller, obj)
+        is Trigger.PermanentDealsCombatDamage -> event is GameEvent.DamageDealt && event.combat && onBf() && state.matches(trigger.filter, event.source, obj.controller, obj)
+        Trigger.YourCreaturesDealCombatDamageToPlayer -> event is GameEvent.CreaturesDealtCombatDamageToPlayer && event.playerId == obj.controller && onBf()
         is Trigger.Unknown -> false
+        }
+    }
+
+    /** Whether a triggered ability works while its card sits in a graveyard (603.6e): the ones that talk about returning it from there. */
+    private fun functionsFromGraveyard(ability: TriggeredAbility): Boolean =
+        ability.text.contains("from your graveyard", true) || ability.text.contains("from their graveyard", true) ||
+            hasReturnSelf(ability.effect)
+
+    private fun hasReturnSelf(e: Effect): Boolean = when (e) {
+        is Effect.ReturnSelfFromGraveyard -> true
+        is Effect.May -> hasReturnSelf(e.effect); is Effect.Seq -> e.effects.any { hasReturnSelf(it) }
+        is Effect.IfYouDo -> hasReturnSelf(e.choice) || hasReturnSelf(e.then); is Effect.Modal -> e.modes.any { hasReturnSelf(it) }
+        else -> false
+    }
+
+    /** Yixlid Jailer: the permanent taking abilities away from cards in graveyards, if one is out. */
+    private fun graveyardAbilitiesGone(): GameObject? = state.objects.values.firstOrNull { o ->
+        o.isOnBattlefield() && o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.GraveyardCardsLoseAbilities }
     }
 
     /** Filter match for something that just left the battlefield (last known information, 603.10a). */
@@ -1120,6 +1149,15 @@ class Engine(val state: GameState) {
                     on
                 }
                 forEachLegalTarget(item, effect.target) { applyDamage(item.source.name, it, sacAmount ?: if (effect.x) (item.x ?: 0) else if (item.kicked && effect.kickedAmount != null) effect.kickedAmount else mastery ?: effect.amount) }
+            }
+            is Effect.ReturnSelfFromGraveyard -> {
+                val o = item.source; val p = state.player(item.controller)
+                if (o.zone != Zone.GRAVEYARD) trace.step("${o.name} is no longer in ${p.possessive} graveyard, so there is nothing to return.", "400.7", "608.2b")
+                else {
+                    move(o, Zone.BATTLEFIELD, "${o.name} returns from ${p.possessive} graveyard to the battlefield${if (effect.tapped) " tapped" else ""}. It is a new object with no memory of its previous existence.", "400.7", "603.6e")
+                    o.timestamp = state.tick(); o.summoningSick = o.def.isCreature; if (effect.tapped) o.tapped = true
+                    onEvent(GameEvent.EntersBattlefield(o))
+                }
             }
             is Effect.DamageThatMuch -> {
                 val n = item.causedAmount ?: run { state.unsupported += Unsupported(item.describe, "\"That much\" refers to an amount the engine didn't record."); return }
@@ -2245,7 +2283,7 @@ class Engine(val state: GameState) {
         is Effect.Draw -> "draw ${if (effect.x) "X" else effect.count.toString()} card${if (effect.count > 1 || effect.x) "s" else ""}"
         is Effect.Damage -> "deal ${effect.amount} damage to ${effect.target.raw}"
         is Effect.CounterThatSpell -> "counter that spell"; is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Fight -> "${effect.mine.raw} fights ${effect.theirs.raw}"; is Effect.DealsPowerTo -> "${effect.mine.raw} deals damage equal to its power to ${effect.theirs.raw}"; is Effect.RedirectToSelf -> "change a target of ${effect.target.raw} to ${item.source.name}"; is Effect.Blink -> "exile ${effect.target.raw}, then return it to the battlefield under ${if (effect.ownersControl) "its owner's" else "your"} control"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.PreventCombatToAndBy -> "prevent all combat damage dealt to and by ${effect.target.raw} this turn"; is Effect.WinIfCastBefore -> "win the game if another spell with this name was cast this game, otherwise tuck it seventh from the top and gain ${effect.life} life"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
-        is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.DamageThatMuch -> "deal that much damage to ${effect.target.raw}"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
+        is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.ReturnSelfFromGraveyard -> "return ${item.source.name} from your graveyard to the battlefield${if (effect.tapped) " tapped" else ""}"; is Effect.DamageThatMuch -> "deal that much damage to ${effect.target.raw}"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
         is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.GainLifePerSpellThisTurn -> "gain ${effect.per} life for each spell cast this turn"; is Effect.WinIfDevotionCoversLibrary -> "look at the top X cards (X = your devotion) and win if X is at least your library size"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.ExileGraveyard -> "exile ${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "your"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }}${if (effect.who == Who.YOU) "" else "'s"} graveyard"; is Effect.DiscardNamed -> "that player reveals their hand and discards every card with the name you chose"; is Effect.BounceChosen -> "return ${withArticle(effect.what)} you control to its owner's hand"; is Effect.LivingWeapon -> "create a 0/0 black Phyrexian Germ creature token, then attach ${item.source.name} to it"; is Effect.DiscardChosen -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }} reveals their hand and discards ${effect.what} of your choice"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"} onto the battlefield"
         is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.GainLifeEqualToToughness -> "its controller gains life equal to its toughness"; is Effect.PutOnBottom -> "put ${effect.target.raw} on the bottom of its owner's library"; is Effect.GainLifeLostThisWay -> "gain life equal to the life lost this way"; is Effect.RevealTopToHand -> "reveal the top card of your library and put it into your hand"; is Effect.PutSelfOnLibraryTop -> "put ${item.source.name} on top of its owner's library"; is Effect.LoseLifeEqualToRevealedMv -> "lose life equal to the revealed card's mana value"; is Effect.ExileIfDamagedDies -> "exile a creature dealt damage this way instead if it would die this turn"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"

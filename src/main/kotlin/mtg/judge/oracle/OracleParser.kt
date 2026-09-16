@@ -199,6 +199,8 @@ object OracleParser {
         if (Regex("""^~ blocks$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBlocks
         Regex("""^(.+?) attacks$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m -> if (!m.groupValues[1].equals("~", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Trigger.PermanentAttacks(f) } }
         Regex("""^(.+?) deals combat damage to a player$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m -> if (!m.groupValues[1].equals("~", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Trigger.PermanentDealsCombatDamageToPlayer(f) } }
+        // Umezawa's Jitte: "whenever equipped creature deals combat damage" — to a blocker as well as to a player.
+        Regex("""^(.+?) deals combat damage$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m -> if (!m.groupValues[1].equals("~", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Trigger.PermanentDealsCombatDamage(f) } }
         if (Regex("""^you gain life$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.YouGainLife
         if (Regex("""^you draw a card$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.YouDraw
         if (Regex("""^a creature you control attacks alone$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.CreatureAttacksAlone
@@ -359,6 +361,7 @@ object OracleParser {
         parseReplacementStatic(line)?.let { return listOf(it) }
         Regex("""^~ enters(?: the battlefield)? tapped\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.EntersTapped()) }
         Regex("""^all cards that aren't on the battlefield, spells, and permanents are the chosen colou?r in addition to their other colou?rs\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.EverythingIsChosenColour) }
+        Regex("""^cards in graveyards lose all abilities\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.GraveyardCardsLoseAbilities) }
         // The Theros gods. This has to come before the "as long as" bail below.
         Regex("""^as long as your devotion to (white|blue|black|red|green) is less than (one|two|three|four|five|six|seven|\d+), ~ isn't a creature\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val colour = when (m.groupValues[1].lowercase()) { "white" -> 'W'; "blue" -> 'U'; "black" -> 'B'; "red" -> 'R'; else -> 'G' }
@@ -776,6 +779,8 @@ object OracleParser {
         Regex("""^(target opponent|target player|that player|each opponent|you) loses? that much life\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             return Effect.LoseLifeThatMuch(when (m.groupValues[1].lowercase()) { "target opponent", "target player" -> Who.TARGET_PLAYER; "each opponent" -> Who.EACH_OPPONENT; "you" -> Who.YOU; else -> Who.THAT_PLAYER })
         }
+        // Bloodghast: "return ~ from your graveyard to the battlefield."
+        Regex("""^return ~ from your graveyard to the battlefield( tapped)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.ReturnSelfFromGraveyard(m.groupValues[1].isNotEmpty()) }
         // Questing Beast: "it deals that much damage to target planeswalker that player controls."
         Regex("""^(?:~|it) deals that much damage to target (.+?)(?: that player controls| that opponent controls)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             val raw = m.groupValues[1].trim()

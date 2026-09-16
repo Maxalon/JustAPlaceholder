@@ -884,6 +884,14 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "${if (who == "me") "Your" else (ctx.players[who] ?: "Your opponent") + "'s"} graveyard is read as holding: $list (only the card types matter to the engine)."; ctx.note(who); if (actor != null) ctx.lastActor = actor; return true
         }
         // "there is a Lightning Bolt in my opponent's graveyard" / "they have a Bolt in the yard": a named card in a graveyard.
+        // "Stinkweed Imp is in my graveyard" / "Snapcaster Mage sits in their graveyard": the card named first.
+        Regex("""^(?:an? |the |my |their )?(c\d+)(?: card)? (?:is|are|sits|sit|was|were|went|goes)(?: put)?(?: in| into|) (my|their|his|her|my opponent's|the opponent's|opponent's|the) (?:graveyard|yard|bin)$""").find(c)?.let { r ->
+            val who = when (r.groupValues[2]) { "my", "the" -> "me"; else -> pronounPlayer(ctx, "their") }
+            val was = ctx.lastMentioned
+            addObject(m.cards.getValue(r.groupValues[1]), who, false, ctx, zone = "graveyard", allowDuplicate = true)
+            ctx.lastMentioned = was
+            ctx.note(who); return true
+        }
         Regex("""^(?:there (?:is|are)|i have|they have|there's) (?:an? |the )?(c\d+) in (my|their|his|her|my opponent's|the opponent's|opponent's) (?:graveyard|yard|bin)$""").find(c)?.let { r ->
             val who = when (r.groupValues[2]) { "my" -> "me"; else -> pronounPlayer(ctx, "their") }
             val was = ctx.lastMentioned

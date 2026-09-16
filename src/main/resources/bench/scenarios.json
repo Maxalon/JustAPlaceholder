@@ -5631,5 +5631,58 @@
     "cite": [
       "613.1e"
     ]
+  },
+  {
+    "id": "bloodghast-returns-itself-on-landfall",
+    "text": "Bloodghast is in my graveyard and a land enters under my control. What happens?",
+    "expect": [
+      "Bloodghast's ability triggers",
+      "Bloodghast returns from your graveyard to the battlefield"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "603.6e",
+      "400.7"
+    ]
+  },
+  {
+    "id": "yixlid-jailer-silences-a-card-in-the-graveyard",
+    "text": "I control Yixlid Jailer and Bloodghast is in my graveyard. A land enters under my control. What happens?",
+    "expect": [
+      "Yixlid Jailer takes the abilities away from every card in every graveyard"
+    ],
+    "notExpect": [
+      "Bloodghast returns from your graveyard"
+    ],
+    "cite": [
+      "604.2"
+    ]
+  },
+  {
+    "id": "jitte-charges-on-combat-damage",
+    "text": "I control Umezawa's Jitte equipped to a Grizzly Bears and I attack with the Bears unblocked. What happens?",
+    "expect": [
+      "Umezawa's Jitte's ability triggers",
+      "2 charge counters are put on Umezawa's Jitte"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "122.1a"
+    ]
+  },
+  {
+    "id": "a-card-named-first-can-sit-in-a-graveyard",
+    "text": "Stinkweed Imp is in my graveyard. What happens?",
+    "expect": [
+      "Graveyard: Stinkweed Imp"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

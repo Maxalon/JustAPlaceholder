@@ -481,6 +481,35 @@ class BatchFourteenTest {
         assertTrue(!s.matches(nonblack, s.obj("bear"), "opp"))
     }
 
+    private val bloodghast = card("Bloodghast", "Creature \u2014 Vampire Spirit", "Bloodghast can't block.\nWhenever a land you control enters, you may return Bloodghast from your graveyard to the battlefield.", "{B}{B}", "B", "2", "1")
+    private val jailer = card("Yixlid Jailer", "Creature \u2014 Zombie Wizard", "Cards in graveyards lose all abilities.", "{1}{B}", "B", "2", "1")
+    private val forestForGy = card("Forest", "Basic Land — Forest", "", "")
+    private val jitte = card("Umezawa's Jitte", "Legendary Artifact \u2014 Equipment", "Whenever equipped creature deals combat damage, put two charge counters on Umezawa's Jitte.\nEquip {2}", "{2}", "", null, null, "Equip")
+
+    @Test
+    fun `a landfall trigger works from the graveyard`() {
+        val s = state(); s.put("ghast", bloodghast, "me", Zone.GRAVEYARD); s.put("forest", forestForGy, "me", Zone.HAND)
+        val e = Engine(s); e.enter("forest"); e.resolveAll()
+        assertEquals(Zone.BATTLEFIELD, s.obj("ghast").zone)
+        assertTrue("603.6e" in s.cited(), s.cited().toString())
+    }
+
+    @Test
+    fun `yixlid jailer stops the graveyard trigger from happening at all`() {
+        val s = state(); s.put("jailer", jailer, "opp"); s.put("ghast", bloodghast, "me", Zone.GRAVEYARD); s.put("forest", forestForGy, "me", Zone.HAND)
+        val e = Engine(s); e.enter("forest"); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("ghast").zone)
+        assertTrue(s.trace.steps.any { "takes the abilities away" in it.text }, s.trace.steps.joinToString("\n") { it.text })
+    }
+
+    @Test
+    fun `the jitte charges on combat damage to a player`() {
+        val s = state(); s.put("bear", bears, "me").summoningSick = false
+        val j = s.put("jitte", jitte, "me"); j.attachedTo = "bear"
+        val e = Engine(s); e.declareAttacker("me", "bear", Ref.Player("opp")); e.combatDamage(); e.resolveAll()
+        assertEquals(2, s.obj("jitte").counters["charge"])
+    }
+
     @Test
     fun `the germ dies once the equipment leaves`() {
         val s = state(); s.put("skull", batterskull, "me", Zone.HAND)
