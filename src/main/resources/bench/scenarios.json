@@ -7113,5 +7113,51 @@
     "cite": [
       "302.6"
     ]
+  },
+  {
+    "id": "protection-prevents-combat-damage",
+    "text": "My Grizzly Bears has protection from black. Their Black Knight attacks and I block with my Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears has protection from black, so that damage is prevented"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield"
+    ],
+    "cite": [
+      "702.16e"
+    ]
+  },
+  {
+    "id": "protection-stated-with-the-permanent-last",
+    "text": "My Grizzly Bears blocks their Black Knight. I have protection from black on my Grizzly Bears.",
+    "expect": [
+      "Damage to Grizzly Bears from Black Knight is prevented"
+    ],
+    "notExpect": [],
+    "cite": [
+      "702.16e"
+    ]
+  },
+  {
+    "id": "a-keyword-adjective-describes-a-creature",
+    "text": "I have a 2/2 indestructible creature and they Dismember it. Does it die?",
+    "expect": [
+      "indestructible"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
+  },
+  {
+    "id": "two-keyword-adjectives-describe-a-creature",
+    "text": "I have a 3/3 flying deathtouch creature. It blocks their 5/5. Does their 5/5 die?",
+    "expect": [
+      "deathtouch"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
   }
 ]

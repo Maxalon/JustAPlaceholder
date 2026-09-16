@@ -245,6 +245,11 @@ class SituationParser(private val names: NameIndex) {
                 !(normWords.getOrNull(f.end) in setOf("counters", "tokens") && normWords.getOrNull(f.end + 1) in setOf("it", "that", "them", "this", "my", "their", "the", "his", "her", "its"))) }
             // "to protect it", "to save my Bears": a verb after "to" is a verb, not the card of that name.
             .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.start - 1) == "to" && normWords[f.start] in verbsAfterTo && normWords[f.start] !in short) }
+            // "protection from black": the colour named after "protection from" is a colour, not the card whose
+            // name starts with it. Black Knight on the board turned "protection from black" into "protection from
+            // Black Knight", and the creature then had protection from nothing at all.
+            .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in colorWords && normWords.getOrNull(f.start - 1) == "from" &&
+                (maxOf(0, f.start - 4) until f.start).any { normWords[it] == "protection" }) }
             // "a 2/2 with lifelink and deathtouch": a keyword in a keyword list is a keyword, not the card of that name.
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in keywordWords && normWords.getOrNull(f.start - 1) in setOf("with", "and", "&", "gains", "gain", "has", "have", "granted") && normWords[f.start] !in short) }
             // A first name that could mean several cards ("Jace") means the one named in full earlier, however it was matched.
@@ -997,19 +1002,26 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastMentioned = ids.last(); return true
         }
         // Unnamed creatures: "I have three creatures", "control two other creatures" (stats unknown; assumed 1/1 and said so).
-        Regex("""^(?:(?:have|has|got|control|controls|controlling|'ve got)\s+)?(an? |\d+ |two |three |four |five )?(?:other |more |untapped )?(?:(\d+/\d+)s?\s*)?((?:[a-z]+ )?)($creatureKinds)?(?: with ([a-z ,&]+?|(?:an? |one |two |three |four |five |\d+ )?[+-]\d+/[+-]\d+ counters?(?: on it)?))?(?: plus .*)?(?: on the battlefield| in play| out)?((?: that (?:i|they|he|she) just (?:played|cast)(?: this turn)?| that just came down| i just played| with summoning sickness| that has been out| from last turn)?)$""").find(c)?.let { r ->
+        Regex("""^(?:(?:have|has|got|control|controls|controlling|'ve got)\s+)?(an? |\d+ |two |three |four |five )?(?:other |more |untapped )?(?:(\d+/\d+)s?\s*)?((?:first strike |double strike |[a-z]+ )*)($creatureKinds)?(?: with ([a-z ,&]+?|(?:an? |one |two |three |four |five |\d+ )?[+-]\d+/[+-]\d+ counters?(?: on it)?))?(?: plus .*)?(?: on the battlefield| in play| out)?((?: that (?:i|they|he|she) just (?:played|cast)(?: this turn)?| that just came down| i just played| with summoning sickness| that has been out| from last turn)?)$""").find(c)?.let { r ->
             val hasVerb = Regex("""^(?:have|has|got|control|controls|controlling|'ve got)\b""").containsMatchIn(c)
             val pt = r.groupValues[2]; val adj = r.groupValues[3].trim(); val kind = r.groupValues[4]
             // Needs a verb or a state context, and something creature-like: "a 3/3", "two goblins", "3 other goblins"; not "the", "it", or a lone number.
             if (kind.isEmpty() && pt.isEmpty()) return@let
             if (!hasVerb && ctx.lastVerb != "have" && ctx.lastOwner == null) return@let
-            if (adj.isNotEmpty() && adj !in setOf("flying", "vanilla", "big", "small", "random", "red", "green", "white", "blue", "black")) return@let
+            // "a 2/2 indestructible creature", "my 3/3 flying deathtouch creature": the words in front of the
+            // kind are either keywords the creature has or the plain adjectives below; anything else isn't a
+            // creature description and the clause belongs to another rule.
+            val adjWords = adj.replace("first strike", "first-strike").replace("double strike", "double-strike").split(' ').filter { it.isNotEmpty() }
+            val adjKw = adjWords.map { it.replace('-', ' ') }.filter { it in keywordAdjectives }
+            val plainAdj = adjWords.map { it.replace('-', ' ') }.filter { it !in keywordAdjectives }
+            if (plainAdj.any { it !in setOf("vanilla", "big", "small", "random", "red", "green", "white", "blue", "black") }) return@let
             val who = actor ?: (if (hasVerb) subject else ctx.lastOwner ?: subject) ?: "me"
             // "a 1/1 with a +1/+1 counter on it": that's a counter, not a keyword, and it goes on every creature described.
             val withTail = r.groupValues[5]
             val counterTail = withTail.takeIf { Regex("""[+-]\d+/[+-]\d+ counters?""").containsMatchIn(it) }
-            val kw = listOfNotNull(withTail.takeIf { it.isNotEmpty() && counterTail == null }, adj.takeIf { it == "flying" }).joinToString(", ")
-            val made = describedCreatures(r.groupValues[1], pt, if (adj in setOf("red", "green", "white", "blue", "black")) "$adj ${kind.ifEmpty { "creature" }}" else kind, who, ctx, kw)
+            val kw = (listOfNotNull(withTail.takeIf { it.isNotEmpty() && counterTail == null }) + adjKw).joinToString(", ")
+            val colour = plainAdj.firstOrNull { it in setOf("red", "green", "white", "blue", "black") }
+            val made = describedCreatures(r.groupValues[1], pt, if (colour != null) "$colour ${kind.ifEmpty { "creature" }}" else kind, who, ctx, kw)
             if (counterTail != null) made.forEach { applyStateWords(it, "with $counterTail", ctx) }
             // "a 2/2 that I just played this turn": summoning sickness, said as part of the description.
             r.groupValues[6].takeIf { it.isNotBlank() }?.let { tail -> made.forEach { applyStateWords(it, tail.trim(), ctx) } }
@@ -1193,6 +1205,22 @@ class SituationParser(private val names: NameIndex) {
             ctx.objects[id] = spec.copy(keywords = spec.keywords + kws.filter { it !in spec.keywords })
             ctx.notes += "${spec.card.name ?: id} is read as having ${kws.joinToString(" and ")} (from an effect; say what gives it if that matters)."
             ctx.lastMentioned = id; ctx.lastOwner = owner ?: ctx.lastOwner; return true
+        }
+        // "I have protection from black on my Bears", "there is hexproof on it": the same statement with the
+        // permanent named at the end rather than at the front.
+        Regex("""^(?:have|has|had|there is|there's|gave|gives?|granted|put) ((?:$kwPhrase)(?:(?:,| and|, and) (?:$kwPhrase))*) on (?:(my|their|his|her|the|my opponent's) )?(c\d+|it|that)$""").find(c)?.let { r ->
+            val owner = when (val w = r.groupValues[2].trim()) {
+                "my" -> "me"
+                "their", "his", "her", "my opponent's" -> pronounPlayer(ctx, "their")
+                else -> actor ?: ctx.lastOwner
+            }
+            val id = if (r.groupValues[3] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else m.cards[r.groupValues[3]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, owner ?: "me", false, ctx) } ?: return@let
+            val kws = r.groupValues[1].split(Regex(""",? and |, """)).map { it.trim() }.filter { it.isNotEmpty() }
+            val spec = ctx.objects.getValue(id)
+            ctx.objects[id] = spec.copy(keywords = spec.keywords + kws.filter { it !in spec.keywords })
+            ctx.notes += "${spec.card.name ?: id} is read as having ${kws.joinToString(" and ")} (from an effect; say what gives it if that matters)."
+            ctx.lastMentioned = id; return true
         }
         // "give it protection from black": the actor's other permanent grants it (Mother of Runes).
         Regex("""^(?:gives?|granting|grants?) (?:it|that|(?:the |my )?(c\d+)) protection from (white|blue|black|red|green)(?: in response)?$""").find(c)?.let { r ->
@@ -2686,10 +2714,15 @@ class SituationParser(private val names: NameIndex) {
     /** Verbs that are also card names ("Protect", "Bloodrush"); right after "to" they are verbs. */
     private val verbsAfterTo = setOf("protect", "save", "shield", "defend", "keep", "destroy", "kill", "draw", "search", "block", "attack",
         "sacrifice", "regenerate", "bounce", "exile", "tap", "untap", "pay", "cast", "play", "target", "fight", "counter", "discard", "mill", "scry", "activate", "stop", "answer", "remove", "trigger")
+    /** Colour words that are also the start of card names ("Black Knight"); after "protection from" they are colours. */
+    private val colorWords = setOf("white", "blue", "black", "red", "green")
     /** Keyword words that are also card names ("Lifelink", "Flying"); in a keyword list they mean the keyword. */
     private val keywordWords = setOf("flying", "trample", "deathtouch", "lifelink", "haste", "vigilance", "reach", "menace", "hexproof", "indestructible", "infect", "defender", "flash", "shroud", "intimidate", "fear", "wither", "changeling", "banding", "horsemanship", "shadow", "persist", "undying", "exalted", "prowess")
     /** Keywords an asker can state on a permanent ("has flying", "with protection from black"). */
     private val kwPhrase = """(?:hexproof|indestructible|flying|trample|lifelink|deathtouch|haste|vigilance|reach|menace|shroud|unblockable|first strike|double strike|infect|wither|defender|flash|protection from \w+)"""
+    /** Keywords an asker can put in front of the kind: "a 2/2 indestructible creature", "my flying blocker". */
+    private val keywordAdjectives = setOf("flying", "trample", "deathtouch", "lifelink", "haste", "vigilance", "reach", "menace",
+        "hexproof", "indestructible", "infect", "wither", "defender", "shroud", "unblockable", "first strike", "double strike")
     private val kwNouns = """(?:fliers?|flyers?|flying|tramplers?|trample|deathtouchers?|deathtouch|lifelinkers?|lifelink|first strikers?|first strike|double strikers?|double strike|haste|vigilance|reach|menace|hexproof|indestructible|infect)"""
     private val creatureKinds = """(?:creatures?|walls?|goblins?|elves|elf|zombies?|soldiers?|spirits?|angels?|dragons?|humans?|vampires?|beasts?|birds?|cats?|dogs?|wolves|wolf|knights?|warriors?|wizards?|merfolk|dinosaurs?|hydras?|demons?|elementals?|insects?|rats?|snakes?|thopters?|servos?|saprolings?|squirrels?|bears?|giants?|orcs?|slivers?|faeries|faerie|treefolk|horrors?|constructs?|golems?)"""
     private val singularKind = mapOf("elves" to "elf", "wolves" to "wolf", "faeries" to "faerie")
