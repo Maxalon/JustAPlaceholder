@@ -191,10 +191,40 @@ class Engine(val state: GameState) {
     fun draw(playerId: String, count: Int) { drawCards(state.player(playerId), count); stateBasedActions() }
 
     /** Draws, tracking the library size when it's known; drawing from an empty library flags the player for 704.5b. */
-    private fun drawCards(who: Player, count: Int) {
+    /** A Narset-style limit on how many cards [who] may draw this turn, with the permanent imposing it. */
+    private fun drawLimit(who: Player): Pair<Int, GameObject>? = state.objects.values.filter { it.isOnBattlefield() }
+        .firstNotNullOfOrNull { src ->
+            src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CantDrawMoreThan>()
+                .firstOrNull { e -> e.who == Who.EACH_PLAYER || src.controller != who.id }?.let { it.count to src }
+        }
+
+    /** What stops a card entering the battlefield without being cast, and how: ("Containment Priest", "exile") or ("Grafdigger's Cage", "cant"). */
+    private fun uncastEntryBlocked(o: GameObject, from: Zone): Pair<String, String>? {
+        val zone = when (from) { Zone.GRAVEYARD -> "graveyard"; Zone.LIBRARY -> "library"; Zone.HAND -> "hand"; Zone.EXILE -> "exile"; else -> "" }
+        for (src in state.objects.values) {
+            if (!src.isOnBattlefield()) continue
+            for (e in src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }) {
+                if (e is StaticEffect.CantEnterFrom && zone in e.zones && state.matches(e.filter, o, src.controller, src, anyZone = true)) return src.name to "cant"
+                if (e is StaticEffect.ExileIfEntersUncast && !o.token && state.matches(e.filter, o, src.controller, src, anyZone = true)) return src.name to "exile"
+            }
+        }
+        return null
+    }
+
+    private fun drawCards(who: Player, count0: Int) {
+        var count = count0
+        var trimmed = false
+        drawLimit(who)?.let { (limit, src) ->
+            val left = (limit - who.drewThisTurn).coerceAtLeast(0)
+            if (count > left) {
+                trace.step("${src.name} says ${if (who.you) "you" else who.name} can't draw more than $limit card${if (limit == 1) "" else "s"} each turn, and ${who.subject.lowercase()} ${who.v("has", "have")} already drawn ${who.drewThisTurn} this turn, so only $left of the $count ${if (left == 1) "is" else "are"} drawn; the rest simply don't happen.", "614.1", "121.3")
+                state.outcomes += "${who.subject} ${who.v("draws", "draw")} only $left card${if (left == 1) "" else "s"} of the $count (${src.name})."
+                count = left; trimmed = true
+            }
+        }
         val lib = who.librarySize
         if (lib != null && lib < count) {
-            if (lib > 0) { trace.step("${who.subject} ${who.v("draws", "draw")} $lib card${if (lib > 1) "s" else ""}, emptying ${who.possessive} library.", "121.1"); repeat(lib) { who.drew += 1; onEvent(GameEvent.Drew(who.id)) } }
+            if (lib > 0) { trace.step("${who.subject} ${who.v("draws", "draw")} $lib card${if (lib > 1) "s" else ""}, emptying ${who.possessive} library.", "121.1"); repeat(lib) { who.drew += 1; who.drewThisTurn += 1; onEvent(GameEvent.Drew(who.id)) } }
             who.librarySize = 0; who.drewFromEmpty = true
             trace.step("${who.subject} ${who.v("attempts", "attempt")} to draw ${count - lib} card${if (count - lib > 1) "s" else ""} from a library with no cards in it. No card is drawn, and ${who.subject.lowercase()} will lose the game the next time a player would receive priority.", "121.4", "704.5b")
             state.outcomes += if (lib == 0) "${who.subject} can't draw: ${who.possessive} library is empty." else "${who.subject} ${who.v("draws", "draw")} $lib card${if (lib == 1) "" else "s"} and can't draw the rest (empty library)."
@@ -202,9 +232,9 @@ class Engine(val state: GameState) {
         }
         if (count <= 0) { trace.step("${who.subject} ${who.v("draws", "draw")} no cards.", "121.1"); return }
         trace.step("${who.subject} ${who.v("draws", "draw")} $count card${if (count > 1) "s" else ""}${if (count > 1) " (one at a time)" else ""}${if (lib != null) "; ${lib - count} left in ${who.possessive} library" else ""}.", "121.1", *(if (count > 1) arrayOf("121.2") else emptyArray()))
-        state.outcomes += "${who.subject} ${who.v("draws", "draw")} $count card${if (count > 1) "s" else ""}."
+        if (!trimmed) state.outcomes += "${who.subject} ${who.v("draws", "draw")} $count card${if (count > 1) "s" else ""}."
         if (lib != null) who.librarySize = lib - count
-        repeat(count) { who.drew += 1; onEvent(GameEvent.Drew(who.id)) }
+        repeat(count) { who.drew += 1; who.drewThisTurn += 1; onEvent(GameEvent.Drew(who.id)) }
     }
 
     /** What strips a permanent of the abilities printed on it right now (Blood Moon, Humility), or null. */
@@ -967,7 +997,10 @@ class Engine(val state: GameState) {
             is Effect.Seq -> effect.effects.forEach { applyEffect(it, item) }
             is Effect.May -> {
                 val chooser = (if (effect.who == Who.YOU) you else resolveWho(effect.who, item)) ?: you
-                val what = describe(effect.effect, item).let { d -> if (chooser.you) d.replace("their library", "your library").replace("their hand", "your hand").replace("their graveyard", "your graveyard") else d }
+                val what = describe(effect.effect, item).let { d ->
+                    if (chooser.you) d.replace("their library", "your library").replace("their hand", "your hand").replace("their graveyard", "your graveyard")
+                    else d.replace("your library", "their library").replace("your hand", "their hand").replace("your graveyard", "their graveyard")
+                }
                 trace.step("${chooser.subject} may choose to $what.", "608.2d")
                 state.assumptions += "${chooser.subject} ${chooser.v("chooses", "choose")} to $what (${item.describe} says \"${if (effect.who == Who.YOU) "you may" else "may"}\")."
                 applyEffect(effect.effect, item)
@@ -1252,6 +1285,17 @@ class Engine(val state: GameState) {
                 else {
                     val counters = effect.mvEqualsCounters?.let { item.source.counters[it] ?: 0 }
                     if (counters != null && chosen.def.manaValue.toInt() != counters) { trace.step("${item.source.name} has $counters ${effect.mvEqualsCounters} counter${if (counters == 1) "" else "s"} but ${chosen.name}'s mana value is ${chosen.def.manaValue.toInt()}, so it can't be put onto the battlefield with it.", "202.3"); state.outcomes += "${chosen.name} stays in hand (mana value ${chosen.def.manaValue.toInt()} ≠ $counters counters)." }
+                    else if (uncastEntryBlocked(chosen, fromZone) != null) {
+                        val (by, how) = uncastEntryBlocked(chosen, fromZone)!!
+                        if (how == "cant") {
+                            trace.step("$by stops cards in a $zoneName from entering the battlefield, so ${chosen.name} stays in ${you.possessive} $zoneName. Nothing enters, so no enters-the-battlefield ability triggers.", "614.1", "616.1")
+                            state.outcomes += "${chosen.name} can't enter the battlefield ($by); it stays in ${you.possessive} $zoneName."
+                        } else {
+                            trace.step("${chosen.name} would enter the battlefield without having been cast, so $by exiles it instead. It never enters, so nothing triggers on it entering.", "614.1a", "614.6")
+                            moveRaw(chosen, Zone.EXILE)
+                            state.outcomes += "${chosen.name}: ${you.possessive} $zoneName → exile (replaced by $by)."
+                        }
+                    }
                     else {
                         trace.step("${you.subject} ${you.v("puts", "put")} ${chosen.name} from ${you.possessive} hand onto the battlefield${if (counters != null) " (its mana value ${chosen.def.manaValue.toInt()} matches the $counters counters)" else ""}. It's put there directly rather than cast, so it never was a spell: it can't be countered and 'whenever you cast' abilities don't trigger.", "608.2c", *(if (counters != null) arrayOf("202.3") else emptyArray()))
                         val host = chosen.attachedTo?.let { state.objects[it] }

@@ -1498,7 +1498,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("attack", player = who, obj = id, targets = targetsIn("at " + (r.groupValues[1].ifEmpty { "them" }), m, ctx).ifEmpty { listOf(ctx.other(who) ?: "opp") }); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
         }
         // "I return Grizzly Bears from my graveyard" (Sun Titan): the choice for the trigger of the creature that just attacked or entered.
-        Regex("""^(?:returns?|bring(?:s)? back|reanimates?|gets? back) (?:an? |the |my )?(c\d+)(?: from (?:my |the )?graveyard)?(?: to the battlefield| with (?:it|its trigger|(c\d+)(?:'s trigger)?))?$""").find(c)?.let { r ->
+        Regex("""^(?:returns?|bring(?:s)? back|reanimates?|gets? back) (?:an? |the |my )?(c\d+)(?: from (?:my |the |their |his |her |@\w+'s )?graveyard)?(?: to the battlefield| with (?:it|its trigger|(c\d+)(?:'s trigger)?))?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val srcId = r.groupValues[2].takeIf { it.isNotEmpty() }?.let { m.cards.getValue(it) }?.let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) }
                 ?: ctx.events.lastOrNull { (it.verb == "attack" || it.verb == "enter") && it.player == who }?.obj ?: ctx.events.lastOrNull { it.verb == "cast" && it.player == who }?.card?.name?.let { slug(it) } ?: return@let

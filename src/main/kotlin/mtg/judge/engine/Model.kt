@@ -279,6 +279,12 @@ sealed interface StaticEffect {
     data class PtCda(val power: CountExpr?, val toughness: CountExpr?, val plus: Int = 0, val toughnessPlus: Int? = null) : StaticEffect
     /** Layer 6: "[filter] have [keywords]". */
     data class KeywordGrant(val filter: ObjFilter, val keywords: Set<String>) : StaticEffect
+    /** Containment Priest: "If a nontoken creature would enter and it wasn't cast, exile it instead." */
+    data class ExileIfEntersUncast(val filter: ObjFilter) : StaticEffect
+    /** Grafdigger's Cage: "Creature cards in graveyards and libraries can't enter the battlefield." */
+    data class CantEnterFrom(val filter: ObjFilter, val zones: Set<String>) : StaticEffect
+    /** Narset, Spirit of the Labyrinth: "Each opponent can't draw more than one card each turn." */
+    data class CantDrawMoreThan(val count: Int, val who: Who) : StaticEffect
     /** Humility: "All creatures lose all abilities and have base power and toughness 1/1." */
     data class LoseAbilitiesSetPt(val filter: ObjFilter, val power: Int, val toughness: Int) : StaticEffect
     /** "~ enters tapped" (614.1c replacement on entering). */

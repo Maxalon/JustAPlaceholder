@@ -4,6 +4,8 @@ enum class Zone { BATTLEFIELD, HAND, GRAVEYARD, LIBRARY, EXILE, STACK, COMMAND }
 
 class Player(val id: String, val name: String, var life: Int?) {
     var drew = 0
+    /** Cards drawn this turn, for "can't draw more than one card each turn" (Narset). */
+    var drewThisTurn = 0
     var lost = false
     var poison = 0
     /** Cards in hand, when the situation said so (Ensnaring Bridge). */

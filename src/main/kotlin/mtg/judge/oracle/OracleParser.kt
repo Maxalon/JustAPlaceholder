@@ -296,6 +296,22 @@ object OracleParser {
             val whose = when (m.groupValues[2].lowercase()) { "an opponent's" -> Who.OPPONENT; "your" -> Who.YOU; else -> null }
             return StaticEffect.Replace(Replacement.GraveyardReplacement(filter.copy(controller = whose), false, "exile", true))
         }
+        // "If a nontoken creature would enter and it wasn't cast, exile it instead." (Containment Priest)
+        Regex("""^if an? (.+?) would enter(?: the battlefield)? and it wasn't cast, exile it instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val f = parseFilter(m.groupValues[1], Kind.CREATURE)
+            if (f.verifiable) return StaticEffect.ExileIfEntersUncast(f)
+        }
+        // "Creature cards in graveyards and libraries can't enter the battlefield." (Grafdigger's Cage)
+        Regex("""^(.+?) cards? in (graveyards and libraries|graveyards|libraries) can't enter the battlefield\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val f = parseFilter(m.groupValues[1], Kind.CREATURE)
+            val zones = when (m.groupValues[2].lowercase()) { "graveyards" -> setOf("graveyard"); "libraries" -> setOf("library"); else -> setOf("graveyard", "library") }
+            if (f.verifiable) return StaticEffect.CantEnterFrom(f, zones)
+        }
+        // "Each opponent can't draw more than one card each turn." (Narset, Spirit of the Labyrinth)
+        Regex("""^(each opponent|each player|your opponents|players) can't draw more than (one|two|three|\d+) cards? each turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val n = number(m.groupValues[2]) ?: return@let
+            return StaticEffect.CantDrawMoreThan(n, if (m.groupValues[1].lowercase() == "each player" || m.groupValues[1].lowercase() == "players") Who.EACH_PLAYER else Who.EACH_OPPONENT)
+        }
         // "All creatures lose all abilities and have base power and toughness 1/1." (Humility)
         Regex("""^(.+?) lose all abilities and have base power and toughness (\d+)/(\d+)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val f = parseFilter(m.groupValues[1].removePrefix("all ").removePrefix("All "), Kind.CREATURE)

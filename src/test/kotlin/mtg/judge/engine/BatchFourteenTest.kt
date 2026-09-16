@@ -237,4 +237,40 @@ class BatchFourteenTest {
         val e = Engine(s); e.activate("me", "nyk", 1, emptyList())
         assertTrue(s.outcomes.any { it == "Nykthos, Shrine to Nyx's mana ability: add {G}{G}{G}{G}{G}." }, s.outcomes.toString())
     }
+
+    private val narset = card("Narset, Parter of Veils", "Legendary Planeswalker — Narset", "Each opponent can't draw more than one card each turn.\n\u22122: Look at the top four cards of your library.", "{1}{U}{U}", "U")
+    private val brainstorm2 = card("Brainstorm", "Instant", "Draw three cards.", "{U}", "U")
+    private val priest = card("Containment Priest", "Creature — Human Cleric", "Flash\nIf a nontoken creature would enter and it wasn't cast, exile it instead.", "{1}{W}", "W", "2", "2", "Flash")
+    private val cage = card("Grafdigger's Cage", "Artifact", "Creature cards in graveyards and libraries can't enter the battlefield.", "{1}")
+    private val vial = card("Aether Vial", "Artifact", "{T}: You may put a creature card with mana value equal to the number of charge counters on Aether Vial from your hand onto the battlefield.", "{1}")
+
+    @Test
+    fun `narset limits an opponent's draws but not its controller's`() {
+        val s = state(); s.put("narset", narset, "me")
+        val e = Engine(s); e.cast("opp", brainstorm2, emptyList()); e.resolveAll()
+        assertEquals(1, s.player("opp").drew)
+        assertTrue(s.outcomes.any { it.contains("only 1 card of the 3") }, s.outcomes.toString())
+
+        val s2 = state(); s2.put("narset", narset, "me")
+        val e2 = Engine(s2); e2.cast("me", brainstorm2, emptyList()); e2.resolveAll()
+        assertEquals(3, s2.player("me").drew)
+    }
+
+    @Test
+    fun `containment priest exiles a creature that enters without being cast`() {
+        val s = state(); s.put("priest", priest, "opp"); s.put("vial", vial, "me"); s.obj("vial").counters["charge"] = 2
+        s.put("bear", bears, "me", Zone.HAND)
+        val e = Engine(s); e.activate("me", "vial", 0, emptyList()); e.resolveAll()
+        assertEquals(Zone.EXILE, s.obj("bear").zone)
+        assertTrue("614.1a" in s.cited())
+    }
+
+    @Test
+    fun `grafdiggers cage keeps a creature in the graveyard`() {
+        val s = state(); s.put("cage", cage, "opp"); s.put("vial", vial, "me"); s.obj("vial").counters["charge"] = 2
+        s.put("bear", bears, "me", Zone.HAND)
+        val e = Engine(s); e.activate("me", "vial", 0, emptyList()); e.resolveAll()
+        // The Cage only stops graveyards and libraries, so a card from hand still enters.
+        assertEquals(Zone.BATTLEFIELD, s.obj("bear").zone)
+    }
 }

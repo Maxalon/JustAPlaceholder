@@ -4624,5 +4624,57 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "narset-limits-the-opponent",
+    "text": "I control Narset, Parter of Veils and my opponent casts Brainstorm. How many cards do they draw?",
+    "expect": [
+      "draws only 1 card of the 3 (Narset, Parter of Veils)"
+    ],
+    "notExpect": [
+      "Rules text not modeled: Each opponent can't draw"
+    ],
+    "cite": [
+      "121.3"
+    ]
+  },
+  {
+    "id": "narset-leaves-me-alone",
+    "text": "I control Narset, Parter of Veils and cast Brainstorm. How many cards do I draw?",
+    "expect": [
+      "You draw 3 cards"
+    ],
+    "notExpect": [
+      "only 1 card"
+    ],
+    "cite": [
+      "121.1"
+    ]
+  },
+  {
+    "id": "cage-stops-a-reanimation",
+    "text": "I control Grafdigger's Cage. My opponent casts Sun Titan and returns Grizzly Bears from their graveyard. What happens?",
+    "expect": [
+      "can't enter the battlefield (Grafdigger's Cage)"
+    ],
+    "notExpect": [
+      "Grizzly Bears enters the battlefield"
+    ],
+    "cite": [
+      "614.1"
+    ]
+  },
+  {
+    "id": "containment-priest-exiles-it",
+    "text": "My opponent controls Containment Priest. I cast Sun Titan and return Grizzly Bears from my graveyard. What happens?",
+    "expect": [
+      "your graveyard → exile (replaced by Containment Priest)"
+    ],
+    "notExpect": [
+      "Grizzly Bears enters the battlefield"
+    ],
+    "cite": [
+      "614.1a"
+    ]
   }
 ]
