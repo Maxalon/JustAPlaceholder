@@ -7386,5 +7386,18 @@
       "You take 3 damage"
     ],
     "cite": []
+  },
+  {
+    "id": "an-unmodeled-ability-keeps-its-target",
+    "text": "I control Thespian's Stage and copy their Dark Depths. What happens?",
+    "expect": [
+      "names a target the engine can't model, so Dark Depths is kept as its target"
+    ],
+    "notExpect": [
+      "needs 0 target"
+    ],
+    "cite": [
+      "601.2c"
+    ]
   }
 ]

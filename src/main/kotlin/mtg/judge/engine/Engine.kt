@@ -397,7 +397,11 @@ class Engine(val state: GameState) {
         val needed = ability.effect.targets()
         // "I activate Spellskite" with nothing named: the one legal target, as for spells.
         val targets = if (targets.isEmpty() && needed.size == 1) inferTarget("${obj.name}'s ability", needed[0], playerId, harmful = isHarmful(ability.effect), source = obj, beneficial = isBeneficial(ability.effect))?.takeIf { it.isNotEmpty() } ?: targets else targets
-        if (needed.size != targets.size && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && targetsAPlayer(ability.effect))) {
+        // The ability's text names a target the parser couldn't model ("~ becomes a copy of target land"): keeping
+        // the target and saying the text isn't modeled beats "the ability needs 0 targets but 1 given".
+        val unmodeledTarget = needed.isEmpty() && targets.isNotEmpty() && ability.effect.hasUnparsed() && Regex("""(?i)\btarget\b""").containsMatchIn(ability.text)
+        if (unmodeledTarget) trace.step("${obj.name}'s ability names a target the engine can't model, so ${describeTargets(targets).removePrefix(" targeting ")} is kept as its target and what the ability does to it is reported as unsupported.", "601.2c")
+        else if (needed.size != targets.size && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && targetsAPlayer(ability.effect))) {
             state.clarifications += Clarification("${obj.name}'s ability target", "The ability needs ${needed.size} target(s) (${needed.joinToString("; ") { it.raw }}) but ${targets.size} given (602.2b, 601.2c).")
             if (needed.size > targets.size) return null
         }
@@ -2455,7 +2459,7 @@ class Engine(val state: GameState) {
         // Destroying, exiling or damaging: nobody aims that at their own things when an opponent's qualify.
         if (harmful && distinct.size > 1) {
             val theirs = distinct.filter { r -> when (r) { is Ref.Obj -> state.objects[r.id]?.controller != controller; is Ref.Player -> r.id != controller; is Ref.Stack -> state.stackItem(r.id)?.controller != controller } }
-            if (theirs.isNotEmpty() && theirs.size < distinct.size) { distinct = theirs; if (theirs.size == 1) { state.assumptions += if (theirs[0] is Ref.Player) "$what targets ${state.nameOf(theirs[0])} (\"${spec.raw}\" with no target named; assuming the opponent)." else "$what targets ${state.nameOf(theirs[0])}: of the legal targets for \"${spec.raw}\", it's the only one an opponent controls."; return theirs } }
+            if (theirs.isNotEmpty() && theirs.size < distinct.size) { distinct = theirs; if (theirs.size == 1) { state.assumptions += if (theirs[0] is Ref.Player) "$what targets ${state.nameOf(theirs[0])} (\"${spec.raw}\" with no target named; assuming its controller's opponent)." else "$what targets ${state.nameOf(theirs[0])}: of the legal targets for \"${spec.raw}\", it's the only one an opponent controls."; return theirs } }
         }
         // The only thing that fits is one of your own, and the effect would hurt it: that's a choice, not a default.
         if (harmful && distinct.size == 1 && (distinct[0] as? Ref.Obj)?.let { state.objects[it.id]?.controller == controller } == true) {
@@ -2469,7 +2473,7 @@ class Engine(val state: GameState) {
             else -> {
                 // Nothing but players to choose from (or "any target" with only players around): the opponent is the sensible default.
                 val opp = state.opponentsOf(controller).singleOrNull()
-                if (opp != null && distinct.all { it is Ref.Player }) { state.assumptions += "$what targets ${state.nameOf(Ref.Player(opp.id))} (\"${spec.raw}\" with no target named; assuming the opponent)."; listOf(Ref.Player(opp.id)) }
+                if (opp != null && distinct.all { it is Ref.Player }) { state.assumptions += "$what targets ${state.nameOf(Ref.Player(opp.id))} (\"${spec.raw}\" with no target named; assuming its controller's opponent)."; listOf(Ref.Player(opp.id)) }
                 else { state.clarifications += Clarification("$what's target", "$what needs a target (${spec.raw}); it could be ${distinct.joinToString(", ") { state.nameOf(it) }}. Which?"); emptyList<Ref>().also { return null } }
             }
         }
