@@ -6900,5 +6900,29 @@
     "cite": [
       "702.8a"
     ]
+  },
+  {
+    "id": "anafenza-does-not-exile-your-own-creature",
+    "text": "I control Anafenza, the Foremost and my own Grizzly Bears dies. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "exile"
+    ],
+    "cite": [
+      "400.7"
+    ]
+  },
+  {
+    "id": "copying-a-creature-with-the-permanent-just-named",
+    "text": "I control Kiki-Jiki, Mirror Breaker and copy Zealous Conscripts. What happens?",
+    "expect": [
+      "token that's a copy of Zealous Conscripts"
+    ],
+    "notExpect": [],
+    "cite": [
+      "707.2"
+    ]
   }
 ]

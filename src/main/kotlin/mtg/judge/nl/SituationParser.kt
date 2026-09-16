@@ -1298,7 +1298,7 @@ class SituationParser(private val names: NameIndex) {
             if (r.groupValues[1].contains("sacrificed")) ctx.events += EventSpec("sacrifice", player = ctx.objects.getValue(id).controller, obj = id) else ctx.events += EventSpec("leave", obj = id, to = to)
             ctx.lastMentioned = id; return true
         }
-        Regex("""^(?:my opponent's |the opponent's |opponent's |their |my |the |@(\w+)'s )?(c\d+) (?:dies|died|is destroyed|gets destroyed|would die|is put into (?:a|the|its owner's) graveyard|goes to the graveyard|is exiled|gets exiled|leaves the battlefield|is bounced|is sacrificed|gets sacrificed)$""").find(c)?.let { r ->
+        Regex("""^(?:my opponent's |the opponent's |opponent's |their own |their |my own |my |own |the |@(\w+)'s )?(c\d+) (?:dies|died|is destroyed|gets destroyed|would die|is put into (?:a|the|its owner's) graveyard|goes to the graveyard|is exiled|gets exiled|leaves the battlefield|is bounced|is sacrificed|gets sacrificed)$""").find(c)?.let { r ->
             val card = m.cards.getValue(r.groupValues[2])
             val ownerWord = c.substringBefore(" c").trim()
             val owner = when { r.groupValues[1].isNotEmpty() -> r.groupValues[1]; ownerWord.startsWith("my opponent") || ownerWord.startsWith("opponent") || ownerWord.startsWith("the opponent") || ownerWord == "their" -> pronounPlayer(ctx, "their"); ownerWord == "my" -> "me"; else -> actor ?: ctx.objects.values.firstOrNull { it.card.oracleId == card.oracleId }?.controller ?: ctx.lastOwner }
@@ -1533,6 +1533,17 @@ class SituationParser(private val names: NameIndex) {
             if (targetCard != null && targetCard.display !in ctx.castCards) emitCast(ctx.other(who) ?: "opp", targetCard, "", m, ctx)
             emitCast(who, counterCard, " targeting " + slug(targetName) + ":spell", m, ctx)
             ctx.note(who); return true
+        }
+        // "I control Kiki-Jiki and copy Zealous Conscripts": the permanent just named is what does the copying, and
+        // the named creature is what its ability targets.
+        Regex("""^cop(?:y|ies|ying) (?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: ctx.lastActor ?: "me"
+            val src = ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).zone == "battlefield" } ?: return@let
+            val card = m.cards.getValue(r.groupValues[1])
+            val tgt = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
+            if (tgt == src) return@let
+            ctx.events += EventSpec("activate", player = who, obj = src, targets = listOf(tgt))
+            ctx.lastActor = who; ctx.lastMentioned = src; return true
         }
         // "copy my opponent's Lightning Bolt with Twincast": the copy spell targeting that spell.
         Regex("""^cop(?:y|ies|ying) (my |their |the |my opponent's |@\w+'s )?(c\d+|it|that|that spell) with (?:an? |the |my )?(c\d+)((?: (?:targeting|aiming (?:it )?at|pointing (?:it )?at|retargeting (?:it )?to|choosing) .*)?)$""").find(c)?.let { r ->
