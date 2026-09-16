@@ -7680,5 +7680,38 @@
       "You take 2 damage"
     ],
     "cite": []
+  },
+  {
+    "id": "attack-declared-any-way",
+    "text": "I control Grizzly Bears. I turn Grizzly Bears sideways. How much damage does my opponent take?",
+    "expect": [
+      "2 damage in all"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
+  },
+  {
+    "id": "a-spell-pointed-at-something",
+    "text": "I control Grizzly Bears. They point Doom Blade at my Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
+  },
+  {
+    "id": "use-a-spell-on-something",
+    "text": "I control Grizzly Bears. They use Doom Blade on my Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
   }
 ]

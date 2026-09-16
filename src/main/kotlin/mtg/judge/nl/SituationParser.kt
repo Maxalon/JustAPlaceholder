@@ -352,6 +352,19 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(?:has|have|had) (?=(?:cast|played|attacked|blocked|activated|targeted|countered|killed|destroyed|exiled|sacrificed|bounced|drawn|discarded|tapped|untapped)\b)"""), "")
             .replace(Regex("""\bwill (?=(?:cast|play|attack|block|activate|target|counter|kill|destroy|exile|sacrifice|bounce|draw|discard|tap|untap|gain|lose|deal|take|die|trigger|remove|ping|nuke|zap)\b)"""), "")
             .replace(Regex("""\b(?:is|are|'s|'re) casting\b"""), "casts")
+            // "they point Doom Blade at my Bears", "they use Doom Blade on it", "Doom Blade targets my Bears",
+            // "Doom Blade is cast on my Bears": more ways to say a spell was cast at something.
+            .replace(Regex("""\b(?:points?|pointed|aims?|aimed) ((?:an? |the |my |their )?c\d+) (?:at|on|against|targeting) """), "casts $1 targeting ")
+            .replace(Regex("""^((?:an? |the |my |their )?c\d+) (?:is|was|gets?|got) (?:being )?cast (?:on|at|targeting) """), "casts $1 targeting ")
+            .replace(Regex("""^((?:an? |the |my |their )?c\d+) targets? """), "casts $1 targeting ")
+            // "I attacked", "I am attacking", "I declare Bears as an attacker", "I turn Bears sideways",
+            // "I send Bears at my opponent": more ways to declare the same attack.
+            .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+|c\d+) attacked (?=(?:with|it|that|them|me|the|an?|my|their|his|her|c\d+)\b)"""), "$1 attacks ")
+            .replace(Regex("""\b(?:i am|i'm|we are|we're) attacking\b"""), "i attack")
+            .replace(Regex("""\b(?:they are|they're|he is|he's|she is|she's) attacking\b"""), "they attack")
+            .replace(Regex("""\bdeclares? ((?:my |their |the |an? )?c\d+) as an attacker\b"""), "attacks with $1")
+            .replace(Regex("""\bturns? ((?:my |their |the |an? )?c\d+) sideways\b"""), "attacks with $1")
+            .replace(Regex("""\bsends? ((?:my |their |the |an? )?c\d+) (?:at|into|after) """), "attacks $1 at ")
             // "I blocked", "I declared Hill Giant as a blocker", "I throw Hill Giant in front of their Bears":
             // more ways to say a block that only the plain present tense was read from.
             .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+|c\d+) blocked (?=(?:it|that|them|the|an?|my|their|his|her|with|c\d+)\b)"""), "$1 blocks ")
@@ -359,6 +372,11 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(?:throws?|threw|puts?|drops?|chumps?) ((?:my |their |the |an? )?c\d+) in (?:front of|the way of) """), "$1 blocks ")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
+        // "they use Doom Blade on my Bears": a cast, but only for a card that is cast — "they use Maze on it"
+        // names a land whose ability is activated, and reading that as a cast loses the ability entirely.
+        t2 = Regex("""\b(?:uses?|used|plays?|played) ((?:an? |the |my |their )?)(c\d+) (?:at|on|against|targeting) """).replace(t2) { r ->
+            if (m.cards[r.groupValues[2]]?.typeLine?.let { it.contains("Instant") || it.contains("Sorcery") } == true) "casts ${r.groupValues[1]}${r.groupValues[2]} targeting " else r.value
+        }
         // "it's turn 3" / "on turn 2": the game's turn number.
         Regex("""\b(?:it's|it is|this is|on|during|in) turn (\d+)\b|\bturn (\d+) of the game\b""").find(t2)?.let { r -> ctx.turnNumber = (r.groupValues[1].ifEmpty { r.groupValues[2] }).toInt(); any = true; t2 = t2.removeRange(r.range) }
         Regex("""\b(it's|it is|during|on|in) (my|their|the opponent's|opponent's|my opponent's|@\w+'s) (turn|upkeep|end step|main phase|combat|draw step|beginning of combat)\b""").find(t2)?.let { r ->
