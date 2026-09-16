@@ -243,6 +243,9 @@ class SituationParser(private val names: NameIndex) {
             // Unless the word is the verb: "their Counterspell counters it" is a spell doing something, not a kind of counter.
             .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.end) in setOf("token", "tokens", "counter", "counters") && normWords[f.start] !in short &&
                 !(normWords.getOrNull(f.end) in setOf("counters", "tokens") && normWords.getOrNull(f.end + 1) in setOf("it", "that", "them", "this", "my", "their", "the", "his", "her", "its"))) }
+            // "can they redirect it?", "do they steal it?": a card name used as a verb on a pronoun object is the
+            // verb. Asking whether Spellskite can redirect a Bolt turned up the card Redirect in the answer.
+            .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in verbsOnPronouns && normWords.getOrNull(f.end) in setOf("it", "that", "them", "this") && normWords[f.start] !in short) }
             // "to protect it", "to save my Bears": a verb after "to" is a verb, not the card of that name.
             .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.start - 1) == "to" && normWords[f.start] in verbsAfterTo && normWords[f.start] !in short) }
             // "protection from black", "a black creature", "a red card": a colour word describes something here,
@@ -2743,6 +2746,8 @@ class SituationParser(private val names: NameIndex) {
     /** Verbs that are also card names ("Protect", "Bloodrush"); right after "to" they are verbs. */
     private val verbsAfterTo = setOf("protect", "save", "shield", "defend", "keep", "destroy", "kill", "draw", "search", "block", "attack",
         "sacrifice", "regenerate", "bounce", "exile", "tap", "untap", "pay", "cast", "play", "target", "fight", "counter", "discard", "mill", "scry", "activate", "stop", "answer", "remove", "trigger")
+    /** Verbs that are also card names and take a pronoun object ("can they redirect it?"); there they are verbs. */
+    private val verbsOnPronouns = setOf("redirect", "redirects", "reflect", "reflects", "deflect", "deflects", "steal", "steals", "swap", "swaps")
     /** Colour words that are also the start of card names ("Black Knight"); after "protection from" they are colours. */
     private val colorWords = setOf("white", "blue", "black", "red", "green")
     /** Nouns a colour word describes ("a black creature"), as opposed to naming a card that begins with that colour. */

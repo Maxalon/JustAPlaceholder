@@ -20,6 +20,7 @@ class VerbsAreNotCardsTest {
             "it is exiled", "it is destroyed", "it is countered", "it is sacrificed", "it is regenerated",
             "it fights their creature", "I proliferate", "they goad it", "I surveil 2", "I mill three cards",
             "they scry 2", "I shuffle my library", "they mulligan", "I search my library",
+            "can they redirect it", "do they steal it", "can they deflect it", "do they swap it",
         )
         val wrong = mutableListOf<String>()
         for (p in phrases) {

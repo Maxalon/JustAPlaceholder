@@ -7225,5 +7225,16 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "redirect-is-a-verb-not-a-card",
+    "text": "I have Lightning Bolt and they have Spellskite. I cast Lightning Bolt at their face. Can they redirect it?",
+    "expect": [
+      "opponent takes 3 damage"
+    ],
+    "notExpect": [
+      "Redirect"
+    ],
+    "cite": []
   }
 ]
