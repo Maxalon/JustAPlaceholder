@@ -153,4 +153,25 @@ class BatchFourteenTest {
         val s = state(); val e = Engine(s); e.cast("me", thoughtseize, listOf(Ref.Player("opp"))); e.resolveAll()
         assertTrue(s.clarifications.any { it.why.contains("what is in it?") }, s.clarifications.toString())
     }
+
+    private val therapy = card("Cabal Therapy", "Sorcery", "Choose a nonland card name. Target player reveals their hand and discards all cards with that name.", "{B}", "B")
+
+    @Test
+    fun `cabal therapy takes every copy of the named card`() {
+        val s = state()
+        s.put("b1", bolt, "opp", Zone.HAND); s.put("b2", bolt, "opp", Zone.HAND); s.put("gy", bears, "opp", Zone.HAND)
+        val e = Engine(s); e.cast("me", therapy, listOf(Ref.Player("opp")), choice = "Lightning Bolt"); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("b1").zone)
+        assertEquals(Zone.GRAVEYARD, s.obj("b2").zone)
+        assertEquals(Zone.HAND, s.obj("gy").zone)
+        assertTrue("400.7" in s.cited())
+    }
+
+    @Test
+    fun `cabal therapy with no name chosen asks instead of guessing`() {
+        val s = state(); s.put("b1", bolt, "opp", Zone.HAND)
+        val e = Engine(s); e.cast("me", therapy, listOf(Ref.Player("opp"))); e.resolveAll()
+        assertEquals(Zone.HAND, s.obj("b1").zone)
+        assertTrue(s.clarifications.any { it.why.contains("which name was chosen?") }, s.clarifications.toString())
+    }
 }

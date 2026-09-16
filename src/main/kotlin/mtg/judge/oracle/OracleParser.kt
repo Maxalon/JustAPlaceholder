@@ -470,7 +470,15 @@ object OracleParser {
                 val chooseRe = Regex("""^You choose an? (.+?) card from it(?: with mana value (\d+) or less)?\.?$""", RegexOption.IGNORE_CASE)
                 val discardRe = Regex("""^(?:That player|They) discards? that card\.?$""", RegexOption.IGNORE_CASE)
                 val third = sentences.getOrNull(i + 2)
-                if (revealRe.matches(cur) && next != null && chooseRe.matches(next) && third != null && discardRe.matches(third)) {
+                val nameRe = Regex("""^Choose an? (.+?) card name\.?$""", RegexOption.IGNORE_CASE)
+                val revealAllRe = Regex("""^(Target player|Target opponent|Each opponent|Each player|That player) reveals? their hand and discards? all cards with that name\.?$""", RegexOption.IGNORE_CASE)
+                if (nameRe.matches(cur) && next != null && revealAllRe.matches(next)) {
+                    val who = when (revealAllRe.find(next)!!.groupValues[1].lowercase()) {
+                        "target player", "target opponent" -> Who.TARGET_PLAYER; "each opponent" -> Who.EACH_OPPONENT; "each player" -> Who.EACH_PLAYER; else -> Who.THAT_PLAYER
+                    }
+                    out += Effect.DiscardNamed(who, nameRe.find(cur)!!.groupValues[1].trim())
+                    i += 2
+                } else if (revealRe.matches(cur) && next != null && chooseRe.matches(next) && third != null && discardRe.matches(third)) {
                     val who = when (revealRe.find(cur)!!.groupValues[1].lowercase()) {
                         "target player", "target opponent" -> Who.TARGET_PLAYER; "each opponent" -> Who.EACH_OPPONENT; "each player" -> Who.EACH_PLAYER; else -> Who.THAT_PLAYER
                     }

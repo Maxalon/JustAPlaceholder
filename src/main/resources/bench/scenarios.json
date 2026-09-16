@@ -4433,5 +4433,58 @@
     "cite": [
       "701.9a"
     ]
+  },
+  {
+    "id": "cabal-therapy-takes-both",
+    "text": "My opponent has two Lightning Bolts and an Island in hand. I cast Cabal Therapy naming Lightning Bolt.",
+    "expect": [
+      "2 cards named Lightning Bolt are discarded, all at once"
+    ],
+    "notExpect": [
+      "Island: opponent's hand"
+    ],
+    "cite": [
+      "701.9a",
+      "400.7"
+    ]
+  },
+  {
+    "id": "cabal-therapy-misses",
+    "text": "My opponent has an Island and a Brainstorm in hand. I cast Cabal Therapy naming Lightning Bolt.",
+    "expect": [
+      "discards nothing (no Lightning Bolt in hand)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "701.9a"
+    ]
+  },
+  {
+    "id": "mind-twist-for-three",
+    "text": "I have 2 cards in hand and my opponent casts Mind Twist for 3. What happens?",
+    "expect": [
+      "You discard 2 cards"
+    ],
+    "notExpect": [
+      "what was X?"
+    ],
+    "cite": []
+  },
+  {
+    "id": "fetchland-under-blood-moon",
+    "text": "My opponent sacrifices Polluted Delta. I control Blood Moon. What happens?",
+    "expect": [
+      "no ability of its own under Blood Moon",
+      "Polluted Delta: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "adds {R} (only)"
+    ],
+    "cite": [
+      "613.1d",
+      "701.21a"
+    ]
   }
 ]

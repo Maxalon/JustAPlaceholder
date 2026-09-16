@@ -207,12 +207,27 @@ class Engine(val state: GameState) {
         repeat(count) { who.drew += 1; onEvent(GameEvent.Drew(who.id)) }
     }
 
+    /** What strips a permanent of the abilities printed on it right now (Blood Moon, Humility), or null. */
+    fun printedAbilitiesGone(obj: GameObject): String? {
+        if (!obj.isOnBattlefield()) return null
+        if ("Land" in obj.def.types && "Basic" !in obj.def.supertypes)
+            state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.NonbasicLandsAreMountains } }?.let { return it.name }
+        return state.abilitiesLostOn(obj)?.first?.name
+    }
+
     fun activate(playerId: String, objectId: String, abilityIndex: Int?, targets: List<Ref>, choice: String? = null, x: Int? = null): StackItem? {
         val obj = state.obj(objectId)
         val abilities = obj.def.abilities.filterIsInstance<ActivatedAbility>()
         if ("Land" in obj.def.types && "Basic" !in obj.def.supertypes) state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.NonbasicLandsAreMountains } }?.let { moon ->
             val p = state.player(playerId)
-            trace.step("${moon.name} makes ${obj.name} a Mountain: it loses its other land types and all its printed abilities and has only \"{T}: Add {R}\" (a type-changing effect, layer 4).", "613.1d", "305.7")
+            if (state.trace.steps.none { it.text.startsWith("${moon.name} makes ${obj.name} a Mountain") })
+                trace.step("${moon.name} makes ${obj.name} a Mountain: it loses its other land types and all its printed abilities and has only \"{T}: Add {R}\" (a type-changing effect, layer 4).", "613.1d", "305.7")
+            // Asked for one of the land's own abilities: under the moon there is no such ability any more.
+            val asked = abilityIndex?.let { abilities.getOrNull(it) }
+            if (asked != null && !(asked.effect is Effect.AddMana || (asked.effect as? Effect.Seq)?.effects?.firstOrNull() is Effect.AddMana)) {
+                trace.step("${obj.name} no longer has \"${asked.text.replace("~", obj.name)}\", so it can't be activated.", "613.1d", "305.7")
+                state.outcomes += "${obj.name}'s own ability is gone under ${moon.name}, so it can't be activated."; return null
+            }
             if (obj.tapped == true) { trace.step("${obj.name} is already tapped, so it can't be tapped for mana.", "602.5a"); state.outcomes += "${obj.name} can't be tapped (already tapped)."; return null }
             tap(obj); trace.step("${p.subject} ${p.v("taps", "tap")} ${obj.name} for {R}; that's the only mana it can make under ${moon.name}.", "605.1a", "605.3b"); state.outcomes += "${obj.name} adds {R} (only), because of ${moon.name}."; return null
         }
@@ -353,7 +368,7 @@ class Engine(val state: GameState) {
     /** Effects phrased "target player …" whose player is carried by a [Who] rather than a TargetSpec. */
     private fun targetsAPlayer(e: Effect): Boolean = when (e) {
         is Effect.Draw -> e.who == Who.TARGET_PLAYER; is Effect.GainLife -> e.who == Who.TARGET_PLAYER; is Effect.LoseLife -> e.who == Who.TARGET_PLAYER; is Effect.DamagePlayer -> e.who == Who.TARGET_PLAYER; is Effect.NarratedTargeted -> e.text.startsWith("target opponent", ignoreCase = true) || Kind.PLAYER in e.target.filter.kinds
-        is Effect.CreateToken -> e.who == Who.TARGET_PLAYER; is Effect.Discard -> e.who == Who.TARGET_PLAYER; is Effect.DiscardChosen -> e.who == Who.TARGET_PLAYER; is Effect.Mill -> e.who == Who.TARGET_PLAYER; is Effect.ExileGraveyard -> e.who == Who.TARGET_PLAYER; is Effect.SacrificeEach -> e.who == Who.TARGET_PLAYER; is Effect.LoseLifeThatMuch -> e.who == Who.TARGET_PLAYER
+        is Effect.CreateToken -> e.who == Who.TARGET_PLAYER; is Effect.Discard -> e.who == Who.TARGET_PLAYER; is Effect.DiscardChosen -> e.who == Who.TARGET_PLAYER; is Effect.DiscardNamed -> e.who == Who.TARGET_PLAYER; is Effect.Mill -> e.who == Who.TARGET_PLAYER; is Effect.ExileGraveyard -> e.who == Who.TARGET_PLAYER; is Effect.SacrificeEach -> e.who == Who.TARGET_PLAYER; is Effect.LoseLifeThatMuch -> e.who == Who.TARGET_PLAYER
         is Effect.Seq -> e.effects.any { targetsAPlayer(it) }; is Effect.May -> targetsAPlayer(e.effect); is Effect.UnlessPays -> targetsAPlayer(e.effect); is Effect.Modal -> e.modes.any { targetsAPlayer(it) }
         is Effect.Narrated -> e.text.startsWith("target player", ignoreCase = true); else -> false
     }
@@ -1126,6 +1141,27 @@ class Engine(val state: GameState) {
                     trace.step("Every card in ${p.possessive} graveyard is exiled at once: ${cards.joinToString(", ") { c -> c.name }}. They all leave the graveyard as a single event, so nothing can be returned from it in response.", "701.13a", "400.7")
                     for (c in cards) c.zone = Zone.EXILE
                     state.outcomes += "${p.possessive.replaceFirstChar { c -> c.uppercase() }} graveyard is exiled (${cards.joinToString(", ") { c -> c.name }})."
+                }
+            }
+            is Effect.DiscardNamed -> {
+                val named = item.choice ?: item.source.chosenName
+                if (named == null) {
+                    state.clarifications += Clarification("${item.source.name}'s name", "${item.source.name} names a ${effect.what} card; which name was chosen?")
+                    trace.step("The situation doesn't say which name was chosen for ${item.source.name}, so what is discarded can't be said.", "701.9a")
+                } else for (p in resolvePlayers(effect.who, item)) {
+                    val hand = state.objects.values.filter { it.zone == Zone.HAND && it.owner == p.id }
+                    trace.step("${state.player(item.controller).subject} named $named. ${p.subject} ${p.v("reveals", "reveal")} ${if (p.you) "your" else "their"} hand${if (hand.isEmpty()) "" else ": ${hand.joinToString(", ") { it.name }}"}.", "701.16a")
+                    if (hand.isEmpty()) {
+                        state.clarifications += Clarification("${p.possessive} hand", "${item.source.name} makes ${if (p.you) "you" else p.name} discard every $named; what is in ${if (p.you) "your" else "their"} hand?")
+                        state.outcomes += "${item.source.name}: ${p.subject.lowercase()} ${p.v("discards", "discard")} every copy of $named (how many depends on ${p.possessive} hand)."
+                    } else {
+                        val hits = hand.filter { it.name.equals(named, true) }
+                        if (hits.isEmpty()) { trace.step("No card in ${p.possessive} hand is named $named, so nothing is discarded.", "701.9a"); state.outcomes += "${p.subject} ${p.v("discards", "discard")} nothing (no $named in hand)." }
+                        else {
+                            trace.step("${hits.size} card${if (hits.size == 1) "" else "s"} named $named ${if (hits.size == 1) "is" else "are"} discarded, all at once; the rest of the hand stays.", "701.9a", "400.7")
+                            hits.forEachIndexed { n, h -> moveRaw(h, Zone.GRAVEYARD); state.outcomes += "${h.name}: ${p.possessive} hand → ${p.possessive} graveyard${if (hits.size > 1) " (copy ${n + 1} of ${hits.size})" else ""}." }
+                        }
+                    }
                 }
             }
             is Effect.DiscardChosen -> for (p in resolvePlayers(effect.who, item)) {
@@ -1919,7 +1955,7 @@ class Engine(val state: GameState) {
         is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Fight -> "${effect.mine.raw} fights ${effect.theirs.raw}"; is Effect.DealsPowerTo -> "${effect.mine.raw} deals damage equal to its power to ${effect.theirs.raw}"; is Effect.RedirectToSelf -> "change a target of ${effect.target.raw} to ${item.source.name}"; is Effect.Blink -> "exile ${effect.target.raw}, then return it to the battlefield under ${if (effect.ownersControl) "its owner's" else "your"} control"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.PreventCombatToAndBy -> "prevent all combat damage dealt to and by ${effect.target.raw} this turn"; is Effect.WinIfCastBefore -> "win the game if another spell with this name was cast this game, otherwise tuck it seventh from the top and gain ${effect.life} life"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
         is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
-        is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.GainLifePerSpellThisTurn -> "gain ${effect.per} life for each spell cast this turn"; is Effect.WinIfDevotionCoversLibrary -> "look at the top X cards (X = your devotion) and win if X is at least your library size"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.ExileGraveyard -> "exile ${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "your"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }}${if (effect.who == Who.YOU) "" else "'s"} graveyard"; is Effect.DiscardChosen -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }} reveals their hand and discards ${effect.what} of your choice"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"} onto the battlefield"
+        is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.GainLifePerSpellThisTurn -> "gain ${effect.per} life for each spell cast this turn"; is Effect.WinIfDevotionCoversLibrary -> "look at the top X cards (X = your devotion) and win if X is at least your library size"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.ExileGraveyard -> "exile ${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "your"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }}${if (effect.who == Who.YOU) "" else "'s"} graveyard"; is Effect.DiscardNamed -> "that player reveals their hand and discards every card with the name you chose"; is Effect.DiscardChosen -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }} reveals their hand and discards ${effect.what} of your choice"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"} onto the battlefield"
         is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.GainLifeEqualToToughness -> "its controller gains life equal to its toughness"; is Effect.PutOnBottom -> "put ${effect.target.raw} on the bottom of its owner's library"; is Effect.GainLifeLostThisWay -> "gain life equal to the life lost this way"; is Effect.RevealTopToHand -> "reveal the top card of your library and put it into your hand"; is Effect.PutSelfOnLibraryTop -> "put ${item.source.name} on top of its owner's library"; is Effect.LoseLifeEqualToRevealedMv -> "lose life equal to the revealed card's mana value"; is Effect.ExileIfDamagedDies -> "exile a creature dealt damage this way instead if it would die this turn"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"
         is Effect.Tap -> "tap ${effect.target.raw}"; is Effect.Untap -> "untap ${effect.target.raw}"
         is Effect.Pump -> "${effect.target.raw} gets ${signed(effect.power)}/${signed(effect.toughness)}"

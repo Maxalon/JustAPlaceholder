@@ -94,8 +94,9 @@ class SituationParser(private val names: NameIndex) {
             if (!readSentence(marked, ctx)) ctx.unread += sentence.trim()
         }
         // Cards the text put in a hand become objects in that hand, unless they were already used for something.
-        for ((who, cards) in ctx.inHand) for (card in cards) {
-            if (ctx.objects.values.any { it.card.oracleId == card.oracleId && it.controller == who }) continue
+        for ((who, cards) in ctx.inHand) for ((n, card) in cards.withIndex()) {
+            val already = ctx.objects.values.count { it.card.oracleId == card.oracleId && it.controller == who }
+            if (already >= cards.count { it.oracleId == card.oracleId }) continue
             var id = slug(card.display); var k = 2; while (ctx.objects.containsKey(id)) id = slug(card.display) + "_" + (k++)
             ctx.objects[id] = ObjectSpec(id, CardRef(name = card.display, oracleId = card.oracleId), zone = "hand", controller = who)
         }
@@ -298,7 +299,7 @@ class SituationParser(private val names: NameIndex) {
         // "My opponent has 5 life and Platinum Angel": after the life total was taken out, the rest is a possession.
         t2 = t2.replace(Regex("""^\s*(my opponent|the opponent|opponent|they|@\w+) and (?=(?:an? |the |two |three |\d+ )?c\d+)"""), "$1 has ").replace(Regex("""^\s*i and (?=(?:an? |the |two |three |\d+ )?c\d+)"""), "i have ")
         // "they have Counterspell and Grizzly Bears in hand": the same as holding them.
-        t2 = t2.replace(Regex("""\b(?:has|have|got|'ve got) ((?:an? |the )?c\d+(?:,? (?:and )?(?:an? |the )?c\d+)*) in (?:(?:their|my|his|her) )?hand$"""), "holds $1")
+        t2 = t2.replace(Regex("""\b(?:has|have|got|'ve got) ((?:an? |the |two |three |four |\d+ )?c\d+s?(?:,? (?:and )?(?:an? |the |two |three |four |\d+ )?c\d+s?)*) in (?:(?:their|my|his|her) )?hand$"""), "holds $1")
         // "against two opponents" / "in a three-player game": more than one opponent.
         Regex("""\b(?:against|versus|vs\.?|with|and|facing) (two|three|four|\d) opponents\b|\b(?:in )?an? (three|four|five|\d)-player (?:game|pod)\b""").find(t2)?.let { r ->
             val n = (r.groupValues[1].ifEmpty { r.groupValues[2] }).let { number(it) ?: it.toIntOrNull() ?: 2 } - (if (r.groupValues[2].isNotEmpty()) 1 else 0)
@@ -306,9 +307,12 @@ class SituationParser(private val names: NameIndex) {
             ctx.usesOpp = true; ctx.notes += "$n opponents: the first is \"opponent\", the others \"Opponent 2\"${if (n > 2) " and so on" else ""}."; any = true; t2 = t2.removeRange(r.range)
         }
         // "they reveal Counterspell and Forest" / "my hand is Bolt, Bears and Forest": cards in hand, kept together before the clause split.
-        Regex("""\b(?:reveals?|revealing|shows? me|(?:my|their|his|her) hand (?:is|has|contains)|(?:i'm|i am|they're|they are) holding|holds?|holding) ((?:an? |the )?c\d+(?:,? (?:and )?(?:an? |the )?c\d+)*)$""").find(t2)?.let { r ->
+        Regex("""\b(?:reveals?|revealing|shows? me|(?:my|their|his|her) hand (?:is|has|contains)|(?:i'm|i am|they're|they are) holding|holds?|holding) ((?:an? |the |two |three |four |\d+ )?c\d+s?(?:,? (?:and )?(?:an? |the |two |three |four |\d+ )?c\d+s?)*)$""").find(t2)?.let { r ->
             val who = actorOfClause(t2.trim()) ?: (if (Regex("""\b(?:my|i'm|i am|i)\b""").containsMatchIn(t2.substring(0, r.range.first))) "me" else if (Regex("""\b(?:they|their|he|she|his|her|opponent)\b""").containsMatchIn(t2.substring(0, r.range.first))) pronounPlayer(ctx, "they") else ctx.lastActor ?: "opp")
-            val cards = Regex("""c\d+""").findAll(r.groupValues[1]).map { it.value }.toList()
+            val cards = Regex("""(?:(two|three|four|five|\d+) )?(c\d+)""").findAll(r.groupValues[1]).flatMap { mm ->
+                val n = mm.groupValues[1].let { if (it.isEmpty()) 1 else number(it) ?: it.toIntOrNull() ?: 1 }
+                List(n) { mm.groupValues[2] }
+            }.toList()
             t2 = t2.substring(0, r.range.first).trim().let { if (it.isEmpty()) "" else "$it, " }.replace(Regex("""(?:i|they|he|she|my opponent|the opponent|opponent|@\w+), $"""), "") + cards.joinToString(", ") { "${if (who == "me") "i have" else if (who == "opp") "they have" else "@$who has"} $it in hand" }
         }
         // "they have an instant and a creature in their graveyard": card types in a graveyard (Tarmogoyf), kept together before the clause split.
@@ -1697,7 +1701,11 @@ class SituationParser(private val names: NameIndex) {
             else listOf(mapOf("first" to 1, "second" to 2, "third" to 3, "fourth" to 4).getValue(mm.groupValues[2]))
         } ?: emptyList()
         val overload = Regex("""\b(?:overloaded|with overload|for (?:its|the) overload cost|via overload)\b""").containsMatchIn(rest)
+        // "naming Lightning Bolt" / "calling Brainstorm": the card name a spell asks its caster to choose.
+        val namedCard = Regex("""\b(?:naming|calling|and names?|which names) (?:an? |the )?(c\d+)\b""").find(rest)?.let { n -> m.cards[n.groupValues[1]]?.display }
+        // "with X = 3", "for X of 3", and the bare "Mind Twist for 3" / "Fireball for 5" at the end of the clause.
         val xValue = Regex("""\b(?:with|for|where|at) x ?(?:=|equal to|equals|being|of|as) ?(\d+)\b|\bx ?= ?(\d+)\b""").find(rest)?.let { r -> (r.groupValues[1].ifEmpty { r.groupValues[2] }).toIntOrNull() }
+            ?: Regex("""\bfor (\d+)\s*$""").find(rest.trim())?.groupValues?.get(1)?.toIntOrNull()
         val kicked = Regex("""\b(?:kicked|with (?:the )?kicker|with kicker paid|paying (?:the )?kicker|kicking it)\b""").containsMatchIn(rest)
         val modeWord = (Regex("""\b(?:choosing|picking|selecting) (?:the )?(indestructible|double strike|first strike|damage|lifelink|hexproof|trample|flying|counter|draw|destroy|exile|bounce|pump|tap|untap|return)(?: mode)?,? (?:and|&) (?:the )?(indestructible|double strike|first strike|damage|lifelink|hexproof|trample|flying|counter|draw|destroy|exile|bounce|pump|tap|untap|return)(?: mode)?$""").find(rest.trim())?.let { mm -> mm.groupValues[1] + "|" + mm.groupValues[2] }
             ?: Regex("""(?:choosing|picking|with|for|selecting) (?:the )?([a-z][a-z-]+) (?:mode|option)\b""").find(rest)?.groupValues?.get(1)
@@ -1718,7 +1726,7 @@ class SituationParser(private val names: NameIndex) {
         // "Prey Upon on my Bears targeting theirs": the fight's other creature.
         secondTarget(rest, targets.firstOrNull(), ctx)?.let { second -> if (targets.size == 1 && second !in targets) targets = targets + second }
         ctx.castingCounter = false
-        repeat(n) { i -> ctx.events += EventSpec("cast", player = who, card = CardRef(name = card.display, oracleId = card.oracleId), targets = targets, modes = modes, to = if (overload) "overload" else if (kicked) "kicked" else if (evoked) "evoke" else if (revolt != null) "revolt" else if (mastery != null) "spellmastery" else modeWord?.let { "mode:$it" }, amount = xValue); if (secondTime != null && i == 0) ctx.events += EventSpec("resolveAll") }
+        repeat(n) { i -> ctx.events += EventSpec("cast", player = who, card = CardRef(name = card.display, oracleId = card.oracleId), targets = targets, modes = modes, to = if (overload) "overload" else if (kicked) "kicked" else if (evoked) "evoke" else if (revolt != null) "revolt" else if (mastery != null) "spellmastery" else namedCard?.let { "name:$it" } ?: modeWord?.let { "mode:$it" }, amount = xValue); if (secondTime != null && i == 0) ctx.events += EventSpec("resolveAll") }
         if (n > 1) ctx.notes += "${card.display} is cast $n times, one copy after another (each is its own spell)." 
         ctx.lastActor = who
         ctx.lastVerb = "cast"

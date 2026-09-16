@@ -122,14 +122,19 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     val texts = (def.spellEffect as? Effect.Modal)?.modeTexts ?: emptyList()
                     words.mapNotNull { w -> texts.indexOfFirst { it.lowercase().contains(w) }.takeIf { it >= 0 }?.plus(1) }.distinct()
                 } else e.modes
-                engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", choice = e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" })
+                engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", choice = e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it.startsWith("name:") }?.removePrefix("name:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" })
             }
             "draw" -> engine.draw(e.player ?: throw JudgeException("draw needs a player"), e.amount ?: 1)
             "sacrifice" -> {
                 val objId = e.obj ?: throw JudgeException("sacrifice needs an object"); val o = state.obj(objId)
                 // "I sacrifice Sakura-Tribe Elder": sacrificing a permanent that has a "Sacrifice this: …" ability means activating it.
                 val sacAbility = o.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> Regex("""(?i)\bsacrifice (?:~|this\b|${Regex.escape(o.name)}\b)""").containsMatchIn(a.cost) }
-                if (sacAbility >= 0 && o.isOnBattlefield()) engine.activate(e.player ?: o.controller, objId, sacAbility, targets) else engine.sacrifice(e.player ?: o.controller, objId)
+                val gone = engine.printedAbilitiesGone(o)
+                if (sacAbility >= 0 && o.isOnBattlefield() && gone == null) engine.activate(e.player ?: o.controller, objId, sacAbility, targets)
+                else {
+                    if (sacAbility >= 0 && gone != null) state.trace.step("${o.name} has no ability of its own under $gone, so sacrificing it is just that: it goes to the graveyard and nothing else happens.", "613.1d", "701.21a")
+                    engine.sacrifice(e.player ?: o.controller, objId)
+                }
             }
             "gainlife" -> engine.gainLifeEvent(e.player ?: throw JudgeException("gainLife needs a player"), e.amount ?: 1)
             "loselife" -> engine.loseLifeEvent(e.player ?: throw JudgeException("loseLife needs a player"), e.amount ?: 1)
