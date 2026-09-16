@@ -83,6 +83,13 @@ class StaysParsedTest {
     }
 
     @Test
+    fun `flash-granting statics stay modelled`() {
+        check("Vedalken Orrery", "Artifact", "You may cast spells as though they had flash.")
+        check("Leyline of Anticipation", "Enchantment", "If ~ is in your opening hand, you may begin the game with it on the battlefield.\nYou may cast spells as though they had flash.")
+        check("Alchemist's Refuge", "Land", "You may cast creature spells as though they had flash.")
+    }
+
+    @Test
     fun `attack-with-N-or-more wordings stay modelled`() {
         check("Military Intelligence", "Enchantment", "Whenever you attack with two or more creatures, draw a card.")
         check("Hired Claw", "Creature — Lizard Mercenary", "Whenever you attack with one or more Lizards, ~ gets +1/+0 until end of turn.")

@@ -390,6 +390,13 @@ object OracleParser {
         Regex("""^~ enters(?: the battlefield)? tapped\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.EntersTapped()) }
         Regex("""^all cards that aren't on the battlefield, spells, and permanents are the chosen colou?r in addition to their other colou?rs\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.EverythingIsChosenColour) }
         Regex("""^cards in graveyards lose all abilities\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.GraveyardCardsLoseAbilities) }
+        // "You may cast spells as though they had flash" / "creature spells" / "Spirit spells".
+        Regex("""^you may cast (.*?)spells as though they had flash\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val what = m.groupValues[1].trim()
+            if (what.isEmpty()) return listOf(StaticEffect.CastAsThoughFlash(null))
+            val f = parseFilter("$what spell", Kind.SPELL)
+            if (f.verifiable) return listOf(StaticEffect.CastAsThoughFlash(f))
+        }
         // "You may have ~ enter (tapped) as a copy of any creature on the battlefield(, except …)." (Clone and the 70-odd cards like it.)
         Regex("""^you may have ~ enter(?: the battlefield)?( tapped)? as a copy of (.+)$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             var rest = m.groupValues[2].trim().trimEnd('.')

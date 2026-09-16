@@ -155,7 +155,15 @@ class Engine(val state: GameState) {
             val kind = card.types.firstOrNull { it in setOf("Creature", "Sorcery", "Enchantment", "Artifact", "Planeswalker", "Battle") } ?: "permanent"
             val timingRule = mapOf("Creature" to "302.1", "Sorcery" to "307.1", "Enchantment" to "303.1", "Artifact" to "301.1", "Planeswalker" to "306.1", "Battle" to "310.1")[kind]
             if (offTiming && card.has("flash")) trace.step("${card.name} has flash, so it can be cast any time its controller could cast an instant, including now.", "702.8a")
-            else if (offTiming && timingRule != null) { trace.step("${withArticle(kind.lowercase()).replaceFirstChar { c -> c.uppercase() }} spell can normally be cast only during its controller's main phase with an empty stack; ${card.name} doesn't have flash. Assuming an effect allows it, as described.", timingRule); state.assumptions += "${card.name} is cast at a time ${withArticle(kind.lowercase())} spell normally can't be (no flash); assuming something allows it." }
+            else if (offTiming && timingRule != null) {
+                // Something on the battlefield may already allow it, in which case there is nothing to assume.
+                val granter = state.objects.values.firstOrNull { o ->
+                    o.isOnBattlefield() && o.controller == playerId && o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }
+                        .any { e -> e is StaticEffect.CastAsThoughFlash && (e.filter == null || spellMatches(e.filter, card)) }
+                }
+                if (granter != null) trace.step("${granter.name} lets ${state.player(playerId).possessive} spells be cast as though they had flash, so ${card.name} can be cast now even though ${withArticle(kind.lowercase())} spell normally couldn't be.", "702.8a", timingRule)
+                else { trace.step("${withArticle(kind.lowercase()).replaceFirstChar { c -> c.uppercase() }} spell can normally be cast only during its controller's main phase with an empty stack; ${card.name} doesn't have flash. Assuming an effect allows it, as described.", timingRule); state.assumptions += "${card.name} is cast at a time ${withArticle(kind.lowercase())} spell normally can't be (no flash); assuming something allows it." }
+            }
         }
         // A modal spell's targets belong to the chosen mode (700.2c): validate against that mode's needs.
         val modal = effect as? Effect.Modal

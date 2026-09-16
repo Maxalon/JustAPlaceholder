@@ -6887,5 +6887,18 @@
     "cite": [
       "701.8a"
     ]
+  },
+  {
+    "id": "a-flash-granter-explains-the-timing",
+    "text": "I control Leyline of Anticipation and it is my opponent's end step. I cast Grizzly Bears. What happens?",
+    "expect": [
+      "Leyline of Anticipation lets your spells be cast as though they had flash"
+    ],
+    "notExpect": [
+      "assuming something allows it"
+    ],
+    "cite": [
+      "702.8a"
+    ]
   }
 ]

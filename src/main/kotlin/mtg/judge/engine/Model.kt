@@ -383,6 +383,8 @@ sealed interface StaticEffect {
     data class CostText(val text: String) : StaticEffect
     /** "~ attacks each combat if able." (508.1d) */
     data object MustAttack : StaticEffect
+    /** Vedalken Orrery, Leyline of Anticipation: "You may cast [spells] as though they had flash." null filter = every spell. */
+    data class CastAsThoughFlash(val filter: ObjFilter?) : StaticEffect
     /** Recognised static text the engine cites but has no game model for (level-up stats, "look at the top card any time", …). */
     data class Note(val text: String, val rules: List<String>) : StaticEffect
     /** A continuous replacement or prevention effect from a static ability (614, 615). */
