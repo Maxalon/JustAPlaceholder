@@ -287,10 +287,7 @@ class Engine(val state: GameState) {
         ((e as? Effect.Seq)?.effects?.firstOrNull()?.let { it is Effect.AddMana || it is Effect.AddManaPer || it is Effect.AddManaDevotion } == true)
 
     /** A player's devotion to a colour: the colour's symbols in the mana costs of the permanents they control (700.5). */
-    fun devotionOf(playerId: String, colour: Char): Int {
-        val p = state.player(playerId)
-        return p.devotion[colour] ?: state.objects.values.filter { it.isOnBattlefield() && it.controller == playerId }.sumOf { o -> (o.def.manaCost ?: "").count { ch -> ch == colour } }
-    }
+    fun devotionOf(playerId: String, colour: Char): Int = state.devotion(playerId, colour)
 
     fun activate(playerId: String, objectId: String, abilityIndex: Int?, targets: List<Ref>, choice: String? = null, x: Int? = null): StackItem? {
         val obj = state.obj(objectId)
@@ -456,6 +453,7 @@ class Engine(val state: GameState) {
     /** Why a creature can't attack or block right now (the permanent forbidding it), or null if it can. */
     fun cantWhy(objectId: String, what: String): String? {
         val o = state.obj(objectId)
+        if (what == "attack" || what == "block") state.notACreatureBecause(o)?.let { why -> return "${o.name} isn't a creature right now — ${state.player(o.controller).possessive} $why" }
         if (!cant(o, what)) return null
         return cantSource(o, what) ?: o.name
     }
@@ -657,6 +655,7 @@ class Engine(val state: GameState) {
         val p = state.player(playerId)
         state.phase = "combat"; state.step = "declare_attackers"
         if (!a.def.isCreature || !a.isOnBattlefield()) { trace.step("${a.name} isn't a creature on the battlefield, so it can't attack.", "506.3"); state.outcomes += "${a.name} can't attack."; return }
+        state.notACreatureBecause(a)?.let { why -> trace.step("${a.name} isn't a creature right now — ${p.possessive} $why — so it can't be declared as an attacker. It's still an enchantment on the battlefield.", "506.3", "508.1a"); state.outcomes += "${a.name} can't attack (${p.possessive} $why)."; return }
         if (a.controller != playerId) { trace.step("${a.name} isn't controlled by ${p.subject.lowercase()}, so ${p.subject.lowercase()} can't attack with it.", "508.1a"); return }
         if (a.has("defender")) { trace.step("${a.name} has defender and can't attack.", "702.3b"); state.outcomes += "${a.name} can't attack (defender)."; return }
         if (cant(a, "attack")) { trace.step("${a.name} can't attack (a rules text says so${cantSource(a, "attack")?.let { ": $it" } ?: ""}).", "508.1c"); state.outcomes += "${a.name} can't attack."; return }
@@ -715,6 +714,7 @@ class Engine(val state: GameState) {
         val b = state.obj(blockerId); val a = state.obj(attackerId); val p = state.player(playerId)
         state.step = "declare_blockers"
         if (!b.def.isCreature || !b.isOnBattlefield()) { trace.step("${b.name} isn't a creature on the battlefield, so it can't block.", "506.3"); return }
+        state.notACreatureBecause(b)?.let { why -> trace.step("${b.name} isn't a creature right now — ${state.player(b.controller).possessive} $why — so it can't block.", "506.3", "509.1a"); state.outcomes += "${b.name} can't block (${state.player(b.controller).possessive} $why)."; return }
         if (a.attacking == null) { trace.step("${a.name} isn't attacking, so ${b.name} can't block it.", "509.1a"); return }
         // A creature may only block an attacker that is attacking its controller, a planeswalker they control, or a battle they protect.
         val defendsAgainst = when (val d = a.attacking) { is Ref.Player -> d.id == playerId; is Ref.Obj -> state.objects[d.id]?.controller == playerId; else -> true }
@@ -1946,6 +1946,25 @@ class Engine(val state: GameState) {
     }
 
     /** Every untapped permanent [playerId] controls that makes mana, what each makes, and the total if every amount is a fixed one. */
+    /** "How much does my Lightning Bolt cost?" — the printed cost plus every tax and reduction on the battlefield (601.2f). */
+    fun spellCost(objId: String): String {
+        val obj = state.obj(objId); val card = obj.def; val p = state.player(obj.controller)
+        val printed = card.manaCost ?: return "${card.name} has no mana cost, so it can't be cast for mana."
+        val taxes = state.objects.values.filter { it.isOnBattlefield() }
+            .flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CostTax>()
+                .filter { t -> (t.whose == null || (t.whose == Who.YOU) == (o.controller == obj.controller)) && spellMatches(t.filter, card) }.map { o to it } }
+        val commanderTax = if (obj.commander && obj.commanderCasts > 0) 2 * obj.commanderCasts else 0
+        val tax = taxes.sumOf { it.second.amount } + commanderTax
+        val total = card.manaValue.toInt() + tax
+        if (taxes.isEmpty() && commanderTax == 0) return "${card.name} costs $printed — $total mana. Nothing on the battlefield changes it."
+        val parts = taxes.map { (o, t) -> "${o.name} makes it cost {${kotlin.math.abs(t.amount)}} ${if (t.amount < 0) "less" else "more"}" } +
+            (if (commanderTax > 0) listOf("the commander tax adds {$commanderTax}") else emptyList())
+        trace.step("${parts.joinToString(" and ")}. ${card.name}'s total cost is $printed ${if (tax < 0) "less" else "plus"} {${kotlin.math.abs(tax)}}: $total mana in all. The extra is generic, so it can be paid with any colour.", "601.2f", "118.7")
+        val avail = p.mana
+        return "${card.name} costs $printed plus {${kotlin.math.abs(tax)}} ${if (tax < 0) "less" else "more"} (${parts.joinToString("; ")}) — $total mana in all." +
+            (if (avail != null) if (avail >= total) " ${p.subject} ${p.v("has", "have")} $avail available, enough." else " ${p.subject} ${p.v("has", "have")} only $avail available, so it can't be cast." else "")
+    }
+
     fun manaAvailable(playerId: String): String {
         val p = state.player(playerId)
         val sources = state.objects.values.filter { it.isOnBattlefield() && it.controller == playerId && it.tapped != true }

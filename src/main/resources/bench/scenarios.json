@@ -5484,5 +5484,108 @@
     "cite": [
       "704.5f"
     ]
+  },
+  {
+    "id": "heliod-is-not-a-creature-at-low-devotion",
+    "text": "I control Heliod, God of the Sun. Is it a creature?",
+    "expect": [
+      "isn't a creature",
+      "devotion to white is 1, less than 5",
+      "still an enchantment"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "heliod-is-a-creature-at-five-devotion",
+    "text": "I control Heliod, God of the Sun and my devotion to white is 5. Is it a creature?",
+    "expect": [
+      "Yes: Heliod, God of the Sun is a creature"
+    ],
+    "notExpect": [
+      "isn't a creature"
+    ],
+    "cite": []
+  },
+  {
+    "id": "heliod-cannot-attack-as-a-noncreature",
+    "text": "I control Heliod, God of the Sun. Can it attack?",
+    "expect": [
+      "can't be declared as an attacker"
+    ],
+    "notExpect": [
+      "deals 5 damage"
+    ],
+    "cite": [
+      "506.3",
+      "508.1a"
+    ]
+  },
+  {
+    "id": "wrath-spares-a-god-that-is-not-a-creature",
+    "text": "I control Heliod, God of the Sun. My opponent casts Wrath of God. What happens?",
+    "expect": [
+      "Nothing changes"
+    ],
+    "notExpect": [
+      "Heliod, God of the Sun is destroyed"
+    ],
+    "cite": []
+  },
+  {
+    "id": "doom-blade-cannot-target-a-god-that-is-not-a-creature",
+    "text": "I control Thassa, God of the Sea. My opponent casts Doom Blade targeting it. What happens?",
+    "expect": [
+      "isn't a legal target for Doom Blade"
+    ],
+    "notExpect": [
+      "Thassa, God of the Sea is destroyed"
+    ],
+    "cite": [
+      "601.2c"
+    ]
+  },
+  {
+    "id": "thalia-taxes-a-noncreature-spell",
+    "text": "My opponent controls Thalia, Guardian of Thraben. How much does my Lightning Bolt cost?",
+    "expect": [
+      "Lightning Bolt costs {R} plus {1} more",
+      "2 mana in all"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "601.2f",
+      "118.7"
+    ]
+  },
+  {
+    "id": "thalia-does-not-tax-a-creature-spell",
+    "text": "My opponent controls Thalia, Guardian of Thraben and Sphere of Resistance. How much does my Grizzly Bears cost?",
+    "expect": [
+      "Sphere of Resistance makes it cost {1} more",
+      "3 mana in all"
+    ],
+    "notExpect": [
+      "Thalia, Guardian of Thraben makes it cost"
+    ],
+    "cite": [
+      "601.2f"
+    ]
+  },
+  {
+    "id": "an-untaxed-spell-costs-what-it-says",
+    "text": "How much does my Lightning Bolt cost?",
+    "expect": [
+      "Lightning Bolt costs {R}",
+      "Nothing on the battlefield changes it"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

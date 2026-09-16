@@ -358,6 +358,12 @@ object OracleParser {
     fun parseStatic(line: String): List<StaticEffect> {
         parseReplacementStatic(line)?.let { return listOf(it) }
         Regex("""^~ enters(?: the battlefield)? tapped\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.EntersTapped()) }
+        // The Theros gods. This has to come before the "as long as" bail below.
+        Regex("""^as long as your devotion to (white|blue|black|red|green) is less than (one|two|three|four|five|six|seven|\d+), ~ isn't a creature\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val colour = when (m.groupValues[1].lowercase()) { "white" -> 'W'; "blue" -> 'U'; "black" -> 'B'; "red" -> 'R'; else -> 'G' }
+            val n = m.groupValues[2].lowercase().toIntOrNull() ?: listOf("zero", "one", "two", "three", "four", "five", "six", "seven").indexOf(m.groupValues[2].lowercase())
+            if (n > 0) return listOf(StaticEffect.NotACreatureUnlessDevotion(colour, n))
+        }
         // "Artifacts and creatures your opponents control enter tapped." (Blind Obedience, Urabrask, Kismet)
         Regex("""^(.+?) (your opponents control|you control|)\s*enters?(?: the battlefield)? tapped\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val what = m.groupValues[1].trim().lowercase()

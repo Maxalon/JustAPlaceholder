@@ -209,6 +209,24 @@ class GameState(
         return out
     }
 
+    /** A player's devotion to a colour: the colour's symbols in the mana costs of the permanents they control (700.5). */
+    fun devotion(playerId: String, colour: Char): Int {
+        val p = players.firstOrNull { it.id == playerId } ?: return 0
+        return p.devotion[colour] ?: objects.values.filter { it.isOnBattlefield() && it.controller == playerId }.sumOf { o -> (o.def.manaCost ?: "").count { ch -> ch == colour } }
+    }
+
+    /** The name of the ability keeping this permanent from being a creature right now, or null when it is one (or never was). */
+    fun notACreatureBecause(o: GameObject): String? {
+        if (!o.def.isCreature || !o.isOnBattlefield()) return null
+        val god = o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.NotACreatureUnlessDevotion>().firstOrNull() ?: return null
+        val have = devotion(o.controller, god.colour)
+        val colourName = when (god.colour) { 'W' -> "white"; 'U' -> "blue"; 'B' -> "black"; 'R' -> "red"; else -> "green" }
+        return if (have < god.threshold) "devotion to $colourName is $have, less than ${god.threshold}" else null
+    }
+
+    /** Whether a permanent is a creature right now — printed type, minus anything currently turning it off. */
+    fun isCreature(o: GameObject): Boolean = o.def.isCreature && notACreatureBecause(o) == null
+
     /** Whether a static ability's condition currently holds for its source. */
     fun conditionHolds(c: Condition?, src: GameObject): Boolean = when (c) {
         null -> true
@@ -309,6 +327,7 @@ class GameState(
 
     /** "3/3 (2/2, +1/+1 from Glorious Anthem, +0/+0 …)" for traces and echoes. */
     fun describePt(obj: GameObject): String {
+        notACreatureBecause(obj)?.let { why -> return "not a creature right now ($why), so no power or toughness" }
         val p = obj.power ?: return "no power/toughness"
         val t = obj.toughness ?: return "no power/toughness"
         val parts = mutableListOf<String>()
@@ -329,11 +348,11 @@ class GameState(
         if (!anyZone && !o.isOnBattlefield()) return false
         if (f.attachedToSource && (source == null || source.attachedTo != o.id)) return false
         val typeOk = f.kinds.any { k -> when (k) {
-            Kind.CREATURE -> o.def.isCreature; Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types
+            Kind.CREATURE -> isCreature(o); Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types
             Kind.LAND -> "Land" in o.def.types; Kind.PLANESWALKER -> "Planeswalker" in o.def.types; Kind.BATTLE -> "Battle" in o.def.types
             Kind.PERMANENT -> true; Kind.CARD -> !o.token; else -> false
         } }
-        val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> o.def.isCreature; Kind.LAND -> "Land" in o.def.types; Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types; else -> false } }
+        val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> isCreature(o); Kind.LAND -> "Land" in o.def.types; Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types; else -> false } }
         val notSubOk = f.notSubtypes.none { st -> o.def.subtypes.any { it.equals(st, true) } }
         val ctrlOk = when (f.controller) { null -> true; Who.YOU -> o.controller == controller; Who.OPPONENT -> o.controller != controller; else -> true }
         val subOk = if (f.subtypesAny && f.subtypes.isNotEmpty()) f.subtypes.any { st -> o.def.subtypes.any { it.equals(st, true) } || (o.def.changeling && o.def.isCreature) }

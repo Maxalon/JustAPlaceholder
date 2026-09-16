@@ -165,6 +165,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "ask" -> {
                 if (e.to == "playerDamage") { val p = state.player(e.player ?: throw JudgeException("ask needs a player")); val name = if (p.you) "you" else p.name; val total = state.trace.steps.sumOf { st -> Regex("""deals (\d+) (?:combat )?damage to ${Regex.escape(name)}\b""").findAll(st.text).sumOf { it.groupValues[1].toInt() } }; val prevented = state.trace.steps.any { it.text.contains("to $name") && it.text.contains("prevented") }; state.outcomes += if (total > 0) "Yes: $name ${p.v("takes", "take")} $total damage in all." else "No: $name ${p.v("takes", "take")} no damage${if (prevented) " (it's prevented)" else ""}."; return }
                 if (e.to == "manaAvailable") { state.outcomes += engine.manaAvailable(e.player ?: throw JudgeException("ask needs a player")); return }
+                if (e.to == "spellCost") { state.outcomes += engine.spellCost(e.obj ?: throw JudgeException("ask needs an object")); return }
                 if (e.to == "playerSurvive" || e.to == "playerDie" || e.to == "playerWin") { state.outcomes += playerAnswer(e.to, state.player(e.player ?: throw JudgeException("ask needs a player")), state); return }
                 val o = generateSequence(state.obj(e.obj ?: throw JudgeException("ask needs an object"))) { it.successor?.let { id -> state.objects[id] } }.last()
                 when (e.to) {
@@ -187,7 +188,14 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         state.outcomes += if (hit) "Yes: ${o.name} dealt damage to $who." else "No: ${o.name} dealt no damage to $who${if (blocked) " (it was blocked, and a blocked creature stays blocked even if its blocker leaves combat; without trample it assigns no damage to the player, 509.1h)" else ""}."
                     }
                     "playerSurvive", "playerDie", "playerWin" -> state.outcomes += playerAnswer(e.to, state.player(e.player ?: o.controller), state)
-                    "pt" -> state.outcomes += if (o.isOnBattlefield() && o.def.isCreature) "${o.name} is ${state.describePt(o)}." else if (!o.isOnBattlefield()) "${o.name} isn't on the battlefield." else "${o.name} isn't a creature."
+                    "pt" -> state.outcomes += when {
+                        !o.isOnBattlefield() -> "${o.name} isn't on the battlefield."
+                        state.notACreatureBecause(o) != null -> "${o.name} isn't a creature right now (${state.player(o.controller).possessive} ${state.notACreatureBecause(o)}), so it has no power or toughness. It's still an enchantment on the battlefield and keeps its other abilities."
+                        o.def.isCreature -> "${o.name} is ${state.describePt(o)}."
+                        else -> "${o.name} isn't a creature."
+                    }
+                    "isCreature" -> state.outcomes += state.notACreatureBecause(o)?.let { why -> "No: ${o.name} isn't a creature — ${state.player(o.controller).possessive} $why. It's still an enchantment on the battlefield, it keeps its other abilities, and it can't attack, block, or be targeted by anything that needs a creature." }
+                        ?: if (!o.isOnBattlefield()) "${o.name} isn't on the battlefield." else if (o.def.isCreature) "Yes: ${o.name} is a creature (${state.describePt(o)})." else "No: ${o.name} isn't a creature; it's ${o.def.types.joinToString(" ").lowercase()}."
                     "control" -> {
                         // "Do I get it back?": the turn is played out to its cleanup step first, once combat is done.
                         if (o.controlRevertsTo != null) engine.beginStep("cleanup", e.targets.firstOrNull()?.takeIf { t -> state.players.any { it.id == t } } ?: state.activePlayer ?: o.controller)

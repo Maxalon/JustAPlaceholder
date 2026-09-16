@@ -430,6 +430,44 @@ class BatchFourteenTest {
         assertTrue("702.92a" in s.cited())
     }
 
+    private val heliod = card("Heliod, God of the Sun", "Legendary Enchantment Creature \u2014 God", "Indestructible\nAs long as your devotion to white is less than five, Heliod, God of the Sun isn't a creature.", "{3}{W}", "W", "5", "6", "Indestructible")
+    private val wrath = card("Wrath of God", "Sorcery", "Destroy all creatures. They can't be regenerated.", "{2}{W}{W}", "W")
+    private val thalia = card("Thalia, Guardian of Thraben", "Legendary Creature \u2014 Human Soldier", "First strike\nNoncreature spells cost {1} more to cast.", "{1}{W}", "W", "2", "1", "First strike")
+
+    @Test
+    fun `a god below its devotion threshold is not a creature`() {
+        val s = state(); s.put("heliod", heliod, "me")
+        assertTrue(s.notACreatureBecause(s.obj("heliod")) != null)
+        s.player("me").devotion['W'] = 5
+        assertEquals(null, s.notACreatureBecause(s.obj("heliod")))
+    }
+
+    @Test
+    fun `wrath misses a god that is not a creature and takes one that is`() {
+        val s = state(); s.put("heliod", heliod, "me"); s.put("wrath", wrath, "opp", Zone.HAND)
+        Engine(s).let { it.cast("opp", wrath, emptyList(), "wrath"); it.resolveAll() }
+        assertTrue(s.obj("heliod").isOnBattlefield())
+        // At five devotion it is a creature again — though this one is indestructible anyway.
+        val s2 = state(); s2.put("heliod", heliod, "me"); s2.player("me").devotion['W'] = 5
+        assertEquals(null, s2.notACreatureBecause(s2.obj("heliod")))
+    }
+
+    @Test
+    fun `a god that is not a creature cannot attack`() {
+        val s = state(); s.put("heliod", heliod, "me")
+        Engine(s).declareAttacker("me", "heliod", Ref.Player("opp"))
+        assertTrue(s.outcomes.any { "can't attack" in it }, s.outcomes.toString())
+    }
+
+    @Test
+    fun `thalia taxes a noncreature spell but not a creature spell`() {
+        val s = state(); s.put("thalia", thalia, "opp")
+        s.put("bolt", bolt, "me", Zone.HAND); s.put("bear", bears, "me", Zone.HAND)
+        val e = Engine(s)
+        assertTrue("2 mana in all" in e.spellCost("bolt"), e.spellCost("bolt"))
+        assertTrue("Nothing on the battlefield changes it" in e.spellCost("bear"), e.spellCost("bear"))
+    }
+
     @Test
     fun `the germ dies once the equipment leaves`() {
         val s = state(); s.put("skull", batterskull, "me", Zone.HAND)
