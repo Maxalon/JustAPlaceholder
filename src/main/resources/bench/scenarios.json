@@ -7443,5 +7443,16 @@
     "cite": [
       "702.111b"
     ]
+  },
+  {
+    "id": "shadow-stops-a-block",
+    "text": "They attack with Dauthi Slayer and I control Grizzly Bears. Can my Grizzly Bears block?",
+    "expect": [
+      "Grizzly Bears can't block Dauthi Slayer (shadow)"
+    ],
+    "notExpect": [],
+    "cite": [
+      "702.28b"
+    ]
   }
 ]
