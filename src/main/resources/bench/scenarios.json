@@ -7399,5 +7399,27 @@
     "cite": [
       "601.2c"
     ]
+  },
+  {
+    "id": "which-of-my-creatures-can-attack",
+    "text": "I control Grizzly Bears and a Wall of Omens. Which of my creatures can attack?",
+    "expect": [
+      "Yes: Grizzly Bears can attack",
+      "No: Wall of Omens has defender"
+    ],
+    "notExpect": [
+      "Yes: Wall of Omens can attack"
+    ],
+    "cite": []
+  },
+  {
+    "id": "which-one-dies-in-combat",
+    "text": "I attack with Grizzly Bears and they block with Hill Giant. Which one dies?",
+    "expect": [
+      "Yes: Grizzly Bears died",
+      "No: Hill Giant is still on the battlefield"
+    ],
+    "notExpect": [],
+    "cite": []
   }
 ]

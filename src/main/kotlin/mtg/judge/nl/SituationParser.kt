@@ -2391,6 +2391,23 @@ class SituationParser(private val names: NameIndex) {
                      else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.card?.name?.let { slug(it) } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, to = "mana"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
+        // "which of my creatures can attack?": one answer per creature that player controls.
+        Regex("""^(?:which|what) (?:of (?:my|their|his|her)|my|their|his|her) creatures?(?: can| could| may| is able to| are able to)? (attack|block)(?: this turn| now| at all)?$""").find(clause0)?.let { q ->
+            val who = Regex("""\b(my|their|his|her)\b""").find(clause0)?.groupValues?.get(1)?.let { if (it == "my") "me" else pronounPlayer(ctx, it) } ?: "me"
+            val ids = ctx.objects.values.filter { it.controller == who && it.zone == "battlefield" && isCreatureName(it.card.name) }.map { it.id }
+            if (ids.isEmpty()) return@let
+            ids.forEach { ctx.asks += EventSpec("ask", obj = it, to = q.groupValues[1]) }
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered for each of ${if (who == "me") "your" else "their"} creatures in the outcome below."; return true
+        }
+        // "which one dies?" / "which of them dies?": the last attacker and the creature that blocked it, one answer each.
+        Regex("""^(?:which|who) (?:one|of them|of the two|creature)? ?(?:dies|die|survives|survive|lives|is left)(?: here| then| now)?$""").find(clause0)?.let {
+            val block = ctx.events.lastOrNull { it.verb == "block" } ?: return@let
+            val ids = listOfNotNull(block.obj, block.targets.firstOrNull()).filter { it in ctx.objects }
+            if (ids.isEmpty()) return@let
+            val to = if (clause0.contains("surviv") || clause0.contains("lives") || clause0.contains("is left")) "survive" else "die"
+            ids.forEach { ctx.asks += EventSpec("ask", obj = it, to = to) }
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered for each of the two creatures in the outcome below."; return true
+        }
         // "is it blocked?" / "is my attacker blocked?": combat state, not a statement that it is blocked.
         Regex("""^(?:is|are|was|were|does|do|did) (?:it|that|they|(?:my |their |his |her |the |@\w+'s )?(c\d+))(?:'s)? (?:still |even |actually )*(?:get |getting |become )?blocked(?: still| now| at all| by anything)?$""").find(clause0)?.let { q ->
             val ph = q.groupValues[1]

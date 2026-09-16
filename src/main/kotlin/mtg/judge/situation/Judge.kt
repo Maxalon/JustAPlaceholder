@@ -222,7 +222,15 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                             else -> "No: ${o.name}'s ability didn't trigger (nothing that happened matched its trigger condition)."
                         }
                     }
-                    "block", "attack" -> state.outcomes += engine.cantWhy(o.id, e.to)?.let { why -> "No: ${o.name} can't ${e.to} (${if (why == o.name) "its own ability" else why} says so)." } ?: if (o.isOnBattlefield()) "Yes: ${o.name} can ${e.to}${if (e.to == "attack" && o.summoningSick == true && !o.has("haste")) ", but not this turn: it's summoning sick (302.6)" else ""}." else "No: ${o.name} isn't on the battlefield."
+                    "block", "attack" -> state.outcomes += when {
+                        // Defender and being tapped stop an attack just as surely as a "can't attack" effect does;
+                        // without these "which of my creatures can attack?" answered yes for a Wall of Omens.
+                        e.to == "attack" && state.hasKeyword(o, "defender") -> "No: ${o.name} has defender, so it can't attack (702.3b)."
+                        // Attacking taps it, so a creature that is already attacking is tapped and could attack.
+                        e.to == "attack" && o.tapped == true && o.attacking == null -> "No: ${o.name} is tapped, so it can't be declared as an attacker (508.1a)."
+                        else -> engine.cantWhy(o.id, e.to)?.let { why -> "No: ${o.name} can't ${e.to} (${if (why == o.name) "its own ability" else why} says so)." }
+                            ?: if (o.isOnBattlefield()) "Yes: ${o.name} can ${e.to}${if (e.to == "attack" && o.summoningSick == true && !o.has("haste")) ", but not this turn: it's summoning sick (302.6)" else ""}." else "No: ${o.name} isn't on the battlefield."
+                    }
                     "damage" -> {
                         val victim = e.targets.firstOrNull()?.let { parseRef(it, state) as? mtg.judge.engine.Ref.Player }?.let { state.player(it.id) }
                         val who = victim?.let { if (it.you) "you" else it.name } ?: "opponent"
