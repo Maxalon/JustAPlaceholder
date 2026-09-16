@@ -106,7 +106,7 @@ class EngineTest {
         e.resolveAll(); assertEquals(20, s.player("me").life); assertEquals(Zone.BATTLEFIELD, s.obj("bears").zone)
         val s2 = state(); val e2 = Engine(s2)
         assertTrue(e2.cast("opp", bolt, emptyList()) != null)
-        assertTrue(s2.assumptions.any { "assuming the opponent" in it })
+        assertTrue(s2.assumptions.any { "assuming its controller's opponent" in it })
     }
 
     @Test

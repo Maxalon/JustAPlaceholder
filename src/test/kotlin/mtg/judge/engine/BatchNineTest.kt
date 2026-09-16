@@ -50,7 +50,7 @@ class BatchNineTest {
         e.declareAttacker("me", "b1", Ref.Player("opp")); e.declareAttacker("me", "b2", Ref.Player("opp"))
         e.cast("opp", settle, emptyList()); e.resolveAll()
         assertEquals(Zone.EXILE, s.obj("b1").zone); assertEquals(Zone.EXILE, s.obj("b2").zone); assertEquals(Zone.BATTLEFIELD, s.obj("theirs").zone)
-        assertTrue(s.assumptions.any { "assuming the opponent" in it })
+        assertTrue(s.assumptions.any { "assuming its controller's opponent" in it })
     }
 
     @Test
