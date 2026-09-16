@@ -5301,5 +5301,29 @@
     "cite": [
       "510.4"
     ]
+  },
+  {
+    "id": "deaths-shadow-at-four",
+    "text": "I control Death's Shadow and I am at 4 life. What are its stats?",
+    "expect": [
+      "Death's Shadow is 9/9"
+    ],
+    "notExpect": [
+      "Rules text not modeled: ~ gets -X/-X"
+    ],
+    "cite": []
+  },
+  {
+    "id": "deaths-shadow-at-thirteen",
+    "text": "I control Death's Shadow and I am at 13 life. What are its stats?",
+    "expect": [
+      "Death's Shadow: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Death's Shadow is 13/13"
+    ],
+    "cite": [
+      "704.5f"
+    ]
   }
 ]

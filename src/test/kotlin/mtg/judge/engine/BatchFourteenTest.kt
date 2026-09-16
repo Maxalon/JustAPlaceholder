@@ -382,4 +382,20 @@ class BatchFourteenTest {
         e.leave("bear", Zone.GRAVEYARD)
         assertEquals(1, s.objects.values.count { it.def.name == "Grizzly Bears" && it.isOnBattlefield() })
     }
+
+    private val shadow = card("Death's Shadow", "Creature — Avatar", "Death's Shadow gets -X/-X, where X is your life total.", "{B}{B}{B}", "B", "13", "13")
+
+    @Test
+    fun `death's shadow shrinks by its controller's life total`() {
+        val s = state(); s.put("shadow", shadow, "me")
+        s.player("me").life = 4
+        assertEquals(9, s.obj("shadow").power); assertEquals(9, s.obj("shadow").toughness)
+        s.player("me").life = 1
+        assertEquals(12, s.obj("shadow").power)
+        // At 13 life it is 0/0 and a state-based action puts it away.
+        s.player("me").life = 13
+        assertEquals(0, s.obj("shadow").toughness)
+        Engine(s).stateBasedActions()
+        assertEquals(Zone.GRAVEYARD, s.obj("shadow").zone)
+    }
 }

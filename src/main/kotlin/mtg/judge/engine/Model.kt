@@ -273,10 +273,14 @@ sealed interface CountExpr {
     data class Permanents(val filter: ObjFilter) : CountExpr
     /** Tarmogoyf: "the number of card types among cards in all graveyards". */
     data object CardTypesInGraveyards : CountExpr
+    /** Death's Shadow: "your life total". */
+    data object YourLifeTotal : CountExpr
     data class Unknown(val text: String) : CountExpr
 }
 
 sealed interface StaticEffect {
+    /** Death's Shadow: "~ gets -X/-X, where X is your life total" (layer 7c, recomputed continuously). */
+    data class PtModifyByCount(val count: CountExpr, val negative: Boolean) : StaticEffect
     /** Layer 7c: "[filter] get +N/+N". `self` = "~ gets"; `condition` = "as long as …". */
     data class PtModify(val filter: ObjFilter, val power: Int, val toughness: Int, val self: Boolean = false, val condition: Condition? = null) : StaticEffect
     /** Layer 7a: "~'s power and toughness are each equal to the number of …" (604.3). */

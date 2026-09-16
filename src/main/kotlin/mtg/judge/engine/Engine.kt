@@ -1230,7 +1230,7 @@ class Engine(val state: GameState) {
                 resolvePlayers(effect.who, item).forEach { p -> p.life = p.life?.minus(n); trace.step("${p.subject} ${p.v("loses", "lose")} $n life (that much)${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} $n life." }
             }
             is Effect.PumpAllCount -> {
-                val x = when (val c = effect.count) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }; is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size; is CountExpr.Unknown -> null }
+                val x = when (val c = effect.count) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }; is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size; is CountExpr.YourLifeTotal -> state.player(item.controller).life; is CountExpr.Unknown -> null }
                 if (x == null) { state.unsupported += Unsupported(item.describe, "Couldn't count X."); return }
                 trace.step("X is $x (counted as the effect resolves).", "608.2h")
                 applyEffect(Effect.PumpAll(effect.filter, x, x, effect.keywords), item)
@@ -1239,7 +1239,7 @@ class Engine(val state: GameState) {
             is Effect.CreateToken -> {
                 val who = resolveWho(effect.who, item) ?: run { state.unsupported += Unsupported(item.describe, "Couldn't work out who creates the token."); return }
                 val def = Generic.token(effect.token) ?: run { state.unsupported += Unsupported(item.describe, "Couldn't read the token \"${effect.token}\"."); return }
-                var n = effect.countBy?.let { c -> when (c) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }.also { trace.step("X is $it: the number of ${c.filter.raw} ${who.subject.lowercase()} ${who.v("controls", "control")} as the ability resolves.", "608.2h") }; is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size; is CountExpr.Unknown -> { state.clarifications += Clarification("${item.describe}'s X", "X is \"${c.text}\", which isn't tracked; assuming 0."); 0 } } } ?: effect.count
+                var n = effect.countBy?.let { c -> when (c) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }.also { trace.step("X is $it: the number of ${c.filter.raw} ${who.subject.lowercase()} ${who.v("controls", "control")} as the ability resolves.", "608.2h") }; is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size; is CountExpr.YourLifeTotal -> (state.player(item.controller).life ?: 0); is CountExpr.Unknown -> { state.clarifications += Clarification("${item.describe}'s X", "X is \"${c.text}\", which isn't tracked; assuming 0."); 0 } } } ?: effect.count
                 state.objects.values.filter { it.isOnBattlefield() && it.controller == who.id }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.TokenMultiplier }.map { o to it } }
                     .forEach { (o, m) -> trace.step("${o.name} replaces the token creation: ${n * m.factor} tokens instead of $n.", "614.1a", "614.6"); n *= m.factor }
                 repeat(n) {

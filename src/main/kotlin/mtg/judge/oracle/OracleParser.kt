@@ -476,6 +476,12 @@ object OracleParser {
         if (Regex("""^Players can't get counters\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("122.1")))
         if (Regex("""^You may look at the top card of your library any time\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("401.5")))
         if (Regex("""^(As an additional cost to cast ~|~ costs \{[^}]+\} (less|more) to cast|You may cast ~ )""", RegexOption.IGNORE_CASE).containsMatchIn(line)) return listOf(StaticEffect.CostText(line))
+        // "~ gets -X/-X, where X is your life total." (Death's Shadow)
+        Regex("""^~ gets ([+-])X/\1X, where X is (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val c = parseCount(m.groupValues[2])
+            if (c is CountExpr.Unknown) return emptyList()
+            return listOf(StaticEffect.PtModifyByCount(c, m.groupValues[1] == "-"))
+        }
         if (line.contains("until end of turn", true) || line.startsWith("~", true) || line.contains(" as long as ", true) || line.contains(" for each ", true) || line.contains(" where ", true)) return emptyList()
         anthemRe.matchEntire(line)?.let { m ->
             val filter = parseFilter(m.groupValues[2], Kind.CREATURE).let { if (m.groupValues[1].trim().equals("other", true)) it.copy(other = true) else it }
@@ -518,6 +524,7 @@ object OracleParser {
             return if (f.verifiable) CountExpr.Permanents(f) else CountExpr.Unknown(t)
         }
         if (Regex("""^the number of card types among cards in all graveyards$""", RegexOption.IGNORE_CASE).matches(t)) return CountExpr.CardTypesInGraveyards
+        if (Regex("""^your life total$""", RegexOption.IGNORE_CASE).matches(t)) return CountExpr.YourLifeTotal
         Regex("""^the number of (.+?) on the battlefield$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m ->
             val f = parseFilter(m.groupValues[1], Kind.PERMANENT)
             return if (f.verifiable) CountExpr.Permanents(f) else CountExpr.Unknown(t)
