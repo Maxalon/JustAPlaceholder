@@ -6066,5 +6066,18 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "player-state-is-shown-on-the-board-that-was-read",
+    "text": "I have 9 poison counters and my opponent attacks me with a 1/1 with infect and I don't block. What happens?",
+    "expect": [
+      "you (9 poison)",
+      "You have 10 poison counters",
+      "You lose the game (poison)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

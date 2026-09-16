@@ -67,7 +67,12 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             state.stack += item
         }
 
-        understood += "Players: " + state.players.joinToString(", ") { (if (it.you) "you" else it.name) + (it.life?.let { l -> " ($l life)" } ?: "") } + (state.activePlayer?.let { "; it's ${state.player(it).possessive} turn" } ?: "; whose turn it is wasn't stated")
+        understood += "Players: " + state.players.joinToString(", ") { p ->
+            val notes = listOfNotNull(p.life?.let { "$it life" }, p.poison.takeIf { it > 0 }?.let { "$it poison" },
+                p.handSize?.let { "$it in hand" }, p.librarySize?.let { "$it in library" }, p.mana?.let { "$it mana" },
+                state.spellsThisTurn[p.id]?.takeIf { it > 0 }?.let { "$it spell${if (it == 1) "" else "s"} cast this turn" })
+            (if (p.you) "you" else p.name) + (if (notes.isEmpty()) "" else " (" + notes.joinToString(", ") + ")")
+        } + (state.activePlayer?.let { "; it's ${state.player(it).possessive} turn" } ?: "; whose turn it is wasn't stated")
         state.objects.values.groupBy { it.zone }.forEach { (zone, objs) ->
             understood += "${if (zone == mtg.judge.engine.Zone.COMMAND) "Command zone" else zone.name.lowercase().replaceFirstChar { it.uppercase() }}: " + objs.joinToString(", ") { "${it.name} [${it.id}] (${state.player(it.controller).possessive}${if (it.def.isCreature && it.isOnBattlefield()) ", " + state.describePt(it) else ""}${if (it.tapped == true) ", tapped" else ""}${if (it.damage > 0) ", ${it.damage} damage" else ""}${it.attachedTo?.let { a -> ", attached to ${state.objects[a]?.name ?: a}" } ?: ""}${it.counters["loyalty"]?.let { l -> ", loyalty $l" } ?: ""}${countersNote(it)})" }
         }
