@@ -465,6 +465,14 @@ object OracleParser {
         Regex("""^you have hexproof\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.PlayerHexproof) }
         Regex("""^you can't lose the game and your opponents can't win the game\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.CantLose) }
         Regex("""^nonbasic lands are mountains\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.NonbasicLandsAreMountains) }
+        // "Creatures without flying can't attack" (Moat), "Non-Eye creatures you control can't block": a filter
+        // and a restriction, the same shape the engine already checks for enchanted creatures.
+        Regex("""^([a-z][a-z0-9' -]*) can't (attack|block|attack or block)(?: this turn)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val what = m.groupValues[1].trim().lowercase()
+            if ("creature" !in what) return@let    // "players can't…" is a different thing
+            val f = parseFilter(what.replace(Regex("""^creatures\b"""), "creature").replace(Regex("""\bcreatures\b"""), "creature"), Kind.CREATURE)
+            if (f.verifiable) return listOf(StaticEffect.Cant(m.groupValues[2].lowercase(), applies = f))
+        }
         Regex("""^creatures with power greater than the number of cards in your hand can't attack\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.Cant("attack", powerAboveHand = true)) }
         if (Regex("""^~ attacks each combat if able\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.MustAttack)
         // "As long as you have 30 or more life, ~ gets +5/+5 and has flying." — the same thing said the other way round.
@@ -1143,7 +1151,7 @@ object OracleParser {
             core = core.removeRange(m.range)
         }
         val kinds = mutableSetOf<Kind>(); val notKinds = mutableSetOf<Kind>(); val unknown = mutableListOf<String>()
-        val subtypes = mutableSetOf<String>(); val keywords = mutableSetOf<String>(); val notSubtypes = mutableListOf<String>()
+        val subtypes = mutableSetOf<String>(); val keywords = mutableSetOf<String>(); val notKeywords = mutableSetOf<String>(); val notSubtypes = mutableListOf<String>()
         var attacking: Boolean? = null; var tapped: Boolean? = null; var token: Boolean? = null; var legendary: Boolean? = null; var attachedToSource = false
         // "with flying" / "with reach or flying" -> keyword requirements
         var minPower: Int? = null; var maxPower: Int? = null; var maxManaValue: Int? = null
@@ -1156,6 +1164,15 @@ object OracleParser {
         Regex("""\s+with ([a-z ]+)$""").find(core)?.let { m ->
             val kws = m.groupValues[1].split(Regex("""\s*,\s*|\s+or\s+|\s+and\s+""")).map { it.trim() }.filter { it.isNotEmpty() }
             if (kws.all { it in keywordList }) { keywords += kws; core = core.removeRange(m.range) }
+        }
+        // "creatures without flying" (Moat), "creature without flying or islandwalk".
+        Regex("""\s+without ([a-z ]+)$""").find(core)?.let { m ->
+            val kws = m.groupValues[1].split(Regex("""\s*,\s*|\s+or\s+|\s+and\s+""")).map { it.trim() }.filter { it.isNotEmpty() }
+            if (kws.all { it in keywordList }) { notKeywords += kws; core = core.removeRange(m.range) }
+        }
+        // "nonflying creatures": the same thing said as one word.
+        Regex("""^non-?([a-z]+) """).find(core)?.let { m ->
+            if (m.groupValues[1] in keywordList) { notKeywords += m.groupValues[1]; core = core.removeRange(m.range).let { "$it" }.trim().let { if (it.isEmpty()) "creature" else it } }
         }
         val subtypesAny = Regex("""\bor\b""").containsMatchIn(core)
         // "creatures and planeswalkers you control": "and" joins two kinds the same way "or" does. Kinds are matched
@@ -1189,6 +1206,6 @@ object OracleParser {
         if (kinds.isEmpty() && notKinds.isNotEmpty()) kinds += defaultKind ?: Kind.PERMANENT
         if (kinds.isEmpty() && defaultKind != null) kinds += defaultKind
         if (kinds.isEmpty() && notSubtypes.isNotEmpty()) kinds += defaultKind ?: Kind.CREATURE
-        return ObjFilter(kinds, notKinds, notSubtypes, controller, attacking, tapped, unknown, desc, subtypes, keywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1, colors = colors, notColors = notColors, maxManaValue = maxManaValue)
+        return ObjFilter(kinds, notKinds, notSubtypes, controller, attacking, tapped, unknown, desc, subtypes, keywords, notKeywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1, colors = colors, notColors = notColors, maxManaValue = maxManaValue)
     }
 }

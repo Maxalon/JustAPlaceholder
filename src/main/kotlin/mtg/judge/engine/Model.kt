@@ -25,6 +25,8 @@ data class ObjFilter(
     val subtypes: Set<String> = emptySet(),
     /** Required keywords ("creature with flying"). */
     val keywords: Set<String> = emptySet(),
+    /** "creatures without flying", "nonflying creatures": every one of these must be absent. */
+    val notKeywords: Set<String> = emptySet(),
     val token: Boolean? = null,
     val legendary: Boolean? = null,
     /** "other …": excludes the source of the effect. */

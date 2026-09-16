@@ -388,7 +388,7 @@ class GameState(
             (o.def.changeling && o.def.isCreature) || anim?.allCreatureTypes == true
         val subOk = if (f.subtypesAny && f.subtypes.isNotEmpty()) f.subtypes.any { st -> hasSub(st) }
                     else f.subtypes.all { st -> hasSub(st) || (st.equals("basic", true) && o.def.supertypes.any { it.equals("Basic", true) }) || (st.equals("snow", true) && o.def.supertypes.any { it.equals("Snow", true) }) }
-        val kwOk = f.keywords.all { hasKeyword(o, it) }
+        val kwOk = f.keywords.all { hasKeyword(o, it) } && f.notKeywords.none { hasKeyword(o, it) }
         val tokenOk = f.token == null || f.token == o.token
         val legOk = f.legendary == null || f.legendary == ("Legendary" in o.def.supertypes)
         val stateOk = (f.tapped == null || o.tapped == f.tapped) && (f.attacking == null || (o.attacking != null) == f.attacking)

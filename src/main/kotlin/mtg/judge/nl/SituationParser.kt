@@ -618,6 +618,15 @@ class SituationParser(private val names: NameIndex) {
             }
             // "can it attack this turn?": try the attack, and the engine says whether it can.
             Regex("""^(?:it|that|(?:my |the )?(c\d+|\d+/\d+(?: [a-z]+)*)) (?:still |even )?attacks?(?: (?:this|next) turn| now| right away| at all)?$""").find(r.groupValues[1])?.let { q ->
+                // Already declared as an attacker: the question is about that attack, not a second one. Declaring
+                // it twice makes the answer contradict itself ("it's tapped, so it can't be declared as an attacker").
+                val attacking = ctx.events.lastOrNull { it.verb == "attack" }?.obj
+                val named = q.groupValues[1].takeIf { it.isNotEmpty() && cardRef.matches(it) }?.let { m.cards[it] }?.let { objectIdFor(it, ctx) }
+                if (attacking != null && (named == null || named == attacking)) {
+                    ctx.asks += EventSpec("ask", obj = attacking, to = "attack")
+                    ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."
+                    return true
+                }
                 return readClause("i attack with " + (if (q.groupValues[1].isEmpty()) "it" else q.groupValues[1]), m, ctx)
             }
             // "can I attack with it the turn I play it?" / "can I attack with Dryad Arbor the turn it comes down?"

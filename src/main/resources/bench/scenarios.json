@@ -7080,5 +7080,27 @@
     "cite": [
       "614.1a"
     ]
+  },
+  {
+    "id": "moat-stops-a-ground-creature",
+    "text": "My opponent controls Moat and I attack with a 2/2. Can it attack?",
+    "expect": [
+      "No: a 2/2 creature can't attack (Moat says so)"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "moat-lets-a-flyer-through",
+    "text": "My opponent controls Moat and I attack with a 2/2 with flying. Can it attack?",
+    "expect": [
+      "Yes: a 2/2 creature with flying can attack"
+    ],
+    "notExpect": [
+      "can't be declared as an attacker"
+    ],
+    "cite": []
   }
 ]

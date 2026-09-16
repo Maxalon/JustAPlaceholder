@@ -83,6 +83,14 @@ class StaysParsedTest {
     }
 
     @Test
+    fun `can't-attack statics keep their filter`() {
+        check("Moat", "Enchantment", "Creatures without flying can't attack.")
+        check("Dueling Grounds Lite", "Enchantment", "Creatures with flying can't block.")
+        check("Ground Stop", "Enchantment", "Creatures you control can't attack.")
+        check("Nonflying Ban", "Enchantment", "Creatures without flying can't block.")
+    }
+
+    @Test
     fun `flash-granting statics stay modelled`() {
         check("Vedalken Orrery", "Artifact", "You may cast spells as though they had flash.")
         check("Leyline of Anticipation", "Enchantment", "If ~ is in your opening hand, you may begin the game with it on the battlefield.\nYou may cast spells as though they had flash.")
