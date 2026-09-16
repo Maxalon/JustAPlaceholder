@@ -5875,5 +5875,19 @@
       "700.2a",
       "121.1"
     ]
+  },
+  {
+    "id": "a-bare-block-is-not-dropped",
+    "text": "I attack with a 2/2 and they block and I cast Giant Growth. What happens?",
+    "expect": [
+      "opponent blocks a 2/2 creature with a creature",
+      "is blocked by a creature and assigns all 5 damage to it"
+    ],
+    "notExpect": [
+      "is unblocked"
+    ],
+    "cite": [
+      "509.1a"
+    ]
   }
 ]

@@ -1601,7 +1601,11 @@ class SituationParser(private val names: NameIndex) {
             val defender = actor ?: ctx.other(attackerEvent.player) ?: "me"
             // A creature just cast has no object yet; the judge gives it the id the engine will use (its slug). Otherwise the defender's last creature.
             val id = ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller == defender } ?: ctx.events.lastOrNull { it.verb == "cast" && it.player == defender }?.card?.name?.let { n -> ctx.objects.values.firstOrNull { it.card.name == n }?.id ?: slug(n) }
-                ?: ctx.objects.values.lastOrNull { it.controller == defender && it.id != attackerEvent.obj }?.id ?: return false
+                // "they block" when nobody said what they have: a blocker nobody named, rather than dropping the clause.
+                ?: ctx.objects.values.lastOrNull { it.controller == defender && it.id != attackerEvent.obj }?.id
+                ?: describedCreatures("a ", "", "creature", defender, ctx, "").firstOrNull()?.also {
+                    ctx.notes += "Nothing was said about what ${if (defender == "me") "you" else (ctx.players[defender] ?: "your opponent")} ${if (defender == "me") "block" else "blocks"} with, so the blocker is read as an unnamed creature; name it for a precise answer."
+                } ?: return false
             val who = actor ?: ctx.objects[id]?.controller ?: ctx.events.lastOrNull { it.verb == "cast" }?.player ?: ctx.other(attackerEvent.player) ?: "me"
             ctx.events += EventSpec("block", player = who, obj = id, targets = listOfNotNull(attackerEvent.obj)); ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
