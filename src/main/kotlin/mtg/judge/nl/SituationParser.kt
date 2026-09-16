@@ -1020,7 +1020,7 @@ class SituationParser(private val names: NameIndex) {
             val adjWords = adj.replace("first strike", "first-strike").replace("double strike", "double-strike").split(' ').filter { it.isNotEmpty() }
             val adjKw = adjWords.map { it.replace('-', ' ') }.filter { it in keywordAdjectives }
             val plainAdj = adjWords.map { it.replace('-', ' ') }.filter { it !in keywordAdjectives }
-            if (plainAdj.any { it !in setOf("vanilla", "big", "small", "random", "red", "green", "white", "blue", "black") }) return@let
+            if (plainAdj.any { it !in setOf("vanilla", "big", "small", "random", "chump", "spare", "extra", "red", "green", "white", "blue", "black") }) return@let
             val who = actor ?: (if (hasVerb) subject else ctx.lastOwner ?: subject) ?: "me"
             // "a 1/1 with a +1/+1 counter on it": that's a counter, not a keyword, and it goes on every creature described.
             val withTail = r.groupValues[5]
@@ -1033,6 +1033,16 @@ class SituationParser(private val names: NameIndex) {
             r.groupValues[6].takeIf { it.isNotBlank() }?.let { tail -> made.forEach { applyStateWords(it, tail.trim(), ctx) } }
             Regex(""" plus (an? |\d+ |two |three |four |five )?(\d+/\d+)s?(?: ($kwNouns))?(?: ($creatureKinds))?""").findAll(c).forEach { x ->
                 describedCreatures(x.groupValues[1], x.groupValues[2], x.groupValues[4], who, ctx, x.groupValues[3].let { k -> if (k.isEmpty()) "" else k.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") })
+            }
+            // "I have a blocker", "I have two blockers": the word says what they are for. If something is already
+            // attacking that player, they block it — otherwise the answer is about an attack nobody blocked.
+            if (Regex("""^blockers?$""").matches(r.groupValues[4])) {
+                val attacks = ctx.events.filter { it.verb == "attack" && (it.targets.contains(who) || it.targets.isEmpty()) }
+                if (attacks.isNotEmpty()) {
+                    made.forEachIndexed { i, id -> attacks.getOrNull(i)?.obj?.let { atk -> ctx.events += EventSpec("block", player = who, obj = id, targets = listOf(atk)) } }
+                    ctx.notes += "\"${if (made.size == 1) "a blocker" else "${made.size} blockers"}\" is read as blocking${if (made.size > 1) ", one attacker each" else ""}; say otherwise if they don't block."
+                    ctx.lastVerb = "block"; ctx.lastOwner = who; ctx.lastActor = who; return true
+                }
             }
             ctx.lastVerb = "have"; ctx.lastOwner = who; ctx.lastActor = who; return true
         }

@@ -7478,5 +7478,38 @@
       "You lose the game"
     ],
     "cite": []
+  },
+  {
+    "id": "a-chump-blocker-blocks",
+    "text": "I'm at 4 life. They attack with a 5/5 and I have a chump blocker. Do I survive?",
+    "expect": [
+      "Yes: You are still in the game at 4 life"
+    ],
+    "notExpect": [
+      "You lose the game"
+    ],
+    "cite": []
+  },
+  {
+    "id": "two-blockers-take-one-attacker-each",
+    "text": "I'm at 2 life. They attack with two 3/3s and I have two blockers. Do I survive?",
+    "expect": [
+      "Yes: You are still in the game at 2 life"
+    ],
+    "notExpect": [
+      "You lose the game"
+    ],
+    "cite": []
+  },
+  {
+    "id": "a-blocker-with-deathtouch-kills-what-it-blocks",
+    "text": "I'm at 3 life. They attack with a 4/4 and I have a blocker with deathtouch. What happens?",
+    "expect": [
+      "a 4/4 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "You lose the game"
+    ],
+    "cite": []
   }
 ]
