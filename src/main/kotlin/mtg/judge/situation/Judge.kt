@@ -122,7 +122,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 val modes = if (e.modes.isEmpty() && e.to?.startsWith("mode:") == true) {
                     val words = e.to.removePrefix("mode:").lowercase().split("|").filter { it.isNotEmpty() }
                     val texts = (def.spellEffect as? Effect.Modal)?.modeTexts ?: emptyList()
-                    words.mapNotNull { w -> texts.indexOfFirst { it.lowercase().contains(w) }.takeIf { it >= 0 }?.plus(1) }.distinct()
+                    words.mapNotNull { w -> matchMode(w, texts, def.name)?.plus(1) }.distinct()
                 } else e.modes
                 engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", choice = e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it.startsWith("name:") }?.removePrefix("name:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" })
             }
@@ -276,6 +276,25 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
      * A target written as "a|b" is ambiguous ("it" after two things were mentioned): take the first candidate the
      * spell could legally target, else the first candidate.
      */
+    /**
+     * Match a mode the asker spelled out ("deal 2 damage to any target") against the card's own mode lines.
+     * Oracle text names the card where a player says "deal", and writes "deals" where they write "deal", so a
+     * plain substring check misses; the match is on shared content words instead, and stays unmatched rather
+     * than guessing when nothing clearly fits.
+     */
+    private fun matchMode(phrase: String, texts: List<String>, cardName: String): Int? {
+        fun words(t: String) = Regex("""[a-z0-9]+""").findAll(t.lowercase().replace(cardName.lowercase(), " "))
+            .map { it.value.removeSuffix("s") }.filter { it.length > 1 && it !in setOf("the", "a", "an", "to", "of", "it", "that", "this", "your", "you", "their", "from", "on", "in", "any") }.toList()
+        val want = words(phrase)
+        if (want.isEmpty()) return null
+        texts.indexOfFirst { it.lowercase().contains(phrase) }.takeIf { it >= 0 }?.let { return it }
+        val scored = texts.mapIndexed { i, t -> i to words(t).toSet().let { have -> want.count { w -> w in have }.toDouble() / want.size } }
+        val best = scored.maxByOrNull { it.second } ?: return null
+        // A clear winner only: a tie means the asker's words fit two modes equally well, and guessing would be worse than asking.
+        if (best.second < 0.6 || scored.count { it.second == best.second } > 1) return null
+        return best.first
+    }
+
     private fun disambiguate(targets: List<String>, specs: List<TargetSpec>, controller: String, state: GameState, engine: Engine): List<Ref> =
         targets.mapIndexed { i, t ->
             if ('|' !in t) parseRef(t, state)

@@ -5827,5 +5827,37 @@
     "cite": [
       "702.9b"
     ]
+  },
+  {
+    "id": "cryptic-command-modes-spelled-out",
+    "text": "My opponent casts Grizzly Bears and I cast Cryptic Command choosing counter target spell and draw a card. What happens?",
+    "expect": [
+      "Mode 1: Counter target spell",
+      "Grizzly Bears is countered",
+      "Mode 4: Draw a card",
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "Not told which"
+    ],
+    "cite": [
+      "700.2a",
+      "701.6a"
+    ]
+  },
+  {
+    "id": "kolaghans-command-modes-matched-by-their-words",
+    "text": "I cast Kolaghan's Command choosing deal 2 damage to any target and return target creature card from your graveyard to your hand. What happens?",
+    "expect": [
+      "Kolaghan's Command deals 2 damage to opponent",
+      "Mode 1: Return target creature card"
+    ],
+    "notExpect": [
+      "Not told which",
+      "~ deals"
+    ],
+    "cite": [
+      "700.2a"
+    ]
   }
 ]
