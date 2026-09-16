@@ -6326,5 +6326,42 @@
     "cite": [
       "611.2a"
     ]
+  },
+  {
+    "id": "a-spell-countered-said-in-the-passive",
+    "text": "My Lightning Bolt gets countered by Counterspell. What happens?",
+    "expect": [
+      "opponent casts Counterspell targeting Lightning Bolt",
+      "Lightning Bolt is countered"
+    ],
+    "notExpect": [],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "countered-with-no-counterspell-named",
+    "text": "I cast Lightning Bolt and it gets countered. What happens?",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "notExpect": [],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "the-counterspell-as-the-subject",
+    "text": "I cast Snapcaster Mage and their Counterspell counters it. What happens?",
+    "expect": [
+      "opponent casts Counterspell targeting Snapcaster Mage",
+      "Snapcaster Mage is countered"
+    ],
+    "notExpect": [
+      "enters the battlefield"
+    ],
+    "cite": [
+      "701.6a"
+    ]
   }
 ]

@@ -240,7 +240,9 @@ class SituationParser(private val names: NameIndex) {
             // "a Goblin", "two Walls": a bare creature type after an indefinite article or a count is a description, not the card of that name.
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in typeShortNames && normWords.getOrNull(f.start - 1) in indefiniteWords) }
             // "a Charge counter", "two Shield tokens": the word before "counter"/"token" names the kind, not a card.
-            .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.end) in setOf("token", "tokens", "counter", "counters") && normWords[f.start] !in short) }
+            // Unless the word is the verb: "their Counterspell counters it" is a spell doing something, not a kind of counter.
+            .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.end) in setOf("token", "tokens", "counter", "counters") && normWords[f.start] !in short &&
+                !(normWords.getOrNull(f.end) in setOf("counters", "tokens") && normWords.getOrNull(f.end + 1) in setOf("it", "that", "them", "this", "my", "their", "the", "his", "her", "its"))) }
             // "to protect it", "to save my Bears": a verb after "to" is a verb, not the card of that name.
             .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.start - 1) == "to" && normWords[f.start] in verbsAfterTo && normWords[f.start] !in short) }
             // "a 2/2 with lifelink and deathtouch": a keyword in a keyword list is a keyword, not the card of that name.
@@ -1310,6 +1312,46 @@ class SituationParser(private val names: NameIndex) {
             if (r.groupValues[3].isNotEmpty()) emitCast(who, m.cards.getValue(r.groupValues[3]), " targeting ${r.groupValues[2]}", m, ctx)
             else { ctx.events += EventSpec("cast", player = who, card = CardRef(name = "a counterspell"), targets = listOf(slug(target.display) + ":spell")); ctx.lastActor = who; ctx.lastVerb = "cast"; ctx.notes += "No counterspell was named; assuming a plain \"counter target spell\"." }
             return true
+        }
+        // The same thing said in the passive: "my Lightning Bolt gets countered (by Counterspell)", "it was countered".
+        // Whoever owns the spell isn't the one countering it, so the counterspell belongs to the other player.
+        Regex("""^(?:(my |their |the |my opponent's |@\w+'s )?(c\d+)|(it|that|that spell|the spell)) (?:gets?|got|is|was|are|were) countered(?: by (?:an? |the |my |their )?(c\d+))?$""").find(c)?.let { r ->
+            val named = r.groupValues[2].takeIf { it.isNotEmpty() }
+            val target = named?.let { m.cards.getValue(it) }
+            if (target != null && objectIdFor(target, ctx) != null && target.display !in ctx.castCards) return@let   // a permanent already out isn't a spell
+            val lastCast = ctx.events.lastOrNull { it.verb == "cast" && (target == null || it.card?.name == target.display) }
+            val owner = when (val w = r.groupValues[1].trim()) {
+                "my" -> "me"
+                "their", "my opponent's" -> pronounPlayer(ctx, "their")
+                "" -> lastCast?.player ?: actor ?: subject ?: "me"
+                else -> if (w.startsWith("@")) w.removePrefix("@").removeSuffix("'s").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else lastCast?.player ?: "me"
+            }
+            val targetName = target?.display ?: lastCast?.card?.name ?: ctx.objects[lastCast?.obj ?: ""]?.card?.name ?: return@let
+            val who = ctx.other(owner) ?: "opp"
+            if (target != null && target.display !in ctx.castCards) emitCast(owner, target, "", m, ctx)
+            val counter = r.groupValues[4].takeIf { it.isNotEmpty() }?.let { m.cards.getValue(it) }
+            if (counter != null) emitCast(who, counter, " targeting " + slug(targetName) + ":spell", m, ctx)
+            else { ctx.events += EventSpec("cast", player = who, card = CardRef(name = "a counterspell"), targets = listOf(slug(targetName) + ":spell")); ctx.lastActor = who; ctx.lastVerb = "cast"; ctx.notes += "No counterspell was named; assuming a plain \"counter target spell\"." }
+            ctx.note(who); ctx.note(owner)
+            return true
+        }
+        // "their Counterspell counters it": the counterspell itself is the subject. Only an instant or sorcery can
+        // be the subject this way — a permanent named here is doing something else, and belongs to another rule.
+        Regex("""^(my |their |the |my opponent's |@\w+'s )?(c\d+) counters? (?:it|that|that spell|the spell|(?:my |their |the )?(c\d+))$""").find(c)?.let { r ->
+            val counterCard = m.cards.getValue(r.groupValues[2])
+            if (!counterCard.isSpellOnly) return@let
+            val who = when (val w = r.groupValues[1].trim()) {
+                "my" -> "me"
+                "their", "my opponent's" -> pronounPlayer(ctx, "their")
+                "" -> actor ?: subject ?: "me"
+                else -> if (w.startsWith("@")) w.removePrefix("@").removeSuffix("'s").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else actor ?: subject ?: "me"
+            }
+            val targetCard = r.groupValues[3].takeIf { it.isNotEmpty() }?.let { m.cards.getValue(it) }
+            val lastCast = ctx.events.lastOrNull { it.verb == "cast" && (targetCard == null || it.card?.name == targetCard.display) }
+            val targetName = targetCard?.display ?: lastCast?.card?.name ?: ctx.objects[lastCast?.obj ?: ""]?.card?.name ?: return@let
+            if (targetCard != null && targetCard.display !in ctx.castCards) emitCast(ctx.other(who) ?: "opp", targetCard, "", m, ctx)
+            emitCast(who, counterCard, " targeting " + slug(targetName) + ":spell", m, ctx)
+            ctx.note(who); return true
         }
         // "copy my opponent's Lightning Bolt with Twincast": the copy spell targeting that spell.
         Regex("""^cop(?:y|ies|ying) (my |their |the |my opponent's |@\w+'s )?(c\d+|it|that|that spell) with (?:an? |the |my )?(c\d+)((?: (?:targeting|aiming (?:it )?at|pointing (?:it )?at|retargeting (?:it )?to|choosing) .*)?)$""").find(c)?.let { r ->
