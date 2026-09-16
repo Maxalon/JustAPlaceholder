@@ -410,6 +410,17 @@ class SituationParser(private val names: NameIndex) {
         return any
     }
 
+    /**
+     * Half of a compound clause ("cast X while they control Y"). The two halves are combined with "or", so a half
+     * nobody can read used to disappear: the other half made the whole clause count as read. Each half now reports
+     * itself, because a clause that quietly changes nothing is worse than one the answer admits it skipped.
+     */
+    private fun readPart(text: String, m: Marked, ctx: Ctx): Boolean {
+        if (readClause(text, m, ctx)) return true
+        if (!isNoise(text)) ctx.unread += restore(text.trim(), m)
+        return false
+    }
+
     private fun isNoise(clause: String) = Regex("""^(what happens|what now|so|then|now|ok|okay|right|they're|they are|i'm|i am|he's|she's|we're|it's|after (?:combat )?damage|after blockers|after blocks|after combat|after that|after this|before damage|do i draw|does it work|is that right|correct|and|but|also|too|as well|no wait|wait|never mind|nevermind|sorry|hmm|uh|um|actually)\??$""").matches(clause.trim()) ||
         (!Regex("""c\d+""").containsMatchIn(clause) && Regex("""^(?:do|does|did|can|could|will|would|is|are|was|were|what|who|which|how|should|when|why|am)\b""").matches(clause.trim().substringBefore(' ')))
     private fun restore(text: String, m: Marked): String = m.cards.entries.fold(text) { acc, (ph, e) -> acc.replace(Regex("\\b$ph\\b"), e.display) }
@@ -481,15 +492,15 @@ class SituationParser(private val names: NameIndex) {
         // "… while I control X" / "… when they have Y out": the state part is read first, then the action.
         Regex("""^(.+?)\s+after ((?:i|my|they|their|the opponent|my opponent|opponent|@\w+)\b.*)$""").find(clause0)?.let { r ->
             if (Regex("""\b(?:attack|attacks|cast|casts|play|plays|activate|activates|block|blocks|declare|declares|gain|gains|lose|loses|draw|draws|sacrifice|sacrifices|tap|taps|resolve|resolves)\b""").containsMatchIn(r.groupValues[2])) {
-                val first = readClause(r.groupValues[2], m, ctx)
-                return readClause(r.groupValues[1], m, ctx) || first
+                val first = readPart(r.groupValues[2], m, ctx)
+                return readPart(r.groupValues[1], m, ctx) || first
             }
         }
         Regex("""^(.+?)\s+(?:while|when|although|even though|given that) ((?:i|my|they|their|the opponent|my opponent|opponent|it|it's|@\w+)\b.*)$""").find(clause0)?.let { r ->
             if (Regex("""\b(?:control|controls|have|has|got|is|are|out|in play|attacking|blocking)\b""").containsMatchIn(r.groupValues[2])) {
                 // A state clause naming a card comes first (it sets up the board); one about "it" refers to the action's target, so it comes second.
-                return if (Regex("""c\d+""").containsMatchIn(r.groupValues[2])) { val stateRead = readClause(r.groupValues[2], m, ctx); readClause(r.groupValues[1], m, ctx) || stateRead }
-                else { val main = readClause(r.groupValues[1], m, ctx); readClause(r.groupValues[2], m, ctx) || main }
+                return if (Regex("""c\d+""").containsMatchIn(r.groupValues[2])) { val stateRead = readPart(r.groupValues[2], m, ctx); readPart(r.groupValues[1], m, ctx) || stateRead }
+                else { val main = readPart(r.groupValues[1], m, ctx); readPart(r.groupValues[2], m, ctx) || main }
             }
         }
         // "After damage, does Serra Angel untap?": the time phrase adds nothing the ordering doesn't already say.
