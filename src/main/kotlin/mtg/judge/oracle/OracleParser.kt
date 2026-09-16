@@ -343,6 +343,17 @@ object OracleParser {
         if (Regex("""^Each opponent can cast spells only any time they could cast a sorcery\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsSorcerySpeed)
         if (Regex("""^Spells with the chosen name can't be cast\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.CantCastNamed)
         if (Regex("""^Prevent all combat damage that would be dealt to and (?:dealt )?by ~\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.PreventOwnCombatDamage)
+        Regex("""^(Noncreature spells|Creature spells|Spells|Artifact spells|Enchantment spells|Instant and sorcery spells)(?: with mana value (\d+) or greater)?(?: with \{X\} in their mana costs)? can't be cast\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val f = when (m.groupValues[1].lowercase()) {
+                "noncreature spells" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE), raw = "noncreature spell")
+                "creature spells" -> ObjFilter(setOf(Kind.CREATURE), raw = "creature spell")
+                "artifact spells" -> ObjFilter(setOf(Kind.ARTIFACT), raw = "artifact spell")
+                "enchantment spells" -> ObjFilter(setOf(Kind.ENCHANTMENT), raw = "enchantment spell")
+                "instant and sorcery spells" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE, Kind.ARTIFACT, Kind.ENCHANTMENT, Kind.PLANESWALKER, Kind.LAND), raw = "instant or sorcery spell")
+                else -> ObjFilter(setOf(Kind.SPELL), raw = "spell")
+            }
+            return listOf(StaticEffect.CantCastFiltered(f, m.groupValues[2].toIntOrNull(), xInCost = line.contains("{X}")))
+        }
         // "Activated abilities of artifacts can't be activated." / "Activated abilities of creatures your opponents control can't be activated."
         if (Regex("""^Activated abilities of sources with the chosen name can't be activated unless they're mana abilities\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.CantActivate(ObjFilter(setOf(Kind.PERMANENT), raw = "sources with the chosen name"), named = true, exceptMana = true))
         Regex("""^Activated abilities of (.+?) can't be activated\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
@@ -691,7 +702,7 @@ object OracleParser {
         }
         for ((re, rules) in narratedRes) if (re.matches(s)) return Effect.Narrated(s.trimEnd('.'), rules)
         // "You draw a card and you lose 1 life." / "Each opponent loses 1 life and you gain 1 life.": two effects joined by "and".
-        Regex("""^(.+?) and (you |each opponent |target player |that player |it |~ )(.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trimEnd('.'))?.let { m ->
+        Regex("""^(.+?) and (you |each opponent |target player |that player |it |~ |create |draw |gain |lose |put |exile |destroy |sacrifice |tap |untap |return |scry |mill |discard )(.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trimEnd('.'))?.let { m ->
             if (!m.groupValues[1].contains(" and ", true) && !m.groupValues[1].startsWith("if ", true)) {
                 val left = parseSentence(m.groupValues[1].replaceFirstChar { it.uppercase() })
                 val right = parseSentence((m.groupValues[2] + m.groupValues[3]).replaceFirstChar { it.uppercase() })

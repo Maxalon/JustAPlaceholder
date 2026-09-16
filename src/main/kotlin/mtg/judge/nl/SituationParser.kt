@@ -1390,8 +1390,10 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("block", player = who, obj = id, targets = listOf(attacker)); ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
         Regex("""^(?:(?:chump[- ]?)?(?:blocks?|blocking)|chumps?)(?: it| that| the attacker)?(?: with)?\s+(?:an? |the |my |their |a single |one |just |only )?(c\d+)(.*)$""").find(c)?.let { r ->
+            val attackerPlayer0 = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" }?.player
+            val who = actor ?: attackerPlayer0?.let { ctx.other(it) } ?: subject ?: "opp"
+            ensureAttacker(ctx, who)
             val attackerPlayer = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" }?.player
-            val who = actor ?: attackerPlayer?.let { ctx.other(it) } ?: subject ?: "opp"
             val card = m.cards.getValue(r.groupValues[1])
             val id = ctx.objects.values.firstOrNull { it.card.oracleId == card.oracleId && it.controller == who }?.id ?: addObject(card, who, false, ctx, allowDuplicate = objectIdFor(card, ctx) != null)
             // The attacker being blocked: the last creature declared attacking this player, else the last attacker.
@@ -1808,6 +1810,17 @@ class SituationParser(private val names: NameIndex) {
     }
 
     private fun number(w: String): Int? = w.toIntOrNull() ?: numberWords[w] ?: when (w) { "a", "an", "one" -> 1; else -> null }
+
+    /** "My opponent blocks with Serra Angel" with no attack described: the attack it answers is taken as read. */
+    private fun ensureAttacker(ctx: Ctx, defender: String): EventSpec? {
+        ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" }?.let { return it }
+        val attacker = ctx.other(defender) ?: return null
+        val creature = ctx.objects.values.lastOrNull { it.controller == attacker && isCreatureName(it.card.name) } ?: return null
+        val e = EventSpec("attack", player = attacker, obj = creature.id, targets = listOf(defender))
+        ctx.events += e; ctx.note(defender)
+        ctx.notes += "No attack was described, so ${creature.card.name} is read as attacking ${if (defender == "me") "you" else ctx.players[defender] ?: "your opponent"}; the block answers it."
+        return e
+    }
 
     private fun objectIdFor(card: NameIndex.Entry, ctx: Ctx): String? = ctx.objects.values.firstOrNull { it.card.oracleId == card.oracleId }?.id
     private fun other(p: String?) = when (p) { "me" -> "opp"; "opp" -> "me"; else -> null }

@@ -4082,5 +4082,47 @@
     "cite": [
       "701.8a"
     ]
+  },
+  {
+    "id": "gaddock-teeg-wrath",
+    "text": "My opponent has Gaddock Teeg. I cast Wrath of God.",
+    "expect": [
+      "Wrath of God can't be cast (Gaddock Teeg)"
+    ],
+    "notExpect": [
+      "not modeled",
+      "Gaddock Teeg: the battlefield"
+    ],
+    "cite": [
+      "101.2"
+    ]
+  },
+  {
+    "id": "bitterblossom-upkeep",
+    "text": "I control Bitterblossom. It's my upkeep.",
+    "expect": [
+      "You lose 1 life",
+      "You get a Faerie Rogue token"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "701.7a"
+    ]
+  },
+  {
+    "id": "block-with-no-attack-described",
+    "text": "I control Grizzly Bears and cast Titanic Growth on it. My opponent blocks with Serra Angel.",
+    "expect": [
+      "Grizzly Bears is 6/6 until end of turn",
+      "Serra Angel: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "block needs the attacker"
+    ],
+    "cite": [
+      "509.1a"
+    ]
   }
 ]
