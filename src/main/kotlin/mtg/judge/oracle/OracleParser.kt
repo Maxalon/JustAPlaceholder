@@ -38,11 +38,16 @@ object OracleParser {
         var i0 = 0
         while (i0 < rawLines.size) {
             val l = rawLines[i0]
-            if (Regex("""^(.*?)(Choose (one|two|three|any number|one or more|up to \w+)(?: or more)?(?: —|\.)?)\s*$""", RegexOption.IGNORE_CASE).matches(l) && rawLines.getOrNull(i0 + 1)?.startsWith("•") == true) {
+            if (Regex("""^(.*?)(Choose (one|two|three|four|any number|one or more|up to \w+)(?: or more)?(?: —|\.)?)(?: You may choose the same mode more than once\.)?\s*$""", RegexOption.IGNORE_CASE).matches(l) && rawLines.getOrNull(i0 + 1)?.startsWith("•") == true) {
                 val modes = mutableListOf<String>()
                 var j = i0 + 1
                 while (j < rawLines.size && rawLines[j].startsWith("•")) { modes += rawLines[j].removePrefix("•").trim(); j++ }
-                lines += l.trimEnd() + " " + modes.joinToString(" ") { "• $it" }
+                // "Choose three. You may choose the same mode more than once." (Mystic Confluence): the permission is a
+                // note, not an effect, and the full stop would split the header off its own modes. Normalise to the
+                // em-dash form the effect parser reads.
+                val header = l.trimEnd().replace(Regex(""" You may choose the same mode more than once\.$"""), "")
+                    .let { h -> Regex("""^(.*?Choose (?:one|two|three|four|any number|one or more|up to \w+)(?: or more)?)[\s—.]*$""", RegexOption.IGNORE_CASE).matchEntire(h)?.groupValues?.get(1)?.plus(" \u2014") ?: h }
+                lines += header + " " + modes.joinToString(" ") { "• $it" }
                 i0 = j
             } else { lines += l; i0++ }
         }
@@ -727,7 +732,7 @@ object OracleParser {
         Regex("""^destroy target (.+?) at the beginning of the next end step\.?$""", RegexOption.IGNORE_CASE) to listOf("603.7a"),
     )
 
-    private val modalRe = Regex("""^(.*?)Choose (one|two|three|any number|one or more|up to \w+)(?: or more)?(?: —|\.)?\s*((?:• .+?)+)$""", RegexOption.IGNORE_CASE)
+    private val modalRe = Regex("""^(.*?)Choose (one|two|three|four|any number|one or more|up to \w+)(?: or more)?(?: —|\.)?(?: You may choose the same mode more than once\.)?\s*((?:• .+?)+)$""", RegexOption.IGNORE_CASE)
     private val preventNextRe = Regex("""^prevent the next (\d+) damage that would be dealt to (any target|target creature or player|target creature|target player|you|target creature or planeswalker|target permanent or player) this turn\.?$""", RegexOption.IGNORE_CASE)
     private val preventAllTurnRe = Regex("""^prevent all (combat )?damage that would be dealt(?: to (you|any target|target creature|target creature or player|creatures you control|target player|you and permanents you control))?(?: by (.+?))? this turn\.?$""", RegexOption.IGNORE_CASE)
     private val regenerateRe = Regex("""^regenerate (~|target .+?)\.?$""", RegexOption.IGNORE_CASE)

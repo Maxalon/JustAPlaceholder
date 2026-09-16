@@ -122,7 +122,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 val modes = if (e.modes.isEmpty() && e.to?.startsWith("mode:") == true) {
                     val words = e.to.removePrefix("mode:").lowercase().split("|").filter { it.isNotEmpty() }
                     val texts = (def.spellEffect as? Effect.Modal)?.modeTexts ?: emptyList()
-                    words.mapNotNull { w -> matchMode(w, texts, def.name)?.plus(1) }.distinct()
+                    words.mapNotNull { w -> matchMode(w, texts, def.name)?.plus(1) }
                 } else e.modes
                 engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", choice = e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it.startsWith("name:") }?.removePrefix("name:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" })
             }

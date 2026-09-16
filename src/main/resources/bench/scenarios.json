@@ -5859,5 +5859,21 @@
     "cite": [
       "700.2a"
     ]
+  },
+  {
+    "id": "mystic-confluence-same-mode-three-times",
+    "text": "I cast Mystic Confluence choosing draw a card three times. What happens?",
+    "expect": [
+      "choosing \"Draw a card\" and \"Draw a card\" and \"Draw a card\"",
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "Not modeled",
+      "Not told which"
+    ],
+    "cite": [
+      "700.2a",
+      "121.1"
+    ]
   }
 ]

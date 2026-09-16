@@ -1960,9 +1960,16 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "The sacrifice is an additional cost of ${card.display}, paid while casting it (601.2b); it's shown just before the spell goes on the stack."
             rest00.removeRange(r.range)
         } ?: rest00
-        // "cast Giant Growth on it twice": the same spell that many times.
-        val times = Regex("""\s*\b(twice|two times|three times|(\d+) times)\b""").find(rest0)
-        val rest1 = times?.let { rest0.removeRange(it.range) } ?: rest0
+        // "cast Giant Growth on it twice": the same spell that many times. But "choosing draw a card three times"
+        // (Mystic Confluence) picks the same mode that many times on one spell, not that many spells.
+        val timesIsModeRepeat = Regex("""\b(?:choosing|picking|selecting)\b.*\b(?:twice|two times|three times|\d+ times)\b""").containsMatchIn(rest0)
+        val times = if (timesIsModeRepeat) null else Regex("""\s*\b(twice|two times|three times|(\d+) times)\b""").find(rest0)
+        val rest1 = times?.let { rest0.removeRange(it.range) }
+            ?: if (timesIsModeRepeat) rest0.replace(Regex("""\s*\b(?:twice|two times|three times|four times|\d+ times)\b"""), "") else rest0
+        // The repeat count rides along with the mode so the judge can pick it that many times.
+        val modeRepeat = if (!timesIsModeRepeat) 1 else Regex("""\b(twice|two times|three times|four times|(\d+) times)\b""").find(rest0)?.let { r ->
+            r.groupValues[2].toIntOrNull() ?: when { r.groupValues[1].startsWith("two") || r.groupValues[1] == "twice" -> 2; r.groupValues[1].startsWith("three") -> 3; r.groupValues[1].startsWith("four") -> 4; else -> 1 }
+        } ?: 1
         val secondTime = Regex("""\s*\b(?:for (?:the|a) second time|a second time|for the 2nd time)(?: this game)?\b""").find(rest1)
         val rest = secondTime?.let { rest1.removeRange(it.range) } ?: rest1
         val n = times?.let { if (it.groupValues[2].isNotEmpty()) it.groupValues[2].toInt() else if (it.groupValues[1].startsWith("three")) 3 else 2 } ?: if (secondTime != null) 2 else 1
@@ -2004,7 +2011,7 @@ class SituationParser(private val names: NameIndex) {
         // "Prey Upon on my Bears targeting theirs": the fight's other creature.
         secondTarget(rest, targets.firstOrNull(), ctx)?.let { second -> if (targets.size == 1 && second !in targets) targets = targets + second }
         ctx.castingCounter = false; ctx.castingCounterName = null
-        repeat(n) { i -> ctx.events += EventSpec("cast", player = who, card = CardRef(name = card.display, oracleId = card.oracleId), targets = targets, modes = modes, to = if (overload) "overload" else if (kicked) "kicked" else if (evoked) "evoke" else if (revolt != null) "revolt" else if (mastery != null) "spellmastery" else namedCard?.let { "name:$it" } ?: modeWord?.let { "mode:$it" }, amount = xValue); if (secondTime != null && i == 0) ctx.events += EventSpec("resolveAll") }
+        repeat(n) { i -> ctx.events += EventSpec("cast", player = who, card = CardRef(name = card.display, oracleId = card.oracleId), targets = targets, modes = modes, to = if (overload) "overload" else if (kicked) "kicked" else if (evoked) "evoke" else if (revolt != null) "revolt" else if (mastery != null) "spellmastery" else namedCard?.let { "name:$it" } ?: modeWord?.let { "mode:" + List(modeRepeat) { _ -> it }.joinToString("|") }, amount = xValue); if (secondTime != null && i == 0) ctx.events += EventSpec("resolveAll") }
         if (n > 1) ctx.notes += "${card.display} is cast $n times, one copy after another (each is its own spell)." 
         ctx.lastActor = who
         ctx.lastVerb = "cast"
