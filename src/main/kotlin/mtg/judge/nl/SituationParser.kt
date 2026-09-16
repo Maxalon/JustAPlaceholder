@@ -1209,9 +1209,11 @@ class SituationParser(private val names: NameIndex) {
             val spell = m.cards.getValue(r.groupValues[3])
             // "blink MY Solemn Simulacrum": a creature named as the speaker's is theirs, not the other player's.
             // Without this a "creature you control" trigger has no legal target and the answer says it fizzles.
+            // The possessive belongs to whoever is speaking, not to whoever is acting: in "my opponent kills my
+            // Bears" the actor is the opponent and "my" is still the asker.
             val victimOwner = when (r.groupValues[1].trim()) {
-                "my" -> who
-                "their", "my opponent's" -> ctx.other(who) ?: "opp"
+                "my" -> "me"
+                "their", "my opponent's" -> pronounPlayer(ctx, "their")
                 else -> ctx.other(who) ?: "opp"
             }
             // "their blocker" / "my attacker": the creature in that combat role.

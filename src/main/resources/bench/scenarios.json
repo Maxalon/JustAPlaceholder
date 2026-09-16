@@ -6154,5 +6154,29 @@
     "cite": [
       "701.8a"
     ]
+  },
+  {
+    "id": "a-possessive-belongs-to-the-speaker-not-the-actor",
+    "text": "My opponent kills my Grizzly Bears with Murder. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "opponent's graveyard"
+    ],
+    "cite": [
+      "701.8a"
+    ]
+  },
+  {
+    "id": "their-creature-blinked-by-them-stays-theirs",
+    "text": "They blink their Solemn Simulacrum with Restoration Angel. What happens?",
+    "expect": [
+      "Solemn Simulacrum [solemn_simulacrum] (opponent's"
+    ],
+    "notExpect": [
+      "all targets illegal"
+    ],
+    "cite": []
   }
 ]
