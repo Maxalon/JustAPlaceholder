@@ -3587,5 +3587,73 @@
     "cite": [
       "702.6a"
     ]
+  },
+  {
+    "id": "bolt-growth-then-shock-in-response",
+    "text": "I control Grizzly Bears. My opponent casts Lightning Bolt on it and I respond with Giant Growth. Then they respond with Shock on the Bears.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Giant Growth doesn't resolve (all targets illegal)"
+    ],
+    "notExpect": [
+      "Grizzly Bears is 5/5"
+    ],
+    "cite": [
+      "608.2b"
+    ]
+  },
+  {
+    "id": "wrath-regenerates-it",
+    "text": "I cast Wrath of God. My opponent controls a 2/2 with regenerate and regenerates it.",
+    "expect": [
+      "a 2/2 creature with regenerate: the battlefield → opponent's graveyard",
+      "the effect says it can't be regenerated"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "701.19c"
+    ]
+  },
+  {
+    "id": "deathtouch-first-strike-blocker",
+    "text": "I control Grizzly Bears and my opponent controls a 2/2 with deathtouch and first strike. I attack and they block.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.7b"
+    ]
+  },
+  {
+    "id": "flash-in-wall-then-bolt-it",
+    "text": "I attack with Grizzly Bears. My opponent flashes in a 0/4 wall and blocks. I cast Lightning Bolt on the wall.",
+    "expect": [
+      "a 0/4 wall creature with flash has 3 damage marked"
+    ],
+    "notExpect": [
+      "Not understood",
+      "opponent takes 3 damage"
+    ],
+    "cite": [
+      "702.8a"
+    ]
+  },
+  {
+    "id": "second-bolt-same-target-hexproof",
+    "text": "My opponent casts Lightning Bolt targeting my Grizzly Bears. I respond with Snakeskin Veil. Then they cast a second Bolt.",
+    "expect": [
+      "Lightning Bolt can't target Grizzly Bears"
+    ],
+    "notExpect": [
+      "You take 3 damage"
+    ],
+    "cite": [
+      "702.11b"
+    ]
   }
 ]
