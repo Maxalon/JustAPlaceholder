@@ -7102,5 +7102,16 @@
       "can't be declared as an attacker"
     ],
     "cite": []
+  },
+  {
+    "id": "a-described-creature-played-this-turn",
+    "text": "I control a 2/2 that I just played this turn. Can it attack?",
+    "expect": [
+      "came under your control this turn and doesn't have haste"
+    ],
+    "notExpect": [],
+    "cite": [
+      "302.6"
+    ]
   }
 ]

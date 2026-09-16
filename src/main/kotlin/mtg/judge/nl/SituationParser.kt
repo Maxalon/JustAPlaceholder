@@ -997,7 +997,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastMentioned = ids.last(); return true
         }
         // Unnamed creatures: "I have three creatures", "control two other creatures" (stats unknown; assumed 1/1 and said so).
-        Regex("""^(?:(?:have|has|got|control|controls|controlling|'ve got)\s+)?(an? |\d+ |two |three |four |five )?(?:other |more |untapped )?(?:(\d+/\d+)s?\s*)?((?:[a-z]+ )?)($creatureKinds)?(?: with ([a-z ,&]+?|(?:an? |one |two |three |four |five |\d+ )?[+-]\d+/[+-]\d+ counters?(?: on it)?))?(?: plus .*)?(?: on the battlefield| in play| out)?$""").find(c)?.let { r ->
+        Regex("""^(?:(?:have|has|got|control|controls|controlling|'ve got)\s+)?(an? |\d+ |two |three |four |five )?(?:other |more |untapped )?(?:(\d+/\d+)s?\s*)?((?:[a-z]+ )?)($creatureKinds)?(?: with ([a-z ,&]+?|(?:an? |one |two |three |four |five |\d+ )?[+-]\d+/[+-]\d+ counters?(?: on it)?))?(?: plus .*)?(?: on the battlefield| in play| out)?((?: that (?:i|they|he|she) just (?:played|cast)(?: this turn)?| that just came down| i just played| with summoning sickness| that has been out| from last turn)?)$""").find(c)?.let { r ->
             val hasVerb = Regex("""^(?:have|has|got|control|controls|controlling|'ve got)\b""").containsMatchIn(c)
             val pt = r.groupValues[2]; val adj = r.groupValues[3].trim(); val kind = r.groupValues[4]
             // Needs a verb or a state context, and something creature-like: "a 3/3", "two goblins", "3 other goblins"; not "the", "it", or a lone number.
@@ -1011,6 +1011,8 @@ class SituationParser(private val names: NameIndex) {
             val kw = listOfNotNull(withTail.takeIf { it.isNotEmpty() && counterTail == null }, adj.takeIf { it == "flying" }).joinToString(", ")
             val made = describedCreatures(r.groupValues[1], pt, if (adj in setOf("red", "green", "white", "blue", "black")) "$adj ${kind.ifEmpty { "creature" }}" else kind, who, ctx, kw)
             if (counterTail != null) made.forEach { applyStateWords(it, "with $counterTail", ctx) }
+            // "a 2/2 that I just played this turn": summoning sickness, said as part of the description.
+            r.groupValues[6].takeIf { it.isNotBlank() }?.let { tail -> made.forEach { applyStateWords(it, tail.trim(), ctx) } }
             Regex(""" plus (an? |\d+ |two |three |four |five )?(\d+/\d+)s?(?: ($kwNouns))?(?: ($creatureKinds))?""").findAll(c).forEach { x ->
                 describedCreatures(x.groupValues[1], x.groupValues[2], x.groupValues[4], who, ctx, x.groupValues[3].let { k -> if (k.isEmpty()) "" else k.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") })
             }
