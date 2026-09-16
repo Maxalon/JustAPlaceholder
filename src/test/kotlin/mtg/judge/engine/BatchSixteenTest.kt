@@ -67,4 +67,30 @@ class BatchSixteenTest {
         assertEquals("Island", s.obj("vesuva").def.name)
         assertEquals(true, s.obj("vesuva").tapped)
     }
+
+    private val kiki = card("Kiki-Jiki, Mirror Breaker", "Legendary Creature — Goblin Shaman", "Haste\n{T}: Create a token that's a copy of target nonlegendary creature you control, except it has haste. Sacrifice it at the beginning of the next end step.", "{2}{R}{R}{R}", "R", "2", "2", "Haste")
+    private val solemn = card("Solemn Simulacrum", "Artifact Creature — Golem", "When ~ enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.", "{4}", "", "2", "2")
+
+    /** 707.2 again, this time for a token: the token copies the printed card, and its own enters-triggers fire. */
+    @Test
+    fun `a token copy is a copy of the printed card and triggers on entering`() {
+        val s = state()
+        val bear = s.put("bear", bears, "me"); bear.counters["+1/+1"] = 2; bear.summoningSick = false
+        s.put("kiki", kiki, "me").summoningSick = false
+        val e = Engine(s); e.activate("me", "kiki", null, listOf(Ref.Obj("bear"))); e.resolveAll()
+        val token = s.objects.values.single { it.token && it.def.name == "Grizzly Bears" }
+        assertEquals(2, token.power, "the token copies the printed 2/2, not the counters")
+        assertTrue(token.isOnBattlefield())
+    }
+
+    @Test
+    fun `a token copy of a creature with an enters trigger puts that trigger on the stack`() {
+        val s = state()
+        s.put("solemn", solemn, "me")
+        s.put("kiki", kiki, "me").summoningSick = false
+        val e = Engine(s); e.activate("me", "kiki", null, listOf(Ref.Obj("solemn")))
+        e.resolveTop()
+        assertTrue(s.stack.any { it.source.def.name == "Solemn Simulacrum" && it.kind == StackKind.TRIGGERED },
+            "the token's own enters trigger should be on the stack: " + s.stack.map { it.describe })
+    }
 }

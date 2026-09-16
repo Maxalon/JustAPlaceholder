@@ -950,6 +950,16 @@ object OracleParser {
         Regex("""^~ deals (\d+) damage to you\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.DamagePlayer(Who.YOU, m.groupValues[1].toInt()) }
         if (Regex("""^reveal the top card of your library and put that card into your hand\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.RevealTopToHand(Who.YOU)
         if (Regex("""^you lose life equal to its mana value\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.LoseLifeEqualToRevealedMv(Who.YOU)
+        // "Create a token that's a copy of target creature you control(, except …)." (Kiki-Jiki and the 300-odd like it.)
+        Regex("""^creates? (a|an|two|three|\d+) tokens? that(?:'s| are) (?:a )?cop(?:y|ies) of (.+)$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            var what = m.groupValues[2].trim().trimEnd('.')
+            val except = what.split(", except ", limit = 2).getOrNull(1)
+            what = what.split(", except ", limit = 2)[0].trim()
+            val n = if (m.groupValues[1].lowercase() in setOf("a", "an")) 1 else number(m.groupValues[1]) ?: m.groupValues[1].toIntOrNull() ?: 1
+            if (Regex("""(?i)^(?:~|this creature|this permanent|this token|it)$""").matches(what)) return Effect.CreateTokenCopy(null, n, except)
+            if (what.startsWith("target ", true)) return Effect.CreateTokenCopy(target(what), n, except)
+            return@let   // "a copy of the exiled card", "of that creature": not modeled, so the card stays unparsed
+        }
         // "create two 2/2 black Zombie creature tokens": modeled, so it goes before the narrated table.
         createTokenRe.matchEntire(s)?.let { m ->
             val n0 = m.groupValues[2]; val desc0 = m.groupValues[3]

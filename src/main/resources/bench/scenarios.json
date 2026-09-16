@@ -6412,5 +6412,30 @@
     "cite": [
       "707.2"
     ]
+  },
+  {
+    "id": "a-token-copy-off-kiki-jiki",
+    "text": "I control Kiki-Jiki, Mirror Breaker and Solemn Simulacrum. I activate Kiki-Jiki targeting Solemn Simulacrum. What happens?",
+    "expect": [
+      "token that's a copy of Solemn Simulacrum",
+      "Solemn Simulacrum's ability triggers"
+    ],
+    "notExpect": [],
+    "cite": [
+      "707.2"
+    ]
+  },
+  {
+    "id": "a-token-copy-does-not-copy-counters",
+    "text": "I control Grizzly Bears with two +1/+1 counters and cast Cackling Counterpart targeting it. What happens?",
+    "expect": [
+      "token that's a copy of Grizzly Bears (2/2)"
+    ],
+    "notExpect": [
+      "copy of Grizzly Bears (4/4)"
+    ],
+    "cite": [
+      "707.2"
+    ]
   }
 ]
