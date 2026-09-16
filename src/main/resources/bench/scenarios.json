@@ -6847,5 +6847,31 @@
     "cite": [
       "615.7"
     ]
+  },
+  {
+    "id": "hand-size-at-end-of-turn",
+    "text": "I have 9 cards in hand at end of turn. What do I discard?",
+    "expect": [
+      "Your end step begins",
+      "you discard 2 cards of your choice"
+    ],
+    "notExpect": [
+      "Your end begins"
+    ],
+    "cite": [
+      "514.1"
+    ]
+  },
+  {
+    "id": "commander-damage-already-dealt-by-pronoun",
+    "text": "My commander is Atraxa, Praetors' Voice and it has dealt 18 commander damage to Bob. It attacks Bob again. Does Bob lose?",
+    "expect": [
+      "dealt 22 combat damage by it this game",
+      "Bob loses the game (commander damage)"
+    ],
+    "notExpect": [],
+    "cite": [
+      "903.10a"
+    ]
   }
 ]

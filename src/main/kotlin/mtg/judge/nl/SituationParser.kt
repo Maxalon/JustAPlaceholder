@@ -1120,8 +1120,8 @@ class SituationParser(private val names: NameIndex) {
         }
         // "has 2 poison counters", "has 0 cards in hand", "with three cards in hand"
         Regex("""^(?:(?:already |now |currently )?(?:has|have|is at|at|with|sits at|is on)(?: already| now)? )?(\d+|\w+) poison(?: counters?)?(?: already| so far| now)?$""").find(c)?.let { r -> val who = actor ?: subject ?: "me"; ctx.poison[who] = number(r.groupValues[1]) ?: 0; ctx.note(who); return true }
-        Regex("""^(?:(?:has|have|holds?|holding|with) )?(\d+|\w+|no) cards? in (?:their |my |his |her )?hand(?: (?:at|during|in) (?:their|my|his|her|the) (cleanup|end|end of turn|discard) step)?$""").find(c)?.let { r ->
-            if (r.groupValues[2].isNotEmpty()) { val who = actor ?: subject ?: "me"; ctx.activePlayer = who; ctx.events += EventSpec("step", player = who, to = if (r.groupValues[2] == "end") "end" else "cleanup") }
+        Regex("""^(?:(?:has|have|holds?|holding|with) )?(\d+|\w+|no) cards? in (?:their |my |his |her )?hand(?: (?:at|during|in) (?:(?:their|my|his|her|the) )?(cleanup|end of turn|end|discard)(?: step)?)?$""").find(c)?.let { r ->
+            if (r.groupValues[2].isNotEmpty()) { val who = actor ?: subject ?: "me"; ctx.activePlayer = who; ctx.events += EventSpec("step", player = who, to = if (r.groupValues[2].startsWith("end")) "end" else "cleanup") }
             val who = actor ?: (if (c.startsWith("ha") || c.startsWith("ho") || c.startsWith("with")) subject else ctx.lastOwner ?: subject) ?: "me"; ctx.handSize[who] = if (r.groupValues[1] == "no") 0 else number(r.groupValues[1]) ?: 0; ctx.note(who); if (actor != null) ctx.lastActor = actor; return true }
         // "only has one Mountain untapped", "has 2 untapped lands", "with 3 mana open/available/up"
         Regex("""^(?:only )?(?:has|have|with|got)(?: only)? (\d+|\w+) (?:(?:untapped |open )(?:lands?|c\d+s?|mana sources?)|(?:lands?|c\d+s?|mana sources?) (?:untapped|open|available|up|left)|mana(?: (?:open|available|up|left|untapped))?)$""").find(c)?.let { r ->
@@ -1436,10 +1436,12 @@ class SituationParser(private val names: NameIndex) {
             emitCast(who, m.cards.getValue(r.groupValues[2]), " targeting ${r.groupValues[1]}", m, ctx); return true
         }
         // "my commander Atraxa has dealt 18 damage to my opponent already" / "Atraxa has already dealt them 18 commander damage"
-        Regex("""^(?:my )?(?:commander )?(c\d+) (?:has |have )?(?:already )?(?:dealt|done|hit (?:them|me|@\w+|my opponent) for) (\d+)(?: commander| combat)? damage(?: to (me|them|my opponent|the opponent|@\w+))?(?: already| so far| this game)?$|^(?:my )?(?:commander )?(c\d+) (?:has |have )?(?:already )?dealt (me|them|my opponent|the opponent|@\w+) (\d+)(?: commander| combat)? damage(?: already| so far| this game)?$""").find(c)?.let { r ->
+        Regex("""^(?:my )?(?:commander )?(c\d+|it|that) (?:has |have )?(?:already )?(?:dealt|done|hit (?:them|me|@\w+|my opponent) for) (\d+)(?: commander| combat)? damage(?: to (me|them|my opponent|the opponent|@\w+))?(?: already| so far| this game)?$|^(?:my )?(?:commander )?(c\d+|it|that) (?:has |have )?(?:already )?dealt (me|them|my opponent|the opponent|@\w+) (\d+)(?: commander| combat)? damage(?: already| so far| this game)?$""").find(c)?.let { r ->
             val ph = r.groupValues[1].ifEmpty { r.groupValues[4] }; val amount = (r.groupValues[2].ifEmpty { r.groupValues[6] }).toInt(); val victimWord = r.groupValues[3].ifEmpty { r.groupValues[5] }
             val who = actor ?: ctx.lastActor ?: "me"
-            val id = objectIdFor(m.cards.getValue(ph), ctx) ?: addObject(m.cards.getValue(ph), who, false, ctx)
+            // "My commander is Atraxa and it has dealt 18 commander damage": "it" is the commander just named.
+            val id = if (ph == "it" || ph == "that") ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else objectIdFor(m.cards.getValue(ph), ctx) ?: addObject(m.cards.getValue(ph), who, false, ctx)
             ctx.objects[id] = ctx.objects.getValue(id).copy(commander = true)
             val victim = when { victimWord.isEmpty() -> ctx.other(who) ?: "opp"; victimWord == "me" -> "me"; victimWord.startsWith("@") -> victimWord.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) }; else -> pronounPlayer(ctx, victimWord.substringAfterLast(' ')) }
             ctx.commanderDamage.getOrPut(victim) { LinkedHashMap() }[id] = amount; ctx.note(victim); ctx.note(who)
