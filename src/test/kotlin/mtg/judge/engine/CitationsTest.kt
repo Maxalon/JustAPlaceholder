@@ -25,4 +25,33 @@ class CitationsTest {
         }
         assertTrue(missing.isEmpty(), "Cited rules that don't exist in the current Comprehensive Rules: $missing")
     }
+
+    /**
+     * The rules database is rebuilt daily from the live Comprehensive Rules, and Wizards renumbers rules
+     * between releases. A citation that still exists but now points at a different rule is worse than a
+     * missing one: it reads as authoritative and isn't. Each cited number is pinned to the opening words
+     * of the rule it was checked against, so a renumbering (or a rewording worth re-reading) fails here
+     * instead of shipping a confidently wrong citation.
+     */
+    @Test
+    fun `each cited rule still says what it said when the citation was written`() {
+        val dbPath = System.getenv("MTG_JUDGE_DB") ?: run { println("MTG_JUDGE_DB not set; skipping citation drift check"); return }
+        val anchors = javaClass.getResourceAsStream("/citation-anchors.tsv")?.bufferedReader()?.readLines()
+            ?: error("citation-anchors.tsv is missing")
+        val drifted = mutableListOf<String>()
+        Db.open(File(dbPath).toPath(), readOnly = true).use { conn ->
+            conn.prepareStatement("SELECT text FROM rules WHERE number = ?").use { ps ->
+                for (line in anchors) {
+                    if (line.isBlank()) continue
+                    val (number, expected) = line.split('\t', limit = 2)
+                    ps.setString(1, number)
+                    val text = ps.executeQuery().use { if (it.next()) it.getString(1) else null }
+                    if (text == null) { drifted += "$number: no longer in the rules"; continue }
+                    val opening = Regex("""[A-Za-z0-9]+""").findAll(text).take(6).joinToString(" ") { it.value.lowercase() }
+                    if (opening != expected) drifted += "$number: was \"$expected\", now \"$opening\""
+                }
+            }
+        }
+        assertTrue(drifted.isEmpty(), "Cited rules whose text moved or changed — re-read them before trusting the citation:\n" + drifted.joinToString("\n"))
+    }
 }
