@@ -356,6 +356,7 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\bwill (?=(?:cast|play|attack|block|activate|target|counter|kill|destroy|exile|sacrifice|bounce|draw|discard|tap|untap|gain|lose|deal|take|die|trigger|remove|ping|nuke|zap)\b)"""), "")
             .replace(Regex("""\b(?:is|are|'s|'re) casting\b"""), "casts")
             .replace(Regex("""\b(?:i am|i'm|we are|we're) drawing\b"""), "i draw")
+            .replace(Regex("""\b(?:am i|are we) losing\b"""), "do i lose").replace(Regex("""\b(?:are they|is he|is she) losing\b"""), "do they lose")
             .replace(Regex("""\b(?:is|are|'s|'re) drawing\b"""), "draws")
             .replace(Regex("""\b(?:takes?|took) (an?|one|two|three|\d+) cards? off the top\b"""), "draws $1 card")
             .replace(Regex("""\b(draws?|drew) one\b(?!\s+card)"""), "$1 a card")

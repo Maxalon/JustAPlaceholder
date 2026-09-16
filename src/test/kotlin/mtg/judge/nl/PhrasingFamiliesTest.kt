@@ -159,6 +159,21 @@ class PhrasingFamiliesTest {
                 "Before it resolves I sacrifice it to Ashnod's Altar.",
             ),
         ),
+        Family(
+            "asking whether a creature dies", "I attack with Grizzly Bears and they block with Hill Giant. ",
+            "Yes: Grizzly Bears died",
+            listOf(
+                "Does my Grizzly Bears die?", "Will my Grizzly Bears die?", "Is my Grizzly Bears going to die?",
+                "Do I lose my Grizzly Bears?", "Am I losing my Grizzly Bears?", "Is my Grizzly Bears dead?",
+            ),
+        ),
+        Family(
+            "table talk", "I control Grizzly Bears. ", "Grizzly Bears",
+            listOf(
+                "They nuke my Grizzly Bears with Doom Blade.", "They remove my Grizzly Bears with Swords to Plowshares.",
+                "They board wipe with Damnation.", "I turn Grizzly Bears sideways.",
+            ),
+        ),
     )
 
     @Test
