@@ -1279,6 +1279,16 @@ class SituationParser(private val names: NameIndex) {
             val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
             ctx.objects[id] = ctx.objects.getValue(id).copy(zone = "hand"); ctx.events += EventSpec("enter", obj = id); return true
         }
+        Regex("""^(an? |\d+ |two |three )?(?:(\d+/\d+)s?\s*)?($creatureKinds|artifact|enchantment|token|permanent)?s? ?(?:enters|enter|comes? in|etbs?)(?: the battlefield)?(?: under (my|their|his|her) control)?$""").find(c)?.let { r ->
+            val kind = r.groupValues[3]
+            if (kind.isEmpty() && r.groupValues[2].isEmpty()) return@let
+            if (kind.isNotEmpty() && kind !in setOf("artifact", "enchantment", "token", "permanent") && !Regex("""^(?:$creatureKinds)$""").matches(kind)) return@let
+            val who = when (r.groupValues[4]) { "my" -> "me"; "their", "his", "her" -> pronounPlayer(ctx, "their"); else -> actor ?: subject ?: ctx.lastOwner ?: "me" }
+            val ids = describedCreatures(r.groupValues[1], r.groupValues[2], if (kind.isEmpty() || kind in setOf("artifact", "enchantment", "token", "permanent")) "creature" else kind, who, ctx, "")
+            if (ids.isEmpty()) return@let
+            for (id in ids) { ctx.objects[id] = ctx.objects.getValue(id).copy(zone = "hand"); ctx.events += EventSpec("enter", obj = id) }
+            ctx.lastMentioned = ids.last(); ctx.lastActor = who; ctx.lastOwner = who; ctx.note(who); return true
+        }
         Regex("""^(?:an? |the )?(c\d+) (?:enters|comes in|etbs|enters the battlefield)""").find(c)?.let { r ->
             val id = addObject(m.cards.getValue(r.groupValues[1]), actor ?: subject ?: "me", false, ctx, zone = "hand")
             ctx.events += EventSpec("enter", obj = id); ctx.lastMentioned = id; return true

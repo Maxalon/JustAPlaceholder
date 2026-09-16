@@ -1735,7 +1735,7 @@ class Engine(val state: GameState) {
         var n = amount
         state.objects.values.filter { it.isOnBattlefield() }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.LifeGainMultiplier }.filter { it.anyPlayer || o.controller == p.id }.map { o to it } }
             .forEach { (o, m) -> trace.step("${o.name} replaces the life gain: ${p.subject.lowercase()} ${p.v("gains", "gain")} ${n * m.factor} life instead of $n.", "614.1a", "614.6"); n *= m.factor }
-        if (n == 0) { trace.step("${p.subject} ${p.v("gains", "gain")} no life.", "119.3"); return }
+        if (n == 0) { trace.step("${p.subject} ${p.v("gains", "gain")} no life.", "119.3"); state.outcomes += "${p.subject} ${p.v("gains", "gain")} no life (0)."; return }
         p.life = p.life?.plus(n)
         trace.step("${p.subject} ${p.v("gains", "gain")} $n life${p.life?.let { " ($it)" } ?: ""}.", "119.3")
         state.outcomes += "${p.subject} ${p.v("gains", "gain")} $n life."
@@ -1940,6 +1940,12 @@ class Engine(val state: GameState) {
         if (harmful && distinct.size > 1) {
             val theirs = distinct.filter { r -> when (r) { is Ref.Obj -> state.objects[r.id]?.controller != controller; is Ref.Player -> r.id != controller; is Ref.Stack -> state.stackItem(r.id)?.controller != controller } }
             if (theirs.isNotEmpty() && theirs.size < distinct.size) { distinct = theirs; if (theirs.size == 1) { state.assumptions += if (theirs[0] is Ref.Player) "$what targets ${state.nameOf(theirs[0])} (\"${spec.raw}\" with no target named; assuming the opponent)." else "$what targets ${state.nameOf(theirs[0])}: of the legal targets for \"${spec.raw}\", it's the only one an opponent controls."; return theirs } }
+        }
+        // The only thing that fits is one of your own, and the effect would hurt it: that's a choice, not a default.
+        if (harmful && distinct.size == 1 && (distinct[0] as? Ref.Obj)?.let { state.objects[it.id]?.controller == controller } == true) {
+            state.clarifications += Clarification("$what's target", "$what needs a target (${spec.raw}), and the only one is ${state.nameOf(distinct[0])}, which ${state.player(controller).subject.lowercase()} ${state.player(controller).v("controls", "control")}. Is that the target?")
+            trace.step("The only legal target for $what is ${state.nameOf(distinct[0])}, ${state.player(controller).possessive} own. Nothing here says ${state.player(controller).subject.lowercase()} would aim at it, so the target isn't assumed.", "115.1")
+            return null
         }
         return when (distinct.size) {
             1 -> { state.assumptions += "$what targets ${state.nameOf(distinct[0])}, the only legal target for \"${spec.raw}\" in this situation."; distinct }

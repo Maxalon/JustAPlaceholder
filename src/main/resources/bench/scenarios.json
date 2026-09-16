@@ -4728,5 +4728,55 @@
     "cite": [
       "510.1c"
     ]
+  },
+  {
+    "id": "swords-on-a-zero-power-goyf",
+    "text": "I cast Swords to Plowshares on my opponent's Tarmogoyf. How much life do they gain?",
+    "expect": [
+      "Tarmogoyf's power is 0",
+      "gains no life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "608.2h",
+      "119.3"
+    ]
+  },
+  {
+    "id": "soul-warden-on-a-described-creature",
+    "text": "I control Soul Warden and a creature enters under my control. What happens?",
+    "expect": [
+      "You gain 1 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "impact-tremors-on-a-described-creature",
+    "text": "I control Impact Tremors and a 2/2 enters. What happens?",
+    "expect": [
+      "opponent takes 1 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "aura-shards-wont-eat-itself",
+    "text": "I control Aura Shards and a creature enters. What happens?",
+    "expect": [
+      "Nothing here says you would aim at it, so the target isn't assumed"
+    ],
+    "notExpect": [
+      "Aura Shards: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "115.1"
+    ]
   }
 ]
