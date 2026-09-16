@@ -945,7 +945,8 @@ class Engine(val state: GameState) {
             if (norn != null) {
                 val muted = triggered.filter { it.first.controller != norn.controller }
                 if (muted.isNotEmpty()) {
-                    trace.step("${norn.name} says permanents entering don't cause abilities of ${state.player(norn.controller).possessive} opponents' permanents to trigger, so ${muted.joinToString(" and ") { it.first.name + "'s ability" }} doesn't trigger at all.", "603.2", "604.2")
+                    fun side(p: String) = if (state.player(p).you) "yours" else "${state.player(p).name}'s"
+                    trace.step("${norn.name} is ${side(norn.controller)} and says permanents entering don't cause abilities of permanents its controller's opponents control to trigger. ${muted.joinToString(" and ") { it.first.name }} ${if (muted.size == 1) "is" else "are"} ${side(muted.first().first.controller)}, so ${muted.joinToString(" and ") { it.first.name + "'s ability" }} doesn't trigger at all.", "603.2", "604.2")
                     triggered.removeAll(muted)
                 }
             }

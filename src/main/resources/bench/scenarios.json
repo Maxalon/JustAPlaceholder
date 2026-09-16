@@ -6591,5 +6591,29 @@
     "cite": [
       "700.2a"
     ]
+  },
+  {
+    "id": "does-it-survive-means-the-creature-not-the-sweeper",
+    "text": "I control Grizzly Bears with a +1/+1 counter and they cast Infest. Does it survive?",
+    "expect": [
+      "Yes: Grizzly Bears is still on the battlefield"
+    ],
+    "notExpect": [
+      "does Infest survive"
+    ],
+    "cite": []
+  },
+  {
+    "id": "elesh-norn-says-whose-side-each-permanent-is-on",
+    "text": "They control Elesh Norn, Mother of Machines and I cast Solemn Simulacrum. What happens?",
+    "expect": [
+      "Solemn Simulacrum is yours, so Solemn Simulacrum's ability doesn't trigger at all"
+    ],
+    "notExpect": [
+      "opponent's opponents"
+    ],
+    "cite": [
+      "603.2"
+    ]
   }
 ]
