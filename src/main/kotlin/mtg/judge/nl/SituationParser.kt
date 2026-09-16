@@ -1247,7 +1247,12 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:still )?taps? (?:an? |the |my )?(c\d+|it) for (?:mana|\{.*|[a-z]+ mana|[a-z]+)(?: in response(?: to (?:it|that))?)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             // "it" is the tapper's own permanent: the last one mentioned, unless that belongs to someone else.
-            val id = if (r.groupValues[1] == "it") (ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller == who } ?: ctx.objects.values.lastOrNull { it.controller == who }?.id ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let) else m.cards.getValue(r.groupValues[1]).let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) }
+            // "I cast Llanowar Elves and tap it for mana": the Elves has to resolve first, and once it has, it is
+            // summoning sick. Without this "it" found nothing and the clause was dropped, or a second copy was
+            // conjured onto the battlefield and tapped while the real one was still on the stack.
+            val id = (if (ctx.lastCastEntry != null && (r.groupValues[1] != "it" || ctx.events.lastOrNull { it.verb == "cast" }?.player == who)) castPermanentObject(ctx) else null)
+                ?.takeIf { ctx.objects[it]?.controller == who && (r.groupValues[1] == "it" || m.cards[r.groupValues[1]]?.oracleId == ctx.objects[it]?.card?.oracleId) }
+                ?: if (r.groupValues[1] == "it") (ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller == who } ?: ctx.objects.values.lastOrNull { it.controller == who }?.id ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let) else m.cards.getValue(r.groupValues[1]).let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) }
             ctx.events += EventSpec("activate", player = who, obj = id, to = "mana"); ctx.lastActor = who; ctx.lastMentioned = id; return true
         }
         // "they draw", "I draw": one card, said without saying so.

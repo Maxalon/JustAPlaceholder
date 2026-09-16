@@ -7955,5 +7955,16 @@
     ],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "tap-a-mana-creature-the-turn-it-lands",
+    "text": "I cast Llanowar Elves and tap it for mana. What happens?",
+    "expect": [
+      "can't be activated (summoning sickness)"
+    ],
+    "notExpect": [
+      "mana ability: add {G}"
+    ],
+    "cite": []
   }
 ]
