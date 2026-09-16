@@ -267,6 +267,8 @@ sealed interface StaticEffect {
     data class PtCda(val power: CountExpr?, val toughness: CountExpr?, val plus: Int = 0, val toughnessPlus: Int? = null) : StaticEffect
     /** Layer 6: "[filter] have [keywords]". */
     data class KeywordGrant(val filter: ObjFilter, val keywords: Set<String>) : StaticEffect
+    /** Humility: "All creatures lose all abilities and have base power and toughness 1/1." */
+    data class LoseAbilitiesSetPt(val filter: ObjFilter, val power: Int, val toughness: Int) : StaticEffect
     /** "~ enters tapped" (614.1c replacement on entering). */
     /** "~ enters tapped" / "~ enters tapped unless [condition]". */
     data class EntersTapped(val unless: Condition? = null) : StaticEffect

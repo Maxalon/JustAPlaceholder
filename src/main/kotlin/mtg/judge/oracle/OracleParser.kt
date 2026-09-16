@@ -292,6 +292,11 @@ object OracleParser {
             val whose = when (m.groupValues[2].lowercase()) { "an opponent's" -> Who.OPPONENT; "your" -> Who.YOU; else -> null }
             return StaticEffect.Replace(Replacement.GraveyardReplacement(filter.copy(controller = whose), false, "exile", true))
         }
+        // "All creatures lose all abilities and have base power and toughness 1/1." (Humility)
+        Regex("""^(.+?) lose all abilities and have base power and toughness (\d+)/(\d+)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val f = parseFilter(m.groupValues[1].removePrefix("all ").removePrefix("All "), Kind.CREATURE)
+            if (f.verifiable) return StaticEffect.LoseAbilitiesSetPt(f, m.groupValues[2].toInt(), m.groupValues[3].toInt())
+        }
         doublerRe.matchEntire(line)?.let { m -> return StaticEffect.Replace(Replacement.DamageMultiplier(2, when (m.groupValues[1].trim().lowercase()) { "you control" -> Who.YOU; "an opponent controls" -> Who.OPPONENT; else -> null })) }
         lifeDoubleRe.matchEntire(line)?.let { return StaticEffect.Replace(Replacement.LifeGainMultiplier(2)) }
         Regex("""^if a player would gain life, that player gains no life instead\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return StaticEffect.Replace(Replacement.LifeGainMultiplier(0, anyPlayer = true)) }

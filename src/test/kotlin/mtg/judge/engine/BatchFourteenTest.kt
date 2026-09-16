@@ -93,4 +93,35 @@ class BatchFourteenTest {
         s.obj("i1").tapped = true
         assertTrue(e.manaAvailable("me").startsWith("You can make 1 mana right now"), e.manaAvailable("me"))
     }
+
+    private val humility = card("Humility", "Enchantment", "All creatures lose all abilities and have base power and toughness 1/1.", "{2}{W}{W}", "W")
+    private val serra = card("Serra Angel", "Creature — Angel", "Flying, vigilance", "{3}{W}{W}", "W", "4", "4", "Flying", "Vigilance")
+    private val anthem = card("Glorious Anthem", "Enchantment", "Creatures you control get +1/+1.", "{1}{W}{W}", "W")
+    private val lord = card("Lord of Atlantis", "Creature — Merfolk", "Other Merfolk creatures get +1/+1 and have islandwalk.", "{U}{U}", "U", "2", "2")
+    private val merfolk = card("Merfolk Looter", "Creature — Merfolk Rogue", "{T}: Draw a card, then discard a card.", "{1}{U}", "U", "1", "1")
+
+    @Test
+    fun `humility makes every creature a vanilla one-one`() {
+        val s = state(); s.put("hum", humility, "me"); s.put("angel", serra, "opp")
+        assertEquals(1, s.obj("angel").power); assertEquals(1, s.obj("angel").toughness)
+        assertTrue(!s.hasKeyword(s.obj("angel"), "flying"))
+        assertTrue(s.describePt(s.obj("angel")).contains("Humility"), s.describePt(s.obj("angel")))
+    }
+
+    @Test
+    fun `humility stops a lord granting anything but leaves a non-creature anthem alone`() {
+        val s = state(); s.put("hum", humility, "me"); s.put("lord", lord, "me"); s.put("fish", merfolk, "me")
+        assertEquals(1, s.obj("fish").power)
+        assertTrue(!s.hasKeyword(s.obj("fish"), "islandwalk"))
+
+        val s2 = state(); s2.put("hum", humility, "me"); s2.put("anthem", anthem, "me"); s2.put("fish", merfolk, "me")
+        assertEquals(2, s2.obj("fish").power); assertEquals(2, s2.obj("fish").toughness)
+    }
+
+    @Test
+    fun `three damage kills a serra angel under humility`() {
+        val s = state(); s.put("hum", humility, "opp"); s.put("angel", serra, "opp")
+        val e = Engine(s); e.cast("me", bolt, listOf(Ref.Obj("angel"))); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("angel").zone)
+    }
 }

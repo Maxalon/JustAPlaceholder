@@ -4345,5 +4345,52 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "humility-kills-serra-with-bolt",
+    "text": "My opponent has Humility and I cast Lightning Bolt on their Serra Angel.",
+    "expect": [
+      "Serra Angel: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Rules text not modeled: All creatures lose all abilities"
+    ],
+    "cite": [
+      "120.3e"
+    ]
+  },
+  {
+    "id": "humility-lets-bears-block-serra",
+    "text": "I control Humility and my opponent attacks with Serra Angel. I block with Grizzly Bears. What happens?",
+    "expect": [
+      "Serra Angel: the battlefield → opponent's graveyard",
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "can't block"
+    ],
+    "cite": []
+  },
+  {
+    "id": "humility-flattens-tarmogoyf",
+    "text": "My opponent controls Humility and Tarmogoyf. There is a land and an instant in the graveyard. What are Tarmogoyf's stats?",
+    "expect": [
+      "Tarmogoyf is 1/1"
+    ],
+    "notExpect": [
+      "2/3"
+    ],
+    "cite": []
+  },
+  {
+    "id": "goyf-counts-types-there-is",
+    "text": "My opponent controls Tarmogoyf. There is a land and an instant in the graveyard. What are Tarmogoyf's stats?",
+    "expect": [
+      "Tarmogoyf is 2/3"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

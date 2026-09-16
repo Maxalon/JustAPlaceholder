@@ -771,6 +771,7 @@ class Engine(val state: GameState) {
         }
         val triggered = mutableListOf<Pair<GameObject, TriggeredAbility>>()
         for (obj in state.objects.values) {
+            if (obj.isOnBattlefield() && state.abilitiesLostOn(obj) != null) continue
             for (ability in obj.def.abilities.filterIsInstance<TriggeredAbility>()) {
                 if (matches(obj, ability.trigger, event)) triggered += obj to ability
             }
