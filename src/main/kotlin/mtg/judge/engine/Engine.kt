@@ -87,7 +87,8 @@ class Engine(val state: GameState) {
             // Lands aren't cast: playing one is a special action that doesn't use the stack.
             emptyStackFirst("playing a land")
             trace.step("${player.subject} ${player.v("plays", "play")} ${card.name}. Playing a land is a special action: it doesn't use the stack, can't be responded to, and is only possible during ${player.possessive} own main phase with an empty stack, once per turn unless an effect allows more.", "305.1", "116.2a", "305.2")
-            obj.controller = playerId; enter(obj.id); stateBasedActions(); state.outcomes += "${card.name} enters the battlefield."
+            // enter() already says it entered; saying it again here printed the line twice.
+            obj.controller = playerId; enter(obj.id); stateBasedActions()
             if ("Basic" !in card.supertypes) narrateLandTypeSetters(land = obj)
             return null
         }
@@ -445,6 +446,9 @@ class Engine(val state: GameState) {
     fun enter(objectId: String, choice: String? = null) {
         val obj = state.obj(objectId)
         obj.zone = Zone.BATTLEFIELD; obj.tapped = false; obj.timestamp = state.tick()
+        // It has just come under its controller's control, so it is summoning sick — which matters for a creature
+        // land played this turn (Dryad Arbor attacked the turn it was played) as much as for a creature.
+        obj.summoningSick = true
         applyEntersReplacements(obj, choice)
         // "a creature enters with two +1/+1 counters": stated by the asker rather than printed on a card, but the
         // counters are still put on as it enters, so doublers and Hardened Scales apply (614.1c).

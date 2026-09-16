@@ -7935,5 +7935,25 @@
       "I couldn't find"
     ],
     "cite": []
+  },
+  {
+    "id": "a-creature-land-played-this-turn",
+    "text": "I play Dryad Arbor as my land for the turn. Can it attack?",
+    "expect": [
+      "Dryad Arbor can't attack (summoning sick)"
+    ],
+    "notExpect": [
+      "opponent takes 1 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "a-creature-that-just-entered-cant-attack",
+    "text": "I cast Grizzly Bears and attack with it. What happens?",
+    "expect": [
+      "can't attack"
+    ],
+    "notExpect": [],
+    "cite": []
   }
 ]

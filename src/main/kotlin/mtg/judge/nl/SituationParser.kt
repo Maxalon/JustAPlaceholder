@@ -437,6 +437,9 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(attacks?|swings?)(?: with)? (.+?) (?:at|into) (@\w+|me|them|my opponent|the opponent)(?=[.,]|$)"""), "$1 $3 with $2")
             // "cast Mind Twist for 2 at Alice": the amount said before the target, where the grammar wants it after.
             .replace(Regex("""\b(casts?|plays?) ((?:an? |the |my |their )?c\d+) (for \d+|with x ?= ?\d+|for x ?(?:=|equals|of) ?\d+) ((?:at|targeting|on|against) .+)$"""), "$1 $2 $4 $3")
+            // "I play it as my land for turn": the land drop said the way players say it.
+            .replace(Regex("""\s+as (?:my|their|his|her|the) land (?:for|of) (?:the )?turn\b"""), "")
+            .replace(Regex("""\s+(?:as|for) (?:my|their|his|her) land drop\b"""), "")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
         // "they use Doom Blade on my Bears": a cast, but only for a card that is cast — "they use Maze on it"
