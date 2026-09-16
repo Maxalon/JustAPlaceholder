@@ -1027,7 +1027,7 @@ class Engine(val state: GameState) {
         val kind = if (undying) "+1/+1" else "-1/-1"
         val had = obj.counters[kind] ?: 0
         if (had > 0) {
-            trace.step("${obj.name} has $kw, but it had ${had} $kind counter${if (had == 1) "" else "s"} on it when it died, so the ability does nothing.", if (undying) "702.92a" else "702.79a")
+            trace.step("${obj.name} has $kw, but it had ${had} $kind counter${if (had == 1) "" else "s"} on it when it died, so the ability does nothing.", if (undying) "702.93a" else "702.79a")
             return
         }
         val def = obj.def
@@ -1037,7 +1037,7 @@ class Engine(val state: GameState) {
         applyEntersReplacements(back)
         val n = countersPlaced(back, 1, kind)
         if (n > 0) back.counters[kind] = (back.counters[kind] ?: 0) + n
-        trace.step("${obj.name} had $kw, so it returns to the battlefield under its owner's control with ${if (n == 0) "no" else "a"} $kind counter on it. It comes back as a new object with no memory of the old one.", if (undying) "702.92a" else "702.79a", "400.7")
+        trace.step("${obj.name} had $kw, so it returns to the battlefield under its owner's control with ${if (n == 0) "no" else "a"} $kind counter on it. It comes back as a new object with no memory of the old one.", if (undying) "702.93a" else "702.79a", "400.7")
         state.outcomes += "${def.name} comes back with ${if (n == 0) "no" else "a"} $kind counter ($kw); it's now ${back.power}/${back.toughness}."
         onEvent(GameEvent.EntersBattlefield(back))
         stateBasedActions()
@@ -1384,7 +1384,7 @@ class Engine(val state: GameState) {
                     trace.step("The situation doesn't say which name was chosen for ${item.source.name}, so what is discarded can't be said.", "701.9a")
                 } else for (p in resolvePlayers(effect.who, item)) {
                     val hand = state.objects.values.filter { it.zone == Zone.HAND && it.owner == p.id }
-                    trace.step("${state.player(item.controller).subject} named $named. ${p.subject} ${p.v("reveals", "reveal")} ${if (p.you) "your" else "their"} hand${if (hand.isEmpty()) "" else ": ${hand.joinToString(", ") { it.name }}"}.", "701.16a")
+                    trace.step("${state.player(item.controller).subject} named $named. ${p.subject} ${p.v("reveals", "reveal")} ${if (p.you) "your" else "their"} hand${if (hand.isEmpty()) "" else ": ${hand.joinToString(", ") { it.name }}"}.", "701.20a")
                     if (hand.isEmpty()) {
                         state.clarifications += Clarification("${p.possessive} hand", "${item.source.name} makes ${if (p.you) "you" else p.name} discard every $named; what is in ${if (p.you) "your" else "their"} hand?")
                         state.outcomes += "${item.source.name}: ${p.subject.lowercase()} ${p.v("discards", "discard")} every copy of $named (how many depends on ${p.possessive} hand)."
@@ -1401,7 +1401,7 @@ class Engine(val state: GameState) {
             is Effect.DiscardChosen -> for (p in resolvePlayers(effect.who, item)) {
                 val chooser = state.player(item.controller)
                 val hand = state.objects.values.filter { it.zone == Zone.HAND && it.owner == p.id }
-                trace.step("${p.subject} ${p.v("reveals", "reveal")} ${if (p.you) "your" else "their"} hand${if (hand.isEmpty()) "" else ": ${hand.joinToString(", ") { it.name }}"}.", "701.16a")
+                trace.step("${p.subject} ${p.v("reveals", "reveal")} ${if (p.you) "your" else "their"} hand${if (hand.isEmpty()) "" else ": ${hand.joinToString(", ") { it.name }}"}.", "701.20a")
                 if (hand.isEmpty()) {
                     state.clarifications += Clarification("${p.possessive} hand", "${item.source.name} has ${if (p.you) "you" else p.name} reveal ${if (p.you) "your" else "their"} hand and discard ${effect.what}; what is in it?")
                     trace.step("The situation doesn't say what is in ${p.possessive} hand, so which card is discarded can't be said.", "701.9a")
@@ -1696,9 +1696,9 @@ class Engine(val state: GameState) {
             is Effect.AddMana -> trace.step("${describeManaEffect(effect)}.", "605.1a")
             is Effect.CounterThatSpell -> {
                 val spell = item.causedObject?.let { id -> state.stack.firstOrNull { it.id == id } }
-                if (spell == null) trace.step("The spell that made ${item.source.name} trigger is no longer on the stack, so nothing is countered.", "701.5a", "608.2b")
+                if (spell == null) trace.step("The spell that made ${item.source.name} trigger is no longer on the stack, so nothing is countered.", "701.6a", "608.2b")
                 else {
-                    trace.step("${spell.describe} is countered: it never resolves and goes to its owner's graveyard. Countering isn't damage or destruction, so nothing about the spell can stop it.", "701.5a", "608.2a")
+                    trace.step("${spell.describe} is countered: it never resolves and goes to its owner's graveyard. Countering isn't damage or destruction, so nothing about the spell can stop it.", "701.6a", "608.2a")
                     state.stack.remove(spell); state.lastCountered = spell.source
                     moveRaw(spell.source, Zone.GRAVEYARD)
                     state.outcomes += "${spell.source.name} is countered."

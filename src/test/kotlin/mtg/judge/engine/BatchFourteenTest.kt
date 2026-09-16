@@ -206,7 +206,7 @@ class BatchFourteenTest {
         val e = Engine(s); e.cast("opp", bolt, listOf(Ref.Player("me"))); e.resolveAll()
         assertEquals(20, s.player("me").life)
         assertTrue(s.outcomes.any { it == "Lightning Bolt is countered." }, s.outcomes.toString())
-        assertTrue("701.5a" in s.cited())
+        assertTrue("701.6a" in s.cited())
     }
 
     @Test
