@@ -257,6 +257,27 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                             else -> "Yes: ${o.name} can activate ${if (any.size == 1) "its ability" else "its abilities"}, mana permitting."
                         }
                     }
+                    "blocked" -> state.outcomes += run {
+                        val blockers = state.objects.values.filter { it.blocking == o.id && it.isOnBattlefield() }
+                        when {
+                            o.attacking == null && !o.wasBlocked -> "${o.name} isn't attacking, so nothing is blocking it."
+                            blockers.isNotEmpty() -> "Yes: ${o.name} is blocked by ${blockers.joinToString(" and ") { it.name }}."
+                            o.wasBlocked -> "Yes: ${o.name} is blocked, even though nothing is blocking it now — a creature stays blocked once blockers are declared, so without trample it assigns no combat damage at all (509.1h)."
+                            else -> "No: ${o.name} is unblocked."
+                        }
+                    }
+                    "targetable" -> state.outcomes += run {
+                        val prots = state.protections(o)
+                        val ward = state.wardCost(o)
+                        when {
+                            !o.isOnBattlefield() -> "${o.name} isn't on the battlefield."
+                            state.hasKeyword(o, "shroud") -> "No: ${o.name} has shroud, so it can't be the target of any spell or ability, its controller's included (702.18a)."
+                            state.hasKeyword(o, "hexproof") -> "Not by an opponent: ${o.name} has hexproof, so its controller's opponents can't target it; ${state.player(o.controller).possessive} own spells and abilities still can (702.11b)."
+                            prots.isNotEmpty() -> "Only by something it isn't protected from: ${o.name} has protection from ${prots.joinToString(" and ")} (702.16b)."
+                            ward != null -> "Yes, but at a price: ${o.name} has ward, so targeting it by an opponent triggers \"counter that spell or ability unless its controller pays $ward\" (702.21a)."
+                            else -> "Yes: nothing stops ${o.name} being targeted."
+                        }
+                    }
                     "summoningSick" -> state.outcomes += run {
                         val who = state.player(o.controller).possessive
                         when {

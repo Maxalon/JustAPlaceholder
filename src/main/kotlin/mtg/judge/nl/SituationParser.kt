@@ -2378,6 +2378,28 @@ class SituationParser(private val names: NameIndex) {
                      else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.card?.name?.let { slug(it) } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, to = "mana"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
+        // "is it blocked?" / "is my attacker blocked?": combat state, not a statement that it is blocked.
+        Regex("""^(?:is|are|was|were|does|do|did) (?:it|that|they|(?:my |their |his |her |the |@\w+'s )?(c\d+))(?:'s)? (?:still |even |actually )*(?:get |getting |become )?blocked(?: still| now| at all| by anything)?$""").find(clause0)?.let { q ->
+            val ph = q.groupValues[1]
+            val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
+                     else ctx.events.lastOrNull { it.verb == "attack" }?.obj ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+            ctx.asks += EventSpec("ask", obj = id, to = "blocked"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
+        // "can it be targeted?" / "can they target my Bears?": hexproof, shroud, protection and ward on that permanent.
+        Regex("""^(?:can|could|may|is|are|does|do) (?:it|that|they|(?:my |their |his |her |the |@\w+'s )?(c\d+))(?:'s)? (?:still |even )?(?:be targeted|be a legal target|be targetted)(?: by (?:anything|a spell|spells|them|me))?$|^(?:can|could|may) (?:i|they|he|she|my opponent|the opponent|@\w+) (?:still |even )?target (?:it|that|(?:my |their |his |her |the |@\w+'s )?(c\d+))$""").find(clause0)?.let { q ->
+            val ph = q.groupValues[1].ifEmpty { q.groupValues[2] }
+            val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
+                     else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+            ctx.asks += EventSpec("ask", obj = id, to = "targetable"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
+        // "can it tap for mana?" / "can my Elves make mana?": the activation question, which knows about
+        // summoning sickness and about the permanent already being tapped.
+        Regex("""^(?:can|could|may|is it able to) (?:it|that|(?:my |their |his |her |the |@\w+'s )?(c\d+)) (?:still |even )?(?:tap for mana|tap for it|make mana|produce mana|add mana|be tapped for mana)(?: now| yet| this turn| already)?$""").find(clause0)?.let { q ->
+            val ph = q.groupValues[1]
+            val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
+                     else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.card?.name?.let { slug(it) } ?: return@let
+            ctx.asks += EventSpec("ask", obj = id, to = "activate"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
         // "is it a 3/3 now?": the creature's size, asked as a yes/no. Without this the clause read as the
         // statement "it is a 3/3" and the answer was "nothing changes".
         Regex("""^(?:is|are|'s) (?:it|that|they|(?:my |their |his |her |the |@\w+'s )?(c\d+))(?:'s)? (?:still |now |actually |really |even )*an? (\d+/\d+)(?: now| still| right now| then| after that| at that point)?$""").find(clause0)?.let { q ->

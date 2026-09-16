@@ -7236,5 +7236,50 @@
       "Redirect"
     ],
     "cite": []
+  },
+  {
+    "id": "blocked-stays-blocked-when-the-blocker-leaves",
+    "text": "I attack with Grizzly Bears, they block with Hill Giant, then they bounce Hill Giant with Unsummon. Is my Grizzly Bears blocked?",
+    "expect": [
+      "Yes: Grizzly Bears is blocked, even though nothing is blocking it now"
+    ],
+    "notExpect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "is-it-blocked-when-nobody-blocked",
+    "text": "I attack with Grizzly Bears and nobody blocks. Is it blocked?",
+    "expect": [
+      "No: Grizzly Bears is unblocked"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "hexproof-answers-who-can-target-it",
+    "text": "I control Thrun, the Last Troll. Can it be targeted?",
+    "expect": [
+      "hexproof",
+      "your own spells and abilities still can"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "can-a-fresh-mana-creature-tap",
+    "text": "I cast Llanowar Elves. Can it tap for mana?",
+    "expect": [
+      "came under your control this turn and doesn't have haste"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]
