@@ -261,6 +261,9 @@ class SituationParser(private val names: NameIndex) {
             // and the spell the asker did name never resolved.
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in verbsBeforeAnObject && normWords[f.start] !in short &&
                 normWords.getOrNull(f.end) in setOf("it", "that", "them", "this", "my", "their", "his", "her", "the", "a", "an", "its")) }
+            // "I tutor for Lightning Bolt", "I fetch for a land": a verb before "for" is a verb, even when a card
+            // named in full in the same question (Demonic Tutor) makes it a short name.
+            .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in verbsBeforeFor && normWords.getOrNull(f.end) == "for") }
             // "to protect it", "to save my Bears": a verb after "to" is a verb, not the card of that name.
             .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.start - 1) == "to" && normWords[f.start] in verbsAfterTo && normWords[f.start] !in short) }
             // "protection from black", "a black creature", "a red card": a colour word describes something here,
@@ -336,6 +339,13 @@ class SituationParser(private val names: NameIndex) {
         // a wide board. Said this way the whole clause went unread, so it is turned into plain words first.
         var t2 = t0.replace(Regex("""\balpha[- ]?strikes\b"""), "attacks").replace(Regex("""\balpha[- ]?strike\b"""), "attack")
             .replace(Regex("""\b(?:go|goes|going|went) wide with\b"""), "have")
+            // "hard cast", "board wipe with X", "tutor for X with Y": table talk for casting something.
+            .replace(Regex("""\bhard[- ]?casts\b"""), "casts").replace(Regex("""\bhard[- ]?cast\b"""), "cast")
+            .replace(Regex("""\bboard[- ]?wipes? with\b"""), "casts").replace(Regex("""\bwipes the board with\b"""), "casts")
+            .replace(Regex("""\btutors (?:up )?for (?:an? |the )?c\d+ with\b"""), "casts")
+            .replace(Regex("""\btutor (?:up )?for (?:an? |the )?c\d+ with\b"""), "cast")
+            // "… with Force of Will pitching a blue card": the alternative cost is its own clause.
+            .replace(Regex("""\s+(?:by )?(pitching|exiling) (?=(?:an?|one|two) )"""), ", $1 ")
         // "it's turn 3" / "on turn 2": the game's turn number.
         Regex("""\b(?:it's|it is|this is|on|during|in) turn (\d+)\b|\bturn (\d+) of the game\b""").find(t2)?.let { r -> ctx.turnNumber = (r.groupValues[1].ifEmpty { r.groupValues[2] }).toInt(); any = true; t2 = t2.removeRange(r.range) }
         Regex("""\b(it's|it is|during|on|in) (my|their|the opponent's|opponent's|my opponent's|@\w+'s) (turn|upkeep|end step|main phase|combat|draw step|beginning of combat)\b""").find(t2)?.let { r ->
@@ -494,7 +504,7 @@ class SituationParser(private val names: NameIndex) {
         return false
     }
 
-    private fun isNoise(clause: String) = Regex("""(?i)^(what happens|what now|so|then|now|ok|okay|right|they're|they are|i'm|i am|he's|she's|we're|it's|does it wear off|do(?:es)? (?:it|that|they) (?:wear off|go away|end|stay)|after (?:combat )?damage|after blockers|after blocks|after combat|after that|after this|before damage|do i draw|does it work|is that right|correct|and|but|also|too|as well|no wait|wait|never mind|nevermind|sorry|hmm|uh|um|actually)\??$""").matches(clause.trim()) ||
+    private fun isNoise(clause: String) = Regex("""(?i)^(what happens|what now|so|then|now|ok|okay|right|they're|they are|i'm|i am|he's|she's|we're|it's|does it wear off|do(?:es)? (?:it|that|they) (?:wear off|go away|end|stay)|after (?:combat )?damage|after blockers|after blocks|after combat|after that|after this|before damage|do i draw|does it work|is that right|correct|and|but|also|too|as well|no wait|wait|never mind|nevermind|sorry|hmm|uh|um|actually|they durdle|i durdle|durdles?|they do nothing|i do nothing|nothing happens)\??$""").matches(clause.trim()) ||
         (!Regex("""c\d+""").containsMatchIn(clause) && Regex("""^(?:do|does|did|can|could|will|would|is|are|was|were|what|who|which|how|should|when|why|am)\b""").matches(clause.trim().substringBefore(' ')))
     private fun restore(text: String, m: Marked): String = m.cards.entries.fold(text) { acc, (ph, e) -> acc.replace(Regex("\\b$ph\\b"), e.display) }
 
@@ -2854,6 +2864,8 @@ class SituationParser(private val names: NameIndex) {
     /** Verbs that are also card names ("Protect", "Bloodrush"); right after "to" they are verbs. */
     private val verbsAfterTo = setOf("protect", "save", "shield", "defend", "keep", "destroy", "kill", "draw", "search", "block", "attack",
         "sacrifice", "regenerate", "bounce", "exile", "tap", "untap", "pay", "cast", "play", "target", "fight", "counter", "discard", "mill", "scry", "activate", "stop", "answer", "remove", "trigger")
+    /** Verbs that are also card names and are followed by "for" ("I tutor for Lightning Bolt"). */
+    private val verbsBeforeFor = setOf("tutor", "tutors", "search", "searches", "dig", "digs", "fetch", "fetches", "look", "looks", "pay", "pays", "swing", "swings")
     /** Verbs that are also card names and take an object ("can they redirect it?", "they remove my Bears"). */
     private val verbsBeforeAnObject = setOf("redirect", "redirects", "reflect", "reflects", "deflect", "deflects", "steal", "steals",
         "swap", "swaps", "remove", "removes", "nuke", "nukes", "ping", "pings", "zap", "zaps", "answer", "answers", "shrink", "shrinks", "wipe", "wipes")

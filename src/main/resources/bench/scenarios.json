@@ -7589,5 +7589,38 @@
       "I couldn't find"
     ],
     "cite": []
+  },
+  {
+    "id": "board-wipe-is-a-cast",
+    "text": "They board wipe with Damnation and I have Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
+  },
+  {
+    "id": "force-of-will-pitching-a-card",
+    "text": "They counter my Lightning Bolt with Force of Will pitching a blue card. What happens?",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
+  },
+  {
+    "id": "tutor-for-is-a-verb",
+    "text": "I tutor for Lightning Bolt with Demonic Tutor. What happens?",
+    "expect": [
+      "Demonic Tutor"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
   }
 ]
