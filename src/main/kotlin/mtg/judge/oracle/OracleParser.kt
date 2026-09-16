@@ -450,6 +450,9 @@ object OracleParser {
                     val cost = payRe.matchEntire(choice)?.groupValues?.get(1)
                     out += Effect.IfYouDo(if (cost != null) Effect.Narrated("pay $cost", listOf("608.2g")) else parseSentence(choice.replaceFirstChar { it.uppercase() }), parseSentence(next.removePrefix("If you do, ").removePrefix("if you do, ").replaceFirstChar { it.uppercase() }), cost)
                     i += 2
+                } else if (Regex("""^Spell mastery — If there are two or more instant and/or sorcery cards in your graveyard, ~ deals (\d+) damage instead\.?$""", RegexOption.IGNORE_CASE).matches(cur) && out.lastOrNull() is Effect.Damage) {
+                    val n = Regex("""(\d+) damage""").find(cur)!!.groupValues[1].toInt()
+                    out[out.lastIndex] = (out.last() as Effect.Damage).copy(masteryAmount = n); i++
                 } else if (Regex("""^If (?:this spell|~) was kicked, it deals (\d+) damage instead\.?$""", RegexOption.IGNORE_CASE).matches(cur) && out.lastOrNull() is Effect.Damage) {
                     val n = Regex("""(\d+)""").find(cur)!!.groupValues[1].toInt()
                     out[out.lastIndex] = (out.last() as Effect.Damage).copy(kickedAmount = n); i++

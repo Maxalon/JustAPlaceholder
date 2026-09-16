@@ -272,7 +272,7 @@ class SituationParser(private val names: NameIndex) {
             val step = when (r.groupValues[3]) { "upkeep" -> "upkeep"; "end step" -> "end"; "main phase" -> "precombat_main"; "combat", "beginning of combat" -> "combat"; "draw step" -> "draw"; else -> null }
             if (step != null) ctx.events += EventSpec("step", player = ctx.activePlayer, to = step)
         }
-        Regex("""\b(i'm|i am|i'm at|my life is|i have|i've got) (\d+) life\b""").find(t2)?.let { ctx.life["me"] = it.groupValues[2].toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
+        Regex("""\b(i'm|i am|i'm at|my life is|i have|i've got) (\d+) life\b|^(i'm at|i am at|i'm on|i am on|i'm sitting at) (\d+)$""").find(t2)?.let { ctx.life["me"] = (it.groupValues[2].ifEmpty { it.groupValues[4] }).toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
         Regex("""\s*\b(?:with|at|and) (\d+) life (?:left|remaining|to go)(?: for me| on my side)?\b""").find(t2)?.let { ctx.life["me"] = it.groupValues[1].toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
         Regex("""\s*\b(?:with|and) (?:them|my opponent|the opponent|opponent) (?:at|on) (\d+)(?: life)?\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = it.groupValues[1].toInt(); any = true; t2 = t2.removeRange(it.range) }
         Regex("""\b(opponent|they|they're|opp|my opponent)(?: who)? (?:(?:is at|are at|at|is on|are on|'re at|'s at) (\d+)(?: life)?|(?:has|have) (\d+) life)\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = (it.groupValues[2].ifEmpty { it.groupValues[3] }).toInt(); any = true; t2 = t2.replaceRange(it.range, it.groupValues[1]) }
@@ -1440,6 +1440,21 @@ class SituationParser(private val names: NameIndex) {
 
     /** "does X trigger?" / "does X survive / die?": queues an explicit yes/no answer for after everything has resolved. */
     private fun askQuestion(clause0: String, m: Marked, ctx: Ctx): Boolean {
+        // "who dies?" / "who wins?" / "who loses?": every player's fate, one answer each.
+        Regex("""^who (dies|loses|wins|survives|is dead|is alive|comes out ahead)(?: here| then| the game| now)?$""").find(clause0)?.let { q ->
+            val to = when (q.groupValues[1]) { "wins", "comes out ahead" -> "playerWin"; "survives", "is alive" -> "playerSurvive"; else -> "playerDie" }
+            for (pid in ctx.playerIds()) ctx.asks += EventSpec("ask", player = pid, to = to)
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered for each player in the outcome below."; return true
+        }
+        // "both die?" / "do they trade?" / "do both survive?": the last attacker and the creature that blocked it.
+        Regex("""^(?:do |does |will |would )?(?:both|they both|the two|both of them|they) (?:die|trade|survive|live)\??$|^(?:is it a )?trade\??$""").find(clause0)?.let {
+            val block = ctx.events.lastOrNull { it.verb == "block" } ?: return@let
+            val ids = listOfNotNull(block.obj, block.targets.firstOrNull()).filter { it in ctx.objects }
+            if (ids.isEmpty()) return@let
+            val to = if (clause0.contains("survive") || clause0.contains("live")) "survive" else "die"
+            ids.forEach { ctx.asks += EventSpec("ask", obj = it, to = to) }
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered for each of the two creatures in the outcome below."; return true
+        }
         // "do I die?" / "do they lose?" / "am I dead?" / "does Bob survive?"
         Regex("""^(?:do|does|will|would|am|is|are) (i|they|my opponent|the opponent|opponent|he|she|@\w+) (?:still |then |also )?(die|dies|lose|loses|lose the game|survive|survives|dead|alive|win|wins|make it|live|lives)(?: the game)?(?: (?:this|next) turn| now| here)?$""").find(clause0)?.let { q ->
             val who = when (val w = q.groupValues[1]) { "i" -> "me"; else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w.substringAfterLast(' ')) }
@@ -1530,7 +1545,9 @@ class SituationParser(private val names: NameIndex) {
         // "… with revolt" / "revolt is on": Fatal Push's condition has been met.
         val revolt = Regex("""\s*\b(?:with revolt(?: (?:on|active|turned on|enabled))?|revolt (?:on|active)|and revolt is (?:on|active|met))\b""").find(rest0000)
         if (revolt != null) ctx.notes += "Revolt is read as satisfied (a permanent you controlled left the battlefield this turn)."
-        val rest0000r = revolt?.let { rest0000.removeRange(it.range) } ?: rest0000
+        val mastery = Regex("""\s*\b(?:with spell mastery(?: (?:on|active))?|spell mastery (?:on|active)|and spell mastery is (?:on|active|met))\b""").find(rest0000)
+        if (mastery != null) ctx.notes += "Spell mastery is read as satisfied (two or more instant and sorcery cards in your graveyard)."
+        val rest0000r = (mastery?.let { rest0000.removeRange(it.range) } ?: rest0000).let { r0 -> revolt?.takeIf { mastery == null }?.let { r0.removeRange(it.range) } ?: r0 }
         // "… with 1 Mountain untapped" / "with only 2 lands open": the caster's mana, not a target.
         val rest00000 = Regex("""\s*\bwith (?:only |just )?(\d+|one|two|three|four|five|six) (?:untapped |open )?(?:c\d+s?|lands?|mana(?: sources?)?)(?: untapped| open| available| up| left)?$""").find(rest0000r)?.let { r ->
             val n = number(r.groupValues[1]) ?: return@let null
@@ -1590,7 +1607,7 @@ class SituationParser(private val names: NameIndex) {
         // "Healing Salve gaining 3 life": the life is theirs, so the spell targets its caster.
         if (targets.isEmpty() && modeWord == "gain" && Regex("""\bgaining \d+ life\b""").containsMatchIn(rest)) targets = listOf(who)
         ctx.castingCounter = false
-        repeat(n) { i -> ctx.events += EventSpec("cast", player = who, card = CardRef(name = card.display, oracleId = card.oracleId), targets = targets, modes = modes, to = if (overload) "overload" else if (kicked) "kicked" else if (evoked) "evoke" else if (revolt != null) "revolt" else modeWord?.let { "mode:$it" }, amount = xValue); if (secondTime != null && i == 0) ctx.events += EventSpec("resolveAll") }
+        repeat(n) { i -> ctx.events += EventSpec("cast", player = who, card = CardRef(name = card.display, oracleId = card.oracleId), targets = targets, modes = modes, to = if (overload) "overload" else if (kicked) "kicked" else if (evoked) "evoke" else if (revolt != null) "revolt" else if (mastery != null) "spellmastery" else modeWord?.let { "mode:$it" }, amount = xValue); if (secondTime != null && i == 0) ctx.events += EventSpec("resolveAll") }
         if (n > 1) ctx.notes += "${card.display} is cast $n times, one copy after another (each is its own spell)." 
         ctx.lastActor = who
         ctx.lastVerb = "cast"

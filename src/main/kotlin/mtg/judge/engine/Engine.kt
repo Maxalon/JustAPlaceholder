@@ -915,7 +915,15 @@ class Engine(val state: GameState) {
                     if (s == null) { state.clarifications += Clarification("${item.source.name}'s sacrifice", "${item.source.name} deals damage equal to the sacrificed creature's power, but no creature was sacrificed for it; what was sacrificed? (assuming 0)"); 0 }
                     else { val pw = s.lkiPower ?: s.def.power ?: 0; trace.step("The sacrificed creature was ${s.name}; its last known power was $pw, so ${item.source.name} deals $pw damage.", "608.2h"); pw }
                 } else null
-                forEachLegalTarget(item, effect.target) { applyDamage(item.source.name, it, sacAmount ?: if (effect.x) (item.x ?: 0) else if (item.kicked && effect.kickedAmount != null) effect.kickedAmount else effect.amount) }
+                // Spell mastery: two or more instants and sorceries in the caster's graveyard (or the situation said so) raise the damage.
+                val mastery = effect.masteryAmount?.takeIf { _ ->
+                    val gy = state.objects.values.count { it.zone == Zone.GRAVEYARD && it.owner == item.controller && it.def.isInstantOrSorcery }
+                    val on = item.choice == "spellmastery" || gy >= 2
+                    if (on) trace.step("Spell mastery: ${if (item.choice == "spellmastery") "the situation says its condition is met" else "$gy instant and sorcery cards are in ${state.player(item.controller).possessive} graveyard"}, so ${item.source.name} deals ${effect.masteryAmount} damage instead of ${effect.amount}.", "608.2c")
+                    else trace.step("Spell mastery isn't on: only $gy instant or sorcery card${if (gy == 1) "" else "s"} ${if (gy == 1) "is" else "are"} in ${state.player(item.controller).possessive} graveyard (the situation didn't say otherwise), so ${item.source.name} deals its usual ${effect.amount}.", "608.2c")
+                    on
+                }
+                forEachLegalTarget(item, effect.target) { applyDamage(item.source.name, it, sacAmount ?: if (effect.x) (item.x ?: 0) else if (item.kicked && effect.kickedAmount != null) effect.kickedAmount else mastery ?: effect.amount) }
             }
             is Effect.Proliferate -> {
                 val you = state.player(item.controller)

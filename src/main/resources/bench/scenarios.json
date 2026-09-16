@@ -3941,5 +3941,56 @@
     "cite": [
       "121.1"
     ]
+  },
+  {
+    "id": "fiery-impulse-spell-mastery",
+    "text": "My opponent controls Grizzly Bears. I cast Fiery Impulse on it with spell mastery.",
+    "expect": [
+      "Grizzly Bears has 3 damage marked"
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "608.2c"
+    ]
+  },
+  {
+    "id": "fiery-impulse-no-mastery",
+    "text": "My opponent controls Hill Giant. I cast Fiery Impulse on it.",
+    "expect": [
+      "Hill Giant has 2 damage marked",
+      "Spell mastery isn't on"
+    ],
+    "notExpect": [
+      "Hill Giant: the battlefield"
+    ],
+    "cite": [
+      "608.2c"
+    ]
+  },
+  {
+    "id": "bolt-helix-who-dies",
+    "text": "I'm at 5. I cast Lightning Bolt at my opponent who is at 3 and they respond with Lightning Helix targeting me. Who dies?",
+    "expect": [
+      "No: You are still in the game at 2 life",
+      "No: opponent is still in the game at 3 life"
+    ],
+    "cite": [
+      "119.3"
+    ]
+  },
+  {
+    "id": "bears-vs-bears-both-die",
+    "text": "I attack with Grizzly Bears and my opponent blocks with Grizzly Bears. Both die?",
+    "expect": [
+      "Yes: Grizzly Bears died (it's in the graveyard). (×2)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5g"
+    ]
   }
 ]
