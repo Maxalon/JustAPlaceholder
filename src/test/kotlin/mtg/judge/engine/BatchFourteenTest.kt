@@ -398,4 +398,45 @@ class BatchFourteenTest {
         Engine(s).stateBasedActions()
         assertEquals(Zone.GRAVEYARD, s.obj("shadow").zone)
     }
+
+    private val skyfisher = card("Kor Skyfisher", "Creature \u2014 Kor Soldier", "Flying\nWhen Kor Skyfisher enters, return a permanent you control to its owner's hand.", "{1}{W}", "W", "2", "3", "Flying")
+    private val batterskull = card("Batterskull", "Artifact \u2014 Equipment", "Living weapon\nEquipped creature gets +4/+4 and has vigilance and lifelink.\nEquip {5}", "{5}", "", null, null, "Living weapon", "Equip")
+
+    @Test
+    fun `kor skyfisher with nothing else must return itself`() {
+        val s = state(); s.put("kor", skyfisher, "me", Zone.HAND)
+        val e = Engine(s); e.enter("kor"); e.resolveAll()
+        assertEquals(Zone.HAND, s.obj("kor").zone)
+    }
+
+    @Test
+    fun `kor skyfisher returns the cheapest other permanent and says what else it could take`() {
+        val s = state(); s.put("bear", bears, "me"); s.put("kor", skyfisher, "me", Zone.HAND)
+        val e = Engine(s); e.enter("kor"); e.resolveAll()
+        assertEquals(Zone.HAND, s.obj("bear").zone)
+        assertTrue(s.obj("kor").isOnBattlefield())
+        assertTrue(s.assumptions.any { "Kor Skyfisher" in it }, s.assumptions.toString())
+    }
+
+    @Test
+    fun `living weapon makes a germ and attaches the equipment to it before state-based actions`() {
+        val s = state(); s.put("skull", batterskull, "me", Zone.HAND)
+        val e = Engine(s); e.enter("skull"); e.resolveAll()
+        val germ = s.objects.values.single { it.def.name.contains("Germ") }
+        assertEquals(germ.id, s.obj("skull").attachedTo)
+        assertEquals(4, germ.power); assertEquals(4, germ.toughness)
+        e.stateBasedActions()
+        assertEquals(Zone.BATTLEFIELD, germ.zone)
+        assertTrue("702.92a" in s.cited())
+    }
+
+    @Test
+    fun `the germ dies once the equipment leaves`() {
+        val s = state(); s.put("skull", batterskull, "me", Zone.HAND)
+        val e = Engine(s); e.enter("skull"); e.resolveAll()
+        val germ = s.objects.values.single { it.def.name.contains("Germ") }
+        e.leave("skull", Zone.GRAVEYARD)
+        e.stateBasedActions()
+        assertEquals(Zone.GRAVEYARD, germ.zone)
+    }
 }

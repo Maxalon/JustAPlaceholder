@@ -5421,13 +5421,68 @@
     "id": "wurmcoil-makes-two-tokens",
     "text": "I control Wurmcoil Engine and it dies. What happens?",
     "expect": [
-      "You get a Phyrexian Wurm token. (\u00d72)"
+      "You get a Phyrexian Wurm token. (×2)"
     ],
     "notExpect": [
       "not tracked in detail"
     ],
     "cite": [
       "701.7a"
+    ]
+  },
+  {
+    "id": "kor-skyfisher-returns-itself",
+    "text": "I control Kor Skyfisher and it enters the battlefield. What happens?",
+    "expect": [
+      "You choose Kor Skyfisher and return it to its owner's hand"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "400.7"
+    ]
+  },
+  {
+    "id": "kor-skyfisher-has-a-choice",
+    "text": "I control a Mountain and a Grizzly Bears, and Kor Skyfisher enters the battlefield. What happens?",
+    "expect": [
+      "return it to its owner's hand"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "400.7"
+    ]
+  },
+  {
+    "id": "batterskull-living-weapon",
+    "text": "I cast Batterskull. What happens?",
+    "expect": [
+      "You create a Phyrexian Germ token (0/0)",
+      "Batterskull becomes attached to the Phyrexian Germ token",
+      "The Phyrexian Germ token is now 4/4"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "702.92a",
+      "702.6a"
+    ]
+  },
+  {
+    "id": "batterskull-destroyed-germ-dies",
+    "text": "I control Batterskull attached to a Phyrexian Germ token. My opponent casts Disenchant targeting Batterskull. What happens?",
+    "expect": [
+      "Phyrexian Germ has toughness 0 and is put into its owner's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5f"
     ]
   }
 ]

@@ -69,6 +69,7 @@ object OracleParser {
                         "unearth" -> abilities += ActivatedAbility(part.trimEnd('.') + " (from your graveyard)", Effect.Narrated("return ~ from your graveyard to the battlefield; it gains haste; exile it at the beginning of the next end step or if it would leave the battlefield", listOf("702.84a")), part, "Activate only as a sorcery")
                         "level up" -> abilities += ActivatedAbility(part.trimEnd('.'), Effect.PutCounters(null, "level", 1), part, "Activate only as a sorcery")
                         "exalted" -> abilities += TriggeredAbility(Trigger.CreatureAttacksAlone, Effect.PumpCausing(1, 1), "Exalted (Whenever a creature you control attacks alone, that creature gets +1/+1 until end of turn.)")
+                        "living weapon" -> abilities += TriggeredAbility(Trigger.ThisEnters, Effect.LivingWeapon, "Living weapon (When this Equipment enters, create a 0/0 black Phyrexian Germ creature token, then attach this to it.)")
                         "crew" -> abilities += ActivatedAbility(part.trimEnd('.') + " (tap any number of other untapped creatures you control with total power N or more)", Effect.Narrated("~ becomes an artifact creature until end of turn", listOf("702.122a")), part)
                         else -> abilities += StaticAbility(part, kw)
                     }
@@ -630,6 +631,8 @@ object OracleParser {
     private val counterRe = Regex("""^counter target (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val destroyRe = Regex("""^destroy target (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val bounceRe = Regex("""^return (~|target .+?) to its owner's hand\.?$""", RegexOption.IGNORE_CASE)
+    // Kor Skyfisher, Whitemane Lion, Stonecloaker: a chosen permanent, not a targeted one.
+    private val bounceChosenRe = Regex("""^return (?:a|an) (.+?) you control to (?:its owner's hand|your hand)\.?$""", RegexOption.IGNORE_CASE)
     private val createTokenRe = Regex("""^(?:(you|its controller|that player|target player|each opponent|each player) )?creates? (a|an|\d+|two|three|four|five) ((?:\d+/\d+ )?(?:(?:white|blue|black|red|green|colorless)(?: and \w+)? )*(?:[A-Z][a-z]+ )*(?:artifact creature |creature |artifact |enchantment )?tokens?(?: with [a-z ,]+?)?)(?: named .+)?\.?$""", RegexOption.IGNORE_CASE)
     private val exileRe = Regex("""^exile target (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val tapRe = Regex("""^tap target (.+?)\.?$""", RegexOption.IGNORE_CASE)
@@ -911,6 +914,11 @@ object OracleParser {
         Regex("""^copy target (.+? spell)(?:\. you may choose new targets for the copy)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.CopySpell(target(it.groupValues[1], Kind.SPELL), s.contains("new targets", true)) }
         destroyRe.matchEntire(s)?.let { return Effect.Destroy(target(it.groupValues[1])) }
         bounceRe.matchEntire(s)?.let { m -> return Effect.Bounce(if (m.groupValues[1] == "~") null else target(m.groupValues[1])) }
+        bounceChosenRe.matchEntire(s)?.let { m ->
+            val raw = m.groupValues[1].trim()
+            val f = parseFilter("$raw you control", Kind.PERMANENT)
+            if (f.verifiable) return Effect.BounceChosen(f, raw)
+        }
         if (Regex("""^proliferate\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.Proliferate
         Regex("""^(exile|destroy|tap) all (.+?) target (player|opponent) controls\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             val f = parseFilter(m.groupValues[2], Kind.PERMANENT)
