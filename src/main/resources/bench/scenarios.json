@@ -7735,5 +7735,38 @@
       "opponent takes 3 damage"
     ],
     "cite": []
+  },
+  {
+    "id": "damage-said-as-hitting-for-an-amount",
+    "text": "I hit my opponent for 3 with Lightning Bolt. How much damage do they take?",
+    "expect": [
+      "3 damage in all"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
+  },
+  {
+    "id": "damage-said-from-the-receiving-side",
+    "text": "My opponent is dealt 3 damage by Lightning Bolt. How much damage do they take?",
+    "expect": [
+      "3 damage in all"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
+  },
+  {
+    "id": "an-ability-fired-off",
+    "text": "I control Llanowar Elves that has been out. I fire off Llanowar Elves's ability. What happens?",
+    "expect": [
+      "mana ability"
+    ],
+    "notExpect": [
+      "I couldn't find"
+    ],
+    "cite": []
   }
 ]

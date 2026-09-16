@@ -261,6 +261,9 @@ class SituationParser(private val names: NameIndex) {
             // and the spell the asker did name never resolved.
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in verbsBeforeAnObject && normWords[f.start] !in short &&
                 normWords.getOrNull(f.end) in setOf("it", "that", "them", "this", "my", "their", "his", "her", "the", "a", "an", "its")) }
+            // "I fire off its ability", "I turn on my Mutavault": a verb before a particle is a verb, not the card
+            // of that name — "Fire // Ice" made "fire off" into a card being cast.
+            .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in verbsBeforeParticle && normWords.getOrNull(f.end) in setOf("off", "on", "out", "up", "down", "away", "back")) }
             // "I tutor for Lightning Bolt", "I fetch for a land": a verb before "for" is a verb, even when a card
             // named in full in the same question (Demonic Tutor) makes it a short name.
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in verbsBeforeFor && normWords.getOrNull(f.end) == "for") }
@@ -372,6 +375,19 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+|c\d+) blocked (?=(?:it|that|them|the|an?|my|their|his|her|with|c\d+)\b)"""), "$1 blocks ")
             .replace(Regex("""\bdeclares? ((?:my |their |the |an? )?c\d+) as a blocker(?: on| against| for)? """), "$1 blocks ")
             .replace(Regex("""\b(?:throws?|threw|puts?|drops?|chumps?) ((?:my |their |the |an? )?c\d+) in (?:front of|the way of) """), "$1 blocks ")
+            // "I activated it", "I turn on my Elves", "I fire off its ability", "Llanowar Elves taps for mana":
+            // more ways to say the same activation.
+            .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+) activated (?=(?:it|that|them|the|an?|my|their|his|her|c\d+)\b)"""), "$1 activates ")
+            .replace(Regex("""\b(?:turns? on|fires? off|sets? off) (?=(?:my |their |the )?c\d+)"""), "activates ")
+            .replace(Regex("""^((?:my |their |the )?c\d+) taps for (mana|\{)"""), "taps $1 for $2")
+            // "I hit my opponent for 3 with Bolt", "my opponent takes 3 from Bolt", "Bolt hits my opponent":
+            // more ways to say a spell was aimed at somebody.
+            .replace(Regex("""\b(?:deals?|dealt|hits?|hit|burns?|burned|pings?|zaps?) (me|them|my opponent|the opponent|@\w+|(?:my |their )?face)(?: for)? \d+(?: damage)? with ((?:an? |the |my |their )?c\d+)"""), "casts $2 targeting $1")
+            .replace(Regex("""\b(?:deals?|dealt) \d+ damage to (me|them|my opponent|the opponent|@\w+) with ((?:an? |the |my |their )?c\d+)"""), "casts $2 targeting $1")
+            .replace(Regex("""\b(me|they|them|my opponent|the opponent|@\w+) (?:takes?|took) \d+(?: damage)? from ((?:an? |the |my |their )?c\d+)"""), "casts $2 targeting $1")
+            .replace(Regex("""\b(me|them|my opponent|the opponent|@\w+) (?:is|are|was|were|gets?|got) dealt \d+ damage by ((?:an? |the |my |their )?c\d+)"""), "casts $2 targeting $1")
+            .replace(Regex("""\b(?:throws?|threw|chucks?|lobs?) ((?:an? |the |my |their )?c\d+) at """), "casts $1 targeting ")
+            .replace(Regex("""^((?:an? |the |my |their )?c\d+) (?:hits?|burns?) (?=(?:me|them|my opponent|the opponent|@\w+|my face|their face)\b)"""), "casts $1 targeting ")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
         // "they use Doom Blade on my Bears": a cast, but only for a card that is cast — "they use Maze on it"
@@ -2918,11 +2934,14 @@ class SituationParser(private val names: NameIndex) {
     /** Verbs that are also card names ("Protect", "Bloodrush"); right after "to" they are verbs. */
     private val verbsAfterTo = setOf("protect", "save", "shield", "defend", "keep", "destroy", "kill", "draw", "search", "block", "attack",
         "sacrifice", "regenerate", "bounce", "exile", "tap", "untap", "pay", "cast", "play", "target", "fight", "counter", "discard", "mill", "scry", "activate", "stop", "answer", "remove", "trigger")
+    /** Verbs that are also card names and are followed by a particle ("I fire off its ability", "I turn on my Mutavault"). */
+    private val verbsBeforeParticle = setOf("fire", "fires", "fired", "turn", "turns", "turned", "set", "sets", "pop", "pops", "popped", "cash", "crack", "cracks")
     /** Verbs that are also card names and are followed by "for" ("I tutor for Lightning Bolt"). */
     private val verbsBeforeFor = setOf("tutor", "tutors", "search", "searches", "dig", "digs", "fetch", "fetches", "look", "looks", "pay", "pays", "swing", "swings")
     /** Verbs that are also card names and take an object ("can they redirect it?", "they remove my Bears"). */
     private val verbsBeforeAnObject = setOf("redirect", "redirects", "reflect", "reflects", "deflect", "deflects", "steal", "steals",
-        "swap", "swaps", "remove", "removes", "nuke", "nukes", "ping", "pings", "zap", "zaps", "answer", "answers", "shrink", "shrinks", "wipe", "wipes")
+        "swap", "swaps", "remove", "removes", "nuke", "nukes", "ping", "pings", "zap", "zaps", "answer", "answers", "shrink", "shrinks",
+        "wipe", "wipes", "burn", "burns", "burned")
     /** Colour words that are also the start of card names ("Black Knight"); after "protection from" they are colours. */
     private val colorWords = setOf("white", "blue", "black", "red", "green")
     /** Nouns a colour word describes ("a black creature"), as opposed to naming a card that begins with that colour. */
