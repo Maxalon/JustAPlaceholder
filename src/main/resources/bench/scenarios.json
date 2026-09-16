@@ -6766,5 +6766,19 @@
     "cite": [
       "704.5a"
     ]
+  },
+  {
+    "id": "exiling-a-permanent-makes-no-dies-trigger",
+    "text": "I control Wurmcoil Engine and it is exiled. What happens?",
+    "expect": [
+      "Wurmcoil Engine: the battlefield → exile"
+    ],
+    "notExpect": [
+      "Exile finishes resolving",
+      "token"
+    ],
+    "cite": [
+      "400.7"
+    ]
   }
 ]
