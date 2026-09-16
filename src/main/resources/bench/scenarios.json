@@ -7192,5 +7192,38 @@
     ],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "is-it-a-3-3-asks-the-size",
+    "text": "I control Grizzly Bears with a +1/+1 counter. Is it a 3/3?",
+    "expect": [
+      "Grizzly Bears is 3/3"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "summoning-sickness-asked-about-a-creature-just-cast",
+    "text": "I cast Llanowar Elves. Is it summoning sick?",
+    "expect": [
+      "Yes: Llanowar Elves came under your control this turn"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "summoning-sickness-with-haste",
+    "text": "I cast a 2/2 with haste. Is it summoning sick?",
+    "expect": [
+      "has haste, so it can attack"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]

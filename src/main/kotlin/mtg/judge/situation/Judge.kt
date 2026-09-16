@@ -257,6 +257,17 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                             else -> "Yes: ${o.name} can activate ${if (any.size == 1) "its ability" else "its abilities"}, mana permitting."
                         }
                     }
+                    "summoningSick" -> state.outcomes += run {
+                        val who = state.player(o.controller).possessive
+                        when {
+                            !o.isOnBattlefield() -> "${o.name} isn't on the battlefield."
+                            !o.def.isCreature && o.animatedAs == null -> "${o.name} isn't a creature, so summoning sickness doesn't affect it (302.6 is about creatures)."
+                            o.summoningSick == true && state.hasKeyword(o, "haste") -> "Yes, but it doesn't matter: ${o.name} came under $who control this turn and has haste, so it can attack and use its {T} abilities anyway (702.10b)."
+                            o.summoningSick == true -> "Yes: ${o.name} came under $who control this turn and doesn't have haste, so it can't attack or use a {T} ability (302.6)."
+                            o.summoningSick == false -> "No: ${o.name} has been under $who control since the turn began."
+                            else -> "It wasn't said when ${o.name} came under $who control. If it was this turn it's summoning sick and can't attack or use a {T} ability without haste (302.6); if it was earlier it isn't."
+                        }
+                    }
                     "tapped" -> state.outcomes += if (o.tapped == true) "${o.name} is tapped." else "${o.name} is untapped${if (state.hasKeyword(o, "vigilance") && state.trace.steps.any { it.text.startsWith("${o.name} attacks") || it.text.contains("attack with ${o.name}") }) " (vigilance: attacking didn't tap it)" else ""}."
                     "survive", "die" -> {
                         val where = when (o.zone) { mtg.judge.engine.Zone.GRAVEYARD -> "the graveyard"; mtg.judge.engine.Zone.EXILE -> "exile"; mtg.judge.engine.Zone.HAND -> "its owner's hand"; mtg.judge.engine.Zone.LIBRARY -> "its owner's library"; mtg.judge.engine.Zone.COMMAND -> "the command zone"; else -> o.zone.name.lowercase() }

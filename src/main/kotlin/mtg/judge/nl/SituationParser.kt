@@ -2375,6 +2375,23 @@ class SituationParser(private val names: NameIndex) {
                      else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.card?.name?.let { slug(it) } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, to = "mana"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
+        // "is it a 3/3 now?": the creature's size, asked as a yes/no. Without this the clause read as the
+        // statement "it is a 3/3" and the answer was "nothing changes".
+        Regex("""^(?:is|are|'s) (?:it|that|they|(?:my |their |his |her |the |@\w+'s )?(c\d+))(?:'s)? (?:still |now |actually |really |even )*an? (\d+/\d+)(?: now| still| right now| then| after that| at that point)?$""").find(clause0)?.let { q ->
+            val ph = q.groupValues[1]
+            val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
+                     else ctx.lastMentioned?.takeIf { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) }
+                         ?: ctx.events.lastOrNull { it.verb == "cast" || it.verb == "activate" }?.targets?.firstOrNull { it in ctx.objects } ?: return@let
+            ctx.asks += EventSpec("ask", obj = id, to = "pt"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
+        // "is it summoning sick?" / "does my Elves have summoning sickness?": whether it came down this turn.
+        Regex("""^(?:is|are|does|do|did|was|were) (?:it|that|they|(?:my |their |his |her |the |@\w+'s )?(c\d+))(?:'s)? (?:still |even |actually )*(?:summoning[- ]sick|have summoning sickness|has summoning sickness)(?: still| now| right now)?$""").find(clause0)?.let { q ->
+            val ph = q.groupValues[1]
+            val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
+                     else ctx.lastMentioned?.takeIf { it in ctx.objects }
+                         ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.card?.name?.let { slug(it) } ?: return@let
+            ctx.asks += EventSpec("ask", obj = id, to = "summoningSick"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
         // "does my Serra Angel have flying?" / "is it still indestructible?": a question about a keyword, not a
         // statement granting one. Read as a statement it granted the keyword and then answered "nothing changes".
         Regex("""^(?:does|do|did|will|would|is|are) (?:it|that|they|(?:my |their |his |her |the |an? |@\w+'s )?(c\d+))(?:'s)? (?:still |even |really |actually |now )*(?:have |has |keep |keeps |retain |retains |got )?($kwPhrase)(?: any ?more| still| now| at all| right now| then| after that)?$""").find(clause0)?.let { q ->
