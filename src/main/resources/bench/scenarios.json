@@ -5975,5 +5975,20 @@
       "725.2",
       "725.3"
     ]
+  },
+  {
+    "id": "angelsong-fogs-the-players",
+    "text": "My opponent attacks me with a 5/5 and I cast Angelsong. What happens?",
+    "expect": [
+      "prevent all combat damage that would be dealt to players",
+      "Damage to you from a 5/5 creature is prevented"
+    ],
+    "notExpect": [
+      "Not modeled",
+      "You take 5 damage"
+    ],
+    "cite": [
+      "615.1"
+    ]
   }
 ]

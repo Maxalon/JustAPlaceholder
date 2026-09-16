@@ -747,7 +747,10 @@ object OracleParser {
 
     private val modalRe = Regex("""^(.*?)Choose (one|two|three|four|any number|one or more|up to \w+)(?: or more)?(?: —|\.)?(?: You may choose the same mode more than once\.)?\s*((?:• .+?)+)$""", RegexOption.IGNORE_CASE)
     private val preventNextRe = Regex("""^prevent the next (\d+) damage that would be dealt to (any target|target creature or player|target creature|target player|you|target creature or planeswalker|target permanent or player) this turn\.?$""", RegexOption.IGNORE_CASE)
-    private val preventAllTurnRe = Regex("""^prevent all (combat )?damage that would be dealt(?: to (you|any target|target creature|target creature or player|creatures you control|target player|you and permanents you control))?(?: by (.+?))? this turn\.?$""", RegexOption.IGNORE_CASE)
+    // The "to" part is read as a filter rather than matched against a fixed list, so "creatures and planeswalkers
+    // you control" and "creature tokens you control" work without their own entries. Anything parseFilter can't
+    // verify is still reported unparsed.
+    private val preventAllTurnRe = Regex("""^prevent all (combat )?damage that would be dealt(?: to (?!and\b)([a-z][a-z' ]*?))?(?: by ([a-z][a-z' ]*?))?(?: this turn)?\.?$""", RegexOption.IGNORE_CASE)
     private val regenerateRe = Regex("""^regenerate (~|target .+?)\.?$""", RegexOption.IGNORE_CASE)
 
     private fun parseSentence(s: String): Effect {
@@ -769,9 +772,18 @@ object OracleParser {
             return when {
                 to.isEmpty() -> Effect.CreateShield(Replacement.PreventDamage(null, null, Who.ANY_PLAYER, combat, from).copy(to = ObjFilter(setOf(Kind.PERMANENT), raw = "everything")), null)
                 to == "you" -> Effect.CreateShield(Replacement.PreventDamage(null, null, Who.YOU, combat, from), null)
-                to == "you and permanents you control" -> Effect.CreateShield(Replacement.PreventDamage(null, parseFilter("permanents you control", Kind.PERMANENT), Who.YOU, combat, from), null)
+                // "you and creatures you control": the player plus everything the rest of the phrase describes.
+                to.startsWith("you and ") -> {
+                    val f = parseFilter(to.removePrefix("you and "), Kind.PERMANENT)
+                    if (!f.verifiable) return Effect.Unparsed(s)
+                    Effect.CreateShield(Replacement.PreventDamage(null, f, Who.YOU, combat, from), null)
+                }
                 to.startsWith("target") || to == "any target" -> Effect.CreateShield(Replacement.PreventDamage(null, null, null, combat, from), target(to))
-                else -> Effect.CreateShield(Replacement.PreventDamage(null, parseFilter(to, Kind.CREATURE), null, combat, from), null)
+                else -> {
+                    val f = parseFilter(to, Kind.CREATURE)
+                    if (!f.verifiable) return Effect.Unparsed(s)
+                    Effect.CreateShield(Replacement.PreventDamage(null, f, null, combat, from), null)
+                }
             }
         }
         selfPumpRe.matchEntire(s)?.let { return Effect.PumpSelf(it.groupValues[1].toInt(), it.groupValues[2].toInt()) }
