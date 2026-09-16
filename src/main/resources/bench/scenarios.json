@@ -6228,5 +6228,65 @@
     "cite": [
       "605.3b"
     ]
+  },
+  {
+    "id": "a-creature-cast-this-turn-cant-attack",
+    "text": "I cast Grizzly Bears and attack with it. What happens?",
+    "expect": [
+      "summoning sickness"
+    ],
+    "notExpect": [
+      "assigns 2 damage"
+    ],
+    "cite": [
+      "302.6"
+    ]
+  },
+  {
+    "id": "a-planeswalker-can-use-a-loyalty-ability-the-turn-it-lands",
+    "text": "I cast Chandra, Torch of Defiance and activate her +1. What happens?",
+    "expect": [
+      "enters with 4 loyalty counters",
+      "putting 1 loyalty counter on it (now 5)"
+    ],
+    "notExpect": [],
+    "cite": [
+      "606.4"
+    ]
+  },
+  {
+    "id": "a-loyalty-cost-said-in-words",
+    "text": "I control Chandra, Torch of Defiance and use her plus one. What happens?",
+    "expect": [
+      "+1 loyalty ability"
+    ],
+    "notExpect": [
+      "Plus One"
+    ],
+    "cite": [
+      "606.4"
+    ]
+  },
+  {
+    "id": "saying-the-attacker-was-not-blocked",
+    "text": "I attack with Slith Firewalker and it isn't blocked. What happens?",
+    "expect": [
+      "Slith Firewalker is unblocked"
+    ],
+    "notExpect": [],
+    "cite": [
+      "510.1b"
+    ]
+  },
+  {
+    "id": "saying-nobody-blocked",
+    "text": "I attack with Slith Firewalker and nobody blocks. What happens?",
+    "expect": [
+      "Slith Firewalker is unblocked"
+    ],
+    "notExpect": [],
+    "cite": [
+      "510.1b"
+    ]
   }
 ]

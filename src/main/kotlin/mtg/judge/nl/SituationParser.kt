@@ -57,6 +57,7 @@ class SituationParser(private val names: NameIndex) {
         var lastOwner: String = "me"
         var lastMentioned: String? = null          // object id, or "cast:<slug>" for a spell just cast
         val castCards = mutableListOf<String>()     // display names of cards cast so far
+        var lastCastEntry: NameIndex.Entry? = null  // the card behind lastMentioned's "cast:<slug>", for acting on it once it resolves
         var explicitResolve = false
 
         /** The single other player, when there are exactly two; with more, callers fall back to the engine's clarification. */
@@ -120,7 +121,18 @@ class SituationParser(private val names: NameIndex) {
 
     private val sentenceSplit = Regex("""(?<=[.!?;])\s+|\n+|\s+(?:and then|, then|then)\s+|,\s+and\s+(?=(?:i|my|the|they|he|she|opponent|opp)\b)""", RegexOption.IGNORE_CASE)
 
-    private fun splitSentences(text: String): List<String> {
+    /**
+     * "use her plus one", "activate its minus three": loyalty costs said out loud. Written as words they are read
+     * as card names — "Plus One" is a card — so they are turned back into "+1" / "-3" before anything is marked.
+     */
+    private val spokenLoyalty = Regex("""\b(its|his|her|their|the|my) (plus|minus) (one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|\d+)\b""", RegexOption.IGNORE_CASE)
+    private val spokenNumbers = listOf("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen")
+
+    private fun splitSentences(text0: String): List<String> {
+        val text = spokenLoyalty.replace(text0) { r ->
+            val n = r.groupValues[3].toIntOrNull() ?: (spokenNumbers.indexOf(r.groupValues[3].lowercase()) + 1)
+            "${r.groupValues[1]} ${if (r.groupValues[2].lowercase() == "minus") "-" else "+"}$n"
+        }
         val pieces = text.split(sentenceSplit).map { it.trim().trimEnd('.', '!', '?', ';', ',') }.filter { it.isNotEmpty() }
         // "Bob then bolts my Bears": a lone subject before "then" belongs to what follows.
         val out = mutableListOf<String>()
@@ -435,6 +447,14 @@ class SituationParser(private val names: NameIndex) {
     private val castVerbs = """(?:casts?|casting|plays?|playing|fires? off|slams?|kicks?|kicked|evokes?|evoked|evoking)"""
     private val respondVerbs = """(?:respond(?:s|ed)? with|in response(?: i| they)? (?:casts?|plays?)|responds?|answers? with|counters? (?:it|that) with|flash(?:es)? in)"""
     private val activateVerbs = """(?:activates?|activating|uses?|using|cracks?|cracking|pops?|popping|fires? off)"""
+    /**
+     * A statement that the attack wasn't blocked. Nothing to add: with no block described the engine already has
+     * the attacker unblocked. Only the negative forms belong here — "it is blocked" says something quite different.
+     */
+    private val unblockedRe = Regex("""^(?:(?:it|they|he|she|c\d+|the attacker|the attackers|my attacker|their attacker|the creature|the creatures) )?(?:(?:is|are|was|were|goes|go|went|gets|get|stays|stay|remains|remain) )?un(?:blocked|contested)$""" +
+        """|^(?:(?:it|they|he|she|c\d+|the attacker|the attackers|my attacker|their attacker|the creature|the creatures) )?(?:isn't|is not|aren't|are not|wasn't|was not|weren't|were not|didn't get|doesn't get|don't get) blocked$""" +
+        """|^(?:nobody|no one|no-one|neither(?: player| of them)?|none of them|no creature|no blockers?) (?:blocks?|blocked|block)$""" +
+        """|^(?:it|they|he|she|c\d+) (?:gets?|got|goes?|went) through$""")
 
     private fun readClause(clauseIn0: String, m: Marked, ctx: Ctx): Boolean {
         // "I try to activate it" / "they attempt to block": the attempt is the action, and the answer says how it goes.
@@ -1612,7 +1632,7 @@ class SituationParser(private val names: NameIndex) {
         }
         Regex("""^(?:$activateVerbs)\s+(?:its|his|her|the|their|my) ([+\u2212-]?\d+)(?: ability| loyalty ability)?(.*)$""").find(c)?.let { r ->
             val who = subject ?: "me"
-            val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.objects.values.lastOrNull { it.controller == who }?.id ?: return@let
+            val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: castPermanentObject(ctx) ?: ctx.objects.values.lastOrNull { it.controller == who }?.id ?: return@let
             ctx.events += EventSpec("activate", player = who, obj = id, to = r.groupValues[1].replace('\u2212', '-'), targets = targetsIn(r.groupValues[2], m, ctx)); ctx.lastActor = who; ctx.lastMentioned = id; return true
         }
         Regex("""^(?:$activateVerbs|taps?|tapping)\s+(?:an? |the |their |my )?(c\d+)(?:'s)?(?: ability)?(?: with (\d+|\w+) (?:(\w+) )?counters?(?: on it)?)? (?:to put|putting|and puts?|to drop|to cheat) (?:an? |the |my )?(c\d+) (?:onto the battlefield|into play|out|onto the field)$""").find(c)?.let { r ->
@@ -1643,11 +1663,14 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("attackAll", player = who, targets = listOf(ctx.other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"; return true
         }
         if (Regex("""^(?:have no blockers|has no blockers|don't block|doesn't block|no blocks?|can't block|won't block|take it|takes it)$""").matches(c)) return true
+        // "it isn't blocked", "nobody blocks", "it goes unblocked", "it gets through": there was no block, which is what the engine assumes anyway.
+        if (unblockedRe.matches(c)) { if (actor != null) ctx.lastActor = actor; return true }
         // Combat: "attack with c1", "swing with c1 (at them)", "block (it) with c2".
         Regex("""^(?:attacks?|attacking|swings?|swinging) with (?:it|that|him|her|them)$""").find(c)?.let {
             val who = actor ?: subject ?: "me"
             // "it" after a spell means what that spell targeted ("I cast Act of Treason on their Giant and attack with it"); an Aura's "it" is what it enchants.
-            val id = ctx.lastMentioned?.takeIf { !it.startsWith("cast:") }?.let { lm -> ctx.objects[lm]?.attachedTo ?: lm } ?: ctx.events.lastOrNull { it.verb == "cast" }?.targets?.firstOrNull { it in ctx.objects } ?: return false
+            // Nothing was targeted, so "it" is the creature just cast: it has to resolve first, and then it's summoning sick.
+            val id = ctx.lastMentioned?.takeIf { !it.startsWith("cast:") }?.let { lm -> ctx.objects[lm]?.attachedTo ?: lm } ?: ctx.events.lastOrNull { it.verb == "cast" }?.targets?.firstOrNull { it in ctx.objects } ?: castPermanentObject(ctx) ?: return false
             ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(ctx.other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
         }
         // "attack Jace with Hill Giant", "attacks their planeswalker with c2": the defender comes first.
@@ -2125,6 +2148,30 @@ class SituationParser(private val names: NameIndex) {
         ctx.lastVerb = "cast"
         ctx.castCards += card.display
         ctx.lastMentioned = "cast:" + slug(card.display)
+        ctx.lastCastEntry = card
+    }
+
+    /**
+     * "I cast Chandra and use her +1", "I cast Grizzly Bears and attack with it": the next clause acts on a
+     * permanent that is still a spell on the stack. Give that spell an object so the clause has something to
+     * name, and let the stack resolve first — a permanent spell has to resolve before anyone can do anything
+     * with the permanent. Returns the object's id, or null if the last thing cast wasn't a permanent spell.
+     */
+    private fun castPermanentObject(ctx: Ctx): String? {
+        val entry = ctx.lastCastEntry ?: return null
+        if (entry.isSpellOnly) return null
+        val lm = ctx.lastMentioned ?: return null
+        if (lm != "cast:" + slug(entry.display)) return null
+        val at = ctx.events.indexOfLast { it.verb == "cast" && it.obj == null && it.card?.oracleId == entry.oracleId }
+        if (at < 0) return null
+        val ev = ctx.events[at]
+        val id = addObject(entry, ev.player ?: "me", false, ctx, zone = "hand", allowDuplicate = true)
+        ctx.events[at] = ev.copy(obj = id, card = null)
+        if (ctx.events.getOrNull(at + 1)?.verb != "resolveAll") ctx.events.add(at + 1, EventSpec("resolveAll"))
+        ctx.notes += "${entry.display} has to resolve before anything can be done with it, so the stack is read as resolving first."
+        ctx.lastCastEntry = null
+        ctx.lastMentioned = id
+        return id
     }
 
     /** "targeting the C2 trigger", "on my C3", "at me", "targeting it". */
