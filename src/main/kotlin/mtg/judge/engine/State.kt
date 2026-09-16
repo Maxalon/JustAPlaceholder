@@ -174,6 +174,8 @@ class GameState(
     val combatDamageMuted = mutableSetOf<String>()
     /** Spells cast this turn, per player (storm counts, Aetherflux Reservoir). */
     val spellsThisTurn = mutableMapOf<String, Int>()
+    /** How many times each permanent has been targeted, for "the first time each turn" triggers. A situation is one turn. */
+    val targetedThisTurn = mutableMapOf<String, Int>()
     /** The spells each player has cast this turn, for limits that only count some of them (Ethersworn Canonist). */
     val matchingSpellsThisTurn = mutableMapOf<String, MutableList<CardDef>>()
     /** Spells cast this game by name (Approach of the Second Sun). */

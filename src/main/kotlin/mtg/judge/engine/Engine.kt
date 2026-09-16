@@ -207,7 +207,7 @@ class Engine(val state: GameState) {
     private fun afterCast(item: StackItem, card: CardDef) {
         val player = state.player(item.controller)
         wardTriggers(item)
-        item.targets.forEach { ref -> objOf(ref)?.let { onEvent(GameEvent.BecomesTarget(it)) } }
+        item.targets.forEach { ref -> objOf(ref)?.let { state.targetedThisTurn[it.id] = (state.targetedThisTurn[it.id] ?: 0) + 1; onEvent(GameEvent.BecomesTarget(it, item.controller, item.id)) } }
         if (item.effect?.hasUnparsed() == true) state.unsupported += Unsupported(card.name, "Part of the spell's effect is not modeled: " + unparsedText(item.effect))
         onEvent(GameEvent.SpellCast(item))
         trace.step("${player.subject} ${player.v("receives", "receive")} priority again after casting.", "117.3c")
@@ -396,7 +396,7 @@ class Engine(val state: GameState) {
         if (x != null) trace.step("X is $x, chosen as the ability is activated; its cost includes X.", "107.3a", "602.2b")
         state.stack += item
         wardTriggers(item)
-        targets.forEach { ref -> objOf(ref)?.let { onEvent(GameEvent.BecomesTarget(it)) } }
+        targets.forEach { ref -> objOf(ref)?.let { state.targetedThisTurn[it.id] = (state.targetedThisTurn[it.id] ?: 0) + 1; onEvent(GameEvent.BecomesTarget(it, playerId, item.id)) } }
         state.player(playerId).let { p -> trace.step("${p.subject} ${p.v("activates", "activate")} ${obj.name}'s ability (${ability.cost})${describeTargets(targets)}. It goes on top of the stack.", "602.2a", "405.2") }
         if (ability.effect.hasUnparsed()) state.unsupported += Unsupported(obj.name, "Part of the ability's effect is not modeled: " + unparsedText(ability.effect))
         return item
@@ -906,7 +906,7 @@ class Engine(val state: GameState) {
         data class LifeGained(val playerId: String, val amount: Int) : GameEvent
         data class BecomesBlocked(val obj: GameObject) : GameEvent
         data class Blocks(val obj: GameObject) : GameEvent
-        data class BecomesTarget(val obj: GameObject) : GameEvent
+        data class BecomesTarget(val obj: GameObject, val by: String, val sourceId: String) : GameEvent
         data class BecomesTapped(val obj: GameObject) : GameEvent
         data class Cycled(val obj: GameObject) : GameEvent
         data class Drew(val playerId: String) : GameEvent
@@ -1009,7 +1009,7 @@ class Engine(val state: GameState) {
                 is GameEvent.CreaturesDealtCombatDamageToPlayer -> event.playerId; is GameEvent.DamageDealt -> if (ability.trigger == Trigger.ThisIsDealtDamage) event.source.controller else (event.target as? Ref.Player)?.id ?: event.source.controller; else -> null
             }
             val causedAmount = when (event) { is GameEvent.LifeGained -> event.amount; is GameEvent.DamageDealt -> event.amount; else -> null }
-            val causedObject = when (event) { is GameEvent.AttacksAlone -> event.obj.id; is GameEvent.Attacks -> event.obj.id; is GameEvent.EntersBattlefield -> event.obj.id; is GameEvent.Dies -> event.obj.id; is GameEvent.BecomesTarget -> event.obj.id; is GameEvent.SpellCast -> event.item.id; else -> null }
+            val causedObject = when (event) { is GameEvent.AttacksAlone -> event.obj.id; is GameEvent.Attacks -> event.obj.id; is GameEvent.EntersBattlefield -> event.obj.id; is GameEvent.Dies -> event.obj.id; is GameEvent.BecomesTarget -> event.sourceId; is GameEvent.SpellCast -> event.item.id; else -> null }
             putTriggerOnStack(obj, ability, emptyList(), causedBy, causedAmount, causedObject)
         }
         if (ordered.size > 1) trace.step("Multiple abilities triggered at once; they are put on the stack in APNAP order, each player choosing the order among their own.", "603.3b")
@@ -1053,7 +1053,10 @@ class Engine(val state: GameState) {
         Trigger.ThisIsDealtDamage -> event is GameEvent.DamageDealt && (event.target as? Ref.Obj)?.id == obj.id
         Trigger.ThisBecomesBlocked -> event is GameEvent.BecomesBlocked && event.obj === obj
         Trigger.ThisBlocks -> event is GameEvent.Blocks && event.obj === obj
-        Trigger.ThisBecomesTarget -> event is GameEvent.BecomesTarget && event.obj === obj
+        is Trigger.ThisBecomesTarget -> event is GameEvent.BecomesTarget && event.obj === obj &&
+            (!trigger.opponentsOnly || event.by != obj.controller) &&
+            // "for the first time each turn": only the first one counts, and the count is kept per permanent.
+            (!trigger.firstEachTurn || (state.targetedThisTurn[obj.id] ?: 0) <= 1)
         Trigger.ThisBecomesTapped -> event is GameEvent.BecomesTapped && event.obj === obj
         Trigger.ThisCycled -> event is GameEvent.Cycled && event.obj === obj
         is Trigger.PermanentAttacks -> event is GameEvent.Attacks && onBf() && state.matches(trigger.filter, event.obj, obj.controller, obj)

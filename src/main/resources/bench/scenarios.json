@@ -6666,5 +6666,19 @@
     "cite": [
       "603.2"
     ]
+  },
+  {
+    "id": "becoming-the-target-for-the-first-time-each-turn",
+    "text": "I control Shimmering Glasskite and they cast Doom Blade on it, then they cast Terror on it. What happens?",
+    "expect": [
+      "Doom Blade is countered",
+      "Shimmering Glasskite is destroyed"
+    ],
+    "notExpect": [
+      "Terror is countered"
+    ],
+    "cite": [
+      "701.6a"
+    ]
   }
 ]

@@ -205,7 +205,10 @@ object OracleParser {
         if (Regex("""^~ is dealt damage$|^a source deals damage to ~$|^~ is dealt damage by a source$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisIsDealtDamage
         if (Regex("""^~ becomes blocked$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBecomesBlocked
         if (Regex("""^one or more creatures you control deal combat damage to a player$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.YourCreaturesDealCombatDamageToPlayer
-        if (Regex("""^~ becomes the target of a spell or ability$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBecomesTarget
+        // "~ becomes the target of a spell (or ability) (an opponent controls) (for the first time each turn)"
+        Regex("""^~ becomes the target of a spell(?: or ability)?( an opponent controls| you control)?( for the first time each turn)?$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
+            return Trigger.ThisBecomesTarget(m.groupValues[1].trim() == "an opponent controls", m.groupValues[2].isNotEmpty())
+        }
         if (Regex("""^~ becomes tapped$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBecomesTapped
         if (Regex("""^you cycle ~$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisCycled
         if (Regex("""^~ blocks$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBlocks
@@ -915,7 +918,7 @@ object OracleParser {
             val b = m.groupValues[2].trim().removePrefix("an ").removePrefix("a ").trim()
             if (a.isNotEmpty() && b.isNotEmpty()) return Effect.AddManaInstead(listOf(a, b), m.groupValues[3])
         }
-        if (Regex("""^counter that spell\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.CounterThatSpell
+        if (Regex("""^counter that spell(?: or ability)?\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.CounterThatSpell
         // "Exile target player's graveyard" (Bojuka Bog), "exile each opponent's graveyard".
         Regex("""^exile (target player|target opponent|that player|each player|each opponent|your)(?:'s)? graveyard\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             return Effect.ExileGraveyard(when (m.groupValues[1].lowercase()) { "target player", "target opponent" -> Who.TARGET_PLAYER; "that player" -> Who.THAT_PLAYER; "each player" -> Who.EACH_PLAYER; "each opponent" -> Who.EACH_OPPONENT; else -> Who.YOU })
@@ -935,7 +938,8 @@ object OracleParser {
             when (m.groupValues[2].lowercase().trim()) { "opponent" -> return Effect.DamagePlayer(Who.EACH_OPPONENT, m.groupValues[1].toInt()); "player" -> return Effect.DamagePlayer(Who.EACH_PLAYER, m.groupValues[1].toInt()) }
             val f = parseFilter(m.groupValues[2], Kind.CREATURE); if (f.verifiable) return Effect.ForAll(f, "damage", m.groupValues[1].toInt())
         }
-        if (Regex("""^sacrifice ~\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.SacrificeSource
+        // "sacrifice it" / "its controller sacrifices it" in a trigger on the permanent itself.
+        if (Regex("""^(?:its controller sacrifices|sacrifice) (?:~|it|this creature|this permanent)\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.SacrificeSource
         Regex("""^(?:that source's controller|that player|that creature's controller) sacrifices that many (permanents?|creatures?|lands?|artifacts?)(?: of (?:their|his or her) choice)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             return Effect.SacrificeThatMany(Who.THAT_PLAYER, parseFilter(m.groupValues[1].removeSuffix("s"), Kind.PERMANENT))
         }

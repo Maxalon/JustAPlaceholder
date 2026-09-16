@@ -88,7 +88,8 @@ sealed interface Trigger {
     /** "Whenever ~ blocks". */
     data object ThisBlocks : Trigger
     /** "Whenever ~ becomes the target of a spell or ability". */
-    data object ThisBecomesTarget : Trigger
+    /** "Whenever ~ becomes the target of a spell or ability (an opponent controls) (for the first time each turn)". */
+    data class ThisBecomesTarget(val opponentsOnly: Boolean = false, val firstEachTurn: Boolean = false) : Trigger
     /** "Whenever ~ becomes tapped". */
     data object ThisBecomesTapped : Trigger
     /** "When you cycle ~". */

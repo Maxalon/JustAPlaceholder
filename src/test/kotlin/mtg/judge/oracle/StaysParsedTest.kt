@@ -80,6 +80,13 @@ class StaysParsedTest {
     }
 
     @Test
+    fun `becomes-the-target wordings stay modelled`() {
+        check("Shimmering Glasskite", "Creature — Bird Spirit", "Flying\nWhenever ~ becomes the target of a spell or ability for the first time each turn, counter that spell or ability.", listOf("flying"))
+        check("Scaled Hulk", "Creature — Dinosaur", "Whenever ~ becomes the target of a spell or ability an opponent controls, put a +1/+1 counter on ~.")
+        check("Vine Dryad", "Creature — Dryad", "Whenever ~ becomes the target of a spell, sacrifice it.")
+    }
+
+    @Test
     fun `one-sided damage wordings stay modelled`() {
         check("Rabid Bite", "Sorcery", "Target creature you control deals damage equal to its power to target creature you don't control.")
         check("Nature's Way", "Sorcery", "Target creature you control gains vigilance and trample until end of turn. It deals damage equal to its power to target creature you don't control.")
