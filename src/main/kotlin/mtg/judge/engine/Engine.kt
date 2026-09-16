@@ -290,7 +290,23 @@ class Engine(val state: GameState) {
     /** A player's devotion to a colour: the colour's symbols in the mana costs of the permanents they control (700.5). */
     fun devotionOf(playerId: String, colour: Char): Int = state.devotion(playerId, colour)
 
+    /**
+     * Abilities that trigger while an activation is under way (a creature sacrificed to pay the cost, say) don't go
+     * on the stack there and then: they wait until a player would next receive priority, which is after the ability
+     * being activated is already on the stack (603.3, 117.5). So they end up above it and resolve first. While this
+     * holds a trigger, putTriggerOnStack queues it here instead of stacking it.
+     */
+    private var triggerHold: MutableList<() -> Unit>? = null
+
     fun activate(playerId: String, objectId: String, abilityIndex: Int?, targets: List<Ref>, choice: String? = null, x: Int? = null): StackItem? {
+        val hold = mutableListOf<() -> Unit>()
+        val outer = triggerHold
+        triggerHold = hold
+        try { return activate0(playerId, objectId, abilityIndex, targets, choice, x) }
+        finally { triggerHold = outer; hold.forEach { it() } }
+    }
+
+    private fun activate0(playerId: String, objectId: String, abilityIndex: Int?, targets: List<Ref>, choice: String? = null, x: Int? = null): StackItem? {
         val obj = state.obj(objectId)
         val abilities = obj.def.abilities.filterIsInstance<ActivatedAbility>()
         if ("Land" in obj.def.types && "Basic" !in obj.def.supertypes) state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.NonbasicLandsAreMountains } }?.let { moon ->
@@ -1076,6 +1092,10 @@ class Engine(val state: GameState) {
     }
 
     private fun putTriggerOnStack(obj: GameObject, ability: TriggeredAbility, targets: List<Ref>, causedBy: String? = null, causedAmount: Int? = null, causedObject: String? = null): StackItem? {
+        triggerHold?.let { hold ->
+            hold += { putTriggerOnStack(obj, ability, targets, causedBy, causedAmount, causedObject) }
+            return null
+        }
         val needed = ability.effect.targets()
         var targets = targets
         if (targets.isEmpty() && needed.isNotEmpty() && ability.trigger == Trigger.ThisEnters && obj.etbTargets != null) { targets = obj.etbTargets!!; obj.etbTargets = null; trace.step("${obj.name}'s trigger targets ${targets.joinToString(" and ") { state.nameOf(it) }}, as named when it was cast.", "603.3d") }

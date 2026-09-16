@@ -6203,5 +6203,30 @@
       "all targets illegal"
     ],
     "cite": []
+  },
+  {
+    "id": "a-death-trigger-from-a-sacrifice-cost-resolves-before-the-ability",
+    "text": "I control Blood Artist and Viscera Seer. I sacrifice Grizzly Bears to Viscera Seer. What happens?",
+    "expect": [
+      "above Viscera Seer's activated ability",
+      "Blood Artist's triggered ability (top of the stack) starts to resolve"
+    ],
+    "notExpect": [],
+    "cite": [
+      "603.3a"
+    ]
+  },
+  {
+    "id": "a-mana-ability-finishes-before-the-death-trigger-is-stacked",
+    "text": "Alice controls Blood Artist. Bob sacrifices Grizzly Bears to Ashnod's Altar. What happens?",
+    "expect": [
+      "add {C}{C}",
+      "Bob loses 1 life",
+      "Alice gains 1 life"
+    ],
+    "notExpect": [],
+    "cite": [
+      "605.3b"
+    ]
   }
 ]
