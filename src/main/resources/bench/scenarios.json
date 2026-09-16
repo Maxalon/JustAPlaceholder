@@ -7292,5 +7292,51 @@
       "get a Elemental"
     ],
     "cite": []
+  },
+  {
+    "id": "cant-attack-unless-defender-controls-an-island",
+    "text": "I attack with Zhou Yu, Chief Commander. My opponent controls a Grizzly Bears.",
+    "expect": [
+      "can't attack unless defending player controls an island"
+    ],
+    "notExpect": [
+      "opponent takes 8 damage"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "cant-attack-unless-defender-controls-an-island-met",
+    "text": "I attack with Zhou Yu, Chief Commander. My opponent controls an Island.",
+    "expect": [
+      "opponent takes 8 damage"
+    ],
+    "notExpect": [
+      "can't attack"
+    ],
+    "cite": []
+  },
+  {
+    "id": "cant-attack-unless-you-control-four-artifacts",
+    "text": "I control Gadrak, the Crown-Scourge. Can it attack?",
+    "expect": [
+      "can't attack unless you control 4 or more artifacts"
+    ],
+    "notExpect": [],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "cant-attack-unless-you-control-four-artifacts-met",
+    "text": "I control Gadrak, the Crown-Scourge and four Treasure tokens. I attack with Gadrak, the Crown-Scourge.",
+    "expect": [
+      "opponent takes 5 damage"
+    ],
+    "notExpect": [
+      "can't attack"
+    ],
+    "cite": []
   }
 ]

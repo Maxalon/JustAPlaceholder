@@ -127,4 +127,11 @@ class StaysParsedTest {
         check("Kiki-Jiki, Mirror Breaker", "Legendary Creature — Goblin Shaman",
             "{T}: Create a token that's a copy of target nonlegendary creature you control, except it has haste. Sacrifice it at the beginning of the next end step.")
     }
+
+    @Test
+    fun `cant-attack-unless wordings stay modelled`() {
+        check("Zhou Yu, Chief Commander", "Legendary Creature — Human Soldier", "~ can't attack unless defending player controls an Island.")
+        check("Gadrak, the Crown-Scourge", "Legendary Creature — Dragon", "~ can't attack unless you control four or more artifacts.")
+        check("Wolf Pack", "Creature — Wolf", "~ can't attack unless you control another Wolf.")
+    }
 }

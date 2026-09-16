@@ -358,7 +358,13 @@ sealed interface StaticEffect {
     /** "Creatures entering the battlefield (or dying) don't cause abilities to trigger." (Torpor Orb, Hushbringer) */
     data class NoEtbTriggers(val alsoDies: Boolean) : StaticEffect
     /** "~ can't attack" / "~ can't be blocked by [filter]" (`by` restricts which blockers the rule applies to). */
-    data class Cant(val what: String, val by: ObjFilter? = null, val applies: ObjFilter? = null, val powerAboveHand: Boolean = false) : StaticEffect
+    /**
+     * [unlessDefenderControls] / [unlessYouControl]: "~ can't attack unless defending player controls an Island",
+     * "~ can't attack unless you control another artifact" — a restriction checked as attackers are declared.
+     */
+    data class Cant(val what: String, val by: ObjFilter? = null, val applies: ObjFilter? = null, val powerAboveHand: Boolean = false,
+                    val unlessDefenderControls: ObjFilter? = null, val unlessYouControl: ObjFilter? = null,
+                    val unlessCount: Int = 1) : StaticEffect
     /** Teferi, Time Raveler: "Each opponent can cast spells only any time they could cast a sorcery." */
     data object OpponentsSorcerySpeed : StaticEffect
     /** Dosan the Falling Leaf, Grand Abolisher's cousin: "Players can cast spells only during their own turns." */

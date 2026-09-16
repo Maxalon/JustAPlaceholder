@@ -474,6 +474,21 @@ object OracleParser {
             if (f.verifiable) return listOf(StaticEffect.Cant(m.groupValues[2].lowercase(), applies = f))
         }
         Regex("""^creatures with power greater than the number of cards in your hand can't attack\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.Cant("attack", powerAboveHand = true)) }
+        // "~ can't attack unless defending player controls an Island" (Islandwalk's mirror image), "~ can't attack
+        // unless you control another artifact": a restriction on declaring this creature as an attacker.
+        Regex("""^(?:~|this creature) can't attack unless (?:the )?(defending player|you) controls? (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            var what = m.groupValues[2].trim().lowercase()
+            // "four or more artifacts", "two or more other Wolves": the count is kept beside the filter.
+            var n = 1
+            Regex("""^(one|two|three|four|five|six|seven|\d+) or more (.+)$""").matchEntire(what)?.let { c ->
+                n = c.groupValues[1].toIntOrNull() ?: listOf("one", "two", "three", "four", "five", "six", "seven").indexOf(c.groupValues[1]) + 1
+                what = c.groupValues[2].removeSuffix("s")
+            }
+            if (Regex("""\b(?:more|fewer|than)\b""").containsMatchIn(what)) return@let
+            val f = parseFilter(what.removePrefix("an ").removePrefix("a "), Kind.PERMANENT)
+            if (!f.verifiable) return@let
+            return listOf(if (m.groupValues[1].lowercase() == "you") StaticEffect.Cant("attack", unlessYouControl = f, unlessCount = n) else StaticEffect.Cant("attack", unlessDefenderControls = f, unlessCount = n))
+        }
         if (Regex("""^~ attacks each combat if able\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.MustAttack)
         // "As long as you have 30 or more life, ~ gets +5/+5 and has flying." — the same thing said the other way round.
         Regex("""^as long as (.+?), ~ gets ([+-]\d+)/([+-]\d+)(?: and has (.+?))?\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->

@@ -546,6 +546,7 @@ class Engine(val state: GameState) {
     fun cantWhy(objectId: String, what: String): String? {
         val o = state.obj(objectId)
         if (what == "attack" || what == "block") state.notACreatureBecause(o)?.let { why -> return "${o.name} isn't a creature right now — ${state.player(o.controller).possessive} $why" }
+        if (what == "attack") attackConditionUnmet(o, null)?.let { cond -> return "its own \"can't attack unless $cond\"" }
         if (!cant(o, what)) return null
         return cantSource(o, what) ?: o.name
     }
@@ -808,6 +809,11 @@ class Engine(val state: GameState) {
             if (hand == null) state.assumptions += "${src.name}: ${a.name} can attack only if its power (${a.power}) isn't greater than the number of cards in ${state.player(src.controller).possessive} hand, which wasn't stated; assuming it may attack."
             else if ((a.power ?: 0) > hand) { trace.step("${src.name}: ${state.player(src.controller).subject} ${state.player(src.controller).v("has", "have")} $hand card${if (hand == 1) "" else "s"} in hand and ${a.name} has power ${a.power}, so it can't attack.", "508.1c"); state.outcomes += "${a.name} can't attack (${src.name})."; return }
             else trace.step("${src.name} allows ${a.name} to attack: its power (${a.power}) isn't greater than the $hand card${if (hand == 1) "" else "s"} in ${state.player(src.controller).possessive} hand.", "508.1c")
+        }
+        attackConditionUnmet(a, defendingPlayer)?.let { cond ->
+            trace.step("${a.name} can't attack unless $cond, and that isn't so, so it can't be declared as an attacker.", "508.1c")
+            state.outcomes += "${a.name} can't attack (it can't attack unless $cond)."
+            return
         }
         a.attacking = defender
         if (a.has("vigilance")) trace.step("${p.subject} ${p.v("attacks", "attack")} with ${a.name} (${state.describePt(a)}), attacking ${state.nameOf(defender)}. It has vigilance, so it doesn't tap.", "508.1a", "702.20b")
@@ -2054,11 +2060,29 @@ class Engine(val state: GameState) {
     }
 
     private fun cant(o: GameObject, what: String): Boolean {
-        val own = o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.Cant && it.by == null && it.applies == null && !it.powerAboveHand && (it.what == what || it.what == "attack or block" && (what == "attack" || what == "block")) }
+        val own = o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.Cant && it.by == null && it.applies == null && !it.powerAboveHand && it.unlessDefenderControls == null && it.unlessYouControl == null && (it.what == what || it.what == "attack or block" && (what == "attack" || what == "block")) }
         if (own) return true
         // "Enchanted creature can't attack or block" and the like, from other permanents.
         return state.objects.values.filter { it.isOnBattlefield() }.any { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { e -> e is StaticEffect.Cant && e.applies != null && (e.what == what || e.what == "attack or block" && (what == "attack" || what == "block")) && state.matches(e.applies, o, src.controller, src) } }
     }
+    /**
+     * "~ can't attack unless defending player controls an Island" / "… unless you control another artifact":
+     * the condition that isn't met, or null if the creature may attack. [defenderId] is the player being attacked;
+     * with none given (the "can it attack?" question) the attacker's opponent is used.
+     */
+    private fun attackConditionUnmet(a: GameObject, defenderId: String?): String? {
+        for (e in a.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.Cant>()) {
+            if (e.what != "attack") continue
+            val defending = e.unlessDefenderControls != null
+            val filter = e.unlessDefenderControls ?: e.unlessYouControl ?: continue
+            val whose = (if (defending) defenderId ?: state.opponentsOf(a.controller).firstOrNull()?.id else a.controller) ?: continue
+            if (state.objects.values.count { it.isOnBattlefield() && it.controller == whose && it !== a && state.matches(filter, it, whose) } >= e.unlessCount) continue
+            val what = if (e.unlessCount > 1) "${e.unlessCount} or more ${filter.raw}s" else withArticle(filter.raw)
+            return if (defending) "defending player controls $what" else "you control $what"
+        }
+        return null
+    }
+
     private fun cantSource(o: GameObject, what: String): String? = state.objects.values.filter { it.isOnBattlefield() && it !== o }.firstOrNull { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { e -> e is StaticEffect.Cant && e.applies != null && (e.what == what || e.what == "attack or block") && state.matches(e.applies, o, src.controller, src) } }?.name
 
     /** "~ can't be blocked by [filter]": the restriction that forbids this particular blocker, if any. */
