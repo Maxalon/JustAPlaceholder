@@ -342,6 +342,9 @@ object OracleParser {
         Regex("""^if you would gain life, you gain no life instead\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return StaticEffect.Replace(Replacement.LifeGainMultiplier(0)) }
         Regex("""^if an effect would create one or more tokens under your control, it creates twice that many of those tokens instead\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return StaticEffect.Replace(Replacement.TokenMultiplier(2)) }
         Regex("""^if an effect would (?:place|put) one or more counters on a permanent you control, it (?:places|puts) twice that many of those counters on that permanent instead\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return StaticEffect.Replace(Replacement.CounterMultiplier(2)) }
+        Regex("""^creatures you control can't have ([+-]\d/[+-]\d|\w+) counters put on them\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            return StaticEffect.Replace(Replacement.CounterMultiplier(0, kind = m.groupValues[1]))
+        }
         // Hardened Scales: "If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead."
         Regex("""^if one or more ([+-]\d+/[+-]\d+|\w+) counters would be put on an? (?:creature|artifact|permanent) you control, that many plus (one|two|\d+) \1 counters are put on it instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val n = number(m.groupValues[2]) ?: return@let
@@ -744,12 +747,13 @@ object OracleParser {
         }
         Regex("""^Remove all counters from (target .+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.RemoveAllCounters(target(m.groupValues[1])) }
         countersOnRe.matchEntire(s)?.let { m ->
-            val n = number(m.groupValues[1]) ?: return Effect.Unparsed(s)
+            val isX = m.groupValues[1].equals("X", true)
+            val n = if (isX) 0 else (number(m.groupValues[1]) ?: return Effect.Unparsed(s))
             val where = m.groupValues[3]
             return when {
-                where == "~" -> Effect.PutCounters(null, m.groupValues[2], n)
-                where.startsWith("target", true) -> Effect.PutCounters(target(where), m.groupValues[2], n)
-                where.startsWith("each ", true) -> { val f = parseFilter(where.substring(5), Kind.CREATURE); if (f.verifiable) Effect.PutCounters(null, m.groupValues[2], n, all = f) else Effect.Unparsed(s) }
+                where == "~" -> Effect.PutCounters(null, m.groupValues[2], n, x = isX)
+                where.startsWith("target", true) -> Effect.PutCounters(target(where), m.groupValues[2], n, x = isX)
+                where.startsWith("each ", true) -> { val f = parseFilter(where.substring(5), Kind.CREATURE); if (f.verifiable) Effect.PutCounters(null, m.groupValues[2], n, all = f, x = isX) else Effect.Unparsed(s) }
                 else -> Effect.Unparsed(s)
             }
         }

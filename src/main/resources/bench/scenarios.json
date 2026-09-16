@@ -5061,5 +5061,43 @@
       "3/3"
     ],
     "cite": []
+  },
+  {
+    "id": "black-suns-zenith-for-two",
+    "text": "I cast Black Sun's Zenith for 2. My opponent has a 3/3 and a 1/1. What happens?",
+    "expect": [
+      "a 3/3 creature has 2 -1/-1 counters",
+      "a 1/1 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Put X -1/-1 counters on each creature"
+    ],
+    "cite": [
+      "122.1a"
+    ]
+  },
+  {
+    "id": "melira-stops-minus-counters",
+    "text": "My opponent controls Melira, Sylvok Outcast and a 3/3. I cast Black Sun's Zenith for 2. What happens?",
+    "expect": [
+      "gets no -1/-1 counters"
+    ],
+    "notExpect": [
+      "has 2 -1/-1 counters"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "doubling-season-on-a-ballista",
+    "text": "I control Doubling Season and cast Walking Ballista with X equal to 2. What are its stats?",
+    "expect": [
+      "Walking Ballista is 4/4"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

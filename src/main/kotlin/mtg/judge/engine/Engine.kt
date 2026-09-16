@@ -471,7 +471,7 @@ class Engine(val state: GameState) {
         val colourOk = f.colors.all { it in card.colors } && f.notColors.none { it in card.colors }
         return typeOk && notOk && colourOk
     }
-    private fun usesX(e: Effect): Boolean = when (e) { is Effect.Damage -> e.x; is Effect.Draw -> e.x; is Effect.LoseLife -> e.x; is Effect.Discard -> e.x; is Effect.PumpAll -> e.x; is Effect.SetBasePtAll -> e.x; is Effect.Repeat -> e.x || usesX(e.body); is Effect.Seq -> e.effects.any { usesX(it) }; is Effect.May -> usesX(e.effect); is Effect.Modal -> e.modes.any { usesX(it) }; else -> false }
+    private fun usesX(e: Effect): Boolean = when (e) { is Effect.Damage -> e.x; is Effect.Draw -> e.x; is Effect.LoseLife -> e.x; is Effect.Discard -> e.x; is Effect.PumpAll -> e.x; is Effect.SetBasePtAll -> e.x; is Effect.PutCounters -> e.x; is Effect.Repeat -> e.x || usesX(e.body); is Effect.Seq -> e.effects.any { usesX(it) }; is Effect.May -> usesX(e.effect); is Effect.Modal -> e.modes.any { usesX(it) }; else -> false }
 
     /** Steps and combat can't begin while something is on the stack: everything pending resolves first (500.2). */
     private fun emptyStackFirst(what: String) {
@@ -1499,7 +1499,19 @@ class Engine(val state: GameState) {
                 affected.forEach { state.outcomes += "${it.name} is ${it.power}/${it.toughness} until end of turn." }
             }
             is Effect.PutCounters -> {
-                val put: (GameObject) -> Unit = { o -> val n = countersPlaced(o, effect.count, effect.kind); o.counters[effect.kind] = (o.counters[effect.kind] ?: 0) + n; trace.step("$n ${effect.kind} counter${if (n > 1) "s are" else " is"} put on ${o.name}${if (o.def.isCreature) "; it's now ${o.power}/${o.toughness}" else ""}.", "122.1a", "122.6"); state.outcomes += "${o.name} has ${o.counters[effect.kind]} ${effect.kind} counter${if (o.counters[effect.kind]!! > 1) "s" else ""}." }
+                val howMany = if (effect.x) (item.x ?: 0) else effect.count
+                if (effect.x && item.x == null) state.clarifications += Clarification("${item.source.name}'s X", "${item.source.name} puts X ${effect.kind} counters; what was X? (assuming 0)")
+                val put: (GameObject) -> Unit = { o ->
+                    val n = countersPlaced(o, howMany, effect.kind)
+                    if (n == 0) {
+                        trace.step("No ${effect.kind} counter is put on ${o.name}${if (o.def.isCreature) "; it stays ${o.power}/${o.toughness}" else ""}.", "122.6")
+                        state.outcomes += "${o.name} gets no ${effect.kind} counters."
+                    } else {
+                        o.counters[effect.kind] = (o.counters[effect.kind] ?: 0) + n
+                        trace.step("$n ${effect.kind} counter${if (n > 1) "s are" else " is"} put on ${o.name}${if (o.def.isCreature) "; it's now ${o.power}/${o.toughness}" else ""}.", "122.1a", "122.6")
+                        state.outcomes += "${o.name} has ${o.counters[effect.kind]} ${effect.kind} counter${if (o.counters[effect.kind]!! > 1) "s" else ""}."
+                    }
+                }
                 if (effect.all != null) { val affected = state.objects.values.filter { state.matches(effect.all, it, item.controller, item.source) }; if (affected.isEmpty()) trace.step("No permanents match \"${effect.all.raw}\", so no counters are put anywhere.", "122.6") else affected.forEach(put) }
                 else if (effect.target == null) { if (item.source.isOnBattlefield()) put(item.source) else trace.step("${item.source.name} isn't on the battlefield, so no counters are put on it.", "122.6") }
                 else forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let(put) }
@@ -1763,7 +1775,7 @@ class Engine(val state: GameState) {
     private fun countersPlaced(o: GameObject, n: Int, kind: String): Int {
         var out = n
         state.objects.values.filter { it.isOnBattlefield() }.flatMap { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.CounterMultiplier }.filter { it.anyPlayer || src.controller == o.controller }.map { src to it } }
-            .forEach { (src, m) -> if (m.factor == 0) { trace.step("${src.name} says counters can't be put on ${o.name}, so the $out $kind counter${if (out == 1) "" else "s"} ${if (out == 1) "isn't" else "aren't"} placed.", "614.1a", "122.1"); out = 0 } }
+            .forEach { (src, m) -> if (m.factor == 0 && (m.kind == null || m.kind.equals(kind, true))) { trace.step("${src.name} says ${m.kind?.let { "$it counters" } ?: "counters"} can't be put on ${o.name}, so the $out $kind counter${if (out == 1) "" else "s"} ${if (out == 1) "isn't" else "aren't"} placed.", "614.1a", "122.1"); out = 0 } }
         state.objects.values.filter { false }.flatMap { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.CounterMultiplier }.map { src to it } }
             .forEach { (src, m) -> trace.step("${src.name} replaces the counter placement: ${out * m.factor} $kind counters are put on ${o.name} instead of $out.", "614.1a", "614.6"); out *= m.factor }
         if (out > 0) state.objects.values.filter { it.isOnBattlefield() && it.controller == o.controller }.flatMap { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.CounterMultiplier }.filter { it.factor > 1 }.map { src to it } }

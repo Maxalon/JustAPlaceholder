@@ -206,7 +206,7 @@ sealed interface Effect {
     data class GainControl(val target: TargetSpec, val untilEndOfTurn: Boolean) : Effect
     /** "Put N [kind] counters on target …" / "… on ~" (target null = self). */
     /** `target` = "target …"; null = on ~; `all` = "on each …". */
-    data class PutCounters(val target: TargetSpec?, val kind: String, val count: Int, val all: ObjFilter? = null) : Effect
+    data class PutCounters(val target: TargetSpec?, val kind: String, val count: Int, val all: ObjFilter? = null, val x: Boolean = false) : Effect
     /** "Remove all counters from target permanent." (Vampire Hexmage) */
     data class RemoveAllCounters(val target: TargetSpec) : Effect
     /** Mana abilities: "Add {G}", "Add one mana of any color". Doesn't use the stack (605.3b). */
