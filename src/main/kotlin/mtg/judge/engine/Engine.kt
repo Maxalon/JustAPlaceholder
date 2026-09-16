@@ -454,6 +454,35 @@ class Engine(val state: GameState) {
         state.outcomes += "${obj.name} is untapped."
     }
 
+    /** "I mill three cards": the top cards of that player's library go to their graveyard (701.13a). */
+    fun millCards(playerId: String, count: Int) {
+        val p = state.player(playerId)
+        val lib = p.librarySize
+        val n = if (lib != null && lib < count) lib else count
+        if (lib != null && lib < count) trace.step("${p.subject} ${p.v("has", "have")} only $lib card${if (lib == 1) "" else "s"} in ${p.possessive} library, so ${p.subject.lowercase()} ${p.v("mills", "mill")} only that many.", "701.13a")
+        trace.step("${p.subject} ${p.v("mills", "mill")} $n card${if (n == 1) "" else "s"}: the top $n of ${p.possessive} library ${if (n == 1) "goes" else "go"} into ${p.possessive} graveyard.", "701.13a")
+        if (lib != null) p.librarySize = lib - n
+        state.outcomes += "${p.subject} ${p.v("mills", "mill")} $n card${if (n == 1) "" else "s"}${if (lib != null) " (${lib - n} left in library)" else ""}."
+    }
+
+    /** "I discard a card" with no card named: the hand shrinks and the answer says which card isn't known. */
+    fun discardCount(playerId: String, count: Int) {
+        val p = state.player(playerId)
+        val hand = p.handSize
+        val n = if (hand != null && hand < count) hand else count
+        if (hand == null) { trace.step("${p.subject} ${p.v("discards", "discard")} $n card${if (n == 1) "" else "s"}; which card isn't known, so nothing that depends on it is shown.", "701.9a"); state.outcomes += "${p.subject} ${p.v("discards", "discard")} $n card${if (n == 1) "" else "s"}." }
+        else { p.handSize = hand - n; trace.step("${p.subject} ${p.v("discards", "discard")} $n card${if (n == 1) "" else "s"}, leaving ${p.handSize} in hand; which card isn't known.", "701.9a"); state.outcomes += "${p.subject} ${p.v("discards", "discard")} $n card${if (n == 1) "" else "s"} ($hand → ${p.handSize} in hand)." }
+    }
+
+    /** "I get a poison counter": ten or more and that player loses (704.5c). */
+    fun addPoison(playerId: String, count: Int) {
+        val p = state.player(playerId)
+        p.poison = (p.poison ?: 0) + count
+        trace.step("${p.subject} ${p.v("gets", "get")} $count poison counter${if (count == 1) "" else "s"} (${p.poison} in all).", "122.1a", "704.5c")
+        state.outcomes += "${p.subject} ${p.v("has", "have")} ${p.poison} poison counter${if (p.poison == 1) "" else "s"}."
+        stateBasedActions()
+    }
+
     fun leave(objectId: String, to: Zone) {
         val obj = state.obj(objectId)
         move(obj, to, "${obj.name} is put into ${zoneName(to, obj)}.", "400.7")

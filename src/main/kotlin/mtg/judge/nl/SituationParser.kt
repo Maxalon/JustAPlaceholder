@@ -709,6 +709,20 @@ class SituationParser(private val names: NameIndex) {
             for (id in ids) ctx.events += if (sacrificed) EventSpec("sacrifice", player = who ?: "me", obj = id) else EventSpec("leave", obj = id, to = "graveyard")
             ctx.lastActor = who ?: ctx.lastActor; ctx.lastMentioned = ids.last(); return true
         }
+        // "I discard a card", "they mill three cards", "I get a poison counter": no card named, so only the count
+        // is known — which is still enough for hand size, library size and the poison loss condition.
+        Regex("""^(?:(?:i|we|they|he|she|my opponent|the opponent|@\w+) )?(?:discards?|discarded) (an?|one|two|three|four|five|\d+) cards?(?: at random| of my choice| of their choice)?$""").find(c)?.let { r ->
+            val who = actorOfClause(c) ?: ctx.lastActor ?: "me"
+            ctx.events += EventSpec("discardcount", player = who, amount = number(r.groupValues[1]) ?: 1); ctx.lastActor = who; ctx.note(who); return true
+        }
+        Regex("""^(?:(?:i|we|they|he|she|my opponent|the opponent|@\w+) )?(?:mills?|milled) (an?|one|two|three|four|five|six|seven|eight|nine|ten|\d+) cards?$""").find(c)?.let { r ->
+            val who = actorOfClause(c) ?: ctx.lastActor ?: "me"
+            ctx.events += EventSpec("mill", player = who, amount = number(r.groupValues[1]) ?: 1); ctx.lastActor = who; ctx.note(who); return true
+        }
+        Regex("""^(?:(?:i|we|they|he|she|my opponent|the opponent|@\w+) )?(?:gets?|got|gains?|gained|takes?|took) (an?|one|two|three|four|five|\d+) poison counters?$""").find(c)?.let { r ->
+            val who = actorOfClause(c) ?: ctx.lastActor ?: "me"
+            ctx.events += EventSpec("poison", player = who, amount = number(r.groupValues[1]) ?: 1); ctx.lastActor = who; ctx.note(who); return true
+        }
         // "I discard Vengevine", "they discard Lightning Bolt to Liliana": a named card leaves hand for the graveyard.
         Regex("""^(?:(?:i|they|he|she|we|my opponent|the opponent|@\w+) )?discards? (?:an? |the |my |their )?(c\d+)(?: (?:to|for|with) (?:an? |the |my |their )?c\d+)?$""").find(c)?.let { r ->
             val who = actorOfClause(c) ?: ctx.lastActor ?: "me"
@@ -1878,6 +1892,16 @@ class SituationParser(private val names: NameIndex) {
             } else describedCreatures(r.groupValues[1], r.groupValues[2], if (kind.isEmpty() || kind in setOf("artifact", "enchantment", "token", "permanent")) "creature" else kind, who, ctx, "")
             if (ids.isEmpty()) return@let
             for (id in ids) { ctx.objects[id] = ctx.objects.getValue(id).copy(zone = "hand"); ctx.events += EventSpec("enter", obj = id) }
+            ctx.lastMentioned = ids.last(); ctx.lastActor = who; ctx.lastOwner = who; ctx.note(who); return true
+        }
+        // "I play a land" / "they put a land onto the battlefield": the same as a land entering, which is what
+        // landfall cares about. A land nobody named, so its type doesn't matter.
+        Regex("""^(?:plays?|played|playing|puts?|put|putting) (an? |another |the |\d+ |two |three )?(?:basic )?lands?(?: card)?(?: onto the battlefield| into play| down| out| from (?:my|their|his|her) hand)?$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: ctx.lastOwner ?: "me"
+            val n = r.groupValues[1].trim().let { if (it.isEmpty() || it == "a" || it == "an" || it == "another" || it == "the") 1 else number(it) ?: 1 }
+            val ids = (1..n).map { var id = slug("a land"); var k = 2; while (ctx.objects.containsKey(id)) id = slug("a land") + "_" + (k++)
+                ctx.objects[id] = ObjectSpec(id, CardRef(name = "a basic land"), controller = who, zone = "hand"); id }
+            for (id in ids) ctx.events += EventSpec("enter", obj = id)
             ctx.lastMentioned = ids.last(); ctx.lastActor = who; ctx.lastOwner = who; ctx.note(who); return true
         }
         Regex("""^(?:an? |the )?(c\d+) (?:enters|comes in|etbs|enters the battlefield)""").find(c)?.let { r ->

@@ -7009,5 +7009,50 @@
     "cite": [
       "701.19a"
     ]
+  },
+  {
+    "id": "playing-a-land-is-landfall",
+    "text": "Bloodghast is in my graveyard. I play a land. What happens?",
+    "expect": [
+      "Bloodghast's ability triggers",
+      "Bloodghast returns from your graveyard"
+    ],
+    "notExpect": [],
+    "cite": [
+      "603.6e"
+    ]
+  },
+  {
+    "id": "milling-with-a-known-library",
+    "text": "I have 10 cards in my library and I mill three cards. What happens?",
+    "expect": [
+      "You mill 3 cards (7 left in library)"
+    ],
+    "notExpect": [],
+    "cite": [
+      "701.13a"
+    ]
+  },
+  {
+    "id": "the-tenth-poison-counter",
+    "text": "I have 9 poison counters and I get a poison counter. Do I lose?",
+    "expect": [
+      "10 poison counters and lose the game"
+    ],
+    "notExpect": [],
+    "cite": [
+      "704.5c"
+    ]
+  },
+  {
+    "id": "discarding-a-card-nobody-named",
+    "text": "I have 3 cards in hand. I discard a card. What happens?",
+    "expect": [
+      "You discard 1 card (3 → 2 in hand)"
+    ],
+    "notExpect": [],
+    "cite": [
+      "701.9a"
+    ]
   }
 ]
