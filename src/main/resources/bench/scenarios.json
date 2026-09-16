@@ -5760,5 +5760,33 @@
     "cite": [
       "701.8a"
     ]
+  },
+  {
+    "id": "muxus-counts-other-goblins-only",
+    "text": "I control Muxus, Goblin Grandee and two other Goblins. I attack with Muxus. What are its stats?",
+    "expect": [
+      "X is 2, counted as the ability resolves",
+      "gets +2/+2 until end of turn"
+    ],
+    "notExpect": [
+      "X is 3"
+    ],
+    "cite": [
+      "608.2h",
+      "611.2a"
+    ]
+  },
+  {
+    "id": "waterknot-taps-what-it-enchants",
+    "text": "I cast Waterknot on a Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears becomes tapped"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "701.26a"
+    ]
   }
 ]

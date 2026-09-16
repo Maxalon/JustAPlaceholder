@@ -543,6 +543,18 @@ class BatchFourteenTest {
         assertEquals(Zone.BATTLEFIELD, s.obj("plain").zone)
     }
 
+    private val muxus = card("Muxus, Goblin Grandee", "Legendary Creature \u2014 Goblin Noble", "Whenever Muxus, Goblin Grandee attacks, Muxus, Goblin Grandee gets +1/+1 until end of turn for each other Goblin you control.", "{4}{R}{R}", "R", "4", "4")
+    private val goblin = card("Mogg Fanatic", "Creature \u2014 Goblin", "", "{R}", "R", "1", "1")
+
+    @Test
+    fun `a self-pump for each counts the others and not itself`() {
+        val s = state(); val mx = s.put("muxus", muxus, "me"); mx.summoningSick = false
+        s.put("g1", goblin, "me"); s.put("g2", goblin, "me")
+        val e = Engine(s); e.declareAttacker("me", "muxus", Ref.Player("opp")); e.resolveAll()
+        assertEquals(6, mx.power); assertEquals(6, mx.toughness)
+        assertTrue(s.trace.steps.any { "X is 2" in it.text }, s.trace.steps.joinToString("\n") { it.text })
+    }
+
     @Test
     fun `the germ dies once the equipment leaves`() {
         val s = state(); s.put("skull", batterskull, "me", Zone.HAND)

@@ -779,6 +779,16 @@ object OracleParser {
         Regex("""^(target opponent|target player|that player|each opponent|you) loses? that much life\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             return Effect.LoseLifeThatMuch(when (m.groupValues[1].lowercase()) { "target opponent", "target player" -> Who.TARGET_PLAYER; "each opponent" -> Who.EACH_OPPONENT; "you" -> Who.YOU; else -> Who.THAT_PLAYER })
         }
+        // Muxus: "~ gets +1/+1 until end of turn for each other Goblin you control."
+        Regex("""^~ gets ([+-]\d+)/([+-]\d+)(?: until end of turn)? for each (.+?)(?: until end of turn)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val what = m.groupValues[3].trim()
+            val count = parseCount("the number of $what").let { c ->
+                if (c is CountExpr.Permanents && Regex("""^(?:other|another)\b""", RegexOption.IGNORE_CASE).containsMatchIn(what)) c.copy(filter = c.filter.copy(other = true)) else c
+            }
+            if (count !is CountExpr.Unknown) return Effect.PumpSelfCount(count, m.groupValues[1].toInt(), m.groupValues[2].toInt())
+        }
+        // Waterknot, Kasmina's Transmutation: "tap enchanted creature."
+        Regex("""^tap enchanted (?:creature|permanent)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.TapAttached }
         // Mutavault, Celestial Colonnade, Inkmoth Nexus: "until end of turn, ~ becomes a 4/4 white and blue Elemental creature with flying and vigilance."
         Regex("""^(?:until end of turn, )?~ becomes an? (\d+)/(\d+)((?: (?:white|blue|black|red|green|colorless)(?:,|(?: and)?)?)*)((?: [A-Za-z'-]+)*?) (?:artifact )?creature(?: with (.+?))?(?: until end of turn)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             val colours = Regex("""white|blue|black|red|green""", RegexOption.IGNORE_CASE).findAll(m.groupValues[3]).map { c ->

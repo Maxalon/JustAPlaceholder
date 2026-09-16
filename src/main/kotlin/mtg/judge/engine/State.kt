@@ -365,6 +365,7 @@ class GameState(
     fun matches(f: ObjFilter, o: GameObject, controller: String, source: GameObject? = null, anyZone: Boolean = false): Boolean {
         if (!anyZone && !o.isOnBattlefield()) return false
         if (f.attachedToSource && (source == null || source.attachedTo != o.id)) return false
+        if (f.other && source != null && source === o) return false
         val typeOk = f.kinds.any { k -> when (k) {
             Kind.CREATURE -> isCreature(o); Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types
             Kind.LAND -> "Land" in o.def.types; Kind.PLANESWALKER -> "Planeswalker" in o.def.types; Kind.BATTLE -> "Battle" in o.def.types
