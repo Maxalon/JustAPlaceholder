@@ -1333,6 +1333,13 @@ class SituationParser(private val names: NameIndex) {
                 ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner; return true
             }
             // "Grizzly Bears with hexproof" / "with flying and lifelink": keywords as a trailer.
+            // "Krenko, Mob Boss with five Goblins": the trailer says what else is on the battlefield beside it,
+            // which is what an ability counting them will look at.
+            Regex("""^ (?:with|alongside|next to|and) (an?|one|two|three|four|five|six|seven|eight|nine|ten|\d+) ($creatureKinds)$""").find(rest)?.let { a ->
+                val n = number(a.groupValues[1]) ?: 1
+                describedCreatures("$n ", "", a.groupValues[2], owner, ctx, "")
+                ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner; ctx.lastMentioned = hostId; return true
+            }
             val trailerKws = Regex("""^ (?:with|that has|which has|having) ((?:hexproof|indestructible|flying|trample|lifelink|deathtouch|haste|vigilance|reach|menace|shroud|unblockable|first strike|double strike|infect|wither|protection from \w+)(?:(?:,| and|, and) (?:hexproof|indestructible|flying|trample|lifelink|deathtouch|haste|vigilance|reach|menace|shroud|unblockable|first strike|double strike|infect|wither|protection from \w+))*)$""").find(rest)?.groupValues?.get(1)?.split(Regex(""",? and |, """))?.map { it.trim() } ?: emptyList()
             (adjectives + trailerKws).filter { it != "tapped" && it != "untapped" }.takeIf { it.isNotEmpty() }?.let { kws -> ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(keywords = ctx.objects.getValue(hostId).keywords + kws); ctx.notes += "${m.cards.getValue(r.groupValues[2]).display} is read as having ${kws.joinToString(" and ")} (from an effect; say what gives it if that matters)." }
             // "Grizzly Bears with Darksteel Plate" / "Bears with Rancor on it": the Equipment or Aura is attached to it.
@@ -1352,7 +1359,16 @@ class SituationParser(private val names: NameIndex) {
             applyStateWords(hostId, rest, ctx)
             if (Regex("""\b(?:with (?:a )?regeneration(?: shield)?(?: (?:from|via|up|active|already paid|on it))?|regenerated|regeneration shield(?:ed)?|already regenerated)\b""").containsMatchIn(rest)) ctx.events += EventSpec("regenerate", obj = hostId)
             // "… with Rancor on it", "… enchanted with X", "… equipped with X"
-            Regex("""(?:enchanted with|equipped with|wearing|with) (?:an? |the )?(c\d+)""").findAll(rest).forEach { a -> val id = addObject(m.cards.getValue(a.groupValues[1]), owner, false, ctx); ctx.objects[id] = ctx.objects.getValue(id).copy(attachedTo = hostId) }
+            // "Grizzly Bears with Rancor" attaches the Rancor to the Bears; "Rancor with a Grizzly Bears" is the same
+            // board said the other way round, so the Aura or Equipment is the one that attaches either way.
+            Regex("""(?:enchanted with|equipped with|wearing|with) (?:an? |the )?(c\d+)""").findAll(rest).forEach { a ->
+                val card = m.cards.getValue(a.groupValues[1])
+                val id = addObject(card, owner, false, ctx)
+                val hostIsAttachment = m.cards[r.groupValues[2]]?.typeLine?.let { it.contains("Aura") || it.contains("Equipment") } == true
+                val namedIsAttachment = card.typeLine.contains("Aura") || card.typeLine.contains("Equipment")
+                if (hostIsAttachment && !namedIsAttachment) ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(attachedTo = id)
+                else ctx.objects[id] = ctx.objects.getValue(id).copy(attachedTo = hostId)
+            }
             // "Sword of Fire and Ice equipped to a 2/2": the thing it is on is a creature nobody named.
             Regex("""^\s*(?:equipped|attached|enchanting) (?:to |on )?(?:an? |the |my |their )?((\d+/\d+)(?: [a-z]+)*)$""").find(rest)?.let { a ->
                 val wornBy = ctx.objects.values.lastOrNull { o -> o.controller == owner && o.id != hostId && (o.card.name ?: "").startsWith("a ${a.groupValues[2]}") }?.id

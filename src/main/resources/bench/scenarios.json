@@ -6017,5 +6017,31 @@
     "cite": [
       "608.2h"
     ]
+  },
+  {
+    "id": "krenko-counts-the-goblins-beside-him",
+    "text": "I control Krenko, Mob Boss with five Goblins and I activate it. How many tokens do I get?",
+    "expect": [
+      "X is 6: the number of Goblins you control",
+      "You get a Goblin token. (×6)"
+    ],
+    "notExpect": [
+      "X is 1"
+    ],
+    "cite": [
+      "608.2h",
+      "701.7a"
+    ]
+  },
+  {
+    "id": "an-aura-named-first-still-attaches-to-the-creature",
+    "text": "I control Rancor with a Grizzly Bears. What are the Bears' stats?",
+    "expect": [
+      "Grizzly Bears is 4/2 (2/2 base, +2/+0 from Rancor)"
+    ],
+    "notExpect": [
+      "Grizzly Bears is 2/2 ("
+    ],
+    "cite": []
   }
 ]
