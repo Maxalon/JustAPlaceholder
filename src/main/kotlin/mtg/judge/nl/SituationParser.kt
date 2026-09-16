@@ -370,7 +370,7 @@ class SituationParser(private val names: NameIndex) {
             t2 = t2.replace(Regex("""\b(with $kw(?:(?:,| &) $kw)*) and ($kw)\b"""), "$1 & $2")
         }
         // "attack with a 3/3 and a 2/2" / "blocks with two 2/2s and a 1/1": described creatures joined by "and" stay in one clause.
-        if (Regex("""\b(?:attacks?|attacking|swings?|swinging|blocks?|blocking|chumps?)\b""").containsMatchIn(t2)) t2 = t2.replace(Regex("""\b((?:an? |\d+ |two |three |four |five )?\d+/\d+(?: (?!and\b)[a-z]+){0,3}) and ((?:an? |\d+ |two |three |four |five )?\d+/\d+)"""), "$1 plus $2")
+        if (Regex("""\b(?:attacks?|attacking|swings?|swinging|blocks?|blocking|chumps?)\b""").containsMatchIn(t2)) t2 = t2.replace(Regex("""\b((?:an? |\d+ |two |three |four |five )?\d+/\d+(?: (?!and\b)[a-z]+){0,3}) and ((?:an? |\d+ |two |three |four |five )?\d+/\d+)(?!\s+(?:chump[- ]?)?blocks?\b)"""), "$1 plus $2")
         // "… with Grizzly Bears and Hill Giant on the battlefield (under my control)": one "with X out" per card, before the clause split takes the "and".
         Regex("""\s+with ((?:(?:an? |the |my |their )?c\d+)(?:,? (?:and )?(?:an? |the |my |their )?c\d+)*) (?:out|on the battlefield|in play|on board|on the field)(?: under (my|their|@\w+'s) control)?$""").find(t2)?.let { r ->
             val cards = Regex("""c\d+""").findAll(r.groupValues[1]).map { it.value }.toList()
@@ -441,6 +441,16 @@ class SituationParser(private val names: NameIndex) {
     }
 
     private fun readClause0(clauseIn: String, m: Marked, ctx: Ctx): Boolean {
+        // "taps out for Grizzly Bears": a cast, said the way players say it. The mana is spent, not available.
+        Regex("""^(.*?)\btaps? out (?:for|to cast|casting|and casts?) (.+)$""", RegexOption.IGNORE_CASE).find(clauseIn.trim())?.let { r ->
+            val read = readClause((r.groupValues[1].trim() + " casts " + r.groupValues[2].trim()).trim(), m, ctx)
+            if (read) ctx.notes += "\"Taps out\" is read as casting it; whoever it was has no mana left afterwards."
+            return read
+        }
+        // "my Bears gets chumped by a 1/1": the passive way to say the 1/1 blocked it.
+        Regex("""^(.+?) (?:gets?|got|is|was|were) chump(?:ed|[- ]?blocked) by (.+)$""", RegexOption.IGNORE_CASE).find(clauseIn.trim())?.let { r ->
+            return readClause("${r.groupValues[2].trim()} blocks ${r.groupValues[1].trim()}", m, ctx)
+        }
         // "it resolves" / "everything resolves": already acted on when the sentence was read, so it is not unread.
         if (Regex("""^(?:and )?(?:it|they|that|this|both|all|everything)?\s*resolves?$|^(?:nobody|no one|nothing) responds?$|^no responses?$""").matches(clauseIn.trim())) return true
         // "I already control one" after "a second Sheoldred": the first copy is already on the battlefield from that clause.
@@ -648,6 +658,40 @@ class SituationParser(private val names: NameIndex) {
         actor?.let { ctx.note(it) }
         ctx.clauseActor = actor
         val subject = actor ?: ctx.lastActor
+        // Read before the attack rules below: "a 1/1 blocks it" is a block, and a rule looking for a described
+        // attacker would otherwise take the 1/1 for a second attacker on the same side.
+        Regex("""^(?:an? |my |the |their )?(c\d+|it|that|they|\d+/\d+) (?:chump[- ]?)?blocks? (?:an? |the |my |their )?(?:(c\d+)|(\d+/\d+)((?: [a-z]+)*)|(it|that))$""").find(c)?.let { r ->
+            val blockerRef = r.groupValues[1]
+            val attackEvent = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" }
+            val blocker = when {
+                blockerRef in setOf("it", "that", "they") -> ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                Regex("""^\d+/\d+$""").matches(blockerRef) -> {
+                    val defender = ctx.other(attackEvent?.player ?: "opp") ?: "me"
+                    describedCreatures("a ", blockerRef, "creature", defender, ctx, "").firstOrNull() ?: return@let
+                }
+                else -> m.cards[blockerRef]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
+            }
+            val who = ctx.objects[blocker]?.controller ?: "me"
+            val foe = ctx.other(who) ?: "opp"
+            val attacker = when {
+                r.groupValues[5].isNotEmpty() -> attackEvent?.obj ?: return@let
+                r.groupValues[2].isNotEmpty() -> m.cards[r.groupValues[2]]?.let { objectIdFor(it, ctx) ?: addObject(it, foe, false, ctx) } ?: return@let
+                else -> {
+                    val trailer = r.groupValues[4].trim()
+                    val kws = Regex("""$kwNouns|flying|trample|deathtouch|lifelink|first strike|double strike|menace|vigilance|indestructible|infect|wither""").findAll(trailer)
+                        .map { k -> k.value.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") }.distinct().joinToString(", ")
+                    val kind = Regex("""$creatureKinds""").find(trailer)?.value ?: "creature"
+                    describedCreatures("a ", r.groupValues[3], kind, foe, ctx, kws).firstOrNull() ?: return@let
+                }
+            }
+            if (attacker == blocker) return@let
+            if (ctx.events.none { it.verb == "attack" && it.obj == attacker }) {
+                ctx.events += EventSpec("attack", player = foe, obj = attacker, targets = listOf(who))
+                ctx.notes += "${ctx.objects[attacker]?.card?.name ?: attacker} is read as attacking ${if (who == "me") "you" else who}, since something blocked it."
+            }
+            ctx.events += EventSpec("block", player = who, obj = blocker, targets = listOf(attacker))
+            ctx.lastActor = who; ctx.lastVerb = "block"; ctx.note(who); ctx.note(foe); return true
+        }
         // "@bob's c1 is tapped", "@bob's c1 has 2 damage": possession by a named player.
         Regex("""^@(\w+)'s (?:(\d+|two|three|four|five) )?(c\d+)(.*)$""").find(c)?.let { r ->
             val owner = r.groupValues[1]; ctx.players.putIfAbsent(owner, m.players[owner] ?: owner); ctx.note(owner)

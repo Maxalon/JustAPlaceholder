@@ -6079,5 +6079,43 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "a-described-blocker-is-not-a-second-attacker",
+    "text": "My opponent attacks with a 5/5 and a 1/1 blocks it. What happens?",
+    "expect": [
+      "You block a 5/5 creature with a 1/1 creature"
+    ],
+    "notExpect": [
+      "You take 5 damage"
+    ],
+    "cite": [
+      "509.1a"
+    ]
+  },
+  {
+    "id": "chump-block-said-the-passive-way",
+    "text": "I attack with my Grizzly Bears and it gets chumped by a 1/1. What happens?",
+    "expect": [
+      "a 1/1 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood",
+      "opponent takes 2 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "taps-out-is-a-cast",
+    "text": "My opponent taps out for Grizzly Bears. What happens?",
+    "expect": [
+      "opponent casts Grizzly Bears"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "601.2a"
+    ]
   }
 ]
