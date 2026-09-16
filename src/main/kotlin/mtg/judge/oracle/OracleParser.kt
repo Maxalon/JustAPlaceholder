@@ -80,7 +80,7 @@ object OracleParser {
                     }
                 }
                 statics.isNotEmpty() -> abilities += StaticAbility(selfRef, null, statics)
-                selfRef.startsWith("When ", true) || selfRef.startsWith("Whenever ", true) || selfRef.startsWith("At ", true) || Regex("""^(Landfall|Constellation|Magecraft|Heroic|Raid|Enrage|Battalion|Alliance|Coven)\s+—\s+(When|Whenever|At)\b""").containsMatchIn(selfRef) -> abilities += parseTriggeredAll(selfRef)
+                selfRef.startsWith("When ", true) || selfRef.startsWith("Whenever ", true) || selfRef.startsWith("At ", true) || abilityWord.containsMatchIn(selfRef) -> abilities += parseTriggeredAll(selfRef)
                 isActivated(selfRef) -> abilities += parseActivated(selfRef)
                 isSpell -> spellLines += selfRef
                 else -> abilities += UnparsedAbility(selfRef)
@@ -137,6 +137,11 @@ object OracleParser {
     }
 
     private val triggerRe = Regex("""^(When|Whenever|At)\s+(.+?),\s+(.+)$""", RegexOption.IGNORE_CASE)
+    /**
+     * An ability word ("Landfall — ", "Flurry of Blows — ") names an ability and says nothing by itself (207.2c).
+     * Matched only when a trigger word follows, so a modal "Choose one —" is left alone.
+     */
+    private val abilityWord = Regex("""^[A-Z][A-Za-z'’]*(?: [A-Za-z'’]+){0,4}\s*[—–]\s*(?=Whenever\b|When\b|At\b)""")
 
     private fun parseTriggered(line: String): Ability {
         val m = triggerRe.matchEntire(line) ?: return UnparsedAbility(line)
@@ -162,7 +167,9 @@ object OracleParser {
 
     /** "Whenever ~ enters or attacks, …" is two triggered abilities with the same effect. */
     private fun parseTriggeredAll(line: String): List<Ability> {
-        val m = triggerRe.matchEntire(line.replace(Regex("""^(Landfall|Constellation|Magecraft|Heroic|Raid|Enrage|Battalion|Alliance|Coven)\s+—\s+"""), "")) ?: return listOf(UnparsedAbility(line))
+        // An ability word ("Landfall — ", "Flurry of Blows — ") is flavour: it names the ability and says nothing.
+        // Stripped only when a trigger word follows, so a modal "Choose one —" is left alone.
+        val m = triggerRe.matchEntire(line.replace(abilityWord, "")) ?: return listOf(UnparsedAbility(line))
         val cond = m.groupValues[2].trim()
         Regex("""^~ enters or attacks$""", RegexOption.IGNORE_CASE).matchEntire(cond)?.let {
             val eff = parseEffect(m.groupValues[3]); return listOf(TriggeredAbility(Trigger.ThisEnters, eff, line), TriggeredAbility(Trigger.ThisAttacks, eff, line))
@@ -238,6 +245,11 @@ object OracleParser {
         // Chalice of the Void: "a player casts a spell with mana value equal to the number of charge counters on ~"
         Regex("""^an? (?:player|opponent) casts a spell with mana value equal to the number of (\w+) counters on ~$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
             return Trigger.SpellCastMvEqualsCounters(m.groupValues[1].lowercase())
+        }
+        // "you cast your second spell each turn" / "an opponent casts their second spell each turn"
+        Regex("""^(you|an opponent|a player) cast(?:s)? (?:your|their) (second|third|fourth) spell each turn$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
+            val who = when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "an opponent" -> Who.OPPONENT; else -> Who.ANY_PLAYER }
+            return Trigger.NthSpellEachTurn(mapOf("second" to 2, "third" to 3, "fourth" to 4).getValue(m.groupValues[2].lowercase()), who)
         }
         spellCastRe.matchEntire(c)?.let { m ->
             val who = when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "an opponent" -> Who.OPPONENT; else -> Who.ANY_PLAYER }

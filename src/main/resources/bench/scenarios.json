@@ -6652,5 +6652,19 @@
     "cite": [
       "608.2h"
     ]
+  },
+  {
+    "id": "the-second-spell-each-turn-triggers-once",
+    "text": "I control Monk of the Open Hand and cast two spells this turn. What happens?",
+    "expect": [
+      "Monk of the Open Hand's ability triggers",
+      "it's now 2/2"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "603.2"
+    ]
   }
 ]

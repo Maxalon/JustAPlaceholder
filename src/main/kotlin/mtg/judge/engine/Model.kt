@@ -51,6 +51,8 @@ sealed interface Trigger {
     data class SpellCast(val who: Who, val spellFilter: ObjFilter? = null) : Trigger
     /** Chalice of the Void: "When a player casts a spell with mana value equal to the number of charge counters on ~". */
     data class SpellCastMvEqualsCounters(val counter: String) : Trigger
+    /** "Whenever you cast your second spell each turn" (Flurry and friends): once a turn, on the Nth spell. */
+    data class NthSpellEachTurn(val n: Int, val who: Who) : Trigger
     data object ThisEnters : Trigger
     data object ThisDies : Trigger
     data object ThisLeavesBattlefield : Trigger

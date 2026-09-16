@@ -71,6 +71,14 @@ class StaysParsedTest {
         }
     }
 
+    /** An ability word before an em-dash is flavour, whatever it is called (207.2c). */
+    @Test
+    fun `an ability word does not stop a trigger being read`() {
+        check("Monk of the Open Hand", "Creature — Elf Monk", "Flurry of Blows — Whenever you cast your second spell each turn, put a +1/+1 counter on ~.")
+        check("Steppe Lynx", "Creature — Elemental Cat", "Landfall — Whenever a land enters under your control, ~ gets +2/+2 until end of turn.")
+        check("Sacred Cat", "Creature — Cat", "When ~ enters, you gain 1 life.")
+    }
+
     @Test
     fun `one-sided damage wordings stay modelled`() {
         check("Rabid Bite", "Sorcery", "Target creature you control deals damage equal to its power to target creature you don't control.")

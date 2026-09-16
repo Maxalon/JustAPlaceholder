@@ -1024,6 +1024,12 @@ class Engine(val state: GameState) {
             Who.OPPONENT -> event.item.controller != obj.controller
             else -> true
         } && (trigger.spellFilter == null || filterMatchesSpell(trigger.spellFilter, event.item, obj.controller))
+        // 603.2: it triggers on exactly that spell, so the count as it was cast has to be the Nth.
+        is Trigger.NthSpellEachTurn -> event is GameEvent.SpellCast && onBf() && when (trigger.who) {
+            Who.YOU -> event.item.controller == obj.controller
+            Who.OPPONENT -> event.item.controller != obj.controller
+            else -> true
+        } && (state.spellsThisTurn[event.item.controller] ?: 0) == trigger.n
         is Trigger.SpellCastMvEqualsCounters -> event is GameEvent.SpellCast && onBf() &&
             event.item.source !== obj && event.item.source.def.manaValue.toInt() == (obj.counters[trigger.counter] ?: 0)
         Trigger.ThisEnters -> event is GameEvent.EntersBattlefield && event.obj === obj
