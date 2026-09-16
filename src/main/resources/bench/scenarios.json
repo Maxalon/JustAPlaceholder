@@ -6437,5 +6437,28 @@
     "cite": [
       "707.2"
     ]
+  },
+  {
+    "id": "two-blockers-given-by-size-against-a-trampler",
+    "text": "I block their 5/5 trampler with a 2/2 and a 1/1. What happens?",
+    "expect": [
+      "divides its 5 damage",
+      "2 to you (trample)"
+    ],
+    "notExpect": [],
+    "cite": [
+      "702.19b"
+    ]
+  },
+  {
+    "id": "removal-aimed-at-a-creature-nobody-named",
+    "text": "They kill my creature with Doom Blade. What happens?",
+    "expect": [
+      "a creature is destroyed"
+    ],
+    "notExpect": [],
+    "cite": [
+      "701.8a"
+    ]
   }
 ]

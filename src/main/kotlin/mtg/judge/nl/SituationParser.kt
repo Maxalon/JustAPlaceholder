@@ -449,6 +449,8 @@ class SituationParser(private val names: NameIndex) {
     private val castVerbs = """(?:casts?|casting|plays?|playing|fires? off|slams?|kicks?|kicked|evokes?|evoked|evoking)"""
     private val respondVerbs = """(?:respond(?:s|ed)? with|in response(?: i| they)? (?:casts?|plays?)|responds?|answers? with|counters? (?:it|that) with|flash(?:es)? in)"""
     private val activateVerbs = """(?:activates?|activating|uses?|using|cracks?|cracking|pops?|popping|fires? off)"""
+    /** A marked card placeholder ("c1", "c12") — as opposed to a word that merely begins with a "c". */
+    private val cardRef = Regex("""^c\d+$""")
     /**
      * A statement that the attack wasn't blocked. Nothing to add: with no block described the engine already has
      * the attacker unblocked. Only the negative forms belong here — "it is blocked" says something quite different.
@@ -859,6 +861,16 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastVerb = "attack"; ctx.lastActor = who; ctx.lastOwner = who; ctx.lastMentioned = ids.last(); ctx.note(who); ctx.note(defender)
             return true
         }
+        // "… and a 1/1", right after "block their 5/5 with a 2/2": another blocker on the same attacker, not a
+        // creature standing around. Only when a block was the last thing read.
+        if (ctx.lastVerb == "block") Regex("""^(an? |\d+ |two |three )?(\d+/\d+)((?: [a-z]+)*)$""").find(c)?.let { r ->
+            val last = ctx.events.lastOrNull { it.verb == "block" } ?: return@let
+            val attacker = last.targets.firstOrNull() ?: return@let
+            val ids = describedFrom(r.groupValues[1], r.groupValues[2], r.groupValues[3], last.player ?: "me", ctx)
+            if (ids.isEmpty()) return@let
+            ids.forEach { ctx.events += EventSpec("block", player = last.player, obj = it, targets = listOf(attacker)) }
+            ctx.lastMentioned = ids.last(); return true
+        }
         // Unnamed creatures: "I have three creatures", "control two other creatures" (stats unknown; assumed 1/1 and said so).
         Regex("""^(?:(?:have|has|got|control|controls|controlling|'ve got)\s+)?(an? |\d+ |two |three |four |five )?(?:other |more |untapped )?(?:(\d+/\d+)s?\s*)?((?:[a-z]+ )?)($creatureKinds)?(?: with ([a-z ,&]+?|(?:an? |one |two |three |four |five |\d+ )?[+-]\d+/[+-]\d+ counters?(?: on it)?))?(?: plus .*)?(?: on the battlefield| in play| out)?$""").find(c)?.let { r ->
             val hasVerb = Regex("""^(?:have|has|got|control|controls|controlling|'ve got)\b""").containsMatchIn(c)
@@ -1232,7 +1244,7 @@ class SituationParser(private val names: NameIndex) {
         }
         if (Regex("""^draws?(?: a card| for it| off it)?$""").matches(c) && ctx.events.any { it.verb == "cast" }) return true   // the engine draws for the trigger
         // "kills the Bears with Doom Blade" / "removes X with Y": the spell is cast at the creature.
-        Regex("""^(?:kills?|killed|destroys?|destroyed|exiles?|exiled|removes?|removed|answers?|deals? with|bounces?|bounced|blinks?|flickers?|shrinks?|pumps?) (an? |the |my |their |his |her |my opponent's |@\w+'s |(?:my|their|his|her|its) own )?(c\d+|(?:their |my |the )?(?:blocker|attacker|creature)) (?:with|using|via) (?:an? |the |my )?(c\d+)$""").find(c)?.let { r ->
+        Regex("""^(?:kills?|killed|destroys?|destroyed|exiles?|exiled|removes?|removed|answers?|deals? with|bounces?|bounced|blinks?|flickers?|shrinks?|pumps?|targets?|targeting) (an? |the |my |their |his |her |my opponent's |@\w+'s |(?:my|their|his|her|its) own )?(c\d+|(?:their |my |the )?(?:blocker|attacker|creature)) (?:with|using|via) (?:an? |the |my )?(c\d+)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val spell = m.cards.getValue(r.groupValues[3])
             // "blink MY Solemn Simulacrum": a creature named as the speaker's is theirs, not the other player's.
@@ -1249,7 +1261,18 @@ class SituationParser(private val names: NameIndex) {
                     ?: ctx.other(who) ?: "opp"
             }
             // "their blocker" / "my attacker": the creature in that combat role.
-            val roleId = if (!r.groupValues[2].startsWith("c")) { val role = r.groupValues[2].substringAfterLast(' '); val ev = if (role == "blocker") ctx.events.lastOrNull { it.verb == "block" } else ctx.events.lastOrNull { it.verb == "attack" }; ev?.obj ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let } else null
+            // "creature" also starts with a "c", so a placeholder has to be matched exactly or "kills my creature
+            // with Doom Blade" looks up a card called "creature" and throws.
+            val roleId = if (!cardRef.matches(r.groupValues[2])) { val role = r.groupValues[2].substringAfterLast(' ')
+                val ev = if (role == "blocker") ctx.events.lastOrNull { it.verb == "block" } else if (role == "attacker") ctx.events.lastOrNull { it.verb == "attack" } else null
+                ev?.obj
+                    ?: ctx.objects.values.lastOrNull { it.controller == victimOwner && isCreatureName(it.card.name) }?.id
+                    ?: ctx.lastMentioned?.takeIf { it in ctx.objects }
+                    // "they kill my creature" with nothing named: a creature nobody named, rather than dropping the clause.
+                    ?: describedFrom("a ", "", "", victimOwner, ctx).firstOrNull()?.also {
+                        ctx.notes += "Nothing was said about which creature; it is read as one nobody named. Name it for a precise answer."
+                    } ?: return@let
+            } else null
             val victim = if (roleId == null) m.cards.getValue(r.groupValues[2]) else null
             val vid = roleId ?: (objectIdFor(victim!!, ctx) ?: addObject(victim, victimOwner, false, ctx))
             emitCast(who, spell, "", m, ctx); ctx.events[ctx.events.lastIndex] = ctx.events.last().copy(targets = listOf(vid)); return true
@@ -1842,6 +1865,25 @@ class SituationParser(private val names: NameIndex) {
             val ids = if (r.groupValues[5].isNotEmpty()) describedTokens(r.groupValues[1], r.groupValues[2], r.groupValues[4], who, ctx, kw) else describedCreatures(r.groupValues[1], r.groupValues[2], r.groupValues[4], who, ctx, kw)
             ids.forEach { ctx.events += EventSpec("block", player = who, obj = it, targets = listOf(attacker)) }; ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
+        // "I block their 5/5 trampler with a 2/2": neither creature is named, both are described. The attacker is
+        // read as attacking, since something blocked it.
+        Regex("""^(?:chump[- ]?)?blocks?(?:ing)? (?:their |the |an? |my |his |her |my opponent's )?(\d+/\d+)((?: (?!with\b)[a-z]+)*) with (an? |\d+ |two |three )?(\d+/\d+)((?: (?!plus\b)[a-z]+)*)((?: plus .*)?)$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: "me"
+            val foe = ctx.other(who) ?: "opp"
+            val attacker = ctx.events.lastOrNull { it.verb == "attack" }?.obj
+                ?: describedFrom("a ", r.groupValues[1], r.groupValues[2], foe, ctx).firstOrNull() ?: return@let
+            // "with a 2/2 and a 1/1" arrives here as "a 2/2 plus a 1/1": every one of them blocks.
+            val blockers = describedFrom(r.groupValues[3], r.groupValues[4], r.groupValues[5], who, ctx) +
+                Regex(""" plus (an? |\d+ |two |three )?(\d+/\d+)((?: [a-z]+)*)""").findAll(r.groupValues[6])
+                    .flatMap { x -> describedFrom(x.groupValues[1], x.groupValues[2], x.groupValues[3], who, ctx) }
+            if (blockers.isEmpty() || attacker in blockers) return@let
+            if (ctx.events.none { it.verb == "attack" && it.obj == attacker }) {
+                ctx.events += EventSpec("attack", player = foe, obj = attacker, targets = listOf(who))
+                ctx.notes += "${ctx.objects[attacker]?.card?.name ?: attacker} is read as attacking ${if (who == "me") "you" else ctx.players[who] ?: who}, since something blocked it."
+            }
+            blockers.forEach { ctx.events += EventSpec("block", player = who, obj = it, targets = listOf(attacker)) }
+            ctx.lastActor = who; ctx.lastVerb = "block"; ctx.lastOwner = who; ctx.lastMentioned = blockers.last(); ctx.note(who); ctx.note(foe); return true
+        }
         // "Sakura-Tribe Elder blocks a 4/4" / "it blocks their Hill Giant": the blocker leads and the attacker is named after it,
         // which also says the attacker is attacking even when nobody said so.
         Regex("""^(?:my |the |their )?(c\d+|it|that|they) (?:chump[- ]?)?blocks? (?:an? |the |my |their )?(?:(c\d+)|(\d+/\d+)((?: [a-z]+)*))$""").find(c)?.let { r ->
@@ -2403,6 +2445,18 @@ class SituationParser(private val names: NameIndex) {
 
     /** Whether a situation card name is a creature: a described one ("a 3/3 creature", "a 2/2 token") or a database card with Creature in its type line. */
     private fun isCreatureName(name: String?): Boolean = name != null && (Regex("""\b\d+/\d+\b|\bcreature\b""").containsMatchIn(name) || names.lookup(Names.normalize(name))?.typeLine?.contains("Creature") == true)
+
+    /**
+     * "a 5/5 trampler", "a 2/2 Goblin with lifelink": a creature given by its size and words rather than its name.
+     * [trailer] is whatever followed the size; the keywords and the creature kind are picked out of it.
+     */
+    private fun describedFrom(count: String, pt: String, trailer: String, who: String, ctx: Ctx): List<String> {
+        val t = trailer.trim()
+        val kws = Regex("""$kwNouns|flying|trample|deathtouch|lifelink|first strike|double strike|menace|vigilance|indestructible|infect|wither|reach|defender""").findAll(t)
+            .map { k -> k.value.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") }.distinct().joinToString(", ")
+        val kind = Regex("""$creatureKinds""").find(t)?.value ?: "creature"
+        return describedCreatures(count.ifEmpty { "a " }, pt, kind, who, ctx, kws)
+    }
 
     private fun addObject(card: NameIndex.Entry, controller: String, tapped: Boolean, ctx: Ctx, zone: String = "battlefield", allowDuplicate: Boolean = false): String {
         if (!allowDuplicate) ctx.objects.values.firstOrNull { it.card.oracleId == card.oracleId }?.let { return it.id }
