@@ -46,6 +46,31 @@ class ProtectionColourTest {
     }
 
     /**
+     * The same shadowing in the other place a bare colour turns up: "a black creature", "a red card". The card
+     * whose name starts with the colour has to be named in the same question for it to happen, which is exactly
+     * when getting it wrong matters most.
+     */
+    @Test
+    fun `a colour in front of a game noun stays a colour`() {
+        val dbPath = System.getenv("MTG_JUDGE_DB") ?: run { println("MTG_JUDGE_DB not set; skipping"); return }
+        val p = parser(dbPath)
+        val wrong = mutableListOf<String>()
+        val cases = listOf(
+            "I control Black Knight and I sacrifice a black creature.",
+            "They control White Knight and I destroy a white permanent.",
+            "I control Red Elemental Blast and I discard a red card.",
+            "I control Blue Elemental Blast and they cast a blue spell.",
+        )
+        for (text in cases) {
+            val marked = p.debugMark(text).joinToString(" ")
+            // Exactly one card is named in each: the shadowed colour must not have become a second one.
+            val found = Regex("""c(\d+)=""").findAll(marked).map { it.groupValues[1] }.toList()
+            if (found != listOf("1")) wrong += "\"$text\" found ${found.size} cards"
+        }
+        assertTrue(wrong.isEmpty(), "Colours read as cards:\n" + wrong.joinToString("\n"))
+    }
+
+    /**
      * A creature described by keywords rather than by name: the words in front of "creature" are the keywords it
      * has. Before this the adjective slot took one word from a colour/size whitelist, so "a 2/2 indestructible
      * creature" matched nothing at all and the whole clause was dropped.

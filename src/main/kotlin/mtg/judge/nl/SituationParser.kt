@@ -245,11 +245,12 @@ class SituationParser(private val names: NameIndex) {
                 !(normWords.getOrNull(f.end) in setOf("counters", "tokens") && normWords.getOrNull(f.end + 1) in setOf("it", "that", "them", "this", "my", "their", "the", "his", "her", "its"))) }
             // "to protect it", "to save my Bears": a verb after "to" is a verb, not the card of that name.
             .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.start - 1) == "to" && normWords[f.start] in verbsAfterTo && normWords[f.start] !in short) }
-            // "protection from black": the colour named after "protection from" is a colour, not the card whose
-            // name starts with it. Black Knight on the board turned "protection from black" into "protection from
-            // Black Knight", and the creature then had protection from nothing at all.
-            .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in colorWords && normWords.getOrNull(f.start - 1) == "from" &&
-                (maxOf(0, f.start - 4) until f.start).any { normWords[it] == "protection" }) }
+            // "protection from black", "a black creature", "a red card": a colour word describes something here,
+            // it doesn't name the card whose name starts with it. Black Knight on the board turned "protection from
+            // black" into "protection from Black Knight", and the creature then had protection from nothing at all.
+            .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in colorWords &&
+                ((normWords.getOrNull(f.start - 1) == "from" && (maxOf(0, f.start - 4) until f.start).any { normWords[it] == "protection" }) ||
+                 normWords.getOrNull(f.end) in colorNouns)) }
             // "a 2/2 with lifelink and deathtouch": a keyword in a keyword list is a keyword, not the card of that name.
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in keywordWords && normWords.getOrNull(f.start - 1) in setOf("with", "and", "&", "gains", "gain", "has", "have", "granted") && normWords[f.start] !in short) }
             // A first name that could mean several cards ("Jace") means the one named in full earlier, however it was matched.
@@ -2716,6 +2717,10 @@ class SituationParser(private val names: NameIndex) {
         "sacrifice", "regenerate", "bounce", "exile", "tap", "untap", "pay", "cast", "play", "target", "fight", "counter", "discard", "mill", "scry", "activate", "stop", "answer", "remove", "trigger")
     /** Colour words that are also the start of card names ("Black Knight"); after "protection from" they are colours. */
     private val colorWords = setOf("white", "blue", "black", "red", "green")
+    /** Nouns a colour word describes ("a black creature"), as opposed to naming a card that begins with that colour. */
+    private val colorNouns = setOf("creature", "creatures", "permanent", "permanents", "card", "cards", "spell", "spells",
+        "source", "sources", "token", "tokens", "land", "lands", "artifact", "artifacts", "enchantment", "enchantments",
+        "planeswalker", "planeswalkers", "instant", "instants", "sorcery", "sorceries", "mana", "damage", "one", "ones")
     /** Keyword words that are also card names ("Lifelink", "Flying"); in a keyword list they mean the keyword. */
     private val keywordWords = setOf("flying", "trample", "deathtouch", "lifelink", "haste", "vigilance", "reach", "menace", "hexproof", "indestructible", "infect", "defender", "flash", "shroud", "intimidate", "fear", "wither", "changeling", "banding", "horsemanship", "shadow", "persist", "undying", "exalted", "prowess")
     /** Keywords an asker can state on a permanent ("has flying", "with protection from black"). */
