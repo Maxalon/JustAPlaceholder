@@ -140,6 +140,25 @@ class PhrasingFamiliesTest {
                 "I place a +1/+1 counter on it. What are its stats?",
             ),
         ),
+        Family(
+            "a permanent arriving", "", "Grizzly Bears enters the battlefield",
+            listOf(
+                "I cast Grizzly Bears.", "I play Grizzly Bears.", "Grizzly Bears enters the battlefield under my control.",
+                "Grizzly Bears comes into play.", "Grizzly Bears hits the battlefield.", "I drop Grizzly Bears.",
+                "I put Grizzly Bears onto the battlefield.", "I flash in Grizzly Bears.",
+            ),
+        ),
+        Family(
+            "acting while a spell is on the stack",
+            "I control Grizzly Bears and Ashnod's Altar and they cast Doom Blade on my Grizzly Bears. ",
+            "Doom Blade doesn't resolve",
+            listOf(
+                "In response I sacrifice it to Ashnod's Altar.", "In response, I sacrifice it to Ashnod's Altar.",
+                "I respond by sacrificing it to Ashnod's Altar.", "Holding priority, I sacrifice it to Ashnod's Altar.",
+                "With the Doom Blade on the stack I sacrifice it to Ashnod's Altar.",
+                "Before it resolves I sacrifice it to Ashnod's Altar.",
+            ),
+        ),
     )
 
     @Test

@@ -407,6 +407,15 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(?:their|his|her) life total (?:goes up|rises|increases)(?: by)? (\d+)(?: life)?"""), "they gain $1 life")
             .replace(Regex("""\b(?:their|his|her) life total (?:goes down|drops|falls|decreases)(?: by)? (\d+)(?: life)?"""), "they lose $1 life")
             .replace(Regex("""\bi go up (\d+)(?: life)?"""), "i gain $1 life").replace(Regex("""\bi go down (\d+)(?: life)?"""), "i lose $1 life")
+            // "Grizzly Bears hits the battlefield", "I drop it", "I put it onto the battlefield": more ways to say
+            // a permanent arrived, and more ways to say something happens while a spell is still on the stack.
+            .replace(Regex("""((?:my |their |the )?c\d+) hits the (?:battlefield|table|board)"""), "$1 enters the battlefield")
+            .replace(Regex("""\bdrops? ((?:an? |the |my |their )?c\d+)(?!\w)"""), "casts $1")
+            // Not after "to", and not when a trigger or an ability is the subject putting it there: those name
+            // the effect doing the work, and rewriting them away loses it.
+            .replace(Regex("""(?<!to )(?<!trigger )(?<!ability )\bputs? ((?:an? |the |my |their )?c\d+) (?:onto|on to|into) (?:the battlefield|play)(?!\s+(?:with|using|off|from)\b)"""), "$1 enters the battlefield")
+            .replace(Regex("""^with (?:the |an? |my |their )?c\d+ (?:still )?on the stack,? """), "in response ")
+            .replace(Regex("""^before (?:it|that|the spell) resolves,? """), "in response ")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
         // "they use Doom Blade on my Bears": a cast, but only for a card that is cast — "they use Maze on it"
