@@ -431,6 +431,7 @@ object OracleParser {
         if (Regex("""^If ~ is in your opening hand, you may begin the game with it on the battlefield\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("103.6")))
         if (Regex("""^(?:Combat )?damage that would be dealt by (?:creatures|sources) you control can't be prevented\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("615.12")))
         if (Regex("""^Each opponent can cast spells only any time they could cast a sorcery\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsSorcerySpeed)
+        if (Regex("""^Players can cast spells only during their own turns\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OwnTurnOnly)
         if (Regex("""^Spells with the chosen name can't be cast\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.CantCastNamed)
         if (Regex("""^Prevent all combat damage that would be dealt to and (?:dealt )?by ~\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.PreventOwnCombatDamage)
         Regex("""^(Noncreature spells|Creature spells|Spells|Artifact spells|Enchantment spells|Instant and sorcery spells)(?: with mana value (\d+) or greater)?(?: with \{X\} in their mana costs)? can't be cast\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->

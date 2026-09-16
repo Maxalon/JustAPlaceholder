@@ -45,6 +45,14 @@ class Engine(val state: GameState) {
             trace.step("${mage.name} names ${card.name}, and spells with the chosen name can't be cast, so ${card.name} can't be cast at all while ${mage.name} is on the battlefield.", "604.2", "101.2")
             state.outcomes += "${card.name} can't be cast (${mage.name} names it)."; return null
         }
+        state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { s -> s is StaticEffect.OwnTurnOnly } }?.let { dosan ->
+            val active = state.activePlayer
+            if (active != null && active != playerId) {
+                trace.step("${dosan.name} says players can cast spells only during their own turns, and it is ${state.player(active).possessive} turn, so ${state.player(playerId).subject.lowercase()} can't cast ${card.name} at all.", "307.1", "117.1a")
+                state.outcomes += "${card.name} can't be cast (${dosan.name}: only on its caster's own turn)."; return null
+            }
+            if (active == null) state.clarifications += Clarification("whose turn it is", "${dosan.name} lets a player cast spells only during their own turn; whose turn is it?")
+        }
         state.objects.values.firstOrNull { it.isOnBattlefield() && it.controller != playerId && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { s -> s is StaticEffect.OpponentsSorcerySpeed } }?.let { teferi ->
             val offTiming = state.stack.isNotEmpty() || state.phase == "combat" || (state.activePlayer != null && state.activePlayer != playerId) || state.step in setOf("upkeep", "draw", "end", "cleanup", "untap")
             if (offTiming) {
