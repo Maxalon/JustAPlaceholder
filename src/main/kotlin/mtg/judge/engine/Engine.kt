@@ -409,10 +409,10 @@ class Engine(val state: GameState) {
         return putTriggerOnStack(obj, ability, targets)
     }
 
-    fun enter(objectId: String) {
+    fun enter(objectId: String, choice: String? = null) {
         val obj = state.obj(objectId)
         obj.zone = Zone.BATTLEFIELD; obj.tapped = false; obj.timestamp = state.tick()
-        applyEntersReplacements(obj)
+        applyEntersReplacements(obj, choice)
         trace.step("${obj.name} enters the battlefield under ${state.player(obj.controller).possessive} control${if (obj.tapped == true) " tapped" else ""}.", "110.5b")
         onEvent(GameEvent.EntersBattlefield(obj))
     }
@@ -601,12 +601,17 @@ class Engine(val state: GameState) {
                         item.source.attachedTo = tid; applyControlEnchanted(item.source)
                         trace.step("${def.name} enters the battlefield attached to ${t?.let { state.nameOf(it) } ?: "nothing"}.", "608.3b", "303.4")
                     }
-                    applyEntersReplacements(item.source)
+                    applyEntersReplacements(item.source, item.choice)
+                    // What it is now: the same card, unless it entered as a copy of something else.
+                    val now = item.source.def
                     val before = state.objects.values.filter { it.isOnBattlefield() && it.def.isCreature && it !== item.source }.associate { it.id to (it.power to it.toughness) }
-                    trace.step("${def.name} resolves and enters the battlefield under ${state.player(item.controller).possessive} control${if (def.isCreature) " as a ${state.describePt(item.source)}" else ""}${if (item.source.tapped == true) ", tapped" else ""}.", "608.3a")
-                    if (def.abilities.any { it is StaticAbility && it.effects.isNotEmpty() }) trace.step("${def.name}'s static ability starts applying to the permanents it describes.", "604.2", "613.1")
-                    def.abilities.filterIsInstance<UnparsedAbility>().takeIf { it.isNotEmpty() }?.let { un -> if (state.unsupported.none { it.what == def.name }) state.unsupported += Unsupported(def.name, "Rules text not modeled: " + un.joinToString(" | ") { it.text }) }
-                    state.outcomes += "${def.name} enters the battlefield."
+                    trace.step("${def.name} resolves and enters the battlefield under ${state.player(item.controller).possessive} control${if (now !== def) " as a copy of ${now.name}${if (now.isCreature) ", a ${state.describePt(item.source)}" else ""}" else if (now.isCreature) " as a ${state.describePt(item.source)}" else ""}${if (item.source.tapped == true) ", tapped" else ""}.", "608.3a")
+                    // "Enters tapped", "enters with counters" and "enters as a copy" have already happened; they aren't
+                    // abilities that go on applying, so they don't get this line.
+                    val entersOnly = setOf(StaticEffect.EntersTapped::class, StaticEffect.EntersWithCounters::class, StaticEffect.EntersAsCopy::class)
+                    if (now.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it::class !in entersOnly }) trace.step("${now.name}'s static ability starts applying to the permanents it describes.", "604.2", "613.1")
+                    now.abilities.filterIsInstance<UnparsedAbility>().takeIf { it.isNotEmpty() }?.let { un -> if (state.unsupported.none { it.what == now.name }) state.unsupported += Unsupported(now.name, "Rules text not modeled: " + un.joinToString(" | ") { it.text }) }
+                    state.outcomes += "${if (now !== def) "${def.name}, a copy of ${now.name}," else now.name} enters the battlefield."
                     narrateLandTypeSetters(item.source)
                     onEvent(GameEvent.EntersBattlefield(item.source))
                     if (item.evoked) onEvokeEntered(item.source)
@@ -662,7 +667,8 @@ class Engine(val state: GameState) {
                 if (!obj.isOnBattlefield()) continue
                 val host = obj.attachedTo?.let { state.objects[it] }
                 if (obj.def.isAura) {
-                    val legal = host != null && host.isOnBattlefield() && (obj.def.enchant == null || state.matches(obj.def.enchant, host, obj.controller, obj))
+                    val enchant = obj.def.enchant
+                    val legal = host != null && host.isOnBattlefield() && (enchant == null || state.matches(enchant, host, obj.controller, obj))
                     if (!legal) { move(obj, Zone.GRAVEYARD, "${obj.name} is ${if (host == null || !host.isOnBattlefield()) "no longer attached to anything" else "attached to something it can't enchant"}, so it's put into its owner's graveyard (state-based action).", "704.3", "704.5m"); changed = true }
                 } else if (obj.def.isEquipment && obj.attachedTo != null) {
                     if (host == null || !host.isOnBattlefield() || !host.def.isCreature) { obj.attachedTo = null; trace.step("${obj.name} is no longer attached to a creature, so it becomes unattached and stays on the battlefield (state-based action).", "704.3", "704.5n"); state.outcomes += "${obj.name} stays on the battlefield, unattached."; changed = true }
@@ -1830,8 +1836,37 @@ class Engine(val state: GameState) {
     }
 
     /** "Enters tapped" / "enters with N counters": replacement effects that modify how it enters (614.1c, 614.12). */
-    private fun applyEntersReplacements(o: GameObject) {
-        if (o.def.isPlaneswalker && o.def.loyalty != null) { val n = countersPlaced(o, o.def.loyalty, "loyalty"); o.counters["loyalty"] = n; trace.step("${o.name} enters with $n loyalty counters.", "306.5b"); state.outcomes += "${o.name} has $n loyalty." }
+    /**
+     * 706.2: a permanent that enters as a copy takes on the copied permanent's copiable values — its printed card
+     * plus any other copy effects on it — and nothing else. Counters, damage, Auras, control effects and pumps on
+     * the original are not copied, and the copy keeps its own id, controller and everything it did on its way in.
+     */
+    private fun applyEntersAsCopy(o: GameObject, choice: String?) {
+        val e = o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.EntersAsCopy>().firstOrNull() ?: return
+        val was = o.name
+        val asked = choice?.takeIf { it.startsWith("copy:") }?.removePrefix("copy:")?.let { state.objects[it] }
+        val legal = state.objects.values.filter { it.isOnBattlefield() && it !== o && state.matches(e.filter, it, o.controller, o) }
+        if (asked != null && asked !in legal) {
+            trace.step("$was can only enter as a copy of ${withArticle(e.filter.raw)}, and ${asked.name} isn't one, so it enters as itself.", "707.2", "614.1c")
+            state.outcomes += "$was enters as itself (${asked.name} isn't ${withArticle(e.filter.raw)})."
+            return
+        }
+        val chosen = asked ?: legal.firstOrNull()
+        if (chosen == null) {
+            trace.step("$was would enter as a copy of ${withArticle(e.filter.raw)}, but there is none on the battlefield to copy, so nothing is copied and it enters as ${if (o.def.isCreature) "the ${o.def.power ?: 0}/${o.def.toughness ?: 0} it is printed as" else "itself"}.", "707.2", "614.1c")
+            return
+        }
+        if (asked == null) state.assumptions += "$was enters as a copy of ${chosen.name}${if (legal.size > 1) " (nothing said which ${e.filter.raw}; there were ${legal.size} to choose from)" else ""}."
+        trace.step("$was enters as a copy of ${chosen.name}: it copies the printed card and any other copy effects on it, and nothing else — not counters, damage, Auras, or anything else that has happened to ${chosen.name}.", "707.2", "707.2a", "614.1c")
+        o.def = chosen.def
+        if (e.tapped) o.tapped = true
+        e.except?.let { state.unsupported += Unsupported(was, "The copy's exception is not modeled: " + it.replace("~", was)) }
+    }
+
+    private fun applyEntersReplacements(o: GameObject, choice: String? = null) {
+        applyEntersAsCopy(o, choice)
+        val startingLoyalty = o.def.loyalty
+        if (o.def.isPlaneswalker && startingLoyalty != null) { val n = countersPlaced(o, startingLoyalty, "loyalty"); o.counters["loyalty"] = n; trace.step("${o.name} enters with $n loyalty counters.", "306.5b"); state.outcomes += "${o.name} has $n loyalty." }
         // Blind Obedience and friends: someone else's static makes this enter tapped.
         for (src in state.objects.values.filter { it.isOnBattlefield() && it !== o }) {
             for (e in src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.OthersEnterTapped>()) {

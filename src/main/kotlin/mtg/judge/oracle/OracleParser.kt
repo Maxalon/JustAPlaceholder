@@ -367,6 +367,16 @@ object OracleParser {
         Regex("""^~ enters(?: the battlefield)? tapped\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.EntersTapped()) }
         Regex("""^all cards that aren't on the battlefield, spells, and permanents are the chosen colou?r in addition to their other colou?rs\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.EverythingIsChosenColour) }
         Regex("""^cards in graveyards lose all abilities\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.GraveyardCardsLoseAbilities) }
+        // "You may have ~ enter (tapped) as a copy of any creature on the battlefield(, except …)." (Clone and the 70-odd cards like it.)
+        Regex("""^you may have ~ enter(?: the battlefield)?( tapped)? as a copy of (.+)$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            var rest = m.groupValues[2].trim().trimEnd('.')
+            val except = rest.split(", except ", limit = 2).getOrNull(1)
+            rest = rest.split(", except ", limit = 2)[0].removeSuffix(" on the battlefield").trim()
+            // Copies of cards in a graveyard, a library or a hand aren't modeled; leave those cards unparsed rather than guess.
+            if (Regex("""(?i)\b(?:graveyard|library|hand|exile|card)\b""").containsMatchIn(rest)) return@let
+            val f = parseFilter(rest.replace(Regex("""(?i)^(?:any|a|an)\s+"""), ""), Kind.PERMANENT)
+            return listOf(StaticEffect.EntersAsCopy(f, m.groupValues[1].isNotEmpty(), except))
+        }
         // The Theros gods. This has to come before the "as long as" bail below.
         Regex("""^as long as your devotion to (white|blue|black|red|green) is less than (one|two|three|four|five|six|seven|\d+), ~ isn't a creature\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val colour = when (m.groupValues[1].lowercase()) { "white" -> 'W'; "blue" -> 'U'; "black" -> 'B'; "red" -> 'R'; else -> 'G' }

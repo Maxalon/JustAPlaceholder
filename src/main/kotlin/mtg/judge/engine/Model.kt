@@ -323,6 +323,8 @@ sealed interface StaticEffect {
     /** "~ enters with N +1/+1 counters on it" (614.1c). count null = X. */
     /** [per] counts them as it enters (Chasm Skulker); [onlyIfKicked] is the "if this spell was kicked" form (Kavu Primarch). */
     data class EntersWithCounters(val kind: String, val count: Int?, val per: CountExpr? = null, val onlyIfKicked: Boolean = false) : StaticEffect
+    /** "You may have ~ enter as a copy of any creature on the battlefield." (Clone, 706.2). [except] is the card's own rider, kept as text. */
+    data class EntersAsCopy(val filter: ObjFilter, val tapped: Boolean, val except: String?) : StaticEffect
     /** "~ can't block" / "~ can't attack" / "~ can't be countered" / "~ can't be blocked". */
     /** "You have hexproof" (Leyline of Sanctity): the controller can't be targeted by opponents (702.11c). */
     data object PlayerHexproof : StaticEffect

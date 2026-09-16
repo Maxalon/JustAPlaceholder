@@ -6363,5 +6363,54 @@
     "cite": [
       "701.6a"
     ]
+  },
+  {
+    "id": "a-clone-enters-as-a-copy",
+    "text": "They control Grizzly Bears and Serra Angel. I cast Clone copying their Serra Angel. What happens?",
+    "expect": [
+      "as a copy of Serra Angel, a 4/4"
+    ],
+    "notExpect": [
+      "as a 0/0"
+    ],
+    "cite": [
+      "707.2"
+    ]
+  },
+  {
+    "id": "a-clone-does-not-copy-counters",
+    "text": "I control Grizzly Bears with two +1/+1 counters. I cast Clone copying it. What happens?",
+    "expect": [
+      "as a copy of Grizzly Bears, a 2/2"
+    ],
+    "notExpect": [
+      "a 4/4"
+    ],
+    "cite": [
+      "707.2"
+    ]
+  },
+  {
+    "id": "a-clone-of-your-own-legend-meets-the-legend-rule",
+    "text": "I control Thalia, Guardian of Thraben. I cast Clone copying it. What happens?",
+    "expect": [
+      "legend rule"
+    ],
+    "notExpect": [],
+    "cite": [
+      "704.5j"
+    ]
+  },
+  {
+    "id": "a-clone-with-nothing-to-copy",
+    "text": "I cast Clone with no other creatures on the battlefield. What happens?",
+    "expect": [
+      "there is none on the battlefield to copy",
+      "toughness 0"
+    ],
+    "notExpect": [],
+    "cite": [
+      "707.2"
+    ]
   }
 ]

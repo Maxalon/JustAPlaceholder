@@ -33,7 +33,8 @@ data class Animation(val power: Int, val toughness: Int, val subtypes: List<Stri
 
 class GameObject(
     val id: String,
-    val def: CardDef,
+    /** Not final: a permanent that entered as a copy of another (706.2) has that card's copiable values from then on. */
+    var def: CardDef,
     var zone: Zone,
     var controller: String,
     var owner: String = controller,
