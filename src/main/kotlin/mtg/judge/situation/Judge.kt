@@ -23,6 +23,18 @@ import mtg.judge.oracle.OracleParser
 /** Turns a [Situation] into a game state, runs its events through the [Engine], and renders an [Answer]. */
 class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
+    /**
+     * Counters other than loyalty, shown so the board the answer reasoned over can be checked against the one
+     * that was described. A count read wrong is the failure that looks most like a correct answer.
+     */
+    private fun countersNote(o: mtg.judge.engine.GameObject): String {
+        // +1/+1 and -1/-1 on a creature are already spelled out in its power and toughness.
+        val inPt = if (o.def.isCreature && o.isOnBattlefield()) setOf("+1/+1", "-1/-1") else emptySet()
+        val shown = o.counters.filterKeys { it != "loyalty" && it !in inPt }.filterValues { it > 0 }
+        if (shown.isEmpty()) return ""
+        return ", " + shown.entries.joinToString(", ") { (k, n) -> "$n $k counter${if (n == 1) "" else "s"}" }
+    }
+
     fun answer(sit: Situation): Answer {
         val understood = mutableListOf<String>()
         val state = GameState(sit.players.map { ps -> Player(ps.id, ps.name, ps.life).also { it.poison = ps.poison ?: 0; it.handSize = ps.handSize; it.librarySize = ps.librarySize; it.commanderDamage.putAll(ps.commanderDamage); it.mana = ps.mana; ps.devotion.forEach { (c, n) -> colourChar(c)?.let { ch -> it.devotion[ch] = n } } } }, LinkedHashMap(), activePlayer = sit.turn.activePlayer, phase = sit.turn.phase, step = sit.turn.step).also { st ->
@@ -57,7 +69,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
         understood += "Players: " + state.players.joinToString(", ") { (if (it.you) "you" else it.name) + (it.life?.let { l -> " ($l life)" } ?: "") } + (state.activePlayer?.let { "; it's ${state.player(it).possessive} turn" } ?: "; whose turn it is wasn't stated")
         state.objects.values.groupBy { it.zone }.forEach { (zone, objs) ->
-            understood += "${if (zone == mtg.judge.engine.Zone.COMMAND) "Command zone" else zone.name.lowercase().replaceFirstChar { it.uppercase() }}: " + objs.joinToString(", ") { "${it.name} [${it.id}] (${state.player(it.controller).possessive}${if (it.def.isCreature && it.isOnBattlefield()) ", " + state.describePt(it) else ""}${if (it.tapped == true) ", tapped" else ""}${if (it.damage > 0) ", ${it.damage} damage" else ""}${it.attachedTo?.let { a -> ", attached to ${state.objects[a]?.name ?: a}" } ?: ""}${it.counters["loyalty"]?.let { l -> ", loyalty $l" } ?: ""})" }
+            understood += "${if (zone == mtg.judge.engine.Zone.COMMAND) "Command zone" else zone.name.lowercase().replaceFirstChar { it.uppercase() }}: " + objs.joinToString(", ") { "${it.name} [${it.id}] (${state.player(it.controller).possessive}${if (it.def.isCreature && it.isOnBattlefield()) ", " + state.describePt(it) else ""}${if (it.tapped == true) ", tapped" else ""}${if (it.damage > 0) ", ${it.damage} damage" else ""}${it.attachedTo?.let { a -> ", attached to ${state.objects[a]?.name ?: a}" } ?: ""}${it.counters["loyalty"]?.let { l -> ", loyalty $l" } ?: ""}${countersNote(it)})" }
         }
         if (state.stack.isNotEmpty()) understood += "Stack (bottom to top): " + state.stack.joinToString(", ") { "${it.describe} [${it.id}]" + (if (it.targets.isNotEmpty()) " targeting " + it.targets.joinToString(" & ") { t -> state.nameOf(t) } else "") }
 

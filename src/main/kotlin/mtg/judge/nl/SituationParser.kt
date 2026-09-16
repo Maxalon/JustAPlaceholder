@@ -2251,6 +2251,9 @@ class SituationParser(private val names: NameIndex) {
     /** "with 3 loyalty", "at 5 loyalty", "with two +1/+1 counters (on it)", "with 2 damage (on it)", "that has 3 damage marked". */
     private fun applyStateWords(id: String, rest: String, ctx: Ctx) {
         var spec = ctx.objects.getValue(id)
+        // "a Llanowar Elves with summoning sickness" / "that I just played this turn": the asker said it can't tap yet.
+        if (Regex("""\b(?:with summoning sickness|summoning sick|that (?:i|they|he|she) just (?:played|cast)(?: this turn)?|(?:i|they) just (?:played|cast) (?:it|this)(?: this turn)?|played this turn|cast this turn)\b""").containsMatchIn(rest)) spec = spec.copy(summoningSick = true)
+        if (Regex("""\b(?:without summoning sickness|not summoning sick|has been out|since before this turn|from last turn)\b""").containsMatchIn(rest)) spec = spec.copy(summoningSick = false)
         val counters = spec.counters.toMutableMap()
         Regex("""(?:with|at|has|having) (\d+|\w+) loyalty(?: counters?)?""").find(rest)?.let { r -> number(r.groupValues[1])?.let { counters["loyalty"] = it } }
         Regex("""(?:with|has|having) (\d+|\w+) ([+-]\d+/[+-]\d+|[a-z]+) counters?(?: on it)?""").findAll(rest).forEach { r ->

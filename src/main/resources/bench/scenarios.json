@@ -6043,5 +6043,28 @@
       "Grizzly Bears is 2/2 ("
     ],
     "cite": []
+  },
+  {
+    "id": "stated-summoning-sickness-is-believed",
+    "text": "I control a Llanowar Elves with summoning sickness. Can I activate it?",
+    "expect": [
+      "No: Llanowar Elves came under your control this turn"
+    ],
+    "notExpect": [
+      "Yes, if it has been under your control"
+    ],
+    "cite": []
+  },
+  {
+    "id": "counters-are-shown-on-the-board-that-was-read",
+    "text": "I control Chalice of the Void with two charge counters. My opponent casts Grizzly Bears. What happens?",
+    "expect": [
+      "2 charge counters",
+      "Grizzly Bears is countered"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
