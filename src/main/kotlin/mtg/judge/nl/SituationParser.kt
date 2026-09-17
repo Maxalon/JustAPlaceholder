@@ -387,7 +387,9 @@ class SituationParser(private val names: NameIndex) {
             // Tense and mood: the judge's answer is the same whether the asker says it happened, has happened,
             // will happen or is happening. Said any way but the plain present, the clause went unread.
             .replace(Regex("""\bcasted\b"""), "cast")
-            .replace(Regex("""\b(?:has|have|had) (?=(?:cast|played|attacked|blocked|activated|targeted|countered|killed|destroyed|exiled|sacrificed|bounced|drawn|discarded|tapped|untapped)\b)"""), "")
+            // "I have cast four spells this turn" is a count the situation states, not four casts to play out;
+            // dropping the "have" made it the second, and five Aetherflux triggers instead of one.
+            .replace(Regex("""\b(?:has|have|had) (?!cast (?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|\d+)(?: other| more)? spells?\b)(?=(?:cast|played|attacked|blocked|activated|targeted|countered|killed|destroyed|exiled|sacrificed|bounced|drawn|discarded|tapped|untapped)\b)"""), "")
             .replace(Regex("""\bwill (?=(?:cast|play|attack|block|activate|target|counter|kill|destroy|exile|sacrifice|bounce|draw|discard|tap|untap|gain|lose|deal|take|die|trigger|remove|ping|nuke|zap)\b)"""), "")
             .replace(Regex("""\b(?:is|are|'s|'re) casting\b"""), "casts")
             .replace(Regex("""\b(?:i am|i'm|we are|we're) drawing\b"""), "i draw")

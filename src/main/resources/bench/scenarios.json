@@ -8539,5 +8539,18 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "a-stated-storm-count-is-not-played-out",
+    "text": "I control Aetherflux Reservoir and have cast four spells this turn. I cast a spell. How much life do I gain?",
+    "expect": [
+      "You gain 5 life."
+    ],
+    "notExpect": [
+      "(\u00d75)"
+    ],
+    "cite": [
+      "119.3"
+    ]
   }
 ]
