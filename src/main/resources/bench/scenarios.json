@@ -10216,5 +10216,28 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "trigger-question-names-the-permanent",
+    "text": "If I sacrifice my Grizzly Bears to Viscera Seer, does Blood Artist trigger?",
+    "expect": [
+      "Yes: Blood Artist's ability triggered."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "trigger-question-guttersnipe",
+    "text": "I cast Lightning Bolt at my opponent. Does Guttersnipe trigger?",
+    "expect": [
+      "Yes: Guttersnipe's ability triggered.",
+      "opponent takes 2 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

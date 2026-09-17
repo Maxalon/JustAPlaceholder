@@ -1291,6 +1291,11 @@ class SituationParser(private val names: NameIndex) {
         // itself and saying so again would put a second one there; with nothing else described it is the event.
         Regex("""^(?:(c\d+|it|that|they)(?:'s)? )?(?:(?:the|its|his|her|their) )?(?:triggered )?(?:ability |abilities )?(?:triggers?|triggered|goes off|go off|went off|fires?|fired)$""").find(c)?.let { r ->
             if (ctx.events.isNotEmpty()) {
+                // "does Blood Artist trigger?" is often the first time that card is named: it has to be on
+                // the battlefield for the engine to have anything to trigger for what was described.
+                r.groupValues[1].takeIf { cardRef.matches(it) }?.let { ph -> m.cards[ph] }
+                    ?.takeIf { objectIdFor(it, ctx) == null }
+                    ?.let { card -> ctx.lastMentioned = addObject(card, actor ?: ctx.lastOwner, false, ctx) }
                 ctx.notes += "\"${restore(clause0, m)}\" is read as the trigger the engine already puts on the stack for what was described; it isn't added a second time."
                 return true
             }
@@ -3298,7 +3303,10 @@ class SituationParser(private val names: NameIndex) {
         val card = m.cards[q.groupValues[1]] ?: return false
         // "does my Blood Artist trigger?": a permanent named only in the question is on the battlefield under that player.
         val owner = Regex("""\b(my|their|his|her|@\w+'s) ${q.groupValues[1]}\b""").find(clause0)?.groupValues?.get(1)?.let { w -> when (w) { "my" -> "me"; "their", "his", "her" -> pronounPlayer(ctx, w); else -> w.removePrefix("@").removeSuffix("'s") } }
-        val id = objectIdFor(card, ctx) ?: (if (card.display in ctx.castCards && !card.isSpellOnly) slug(card.display) else if (owner != null && !card.isSpellOnly) addObject(card, owner, false, ctx) else return false)
+        // "does Blood Artist trigger?" names nobody: the question is the asker's, so the permanent is theirs.
+        val id = objectIdFor(card, ctx) ?: (if (card.display in ctx.castCards && !card.isSpellOnly) slug(card.display)
+            else if (!card.isSpellOnly) addObject(card, owner ?: "me", false, ctx).also { if (owner == null) ctx.notes += "${card.display} was named only in the question; it is taken to be on the battlefield under your control." }
+            else return false)
         ctx.asks += EventSpec("ask", obj = id, to = if (q.groupValues[2].startsWith("trigger") || q.groupValues[2] == "go off") "trigger" else if (q.groupValues[2] in setOf("die", "dies", "dead")) "die" else "survive")
         ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."
         return true
