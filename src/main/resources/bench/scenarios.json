@@ -10274,5 +10274,38 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "can-i-kill-it-with-hand-card",
+    "text": "I have Lightning Bolt and my opponent has Grizzly Bears. Can I kill it?",
+    "expect": [
+      "Yes: Grizzly Bears died"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "can-i-kill-it-not-enough",
+    "text": "My opponent has a Serra Angel. I have a Lightning Bolt in hand. Can I kill it?",
+    "expect": [
+      "No: Serra Angel is still on the battlefield"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "enough-to-kill",
+    "text": "Is Lightning Bolt enough to kill a Serra Angel?",
+    "expect": [
+      "No: Serra Angel is still on the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

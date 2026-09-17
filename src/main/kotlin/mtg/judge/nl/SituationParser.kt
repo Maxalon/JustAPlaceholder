@@ -512,6 +512,8 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
             // "Does Doom Blade kill Serra Angel?" / "will my Bears die to Lightning Bolt?": a card against a card,
             // with nothing else said. The spell is cast at the creature and the question is whether it dies.
+            // "Is Lightning Bolt enough to kill a Serra Angel?" asks the same thing the long way round.
+            .replace(Regex("""^(?:is|are|will|would) ((?:$possPrefix)?c\d+) (?:be )?(?:enough|good enough|able|sufficient) to (?:kill|destroy|finish off) (?:$possPrefix|an? )?(c\d+)\??$"""), "does $1 kill $2")
             .replace(Regex("""^(?:does|do|will|would|can|could) ((?:$possPrefix)?c\d+) (?:kill|destroy|finish off) ((?:$possPrefix)?c\d+)\??$"""), "i cast $1 targeting their $2, does their $2 die")
             .replace(Regex("""^(?:will|would|does|do|is|are|can|could) ((?:$possPrefix)?c\d+) (?:die|be killed|be destroyed) to ((?:$possPrefix|an? )?c\d+)\??$"""), "they cast $2 targeting $1, does $1 die")
             // "Can Serra Angel block Grizzly Bears?": the second card is the attacker, whichever way round the
@@ -2022,6 +2024,24 @@ class SituationParser(private val names: NameIndex) {
             val to = when { r.groupValues[1].contains("exiled") -> "exile"; r.groupValues[1].contains("bounced") -> "hand"; else -> "graveyard" }
             if (r.groupValues[1].contains("sacrificed")) ctx.events += EventSpec("sacrifice", player = ctx.objects.getValue(id).controller, obj = id) else ctx.events += EventSpec("leave", obj = id, to = to)
             ctx.lastMentioned = id; return true
+        }
+        // "I have Lightning Bolt and they have Grizzly Bears. Can I kill it?": the card in hand is how it would be
+        // done, so it is cast at the creature asked about rather than the removal happening by itself.
+        Regex("""^(?:kills?|killed|destroys?|destroyed|exiles?|exiled|removes?|removed|answers?|deals? with|bounces?|bounced) (?:$possPrefix|an? )?(c\d+|it|that|them|creature|blocker|attacker)$""").find(c)?.let { r ->
+            val who = actor ?: ctx.lastActor ?: "me"
+            val card = ctx.inHand[who]?.lastOrNull { !it.typeLine.contains("Land", true) } ?: return@let
+            val ph = r.groupValues[1]
+            val id = if (cardRef.matches(ph)) m.cards[ph]?.let { objectIdFor(it, ctx) } ?: return@let
+                     else ctx.objects.values.lastOrNull { it.zone == "battlefield" && it.controller != who && isCreatureName(it.card.name) }?.id
+                        ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+            ctx.inHand.getValue(who).remove(card)
+            ctx.notes += "\"${restore(clause0, m)}\" is read as casting ${card.display} from ${if (who == "me") "your" else "their"} hand at ${ctx.objects[id]?.card?.name ?: id}."
+            emitCast(who, card, "", m, ctx)
+            // The target is a permanent the asker described, so it is named by its id rather than by any word
+            // the clause carried; emitCast has no way to read that, so the cast it just made is pointed here.
+            ctx.events.indexOfLast { it.verb == "cast" }.takeIf { it >= 0 }?.let { i -> ctx.events[i] = ctx.events[i].copy(targets = listOf(id)) }
+            ctx.asks += EventSpec("ask", obj = id, to = "die")
+            ctx.lastActor = who; ctx.lastMentioned = id; return true
         }
         // "My opponent kills my Grizzly Bears", "I lose my Bears": said the active way, with nothing named as
         // what did it. Where a card is named ("kills it with Doom Blade") another rule has already taken it.
