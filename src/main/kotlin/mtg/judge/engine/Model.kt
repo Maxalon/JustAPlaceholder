@@ -419,8 +419,12 @@ sealed interface StaticEffect {
     data object MustAttack : StaticEffect
     /** Vedalken Orrery, Leyline of Anticipation: "You may cast [spells] as though they had flash." null filter = every spell. */
     data class CastAsThoughFlash(val filter: ObjFilter?) : StaticEffect
-    /** Drannith Magistrate: "Your opponents can't cast spells from anywhere other than their hands." */
-    data object OpponentsCastFromHandOnly : StaticEffect
+    /**
+     * "Your opponents can't cast spells from anywhere other than their hands" (Drannith Magistrate),
+     * "Players can't cast spells from graveyards or libraries" (Grafdigger's Cage). [zones] are the zones a
+     * spell may not be cast from; [opponentsOnly] limits it to the controller's opponents.
+     */
+    data class CantCastFromZone(val zones: Set<String>, val opponentsOnly: Boolean) : StaticEffect
     /** Recognised static text the engine cites but has no game model for (level-up stats, "look at the top card any time", …). */
     data class Note(val text: String, val rules: List<String>) : StaticEffect
     /** A continuous replacement or prevention effect from a static ability (614, 615). */

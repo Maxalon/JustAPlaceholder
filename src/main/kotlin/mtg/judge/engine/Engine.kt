@@ -68,10 +68,10 @@ class Engine(val state: GameState) {
         // actually gave is checked; a card nobody placed is taken to be in hand, as it usually is.
         val fromZone = if (flashback) Zone.GRAVEYARD else obj.zone
         if (fromZone in setOf(Zone.GRAVEYARD, Zone.EXILE, Zone.COMMAND, Zone.LIBRARY)) {
-            state.objects.values.firstOrNull { it.isOnBattlefield() && it.controller != playerId &&
-                it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { e -> e is StaticEffect.OpponentsCastFromHandOnly } }?.let { magistrate ->
-                trace.step("${magistrate.name} says ${state.player(magistrate.controller).possessive} opponents can't cast spells from anywhere other than their hands, and ${card.name} would be cast from ${zoneName(fromZone, obj)}, so it can't be cast at all.", "601.2", "113.6c")
-                state.outcomes += "${card.name} can't be cast from ${zoneName(fromZone, obj)} (${magistrate.name})."
+            state.objects.values.firstOrNull { o -> o.isOnBattlefield() && o.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }
+                .any { e -> e is StaticEffect.CantCastFromZone && fromZone.name.lowercase() in e.zones && (!e.opponentsOnly || o.controller != playerId) } }?.let { lock ->
+                trace.step("${lock.name} says ${if (lock.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.filterIsInstance<StaticEffect.CantCastFromZone>().first().opponentsOnly) "${state.player(lock.controller).possessive} opponents can't" else "players can't"} cast spells from ${zoneName(fromZone, obj)}, so ${card.name} can't be cast at all.", "601.2", "113.6c")
+                state.outcomes += "${card.name} can't be cast from ${zoneName(fromZone, obj)} (${lock.name})."
                 return null
             }
         }

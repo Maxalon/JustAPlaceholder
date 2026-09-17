@@ -9469,5 +9469,29 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "grafdiggers-cage-stops-flashback",
+    "text": "I control Grafdigger's Cage. Faithless Looting is in my graveyard and I cast it with flashback. What happens?",
+    "expect": [
+      "can't be cast from your graveyard (Grafdigger's Cage)"
+    ],
+    "notExpect": [
+      "You draw",
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "grafdiggers-cage-allows-the-command-zone",
+    "text": "My opponent controls Grafdigger's Cage and I cast my commander Atraxa, Praetors' Voice from the command zone. What happens?",
+    "expect": [
+      "Atraxa, Praetors' Voice enters the battlefield"
+    ],
+    "notExpect": [
+      "can't be cast",
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
