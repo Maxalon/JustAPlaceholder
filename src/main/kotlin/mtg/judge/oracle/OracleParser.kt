@@ -851,6 +851,14 @@ object OracleParser {
             return if (to == "you") Effect.CreateShield(Replacement.PreventDamage(n, null, Who.YOU, false, null), null)
             else Effect.CreateShield(Replacement.PreventDamage(n, null, null, false, null), target(to))
         }
+        // The Circles of Protection: "The next time a red source of your choice would deal damage to you this
+        // turn, prevent that damage." One damage event from one source, then the shield is spent (615.8).
+        Regex("""^the next time a (white|blue|black|red|green|colou?rless) source of your choice would deal damage to you this turn, prevent that damage\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            val colour = m.groupValues[1].lowercase()
+            val ch = mapOf("white" to 'W', "blue" to 'U', "black" to 'B', "red" to 'R', "green" to 'G')[colour] ?: return@let
+            val from = ObjFilter(setOf(Kind.PERMANENT), colors = setOf(ch), raw = "a $colour source")
+            return Effect.CreateShield(Replacement.PreventDamage(null, null, Who.YOU, false, from, once = true), null)
+        }
         preventAllTurnRe.matchEntire(s)?.let { m ->
             val combat = m.groupValues[1].isNotEmpty(); val to = m.groupValues[2].lowercase(); val by = m.groupValues[3]
             val from = if (by.isEmpty()) null else parseFilter(by.removePrefix("target ").removePrefix("a ").removePrefix("an "), Kind.CREATURE).takeIf { it.verifiable } ?: return Effect.Unparsed(s)

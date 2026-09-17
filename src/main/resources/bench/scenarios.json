@@ -8411,5 +8411,27 @@
     "cite": [
       "601.2f"
     ]
+  },
+  {
+    "id": "circle-of-protection-red",
+    "text": "I control Circle of Protection: Red and my opponent casts Lightning Bolt at me. I activate the Circle. What happens?",
+    "expect": [
+      "Damage to you from Lightning Bolt is prevented"
+    ],
+    "notExpect": [
+      "You take 3 damage"
+    ],
+    "cite": [
+      "615.7"
+    ]
+  },
+  {
+    "id": "circle-of-protection-wrong-colour",
+    "text": "I control Circle of Protection: Red and my opponent casts Doom Blade on my Grizzly Bears. I activate the Circle. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield"
+    ],
+    "notExpect": [],
+    "cite": []
   }
 ]

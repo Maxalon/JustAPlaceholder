@@ -143,6 +143,13 @@ class StaysParsedTest {
         check("Nimble Mongoose", "Creature — Mongoose", "Threshold — ~ gets +2/+2 as long as there are seven or more cards in your graveyard.", listOf("Threshold"))
     }
 
+    /** The Circles of Protection and their kin: one damage event from one source, then the shield is spent. */
+    @Test
+    fun `next-time prevention stays modelled`() {
+        check("Circle of Protection: Red", "Enchantment", "{1}: The next time a red source of your choice would deal damage to you this turn, prevent that damage.")
+        check("Circle of Protection: Black", "Enchantment", "{1}: The next time a black source of your choice would deal damage to you this turn, prevent that damage.")
+    }
+
     @Test
     fun `gets-for-each wordings stay modelled`() {
         check("Nim Lasher", "Creature — Zombie", "~ gets +1/+0 for each artifact you control.")

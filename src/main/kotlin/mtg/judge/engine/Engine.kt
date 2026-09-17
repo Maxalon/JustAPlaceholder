@@ -2160,7 +2160,8 @@ class Engine(val state: GameState) {
         fun applies(r: Replacement.PreventDamage, owner: GameObject?, ownerPlayer: String?, shield: Shield?): Boolean {
             if (r.combatOnly && !combat) return false
             if (r.fromSelf && source !== owner) return false
-            if (r.from != null && (source == null || !state.matches(r.from, source, ownerPlayer ?: "", owner))) return false
+            // The source of damage can be a spell on the stack, so it is matched in whatever zone it is in.
+            if (r.from != null && (source == null || !state.matches(r.from, source, ownerPlayer ?: "", owner, anyZone = true))) return false
             if (shield != null && shield.objectId != null) return tObj?.id == shield.objectId
             if (shield != null && shield.playerId != null) return tPlayer?.id == shield.playerId
             val toOk = when {
@@ -2198,7 +2199,7 @@ class Engine(val state: GameState) {
                 if (amount <= 0) break
                 when (p) {
                     is Replacement.PreventDamage -> { trace.step("$name prevents ${if (p.amount == null) "all" else p.amount.toString()} of the $amount damage $sourceName would deal to ${state.nameOf(target)}.", "615.1", "615.6"); amount = if (p.amount == null) 0 else maxOf(0, amount - p.amount) }
-                    is Shield -> { val r = p.replacement as Replacement.PreventDamage; val prevented = if (r.amount == null) amount else minOf(amount, p.remaining ?: 0); trace.step("$name's prevention shield prevents $prevented of the $amount damage $sourceName would deal to ${state.nameOf(target)}.", "615.7", "615.6"); amount -= prevented; if (r.amount != null) p.remaining = (p.remaining ?: 0) - prevented }
+                    is Shield -> { val r = p.replacement as Replacement.PreventDamage; val prevented = if (r.amount == null) amount else minOf(amount, p.remaining ?: 0); trace.step("$name's prevention shield prevents $prevented of the $amount damage $sourceName would deal to ${state.nameOf(target)}.", "615.7", "615.6"); amount -= prevented; if (r.amount != null) p.remaining = (p.remaining ?: 0) - prevented else if (r.once) p.remaining = 0 }
                 }
             }
             if (amount <= 0) { state.outcomes += "Damage to ${state.nameOf(target)} from $sourceName is prevented."; return 0 }
