@@ -10051,5 +10051,28 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "does-a-permanent-stop-a-spell",
+    "text": "Does Torpor Orb stop Mulldrifter?",
+    "expect": [
+      "Mulldrifter enters the battlefield"
+    ],
+    "notExpect": [
+      "Not understood",
+      "You draw"
+    ],
+    "cite": []
+  },
+  {
+    "id": "how-do-two-cards-interact",
+    "text": "How does Kalitas, Traitor of Ghet interact with Wrath of God?",
+    "expect": [
+      "Kalitas, Traitor of Ghet: the battlefield \u2192 your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

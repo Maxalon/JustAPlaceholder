@@ -514,6 +514,16 @@ class SituationParser(private val names: NameIndex) {
                 val blk = r.groupValues[1].ifEmpty { "my " }; val atk = r.groupValues[3].ifEmpty { "their " }
                 "$atk${r.groupValues[4]} attacks, can $blk${r.groupValues[2]} block it"
             } }
+            // "Does Torpor Orb stop Mulldrifter?" / "how does Kalitas interact with Wrath of God?": a question about
+            // two cards with no situation around them. One reading is picked and said in the notes.
+            .let { t0 -> Regex("""^(?:does|do|can|could|will|would) ($possPrefix)?(c\d+) (?:stop|shut off|turn off|beat|answer) ($possPrefix)?(c\d+)\??$""").replace(t0) { r ->
+                ctx.notes += "Read as: your opponent controls the first card and you cast the second; say the situation outright for a different one."
+                "my opponent controls ${r.groupValues[2]} and i cast ${r.groupValues[4]}"
+            } }
+            .let { t0 -> Regex("""^how (?:does|do) ($possPrefix)?(c\d+) (?:interact with|work with|work against|play with) ($possPrefix)?(c\d+)\??$""").replace(t0) { r ->
+                ctx.notes += "Read as: you control the first card and cast the second; say the situation outright for a different one."
+                "i control ${r.groupValues[2]} and i cast ${r.groupValues[4]}"
+            } }
             // "Does Pacifism stop Serra Angel from attacking?": an Aura is on the creature, anything else is just
             // on the battlefield beside it, and the question is whether the creature can attack or block.
             .let { t0 -> Regex("""^does ($possPrefix)?(c\d+) (?:stop|prevent|keep) ($possPrefix)?(c\d+) from (attacking|blocking)\??$""").replace(t0) { r ->
