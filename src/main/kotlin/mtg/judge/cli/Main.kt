@@ -22,7 +22,7 @@ mtg-judge <command> [options]
   judge   FILE.json|- [--json] [--db FILE]           Answer a situation written in the situation language (docs/)
   meta    [--db FILE]                                Data provenance
   parse   NAME [--db FILE]                           How the Oracle parser reads a card (for debugging)
-  coverage [--format commander] [--top N] [--db FILE] How much of the card pool's rules text the engine models
+  coverage [--format commander] [--top N] [--words N] [--db FILE] How much of the card pool's rules text the engine models
   bench   [--only ID] [--show] [--db FILE]           Run the built-in plain-English scenarios and score answered/refused/wrong
 
 The database defaults to ${'$'}MTG_JUDGE_DB or ./judge.db.
@@ -89,7 +89,7 @@ fun main(args: Array<String>) {
             def.spellEffect?.let { println("spell: $it") }
             def.abilities.forEach { println("  ${it::class.simpleName}: $it") }
         }
-        "coverage" -> withDbConn(opts) { conn, _, _ -> mtg.judge.oracle.Coverage.report(conn, opts["format"] ?: "commander", opts["top"]?.toIntOrNull() ?: 40) }
+        "coverage" -> withDbConn(opts) { conn, _, _ -> mtg.judge.oracle.Coverage.report(conn, opts["format"] ?: "commander", opts["top"]?.toIntOrNull() ?: 40, opts["words"]?.toIntOrNull() ?: 7) }
         "bench" -> withDbConn(opts) { conn, _, _ ->
             val all = mtg.judge.situation.Bench.load()
             val chosen = opts["only"]?.let { id -> all.filter { it.id == id } } ?: all

@@ -26,7 +26,7 @@ object Coverage {
 
     data class Stats(var cards: Int = 0, var fully: Int = 0, var partly: Int = 0, var none: Int = 0, var noText: Int = 0, var abilities: Int = 0, var modeledAbilities: Int = 0)
 
-    fun report(conn: Connection, format: String, top: Int) {
+    fun report(conn: Connection, format: String, top: Int, words: Int = 7) {
         val stats = Stats()
         val patterns = HashMap<String, Int>()
         val examples = HashMap<String, String>()
@@ -50,7 +50,7 @@ object Coverage {
                 if (units.isEmpty()) { stats.noText++; continue }
                 stats.abilities += units.size; stats.modeledAbilities += units.count { it.first }
                 when (units.count { it.first }) { units.size -> stats.fully++; 0 -> stats.none++; else -> stats.partly++ }
-                for ((ok, text) in units) if (!ok && text != null) { val key = shape(text); patterns[key] = (patterns[key] ?: 0) + 1; examples.putIfAbsent(key, "${card.name}: $text") }
+                for ((ok, text) in units) if (!ok && text != null) { val key = shape(text, words); patterns[key] = (patterns[key] ?: 0) + 1; examples.putIfAbsent(key, "${card.name}: $text") }
             }
         }
         val pct = { a: Int, b: Int -> if (b == 0) "0%" else "%.1f%%".format(100.0 * a / b) }
@@ -69,14 +69,15 @@ object Coverage {
         is Effect.Unparsed -> e.text; is Effect.May -> unparsed(e.effect); is Effect.UnlessPays -> unparsed(e.effect)
         is Effect.Seq -> e.effects.firstOrNull { it.hasUnparsed() }?.let { unparsed(it) } ?: ""
         is Effect.IfYouDo -> if (e.choice.hasUnparsed()) unparsed(e.choice) else unparsed(e.then)
+        is Effect.IfCondition -> unparsed(e.then)
         is Effect.Modal -> e.modes.firstOrNull { it.hasUnparsed() }?.let { unparsed(it) } ?: ""
         else -> ""
     }
 
     /** Collapse a sentence to its first words with numbers and names abstracted, for counting. */
-    private fun shape(text: String): String {
+    private fun shape(text: String, words: Int): String {
         val t = text.replace(Regex("""\{[^}]*\}"""), "{M}").replace(Regex("""\b\d+\b"""), "N").replace(Regex("""\b(one|two|three|four|five|six|seven)\b""", RegexOption.IGNORE_CASE), "N")
-        val words = t.split(Regex("\\s+")).filter { it.isNotEmpty() }
-        return words.take(7).joinToString(" ") + if (words.size > 7) " …" else ""
+        val ws = t.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        return ws.take(words).joinToString(" ") + if (ws.size > words) " …" else ""
     }
 }
