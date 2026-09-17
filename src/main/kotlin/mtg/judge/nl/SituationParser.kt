@@ -1950,6 +1950,22 @@ class SituationParser(private val names: NameIndex) {
             if (r.groupValues[1].contains("sacrificed")) ctx.events += EventSpec("sacrifice", player = ctx.objects.getValue(id).controller, obj = id) else ctx.events += EventSpec("leave", obj = id, to = to)
             ctx.lastMentioned = id; return true
         }
+        // "My opponent kills my Grizzly Bears", "I lose my Bears": said the active way, with nothing named as
+        // what did it. Where a card is named ("kills it with Doom Blade") another rule has already taken it.
+        Regex("""^(?:kills?|killed|destroys?|destroyed|exiles?|exiled|bounces?|bounced|removes?|removed|nukes?|nuked|loses?|lost|sacrifices?|sacrificed) (?:my opponent's |the opponent's |opponent's |their own |their |my own |my |own |the |@(\w+)'s )?(c\d+)$""").find(c)?.let { r ->
+            val card = m.cards.getValue(r.groupValues[2])
+            val ownerWord = c.substringBefore(" c").substringAfter(' ').trim()
+            val owner = when {
+                r.groupValues[1].isNotEmpty() -> r.groupValues[1]
+                ownerWord.startsWith("my opponent") || ownerWord.startsWith("opponent") || ownerWord.startsWith("the opponent") || ownerWord == "their" -> pronounPlayer(ctx, "their")
+                ownerWord == "my" || ownerWord == "my own" -> "me"
+                else -> ctx.objects.values.firstOrNull { it.card.oracleId == card.oracleId }?.controller ?: ctx.other(actor) ?: "me"
+            }
+            val id = objectIdFor(card, ctx) ?: addObject(card, owner, false, ctx)
+            val to = when { c.startsWith("exile") -> "exile"; c.startsWith("bounce") -> "hand"; else -> "graveyard" }
+            if (c.startsWith("sacrific")) ctx.events += EventSpec("sacrifice", player = owner, obj = id) else ctx.events += EventSpec("leave", obj = id, to = to)
+            ctx.lastMentioned = id; ctx.lastOwner = owner; return true
+        }
         Regex("""^(?:my opponent's |the opponent's |opponent's |their own |their |my own |my |own |the |@(\w+)'s )?(c\d+) (?:dies|died|is destroyed|gets destroyed|would die|is put into (?:a|the|its owner's) graveyard|goes to the graveyard|is exiled|gets exiled|leaves the battlefield|is bounced|is sacrificed|gets sacrificed)$""").find(c)?.let { r ->
             val card = m.cards.getValue(r.groupValues[2])
             val ownerWord = c.substringBefore(" c").trim()

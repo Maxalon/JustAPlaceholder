@@ -9682,5 +9682,39 @@
       "Not modeled"
     ],
     "cite": []
+  },
+  {
+    "id": "killed-with-nothing-named",
+    "text": "I control Blood Artist and my opponent kills my Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield \u2192 your graveyard",
+      "opponent loses 1 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "lose-a-creature",
+    "text": "I control Blood Artist and lose my Grizzly Bears. What happens?",
+    "expect": [
+      "opponent loses 1 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "exiled-by-an-opponent",
+    "text": "My opponent exiles my Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield \u2192 exile"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
