@@ -1317,6 +1317,14 @@ object OracleParser {
         if (Regex("""^you gain life equal to the life lost this way\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.GainLifeLostThisWay
         if (Regex("""^if a (?:creature|permanent) dealt damage this way would die this turn, exile it instead\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.ExileIfDamagedDies
         Regex("""^change a target of (target spell or ability|target spell|target ability) to ~\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.RedirectToSelf(target(m.groupValues[1])) }
+        // Misdirection, Deflecting Swat: the spell keeps everything but its target.
+        Regex("""^change the target of (target spell or ability|target spell|target instant or sorcery spell)(?: with a single target)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            return Effect.ChangeTarget(target(m.groupValues[1], Kind.SPELL), singleOnly = s.contains("single target", true))
+        }
+        // "You may choose new targets…" reaches here with the "you may" already taken off by the May rule.
+        Regex("""^(?:you may )?choose new targets for (target spell or ability|target spell|target ability)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            return Effect.ChangeTarget(target(m.groupValues[1], Kind.SPELL), singleOnly = false)
+        }
         Regex("""^(target creature you control) fights (target creature (?:you don't control|an opponent controls))\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.Fight(target(m.groupValues[1], Kind.CREATURE), target(m.groupValues[2], Kind.CREATURE)) }
         // "Target creature you control deals damage equal to its power to target creature an opponent controls"
         // and its cousins ("target Dinosaur you control", "target creature or planeswalker you don't control").

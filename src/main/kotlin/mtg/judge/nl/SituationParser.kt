@@ -764,7 +764,13 @@ class SituationParser(private val names: NameIndex) {
         // "I am at 20 life and cast Toxic Deluge": the first player named in the situation is the one acting until
         // someone else acts. Without this the cast fell to a default and became the opponent's. Set after the
         // clause is read, so a rule that works out the actor itself still has the last word.
-        if (read && ctx.lastActor == null && Regex("""^(?:i|i'm|i am|i've|we)\b""").containsMatchIn(clauseIn.trim())) ctx.lastActor = "me"
+        if (ctx.lastActor == null && Regex("""^(?:i|i'm|i am|i've|we)\b""").containsMatchIn(clauseIn.trim())) ctx.lastActor = "me"
+        // A clause no rule could read still says who is acting, and the clauses after it carry on from there:
+        // "I control a commander and cast Deflecting Swat" had the cast falling to the player who acted last.
+        if (!read) {
+            if (Regex("""^(?:i|i'm|i am|i've|we)\b""").containsMatchIn(clauseIn.trim())) ctx.lastActor = "me"
+            else if (Regex("""^(?:they|my opponent|the opponent)\b(?!'s)""").containsMatchIn(clauseIn.trim())) ctx.lastActor = pronounPlayer(ctx, "their")
+        }
         return read
     }
 
@@ -1299,6 +1305,15 @@ class SituationParser(private val names: NameIndex) {
         }
         // "I control three artifacts", "they have two enchantments": permanents nobody named, counted. Cards that
         // count a type ("metalcraft") need the count to be there; without this the clause went unread.
+        // "I control a commander": which card it is doesn't matter, only that its controller has one, which is
+        // what the free-spell cycle (Deflecting Swat, Fierce Guardianship) asks about.
+        Regex("""^(?:controls?|controlling|have|has|got)\s+(?:an?|one|my|their|his|her) commander(?: on the battlefield| in play| out)?$""").find(c)?.let {
+            val who = actor ?: subject ?: "me"
+            var id = "commander"; var k = 2; while (ctx.objects.containsKey(id)) id = "commander_" + (k++)
+            ctx.objects[id] = ObjectSpec(id, CardRef(name = "a commander"), controller = who, commander = true)
+            ctx.notes += "${if (who == "me") "You control" else "They control"} a commander; it stands in for whichever card it is, as a 2/2 legendary creature."
+            ctx.lastMentioned = id; ctx.lastOwner = who; ctx.lastActor = who; ctx.note(who); return true
+        }
         Regex("""^(controls?|controlling|have|has|got|there (?:is|are))\s+(an?|one|\d+|two|three|four|five|six|seven|eight|nine|ten)(?: (?:more|other))? (artifacts?|enchantments?|planeswalkers?|permanents?|lands?)(?: on the battlefield| in play| out)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: ctx.lastOwner ?: "me"
             val n = number(r.groupValues[2]) ?: 1

@@ -9566,5 +9566,44 @@
     "cite": [
       "702.100a"
     ]
+  },
+  {
+    "id": "misdirection-turns-a-bolt-around",
+    "text": "My opponent casts Lightning Bolt at me and I cast Misdirection on it. What happens?",
+    "expect": [
+      "Lightning Bolt now targets opponent",
+      "opponent takes 3 damage"
+    ],
+    "notExpect": [
+      "You take 3 damage",
+      "Not modeled"
+    ],
+    "cite": [
+      "115.7"
+    ]
+  },
+  {
+    "id": "misdirection-onto-their-own-creature",
+    "text": "My opponent casts Doom Blade on my Grizzly Bears and they control Serra Angel. I cast Misdirection on the Doom Blade. What happens?",
+    "expect": [
+      "Doom Blade now targets Serra Angel"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield",
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "deflecting-swat-with-a-commander",
+    "text": "My opponent casts Lightning Bolt at me. I control a commander and cast Deflecting Swat on the Bolt. What happens?",
+    "expect": [
+      "Lightning Bolt now targets opponent"
+    ],
+    "notExpect": [
+      "You take 3 damage",
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

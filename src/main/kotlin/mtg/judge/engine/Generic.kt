@@ -35,6 +35,8 @@ object Generic {
             "spell", "instant", "instant spell", "noncreature spell" -> "Instant"
             "sorcery", "sorcery spell" -> "Sorcery"
             "creature", "creature spell" -> "Creature"
+            // "I control a commander": what matters is that it is one, not which card it is.
+            "commander" -> "Legendary Creature"
             "artifact", "artifact spell" -> "Artifact"
             "enchantment", "enchantment spell" -> "Enchantment"
             "planeswalker", "planeswalker card" -> "Planeswalker"
@@ -44,7 +46,8 @@ object Generic {
             else -> return if (n.endsWith("s") && n.length > 2) spell(n.dropLast(1)) else null
         }
         val article = if (n.first() in "aeiou") "an" else "a"
-        return OracleParser.parse("generic-$n", "$article $n", typeLine, "{1}", 1.0, "", if (typeLine == "Creature") "1" else null, if (typeLine == "Creature") "1" else null, emptyList(), "")
+        val pt = if (typeLine.endsWith("Creature")) (if (n == "commander") "2" else "1") else null
+        return OracleParser.parse("generic-$n", "$article $n", typeLine, "{1}", 1.0, "", pt, pt, emptyList(), "")
     }
 
     private val creatureRe = Regex("""^(?:(\d+)/(\d+) )?((?:[a-z]+ )*?)creature(?: with (.+))?$""")
