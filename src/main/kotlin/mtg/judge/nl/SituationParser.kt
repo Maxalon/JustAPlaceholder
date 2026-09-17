@@ -504,6 +504,9 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(casts?|plays?) ((?:$possPrefix|an? )?c\d+) with ((?:haste|flying|trample|lifelink|deathtouch|vigilance|first strike|double strike|menace|hexproof|indestructible|reach))\b"""), "$1 $2, $2 has $3")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
+            // "What happens if I Doom Blade it?" / "if I block, do I die?": the "if" is the question, not a condition.
+            .replace(Regex("""^what happens if """), "")
+            .replace(Regex("""^if (?=(?:i|we|they|he|she|my opponent|the opponent|@\w+)\b)"""), "")
         // "they use Doom Blade on my Bears": a cast, but only for a card that is cast — "they use Maze on it"
         // names a land whose ability is activated, and reading that as a cast loses the ability entirely.
         t2 = Regex("""\b(?:uses?|used|plays?|played) ((?:an? |the |my |their )?)(c\d+) (?:at|on|against|targeting) """).replace(t2) { r ->

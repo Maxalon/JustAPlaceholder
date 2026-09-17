@@ -9960,5 +9960,16 @@
       "Not modeled"
     ],
     "cite": []
+  },
+  {
+    "id": "what-happens-if-i",
+    "text": "My opponent has Grizzly Bears. What happens if I Doom Blade it?",
+    "expect": [
+      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
