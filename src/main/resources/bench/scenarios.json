@@ -8840,5 +8840,47 @@
     "cite": [
       "111.1"
     ]
+  },
+  {
+    "id": "thalia-heretic-cathar-taps-a-creature",
+    "text": "My opponent controls Thalia, Heretic Cathar and I cast Grizzly Bears. Is it tapped?",
+    "expect": [
+      "Grizzly Bears is tapped"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "thalia-heretic-cathar-spares-a-basic",
+    "text": "My opponent controls Thalia, Heretic Cathar and I play a Mountain. Is it tapped?",
+    "expect": [
+      "Mountain is untapped"
+    ],
+    "notExpect": [
+      "Mountain is tapped"
+    ],
+    "cite": []
+  },
+  {
+    "id": "lodestone-golem-taxes-a-nonartifact",
+    "text": "I control Lodestone Golem. How much does my Lightning Bolt cost?",
+    "expect": [
+      "2 mana in all"
+    ],
+    "notExpect": [],
+    "cite": [
+      "601.2f"
+    ]
+  },
+  {
+    "id": "lodestone-golem-spares-an-artifact",
+    "text": "I control Lodestone Golem. How much does my Sol Ring cost?",
+    "expect": [
+      "Nothing on the battlefield changes it"
+    ],
+    "notExpect": [
+      "more"
+    ],
+    "cite": []
   }
 ]

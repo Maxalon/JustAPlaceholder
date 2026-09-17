@@ -457,6 +457,10 @@ object OracleParser {
                 "nonbasic lands" -> ObjFilter(setOf(Kind.LAND), raw = "nonbasic land")
                 "permanents" -> ObjFilter(setOf(Kind.PERMANENT), raw = "permanent")
                 "artifacts, creatures, and lands" -> ObjFilter(setOf(Kind.ARTIFACT, Kind.CREATURE, Kind.LAND), raw = "artifact, creature, or land")
+                // Thalia, Heretic Cathar: "nonbasic" qualifies only the lands, so this is two effects.
+                "creatures and nonbasic lands" -> return listOf(
+                    StaticEffect.OthersEnterTapped(ObjFilter(setOf(Kind.CREATURE), raw = "creature"), m.groupValues[2].trim().equals("your opponents control", true)),
+                    StaticEffect.OthersEnterTapped(ObjFilter(setOf(Kind.LAND), raw = "nonbasic land"), m.groupValues[2].trim().equals("your opponents control", true)))
                 else -> return@let
             }
             val nonbasic = what == "nonbasic lands"
@@ -594,10 +598,10 @@ object OracleParser {
             val whose = when { line.contains("your opponents cast", true) -> Who.OPPONENT; line.contains("you cast", true) -> Who.YOU; else -> null }
             return listOf(StaticEffect.CostTax(f, m.groupValues[2].toInt() * (if (m.groupValues[3].lowercase() == "less") -1 else 1), whose))
         }
-        Regex("""^(Noncreature spells|Creature spells|Instant and sorcery spells|Spells|Artifact spells|Enchantment spells|Artifact and enchantment spells|Artifact, creature, and enchantment spells)(?: your opponents cast| you cast)? cost \{(\d+)\} (more|less) to cast\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+        Regex("""^(Noncreature spells|Nonartifact spells|Creature spells|Instant and sorcery spells|Spells|Artifact spells|Enchantment spells|Artifact and enchantment spells|Artifact, creature, and enchantment spells)(?: your opponents cast| you cast)? cost \{(\d+)\} (more|less) to cast\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val f = when (m.groupValues[1].lowercase()) {
                 "artifact and enchantment spells" -> ObjFilter(setOf(Kind.ARTIFACT, Kind.ENCHANTMENT), raw = "artifact or enchantment spell")
-                "artifact, creature, and enchantment spells" -> ObjFilter(setOf(Kind.ARTIFACT, Kind.CREATURE, Kind.ENCHANTMENT), raw = "artifact, creature, or enchantment spell") "noncreature spells" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE), raw = "noncreature spell"); "creature spells" -> ObjFilter(setOf(Kind.CREATURE), raw = "creature spell"); "instant and sorcery spells" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE, Kind.ARTIFACT, Kind.ENCHANTMENT, Kind.PLANESWALKER, Kind.LAND), raw = "instant or sorcery spell"); "artifact spells" -> ObjFilter(setOf(Kind.ARTIFACT), raw = "artifact spell"); "enchantment spells" -> ObjFilter(setOf(Kind.ENCHANTMENT), raw = "enchantment spell"); else -> ObjFilter(setOf(Kind.SPELL), raw = "spell") }
+                "artifact, creature, and enchantment spells" -> ObjFilter(setOf(Kind.ARTIFACT, Kind.CREATURE, Kind.ENCHANTMENT), raw = "artifact, creature, or enchantment spell") "nonartifact spells" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.ARTIFACT), raw = "nonartifact spell"); "noncreature spells" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE), raw = "noncreature spell"); "creature spells" -> ObjFilter(setOf(Kind.CREATURE), raw = "creature spell"); "instant and sorcery spells" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE, Kind.ARTIFACT, Kind.ENCHANTMENT, Kind.PLANESWALKER, Kind.LAND), raw = "instant or sorcery spell"); "artifact spells" -> ObjFilter(setOf(Kind.ARTIFACT), raw = "artifact spell"); "enchantment spells" -> ObjFilter(setOf(Kind.ENCHANTMENT), raw = "enchantment spell"); else -> ObjFilter(setOf(Kind.SPELL), raw = "spell") }
             val whose = when { line.contains("your opponents cast", true) -> Who.OPPONENT; line.contains("you cast", true) -> Who.YOU; else -> null }
             return listOf(StaticEffect.CostTax(f, m.groupValues[2].toInt() * (if (m.groupValues[3].lowercase() == "less") -1 else 1), whose))
         }
