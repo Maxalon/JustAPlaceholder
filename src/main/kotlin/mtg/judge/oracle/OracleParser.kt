@@ -169,7 +169,7 @@ object OracleParser {
         val cond = m.groupValues[2].trim().replace(Regex("""^Landfall — """), "")
         val trigger = parseTrigger(cond)
         // "Whenever ~ attacks, it gets +1/+1" / "…, put a +1/+1 counter on it": in a self-trigger, a leading "it" is ~.
-        val selfTrigger = trigger is Trigger.ThisDies || trigger is Trigger.ThisLeavesBattlefield || trigger is Trigger.ThisAttacks || trigger is Trigger.ThisEnters || trigger is Trigger.ThisDealsDamage || trigger is Trigger.ThisBecomesBlocked || trigger is Trigger.ThisBecomesBlockedByCreature || trigger is Trigger.ThisBlocks ||
+        val selfTrigger = trigger is Trigger.ThisDies || trigger is Trigger.ThisLeavesBattlefield || trigger is Trigger.ThisAttacks || trigger is Trigger.ThisEnters || trigger is Trigger.ThisDealsDamage || trigger is Trigger.ThisBecomesBlocked || trigger is Trigger.ThisBecomesBlockedByCreature || trigger is Trigger.ThisBlocks || trigger is Trigger.ThisAttacksUnblocked ||
             trigger is Trigger.ThisBecomesTarget || trigger is Trigger.ThisBecomesTapped || trigger is Trigger.ThisIsDealtDamage || trigger is Trigger.ThisCast
         val effText = if (selfTrigger) selfEffText(m.groupValues[3]) else m.groupValues[3]
         // "Whenever a creature you control attacks alone, it gains double strike / gets +2/+2 until end of turn": the attacking creature.
@@ -246,6 +246,7 @@ object OracleParser {
         if (Regex("""^~ becomes tapped$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBecomesTapped
         if (Regex("""^you cycle ~$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisCycled
         if (Regex("""^~ blocks$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBlocks
+        if (Regex("""^~ attacks and isn't blocked$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisAttacksUnblocked
         Regex("""^(.+?) attacks$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m -> if (!m.groupValues[1].equals("~", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Trigger.PermanentAttacks(f) } }
         Regex("""^(.+?) deals combat damage to a player$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m -> if (!m.groupValues[1].equals("~", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Trigger.PermanentDealsCombatDamageToPlayer(f) } }
         // Umezawa's Jitte: "whenever equipped creature deals combat damage" — to a blocker as well as to a player.
@@ -487,6 +488,11 @@ object OracleParser {
             val nonbasic = what == "nonbasic lands"
             return listOf(StaticEffect.OthersEnterTapped(if (nonbasic) f.copy(raw = "nonbasic land") else f, m.groupValues[2].trim().equals("your opponents control", true)))
         }
+        // "If you control two or more other lands, ~ enters tapped." — the same replacement the other way round.
+        Regex("""^if (.+?), ~ enters(?: the battlefield)? tapped\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val cond = parseCondition(m.groupValues[1]) ?: return emptyList()
+            return listOf(StaticEffect.EntersTapped(onlyIf = cond))
+        }
         Regex("""^~ enters(?: the battlefield)? tapped unless (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val cond = parseCondition(m.groupValues[1]) ?: return emptyList()
             return listOf(StaticEffect.EntersTapped(cond))
@@ -496,6 +502,10 @@ object OracleParser {
         Regex("""^permanents entering(?: the battlefield)? don't cause abilities of permanents your opponents control to trigger\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.NoEtbTriggersForOpponents) }
         Regex("""^creatures can't attack you(?: or planeswalkers you control)? unless their controller pays (\{[^}]+\}(?:\{[^}]+\})*) for each creature they control that's attacking you(?: or planeswalkers you control)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.AttackTax(m.groupValues[1])) }
         Regex("""^creatures entering(?: the battlefield)?( or dying)? don't cause abilities to trigger\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.NoEtbTriggers(m.groupValues[1].isNotEmpty())) }
+        Regex("""^~ can block only (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val f = parseFilter(m.groupValues[1], Kind.CREATURE)
+            return if (f.verifiable) listOf(StaticEffect.BlockOnly(f)) else emptyList()
+        }
         Regex("""^~ can't be blocked by (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val f = parseFilter(m.groupValues[1], Kind.CREATURE)
             return if (f.verifiable) listOf(StaticEffect.Cant("be blocked", f)) else emptyList()
@@ -681,7 +691,10 @@ object OracleParser {
             val n = m.groupValues[1].takeIf { it.isNotEmpty() }?.let { number(it) } ?: 1
             // "a Plains or an Island": either land type counts.
             val what = m.groupValues[2].replace(Regex("""\s+or\s+an?\s+""", RegexOption.IGNORE_CASE), " or ")
-            val f = parseFilter(what, Kind.PERMANENT).let { it.copy(controller = Who.YOU) }
+            // parseFilter drops the word "other"; here it is the difference between counting the permanent the
+            // condition is on and not counting it ("two or more other lands" on the land that is entering).
+            val other = Regex("""^(?:other|another)\b""", RegexOption.IGNORE_CASE).containsMatchIn(what.trim()) || m.groupValues[0].contains(" another ", true)
+            val f = parseFilter(what, Kind.PERMANENT).let { it.copy(controller = Who.YOU, other = other) }
             return if (f.verifiable) Condition.ControlsMatching(f, n) else null
         }
         return null
@@ -711,7 +724,8 @@ object OracleParser {
         if (Regex("""^protection from colou?rless or from the colou?r of your choice$""", RegexOption.IGNORE_CASE).matches(text.trim().trimEnd('.')))
             return setOf("protection from the color of your choice")
         val parts = text.lowercase().trimEnd('.').replace(" and from ", " and protection from ").split(Regex(""",\s*|\s+and\s+""")).map { it.trim() }.filter { it.isNotEmpty() }
-        val ok = parts.isNotEmpty() && parts.all { it in keywordList || Regex("""^protection from (?:white|blue|black|red|green|colorless|everything|colored spells|spells|artifacts|creatures|instants|sorceries|planeswalkers|the color of your choice|[a-z]+)$""").matches(it) }
+        val ok = parts.isNotEmpty() && parts.all { it in keywordList || Regex("""^ward (?:\{[^}]+\})+$""").matches(it) ||
+            Regex("""^protection from (?:white|blue|black|red|green|colorless|everything|colored spells|spells|artifacts|creatures|instants|sorceries|planeswalkers|the color of your choice|[a-z]+)$""").matches(it) }
         return if (ok) parts.toSet() else null
     }
 
@@ -844,7 +858,10 @@ object OracleParser {
     private val gainLifeRe = Regex("""^(you|target player|that player|each player|each opponent|its controller) gains? (\d+) life\.?$""", RegexOption.IGNORE_CASE)
     private val loseLifeRe = Regex("""^(you|target player|that player|they|each opponent|each player|its controller|that creature's controller) loses? (\d+|X) life\.?$""", RegexOption.IGNORE_CASE)
 
-    private val selfPumpRe = Regex("""^~ gets ([+-]\d+)/([+-]\d+) until end of turn\.?$""", RegexOption.IGNORE_CASE)
+    // "until end of combat" is taken as "until end of turn": the engine plays out one combat and nothing after it
+    // asks about the difference. A card that pumps until end of combat and is then asked about a second combat
+    // would be answered wrongly, and extra combats aren't modeled at all.
+    private val selfPumpRe = Regex("""^~ gets ([+-]\d+)/([+-]\d+) until end of (?:turn|combat)\.?$""", RegexOption.IGNORE_CASE)
     private val massPumpRe = Regex("""^(?:all |each )?(.+?) (?:get|gets) ([+-]\d+)/([+-]\d+) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val massPumpGainRe = Regex("""^(?:all |each )?(.+?) (?:get|gets) ([+-]\d+)/([+-]\d+) and (?:gain|gains) (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val gainControlRe = Regex("""^gain control of target (.+?)( until end of turn)?\.?$""", RegexOption.IGNORE_CASE)

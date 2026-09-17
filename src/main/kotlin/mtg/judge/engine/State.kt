@@ -176,6 +176,8 @@ class GameState(
     val combatDamageMuted = mutableSetOf<String>()
     /** Spells cast this turn, per player (storm counts, Aetherflux Reservoir). */
     val spellsThisTurn = mutableMapOf<String, Int>()
+    /** Attackers whose "attacks and isn't blocked" trigger has already been put on the stack this combat. */
+    val unblockedTriggered = mutableSetOf<String>()
     /** How many times each permanent has been targeted, for "the first time each turn" triggers. A situation is one turn. */
     val targetedThisTurn = mutableMapOf<String, Int>()
     /** The spells each player has cast this turn, for limits that only count some of them (Ethersworn Canonist). */
@@ -371,7 +373,8 @@ class GameState(
     /** Ward cost on an object, if any ("Ward {2}", "Ward—Pay 3 life"). */
     fun wardCost(obj: GameObject): String? = obj.def.abilities.filterIsInstance<StaticAbility>().firstNotNullOfOrNull { a ->
         Regex("""^Ward(?:\s*[—-]\s*|\s+)(.+?)\.?$""", RegexOption.IGNORE_CASE).find(a.text)?.groupValues?.get(1)
-    }
+    // A ward granted for the turn (an animated creature-land, say) counts the same as a printed one.
+    } ?: obj.tempKeywords.firstNotNullOfOrNull { k -> Regex("""^ward(?:\s*[—-]\s*|\s+)(.+)$""", RegexOption.IGNORE_CASE).find(k)?.groupValues?.get(1) }
 
     /** "3/3 (2/2, +1/+1 from Glorious Anthem, +0/+0 …)" for traces and echoes. */
     fun describePt(obj: GameObject): String {

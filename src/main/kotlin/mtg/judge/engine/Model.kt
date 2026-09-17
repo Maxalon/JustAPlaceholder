@@ -94,6 +94,8 @@ sealed interface Trigger {
     data object ThisBecomesBlockedByCreature : Trigger
     /** "Whenever ~ blocks". */
     data object ThisBlocks : Trigger
+    /** "Whenever ~ attacks and isn't blocked" — checked once blockers are declared (509.1h). */
+    data object ThisAttacksUnblocked : Trigger
     /** "Whenever ~ becomes the target of a spell or ability". */
     /** "Whenever ~ becomes the target of a spell or ability (an opponent controls) (for the first time each turn)". */
     data class ThisBecomesTarget(val opponentsOnly: Boolean = false, val firstEachTurn: Boolean = false) : Trigger
@@ -343,7 +345,7 @@ sealed interface StaticEffect {
     data class LoseAbilitiesSetPt(val filter: ObjFilter, val power: Int, val toughness: Int) : StaticEffect
     /** "~ enters tapped" (614.1c replacement on entering). */
     /** "~ enters tapped" / "~ enters tapped unless [condition]". */
-    data class EntersTapped(val unless: Condition? = null) : StaticEffect
+    data class EntersTapped(val unless: Condition? = null, val onlyIf: Condition? = null) : StaticEffect
     /** Blind Obedience, Urabrask, Kismet: "[Permanents] your opponents control enter tapped." */
     data class OthersEnterTapped(val filter: ObjFilter, val opponentsOnly: Boolean) : StaticEffect
     /** "~ enters with N +1/+1 counters on it" (614.1c). count null = X. */
@@ -375,6 +377,8 @@ sealed interface StaticEffect {
      * [unlessDefenderControls] / [unlessYouControl]: "~ can't attack unless defending player controls an Island",
      * "~ can't attack unless you control another artifact" — a restriction checked as attackers are declared.
      */
+    /** "~ can block only creatures with flying" — a blocking restriction on ~ itself (509.1b). */
+    data class BlockOnly(val filter: ObjFilter) : StaticEffect
     data class Cant(val what: String, val by: ObjFilter? = null, val applies: ObjFilter? = null, val powerAboveHand: Boolean = false,
                     val unlessDefenderControls: ObjFilter? = null, val unlessYouControl: ObjFilter? = null,
                     val unlessCount: Int = 1) : StaticEffect

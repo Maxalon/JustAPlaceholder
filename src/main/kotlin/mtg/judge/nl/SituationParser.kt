@@ -1252,7 +1252,7 @@ class SituationParser(private val names: NameIndex) {
         }
         // "I control three artifacts", "they have two enchantments": permanents nobody named, counted. Cards that
         // count a type ("metalcraft") need the count to be there; without this the clause went unread.
-        Regex("""^(controls?|controlling|have|has|got|there (?:is|are))\s+(an?|\d+|two|three|four|five|six|seven|eight|nine|ten)(?: (?:more|other))? (artifacts?|enchantments?|planeswalkers?|permanents?|lands?)(?: on the battlefield| in play| out)?$""").find(c)?.let { r ->
+        Regex("""^(controls?|controlling|have|has|got|there (?:is|are))\s+(an?|one|\d+|two|three|four|five|six|seven|eight|nine|ten)(?: (?:more|other))? (artifacts?|enchantments?|planeswalkers?|permanents?|lands?)(?: on the battlefield| in play| out)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: ctx.lastOwner ?: "me"
             val n = number(r.groupValues[2]) ?: 1
             val kind = r.groupValues[3].removeSuffix("s")

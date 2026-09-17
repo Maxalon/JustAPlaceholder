@@ -910,6 +910,9 @@ class Engine(val state: GameState) {
             if (state.objects.values.any { it.isOnBattlefield() && it.controller == defender.id && "Land" in it.def.types && (it.def.subtypes.any { st -> st.equals(landType, true) } || it.def.name.equals(landType, true)) })
                 return Triple("${a.name} has $walk and ${defender.subject.lowercase()} ${defender.v("controls", "control")} a $landType, so it can't be blocked.", listOf("702.14c"), "${b.name} can't block ${a.name} ($walk).")
         }
+        b.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.BlockOnly>().firstOrNull { !state.matches(it.filter, a, b.controller, b) }?.let { r ->
+            return Triple("${b.name} can block only ${r.filter.raw}, and ${a.name} isn't one, so it can't block ${a.name}.", listOf("509.1b"), "${b.name} can't block ${a.name} (it can block only ${r.filter.raw}).")
+        }
         if (a.has("flying") && !(b.has("flying") || b.has("reach"))) return Triple("${a.name} has flying and ${b.name} has neither flying nor reach, so ${b.name} can't block it.", listOf("702.9b"), "${b.name} can't block ${a.name} (flying).")
         return null
     }
@@ -948,6 +951,14 @@ class Engine(val state: GameState) {
         for (a in attackers) if (a.has("menace")) {
             val bs = blockersOf(a)
             if (bs.size == 1) { trace.step("${a.name} has menace and can't be blocked except by two or more creatures; blocking it with only ${bs[0].name} isn't a legal block, so ${a.name} is unblocked.", "702.111b", "509.1a"); state.outcomes += "${bs[0].name} can't block ${a.name} on its own (menace)."; bs[0].blocking = null; a.wasBlocked = false }
+        }
+        // "Whenever ~ attacks and isn't blocked": the condition is checked once blockers are declared, so the
+        // trigger goes on the stack then and resolves before any combat damage.
+        val stackBefore = state.stack.size
+        for (a in attackers) if (a.wasBlocked != true && state.unblockedTriggered.add(a.id)) onEvent(GameEvent.BecomesUnblocked(a))
+        if (state.stack.size > stackBefore) {
+            trace.step("Triggers that check for an unblocked attacker go on the stack in the declare blockers step, so they resolve before the combat damage step.", "509.1h", "117.4")
+            resolveAll()
         }
         val strikers = (attackers + attackers.flatMap { blockersOf(it) }).filter { it.has("first strike") || it.has("double strike") }
         if (strikers.isNotEmpty()) {
@@ -1035,6 +1046,7 @@ class Engine(val state: GameState) {
         /** Fired once per blocker, unlike BecomesBlocked which fires only when the attacker first becomes blocked. */
         data class BecomesBlockedBy(val obj: GameObject, val blocker: GameObject) : GameEvent
         data class Blocks(val obj: GameObject) : GameEvent
+        data class BecomesUnblocked(val obj: GameObject) : GameEvent
         data class BecomesTarget(val obj: GameObject, val by: String, val sourceId: String) : GameEvent
         data class BecomesTapped(val obj: GameObject) : GameEvent
         data class Cycled(val obj: GameObject) : GameEvent
@@ -1120,6 +1132,7 @@ class Engine(val state: GameState) {
                 is GameEvent.BecomesBlocked -> "${event.obj.name} becoming blocked"
                 is GameEvent.BecomesBlockedBy -> "${event.obj.name} becoming blocked by ${event.blocker.name}"
                 is GameEvent.Blocks -> "${event.obj.name} blocking"
+                is GameEvent.BecomesUnblocked -> "${event.obj.name} attacking and not being blocked"
                 is GameEvent.BecomesTarget -> "${event.obj.name} becoming the target of a spell or ability"
                 is GameEvent.BecomesTapped -> "${event.obj.name} becoming tapped"
                 is GameEvent.Cycled -> "${event.obj.name} being cycled"
@@ -1186,6 +1199,7 @@ class Engine(val state: GameState) {
         Trigger.ThisBecomesBlocked -> event is GameEvent.BecomesBlocked && event.obj === obj
         Trigger.ThisBecomesBlockedByCreature -> event is GameEvent.BecomesBlockedBy && event.obj === obj
         Trigger.ThisBlocks -> event is GameEvent.Blocks && event.obj === obj
+        Trigger.ThisAttacksUnblocked -> event is GameEvent.BecomesUnblocked && event.obj === obj
         is Trigger.ThisBecomesTarget -> event is GameEvent.BecomesTarget && event.obj === obj &&
             (!trigger.opponentsOnly || event.by != obj.controller) &&
             // "for the first time each turn": only the first one counts, and the count is kept per permanent.
@@ -2103,7 +2117,8 @@ class Engine(val state: GameState) {
         for (e in o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }) when (e) {
             is StaticEffect.EntersTapped -> {
                 if (e.unless != null && state.conditionHolds(e.unless, o)) trace.step("${o.name} would enter tapped unless its condition is met; it is, so it enters untapped.", "614.1c", "614.12")
-                else { o.tapped = true; trace.step("${o.name} enters tapped (a replacement effect on how it enters${if (e.unless != null) "; its condition isn't met" else ""}).", "614.1c", "614.12") }
+                else if (e.onlyIf != null && !state.conditionHolds(e.onlyIf, o)) trace.step("${o.name} enters tapped only if ${state.describeCondition(e.onlyIf)}, which isn't so, so it enters untapped.", "614.1c", "614.12")
+                else { o.tapped = true; trace.step("${o.name} enters tapped (a replacement effect on how it enters${if (e.unless != null) "; its condition isn't met" else if (e.onlyIf != null) "; its condition is met" else ""}).", "614.1c", "614.12") }
             }
             is StaticEffect.EntersWithCounters -> if (e.onlyIfKicked && !o.wasKicked) {
                 trace.step("${o.name} wasn't kicked, so it enters with no ${e.kind} counters.", "614.1c", "702.33d")

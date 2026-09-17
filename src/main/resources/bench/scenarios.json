@@ -9090,5 +9090,90 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "attacks-and-isnt-blocked",
+    "text": "I attack with Murk Dwellers and it isn't blocked. What happens?",
+    "expect": [
+      "Murk Dwellers is 4/2 until end of turn",
+      "opponent takes 4 damage"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "attacks-and-is-blocked-no-trigger",
+    "text": "I attack with Murk Dwellers and my opponent blocks with Grizzly Bears. What happens?",
+    "expect": [
+      "Murk Dwellers: the battlefield"
+    ],
+    "notExpect": [
+      "is 4/2",
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "can-block-only-flyers",
+    "text": "My opponent attacks with Grizzly Bears and I block with Welkin Tern. What happens?",
+    "expect": [
+      "Welkin Tern can't block Grizzly Bears",
+      "You take 2 damage"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "509.1b"
+    ]
+  },
+  {
+    "id": "can-block-only-flyers-ok",
+    "text": "My opponent attacks with Serra Angel and I block with Welkin Tern. What happens?",
+    "expect": [
+      "Welkin Tern: the battlefield"
+    ],
+    "notExpect": [
+      "can't block",
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "animated-land-with-ward",
+    "text": "I control Hall of Storm Giants and activate it. My opponent casts Doom Blade on it. What happens?",
+    "expect": [
+      "Doom Blade can't target Hall of Storm Giants"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "enters-tapped-if-you-control-lands",
+    "text": "I control three lands and play Hall of Storm Giants. Is it tapped?",
+    "expect": [
+      "Hall of Storm Giants is tapped"
+    ],
+    "notExpect": [
+      "Not modeled",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "enters-untapped-condition-unmet",
+    "text": "I control one land and play Hall of Storm Giants. Is it tapped?",
+    "expect": [
+      "Hall of Storm Giants is untapped"
+    ],
+    "notExpect": [
+      "Not modeled",
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
