@@ -1,0 +1,618 @@
+package mtg.judge.engine
+
+import mtg.judge.oracle.OracleParser
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+
+/** Exiling a graveyard, dies-replacements that also do something else, and one damage line per creature. */
+class BatchFourteenTest {
+    private fun card(name: String, type: String, text: String, cost: String = "{1}", colors: String = "", p: String? = null, t: String? = null, vararg kw: String) =
+        OracleParser.parse("oid-$name", name, type, cost, cost.count { it in "WUBRGC" } + (Regex("""\{(\d+)\}""").find(cost)?.groupValues?.get(1)?.toDouble() ?: 0.0), colors, p, t, kw.toList(), text)
+
+    private val bears = card("Grizzly Bears", "Creature — Bear", "", "{1}{G}", "G", "2", "2")
+    private val bog = card("Bojuka Bog", "Land", "Bojuka Bog enters tapped.\nWhen Bojuka Bog enters, exile target player's graveyard.", "")
+    private val kalitas = card("Kalitas, Traitor of Ghet", "Legendary Creature — Vampire Warrior", "Lifelink\nIf a nontoken creature an opponent controls would die, instead exile that card and create a 2/2 black Zombie creature token.", "{2}{B}{B}", "B", "3", "4", "Lifelink")
+    private val bolt = card("Lightning Bolt", "Instant", "Lightning Bolt deals 3 damage to any target.", "{R}", "R")
+    private val wall = card("Wall of Stone", "Creature — Wall", "Defender", "{1}{R}{R}", "R", "0", "8", "Defender")
+
+    private fun state() = GameState(listOf(Player("me", "me", 20), Player("opp", "opp", 20)), LinkedHashMap(), activePlayer = "me")
+    private fun GameState.put(id: String, def: CardDef, ctrl: String, zone: Zone = Zone.BATTLEFIELD) = add(GameObject(id, def, zone, ctrl))
+    private fun GameState.cited() = trace.steps.flatMap { it.rules }.toSet()
+
+    @Test
+    fun `bojuka bog exiles the whole graveyard at once`() {
+        val s = state(); s.put("corpse", bears, "me", Zone.GRAVEYARD); s.put("corpse2", bolt, "me", Zone.GRAVEYARD)
+        s.put("bog", bog, "opp", Zone.HAND)
+        val e = Engine(s); e.enter("bog"); e.resolveAll()
+        assertEquals(Zone.EXILE, s.obj("corpse").zone)
+        assertEquals(Zone.EXILE, s.obj("corpse2").zone)
+        assertTrue("701.13a" in s.cited())
+        assertTrue(s.assumptions.any { "target player" in it }, s.assumptions.toString())
+    }
+
+    @Test
+    fun `an empty graveyard is exiled without incident`() {
+        val s = state(); s.put("bog", bog, "opp", Zone.HAND); val e = Engine(s); e.enter("bog"); e.resolveAll()
+        assertTrue(s.trace.steps.any { it.text.contains("graveyard is empty") }, s.trace.steps.joinToString("\n") { it.text })
+    }
+
+    @Test
+    fun `kalitas exiles an opponent's dying creature and makes a zombie`() {
+        val s = state(); s.put("kal", kalitas, "me"); s.put("bears", bears, "opp")
+        val e = Engine(s); e.cast("me", bolt, listOf(Ref.Obj("bears"))); e.resolveAll()
+        assertEquals(Zone.EXILE, s.obj("bears").zone)
+        assertTrue(s.objects.values.any { it.token && it.name.contains("Zombie") }, s.objects.values.joinToString { it.name })
+        assertTrue("614.1a" in s.cited())
+    }
+
+    @Test
+    fun `kalitas leaves its controller's own creatures alone`() {
+        val s = state(); s.put("kal", kalitas, "me"); s.put("bears", bears, "me")
+        val e = Engine(s); e.cast("me", bolt, listOf(Ref.Obj("bears"))); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("bears").zone)
+        assertTrue(s.objects.values.none { it.token })
+    }
+
+    @Test
+    fun `two hits on one creature leave a single damage outcome`() {
+        val s = state(); s.put("wall", wall, "opp")
+        val e = Engine(s)
+        e.cast("me", bolt, listOf(Ref.Obj("wall"))); e.resolveAll()
+        e.cast("me", bolt, listOf(Ref.Obj("wall"))); e.resolveAll()
+        assertEquals(6, s.obj("wall").damage)
+        assertEquals(1, s.outcomes.count { it.contains("damage marked") }, s.outcomes.toString())
+        assertTrue(s.outcomes.any { it.contains("6 damage marked") }, s.outcomes.toString())
+    }
+
+    private val tower = card("Urza's Tower", "Land — Urza's Tower", "{T}: Add {C}. If you control an Urza's Mine and an Urza's Power-Plant, add {C}{C}{C} instead.", "")
+    private val mine = card("Urza's Mine", "Land — Urza's Mine", "{T}: Add {C}. If you control an Urza's Power-Plant and an Urza's Tower, add {C}{C} instead.", "")
+    private val plant = card("Urza's Power Plant", "Land — Urza's Power-Plant", "{T}: Add {C}. If you control an Urza's Mine and an Urza's Tower, add {C}{C} instead.", "")
+    private val island = card("Island", "Basic Land — Island", "{T}: Add {U}.", "")
+    private val birds = card("Birds of Paradise", "Creature — Bird", "Flying\n{T}: Add one mana of any color.", "{G}", "G", "0", "1", "Flying")
+
+    @Test
+    fun `urza lands make three only with the whole set`() {
+        val s = state(); s.put("tower", tower, "me")
+        val e = Engine(s); e.activate("me", "tower", 0, emptyList())
+        assertTrue(s.outcomes.any { it == "Urza's Tower's mana ability: add {C}." }, s.outcomes.toString())
+
+        val s2 = state(); s2.put("tower", tower, "me"); s2.put("mine", mine, "me"); s2.put("plant", plant, "me")
+        val e2 = Engine(s2); e2.activate("me", "tower", 0, emptyList())
+        assertTrue(s2.outcomes.any { it == "Urza's Tower's mana ability: add {C}{C}{C}." }, s2.outcomes.toString())
+    }
+
+    @Test
+    fun `available mana counts untapped sources and skips summoning-sick ones`() {
+        val s = state(); s.put("i1", island, "me"); s.put("i2", island, "me"); s.put("birds", birds, "me")
+        s.obj("birds").summoningSick = true
+        val e = Engine(s)
+        val said = e.manaAvailable("me")
+        assertTrue(said.startsWith("You can make 2 mana right now"), said)
+        assertTrue(said.contains("summoning sick"), said)
+        s.obj("i1").tapped = true
+        assertTrue(e.manaAvailable("me").startsWith("You can make 1 mana right now"), e.manaAvailable("me"))
+    }
+
+    private val humility = card("Humility", "Enchantment", "All creatures lose all abilities and have base power and toughness 1/1.", "{2}{W}{W}", "W")
+    private val serra = card("Serra Angel", "Creature — Angel", "Flying, vigilance", "{3}{W}{W}", "W", "4", "4", "Flying", "Vigilance")
+    private val anthem = card("Glorious Anthem", "Enchantment", "Creatures you control get +1/+1.", "{1}{W}{W}", "W")
+    private val lord = card("Lord of Atlantis", "Creature — Merfolk", "Other Merfolk creatures get +1/+1 and have islandwalk.", "{U}{U}", "U", "2", "2")
+    private val merfolk = card("Merfolk Looter", "Creature — Merfolk Rogue", "{T}: Draw a card, then discard a card.", "{1}{U}", "U", "1", "1")
+
+    @Test
+    fun `humility makes every creature a vanilla one-one`() {
+        val s = state(); s.put("hum", humility, "me"); s.put("angel", serra, "opp")
+        assertEquals(1, s.obj("angel").power); assertEquals(1, s.obj("angel").toughness)
+        assertTrue(!s.hasKeyword(s.obj("angel"), "flying"))
+        assertTrue(s.describePt(s.obj("angel")).contains("Humility"), s.describePt(s.obj("angel")))
+    }
+
+    @Test
+    fun `humility stops a lord granting anything but leaves a non-creature anthem alone`() {
+        val s = state(); s.put("hum", humility, "me"); s.put("lord", lord, "me"); s.put("fish", merfolk, "me")
+        assertEquals(1, s.obj("fish").power)
+        assertTrue(!s.hasKeyword(s.obj("fish"), "islandwalk"))
+
+        val s2 = state(); s2.put("hum", humility, "me"); s2.put("anthem", anthem, "me"); s2.put("fish", merfolk, "me")
+        assertEquals(2, s2.obj("fish").power); assertEquals(2, s2.obj("fish").toughness)
+    }
+
+    @Test
+    fun `three damage kills a serra angel under humility`() {
+        val s = state(); s.put("hum", humility, "opp"); s.put("angel", serra, "opp")
+        val e = Engine(s); e.cast("me", bolt, listOf(Ref.Obj("angel"))); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("angel").zone)
+    }
+
+    private val thoughtseize = card("Thoughtseize", "Sorcery", "Target player reveals their hand. You choose a nonland card from it. That player discards that card. You lose 2 life.", "{B}", "B")
+    private val inquisition = card("Inquisition of Kozilek", "Sorcery", "Target player reveals their hand. You choose a nonland card from it with mana value 3 or less. That player discards that card.", "{B}", "B")
+    private val forceOfWill = card("Force of Will", "Instant", "Counter target spell.", "{3}{U}{U}", "U")
+    private val forest = card("Forest", "Basic Land — Forest", "", "")
+
+    @Test
+    fun `thoughtseize takes the card the situation names`() {
+        val s = state(); s.put("bolt", bolt, "opp", Zone.HAND); s.put("land", forest, "opp", Zone.HAND)
+        val e = Engine(s); e.cast("me", thoughtseize, listOf(Ref.Player("opp"))); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("bolt").zone)
+        assertEquals(Zone.HAND, s.obj("land").zone)
+        assertEquals(18, s.player("me").life)
+        assertTrue("701.9a" in s.cited())
+    }
+
+    @Test
+    fun `inquisition leaves a card that costs too much`() {
+        val s = state(); s.put("fow", forceOfWill, "opp", Zone.HAND); s.put("bolt", bolt, "opp", Zone.HAND)
+        val e = Engine(s); e.cast("me", inquisition, listOf(Ref.Player("opp"))); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("bolt").zone)
+        assertEquals(Zone.HAND, s.obj("fow").zone)
+    }
+
+    @Test
+    fun `an unknown hand is asked about rather than guessed`() {
+        val s = state(); val e = Engine(s); e.cast("me", thoughtseize, listOf(Ref.Player("opp"))); e.resolveAll()
+        assertTrue(s.clarifications.any { it.why.contains("what is in it?") }, s.clarifications.toString())
+    }
+
+    private val therapy = card("Cabal Therapy", "Sorcery", "Choose a nonland card name. Target player reveals their hand and discards all cards with that name.", "{B}", "B")
+
+    @Test
+    fun `cabal therapy takes every copy of the named card`() {
+        val s = state()
+        s.put("b1", bolt, "opp", Zone.HAND); s.put("b2", bolt, "opp", Zone.HAND); s.put("gy", bears, "opp", Zone.HAND)
+        val e = Engine(s); e.cast("me", therapy, listOf(Ref.Player("opp")), choice = "Lightning Bolt"); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("b1").zone)
+        assertEquals(Zone.GRAVEYARD, s.obj("b2").zone)
+        assertEquals(Zone.HAND, s.obj("gy").zone)
+        assertTrue("400.7" in s.cited())
+    }
+
+    @Test
+    fun `cabal therapy with no name chosen asks instead of guessing`() {
+        val s = state(); s.put("b1", bolt, "opp", Zone.HAND)
+        val e = Engine(s); e.cast("me", therapy, listOf(Ref.Player("opp"))); e.resolveAll()
+        assertEquals(Zone.HAND, s.obj("b1").zone)
+        assertTrue(s.clarifications.any { it.why.contains("which name was chosen?") }, s.clarifications.toString())
+    }
+
+    private val cradle = card("Gaea's Cradle", "Legendary Land", "{T}: Add {G} for each creature you control.", "")
+    private val coffers = card("Cabal Coffers", "Land", "{2}, {T}: Add {B} for each Swamp you control.", "")
+    private val swamp = card("Swamp", "Basic Land — Swamp", "", "")
+
+    @Test
+    fun `gaeas cradle counts the creatures on the battlefield`() {
+        val s = state(); s.put("cradle", cradle, "me"); s.put("b1", bears, "me"); s.put("b2", bears, "me")
+        val e = Engine(s); e.activate("me", "cradle", 0, emptyList())
+        assertTrue(s.outcomes.any { it == "Gaea's Cradle's mana ability: add {G}{G}." }, s.outcomes.toString())
+
+        val s2 = state(); s2.put("cradle", cradle, "me")
+        val e2 = Engine(s2); e2.activate("me", "cradle", 0, emptyList())
+        assertTrue(s2.outcomes.any { it.contains("no mana") }, s2.outcomes.toString())
+    }
+
+    @Test
+    fun `cabal coffers counts only swamps`() {
+        val s = state(); s.put("coffers", coffers, "me"); s.put("s1", swamp, "me"); s.put("s2", swamp, "me"); s.put("bear", bears, "me")
+        val e = Engine(s); e.activate("me", "coffers", 0, emptyList())
+        assertTrue(s.outcomes.any { it == "Cabal Coffers's mana ability: add {B}{B}." }, s.outcomes.toString())
+    }
+
+    private val chalice = card("Chalice of the Void", "Artifact", "Chalice of the Void enters with X charge counters on it.\nWhenever a player casts a spell with mana value equal to the number of charge counters on Chalice of the Void, counter that spell.", "{X}{X}")
+    private val counterspell = card("Counterspell", "Instant", "Counter target spell.", "{U}{U}", "U")
+
+    @Test
+    fun `chalice counters a spell whose mana value matches its counters`() {
+        val s = state(); s.put("chalice", chalice, "me"); s.obj("chalice").counters["charge"] = 1
+        val e = Engine(s); e.cast("opp", bolt, listOf(Ref.Player("me"))); e.resolveAll()
+        assertEquals(20, s.player("me").life)
+        assertTrue(s.outcomes.any { it == "Lightning Bolt is countered." }, s.outcomes.toString())
+        assertTrue("701.6a" in s.cited())
+    }
+
+    @Test
+    fun `chalice leaves a spell of another mana value alone`() {
+        val s = state(); s.put("chalice", chalice, "me"); s.obj("chalice").counters["charge"] = 2
+        val e = Engine(s); e.cast("opp", bolt, listOf(Ref.Player("me"))); e.resolveAll()
+        assertEquals(17, s.player("me").life)
+
+        val s2 = state(); s2.put("chalice", chalice, "me"); s2.obj("chalice").counters["charge"] = 2
+        val e2 = Engine(s2); e2.cast("opp", counterspell, emptyList()); e2.resolveAll()
+        assertTrue(s2.outcomes.any { it == "Counterspell is countered." }, s2.outcomes.toString())
+    }
+
+    private val nykthos = card("Nykthos, Shrine to Nyx", "Legendary Land", "{T}: Add {C}.\n{2}, {T}: Choose a color. Add an amount of mana of that color equal to your devotion to that color.", "")
+    private val elves = card("Llanowar Elves", "Creature — Elf Druid", "{T}: Add {G}.", "{G}", "G", "1", "1")
+
+    @Test
+    fun `nykthos counts devotion from mana costs`() {
+        val s = state(); s.put("nyk", nykthos, "me"); s.put("e1", elves, "me"); s.put("e2", elves, "me")
+        val e = Engine(s); e.activate("me", "nyk", 1, emptyList())
+        assertTrue(s.outcomes.any { it == "Nykthos, Shrine to Nyx's mana ability: add {G}{G}." }, s.outcomes.toString())
+        assertTrue("700.5" in s.cited())
+    }
+
+    @Test
+    fun `a stated devotion is used as given`() {
+        val s = state(); s.put("nyk", nykthos, "me"); s.player("me").devotion['G'] = 5
+        val e = Engine(s); e.activate("me", "nyk", 1, emptyList())
+        assertTrue(s.outcomes.any { it == "Nykthos, Shrine to Nyx's mana ability: add {G}{G}{G}{G}{G}." }, s.outcomes.toString())
+    }
+
+    private val narset = card("Narset, Parter of Veils", "Legendary Planeswalker — Narset", "Each opponent can't draw more than one card each turn.\n\u22122: Look at the top four cards of your library.", "{1}{U}{U}", "U")
+    private val brainstorm2 = card("Brainstorm", "Instant", "Draw three cards.", "{U}", "U")
+    private val priest = card("Containment Priest", "Creature — Human Cleric", "Flash\nIf a nontoken creature would enter and it wasn't cast, exile it instead.", "{1}{W}", "W", "2", "2", "Flash")
+    private val cage = card("Grafdigger's Cage", "Artifact", "Creature cards in graveyards and libraries can't enter the battlefield.", "{1}")
+    private val vial = card("Aether Vial", "Artifact", "{T}: You may put a creature card with mana value equal to the number of charge counters on Aether Vial from your hand onto the battlefield.", "{1}")
+
+    @Test
+    fun `narset limits an opponent's draws but not its controller's`() {
+        val s = state(); s.put("narset", narset, "me")
+        val e = Engine(s); e.cast("opp", brainstorm2, emptyList()); e.resolveAll()
+        assertEquals(1, s.player("opp").drew)
+        assertTrue(s.outcomes.any { it.contains("only 1 card of the 3") }, s.outcomes.toString())
+
+        val s2 = state(); s2.put("narset", narset, "me")
+        val e2 = Engine(s2); e2.cast("me", brainstorm2, emptyList()); e2.resolveAll()
+        assertEquals(3, s2.player("me").drew)
+    }
+
+    @Test
+    fun `containment priest exiles a creature that enters without being cast`() {
+        val s = state(); s.put("priest", priest, "opp"); s.put("vial", vial, "me"); s.obj("vial").counters["charge"] = 2
+        s.put("bear", bears, "me", Zone.HAND)
+        val e = Engine(s); e.activate("me", "vial", 0, emptyList()); e.resolveAll()
+        assertEquals(Zone.EXILE, s.obj("bear").zone)
+        assertTrue("614.1a" in s.cited())
+    }
+
+    @Test
+    fun `grafdiggers cage keeps a creature in the graveyard`() {
+        val s = state(); s.put("cage", cage, "opp"); s.put("vial", vial, "me"); s.obj("vial").counters["charge"] = 2
+        s.put("bear", bears, "me", Zone.HAND)
+        val e = Engine(s); e.activate("me", "vial", 0, emptyList()); e.resolveAll()
+        // The Cage only stops graveyards and libraries, so a card from hand still enters.
+        assertEquals(Zone.BATTLEFIELD, s.obj("bear").zone)
+    }
+
+    private val ruleOfLaw = card("Rule of Law", "Enchantment", "Each player can't cast more than one spell each turn.", "{2}{W}", "W")
+    private val canonist = card("Ethersworn Canonist", "Artifact Creature — Human Cleric", "Each player who has cast a nonartifact spell this turn can't cast additional nonartifact spells.", "{1}{W}", "W", "2", "2")
+    private val solRing = card("Sol Ring", "Artifact", "{T}: Add {C}{C}.", "{1}")
+    private val restInPeace = card("Rest in Peace", "Enchantment", "When Rest in Peace enters, exile all cards from all graveyards.\nIf a card would be put into a graveyard from anywhere, exile it instead.", "{1}{W}", "W")
+    private val goyf = card("Tarmogoyf", "Creature — Lhurgoyf", "Tarmogoyf's power is equal to the number of card types among cards in all graveyards and its toughness is equal to that number plus 1.", "{1}{G}", "G")
+
+    @Test
+    fun `rule of law stops the second spell of a turn`() {
+        val s = state(); s.put("law", ruleOfLaw, "opp")
+        val e = Engine(s)
+        assertTrue(e.cast("me", bolt, listOf(Ref.Player("opp"))) != null)
+        assertTrue(e.cast("me", counterspell, emptyList()) == null)
+        assertTrue(s.outcomes.any { it.contains("can't be cast (Rule of Law)") }, s.outcomes.toString())
+    }
+
+    @Test
+    fun `ethersworn canonist counts only nonartifact spells`() {
+        val s = state(); s.put("can", canonist, "opp")
+        val e = Engine(s)
+        assertTrue(e.cast("me", bolt, listOf(Ref.Player("opp"))) != null)
+        assertTrue(e.cast("me", solRing, emptyList()) != null)
+        assertTrue(e.cast("me", counterspell, emptyList()) == null)
+        assertTrue(s.outcomes.any { it.contains("can't be cast (Ethersworn Canonist)") }, s.outcomes.toString())
+    }
+
+    @Test
+    fun `rest in peace means nothing sits in a graveyard`() {
+        val s = state(); s.put("rip", restInPeace, "me"); s.put("corpse", bolt, "me", Zone.GRAVEYARD)
+        val e = Engine(s); e.emptyGraveyardsUnderReplacement()
+        assertEquals(Zone.EXILE, s.obj("corpse").zone)
+        s.put("goyf", goyf, "me")
+        assertEquals(0, s.obj("goyf").power)
+    }
+
+    private val norn = card("Elesh Norn, Mother of Machines", "Legendary Creature — Phyrexian Praetor", "Vigilance\nIf a permanent entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.\nPermanents entering don't cause abilities of permanents your opponents control to trigger.", "{4}{W}", "W", "4", "7", "Vigilance")
+    private val soulWarden = card("Soul Warden", "Creature — Human Cleric", "Whenever another creature enters, you gain 1 life.", "{W}", "W", "1", "1")
+
+    @Test
+    fun `elesh norn doubles her controller's triggers and mutes the opponents'`() {
+        val s = state(); s.put("norn", norn, "me"); s.put("warden", soulWarden, "me")
+        s.put("newcomer", bears, "me", Zone.HAND)
+        val e = Engine(s); e.enter("newcomer"); e.resolveAll()
+        assertEquals(22, s.player("me").life)
+
+        val s2 = state(); s2.put("norn", norn, "me"); s2.put("warden", soulWarden, "opp")
+        s2.put("newcomer", bears, "opp", Zone.HAND)
+        val e2 = Engine(s2); e2.enter("newcomer"); e2.resolveAll()
+        assertEquals(20, s2.player("opp").life)
+        assertTrue(s2.trace.steps.any { it.text.contains("doesn't trigger at all") }, s2.trace.steps.joinToString("\n") { it.text })
+    }
+
+    private val ascendant = card("Serra Ascendant", "Creature — Human Monk", "Lifelink\nAs long as you have 30 or more life, Serra Ascendant gets +5/+5 and has flying.", "{W}", "W", "1", "1", "Lifelink")
+
+    @Test
+    fun `serra ascendant grows once its controller is high enough`() {
+        val s = state(); s.put("asc", ascendant, "me")
+        assertEquals(1, s.obj("asc").power)
+        assertTrue(!s.hasKeyword(s.obj("asc"), "flying"))
+        s.player("me").life = 30
+        assertEquals(6, s.obj("asc").power); assertEquals(6, s.obj("asc").toughness)
+        assertTrue(s.hasKeyword(s.obj("asc"), "flying"))
+    }
+
+    private val clamp = card("Skullclamp", "Artifact — Equipment", "Equipped creature gets +1/-1.\nWhenever equipped creature dies, draw two cards.\nEquip {1}", "{1}", "", null, null, "Equip")
+
+    @Test
+    fun `an equipped creature dying triggers the equipment`() {
+        val s = state(); s.put("clamp", clamp, "me")
+        val small = card("Elf", "Creature — Elf", "", "{G}", "G", "1", "1")
+        s.put("elf", small, "me")
+        val e = Engine(s); e.activate("me", "clamp", 0, listOf(Ref.Obj("elf"))); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("elf").zone)
+        assertEquals(2, s.player("me").drew)
+    }
+
+    private val youngWolf = card("Young Wolf", "Creature — Wolf", "Undying", "{G}", "G", "1", "1", "Undying")
+    private val finks = card("Kitchen Finks", "Creature — Ouphe Soldier", "When Kitchen Finks enters, you gain 2 life.\nPersist", "{1}{G/W}{G/W}", "GW", "3", "2", "Persist")
+    private val mikaeus = card("Mikaeus, the Unhallowed", "Legendary Creature — Zombie Cleric", "Intimidate\nOther non-Human creatures you control get +1/+1 and have undying.", "{3}{B}{B}", "B", "5", "5", "Intimidate")
+    private val human = card("Elite Vanguard", "Creature — Human Soldier", "", "{W}", "W", "2", "1")
+
+    @Test
+    fun `undying brings a creature back once`() {
+        val s = state(); s.put("wolf", youngWolf, "me")
+        val e = Engine(s); e.leave("wolf", Zone.GRAVEYARD)
+        val back = s.objects.values.last { it.def.name == "Young Wolf" && it.isOnBattlefield() }
+        assertEquals(2, back.power); assertEquals(1, back.counters["+1/+1"])
+        // With the counter already on it, it stays dead.
+        e.leave(back.id, Zone.GRAVEYARD)
+        assertEquals(0, s.objects.values.count { it.def.name == "Young Wolf" && it.isOnBattlefield() })
+    }
+
+    @Test
+    fun `persist brings a creature back smaller`() {
+        val s = state(); s.put("finks", finks, "me")
+        val e = Engine(s); e.leave("finks", Zone.GRAVEYARD)
+        val back = s.objects.values.last { it.def.name == "Kitchen Finks" && it.isOnBattlefield() }
+        assertEquals(2, back.power); assertEquals(1, back.toughness)
+    }
+
+    @Test
+    fun `mikaeus grants undying to non-humans only`() {
+        val s = state(); s.put("mik", mikaeus, "me"); s.put("bear", bears, "me"); s.put("vanguard", human, "me")
+        val e = Engine(s)
+        e.leave("vanguard", Zone.GRAVEYARD)
+        assertEquals(0, s.objects.values.count { it.def.name == "Elite Vanguard" && it.isOnBattlefield() })
+        e.leave("bear", Zone.GRAVEYARD)
+        assertEquals(1, s.objects.values.count { it.def.name == "Grizzly Bears" && it.isOnBattlefield() })
+    }
+
+    private val shadow = card("Death's Shadow", "Creature — Avatar", "Death's Shadow gets -X/-X, where X is your life total.", "{B}{B}{B}", "B", "13", "13")
+
+    @Test
+    fun `death's shadow shrinks by its controller's life total`() {
+        val s = state(); s.put("shadow", shadow, "me")
+        s.player("me").life = 4
+        assertEquals(9, s.obj("shadow").power); assertEquals(9, s.obj("shadow").toughness)
+        s.player("me").life = 1
+        assertEquals(12, s.obj("shadow").power)
+        // At 13 life it is 0/0 and a state-based action puts it away.
+        s.player("me").life = 13
+        assertEquals(0, s.obj("shadow").toughness)
+        Engine(s).stateBasedActions()
+        assertEquals(Zone.GRAVEYARD, s.obj("shadow").zone)
+    }
+
+    private val skyfisher = card("Kor Skyfisher", "Creature \u2014 Kor Soldier", "Flying\nWhen Kor Skyfisher enters, return a permanent you control to its owner's hand.", "{1}{W}", "W", "2", "3", "Flying")
+    private val batterskull = card("Batterskull", "Artifact \u2014 Equipment", "Living weapon\nEquipped creature gets +4/+4 and has vigilance and lifelink.\nEquip {5}", "{5}", "", null, null, "Living weapon", "Equip")
+
+    @Test
+    fun `kor skyfisher with nothing else must return itself`() {
+        val s = state(); s.put("kor", skyfisher, "me", Zone.HAND)
+        val e = Engine(s); e.enter("kor"); e.resolveAll()
+        assertEquals(Zone.HAND, s.obj("kor").zone)
+    }
+
+    @Test
+    fun `kor skyfisher returns the cheapest other permanent and says what else it could take`() {
+        val s = state(); s.put("bear", bears, "me"); s.put("kor", skyfisher, "me", Zone.HAND)
+        val e = Engine(s); e.enter("kor"); e.resolveAll()
+        assertEquals(Zone.HAND, s.obj("bear").zone)
+        assertTrue(s.obj("kor").isOnBattlefield())
+        assertTrue(s.assumptions.any { "Kor Skyfisher" in it }, s.assumptions.toString())
+    }
+
+    @Test
+    fun `living weapon makes a germ and attaches the equipment to it before state-based actions`() {
+        val s = state(); s.put("skull", batterskull, "me", Zone.HAND)
+        val e = Engine(s); e.enter("skull"); e.resolveAll()
+        val germ = s.objects.values.single { it.def.name.contains("Germ") }
+        assertEquals(germ.id, s.obj("skull").attachedTo)
+        assertEquals(4, germ.power); assertEquals(4, germ.toughness)
+        e.stateBasedActions()
+        assertEquals(Zone.BATTLEFIELD, germ.zone)
+        assertTrue("702.92a" in s.cited())
+    }
+
+    private val heliod = card("Heliod, God of the Sun", "Legendary Enchantment Creature \u2014 God", "Indestructible\nAs long as your devotion to white is less than five, Heliod, God of the Sun isn't a creature.", "{3}{W}", "W", "5", "6", "Indestructible")
+    private val wrath = card("Wrath of God", "Sorcery", "Destroy all creatures. They can't be regenerated.", "{2}{W}{W}", "W")
+    private val thalia = card("Thalia, Guardian of Thraben", "Legendary Creature \u2014 Human Soldier", "First strike\nNoncreature spells cost {1} more to cast.", "{1}{W}", "W", "2", "1", "First strike")
+
+    @Test
+    fun `a god below its devotion threshold is not a creature`() {
+        val s = state(); s.put("heliod", heliod, "me")
+        assertTrue(s.notACreatureBecause(s.obj("heliod")) != null)
+        s.player("me").devotion['W'] = 5
+        assertEquals(null, s.notACreatureBecause(s.obj("heliod")))
+    }
+
+    @Test
+    fun `wrath misses a god that is not a creature and takes one that is`() {
+        val s = state(); s.put("heliod", heliod, "me"); s.put("wrath", wrath, "opp", Zone.HAND)
+        Engine(s).let { it.cast("opp", wrath, emptyList(), "wrath"); it.resolveAll() }
+        assertTrue(s.obj("heliod").isOnBattlefield())
+        // At five devotion it is a creature again — though this one is indestructible anyway.
+        val s2 = state(); s2.put("heliod", heliod, "me"); s2.player("me").devotion['W'] = 5
+        assertEquals(null, s2.notACreatureBecause(s2.obj("heliod")))
+    }
+
+    @Test
+    fun `a god that is not a creature cannot attack`() {
+        val s = state(); s.put("heliod", heliod, "me")
+        Engine(s).declareAttacker("me", "heliod", Ref.Player("opp"))
+        assertTrue(s.outcomes.any { "can't attack" in it }, s.outcomes.toString())
+    }
+
+    @Test
+    fun `thalia taxes a noncreature spell but not a creature spell`() {
+        val s = state(); s.put("thalia", thalia, "opp")
+        s.put("bolt", bolt, "me", Zone.HAND); s.put("bear", bears, "me", Zone.HAND)
+        val e = Engine(s)
+        assertTrue("2 mana in all" in e.spellCost("bolt"), e.spellCost("bolt"))
+        assertTrue("Nothing on the battlefield changes it" in e.spellCost("bear"), e.spellCost("bear"))
+    }
+
+    private val painter = card("Painter's Servant", "Artifact Creature \u2014 Scarecrow", "As Painter's Servant enters, choose a color.\nAll cards that aren't on the battlefield, spells, and permanents are the chosen color in addition to their other colors.", "{2}", "", "1", "3")
+
+    @Test
+    fun `painter's servant adds its colour to everything`() {
+        val s = state(); val p = s.put("painter", painter, "me"); s.put("bear", bears, "me")
+        assertEquals(setOf('G'), s.colorsOf(s.obj("bear")))
+        p.chosenName = "black"
+        assertEquals(setOf('G', 'B'), s.colorsOf(s.obj("bear")))
+        // A "nonblack creature" filter no longer matches it.
+        val nonblack = mtg.judge.oracle.OracleParser.parseFilter("nonblack creature", Kind.CREATURE)
+        assertTrue(!s.matches(nonblack, s.obj("bear"), "opp"))
+    }
+
+    private val bloodghast = card("Bloodghast", "Creature \u2014 Vampire Spirit", "Bloodghast can't block.\nWhenever a land you control enters, you may return Bloodghast from your graveyard to the battlefield.", "{B}{B}", "B", "2", "1")
+    private val jailer = card("Yixlid Jailer", "Creature \u2014 Zombie Wizard", "Cards in graveyards lose all abilities.", "{1}{B}", "B", "2", "1")
+    private val forestForGy = card("Forest", "Basic Land — Forest", "", "")
+    private val jitte = card("Umezawa's Jitte", "Legendary Artifact \u2014 Equipment", "Whenever equipped creature deals combat damage, put two charge counters on Umezawa's Jitte.\nEquip {2}", "{2}", "", null, null, "Equip")
+
+    @Test
+    fun `a landfall trigger works from the graveyard`() {
+        val s = state(); s.put("ghast", bloodghast, "me", Zone.GRAVEYARD); s.put("forest", forestForGy, "me", Zone.HAND)
+        val e = Engine(s); e.enter("forest"); e.resolveAll()
+        assertEquals(Zone.BATTLEFIELD, s.obj("ghast").zone)
+        assertTrue("603.6e" in s.cited(), s.cited().toString())
+    }
+
+    @Test
+    fun `yixlid jailer stops the graveyard trigger from happening at all`() {
+        val s = state(); s.put("jailer", jailer, "opp"); s.put("ghast", bloodghast, "me", Zone.GRAVEYARD); s.put("forest", forestForGy, "me", Zone.HAND)
+        val e = Engine(s); e.enter("forest"); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("ghast").zone)
+        assertTrue(s.trace.steps.any { "takes the abilities away" in it.text }, s.trace.steps.joinToString("\n") { it.text })
+    }
+
+    @Test
+    fun `the jitte charges on combat damage to a player`() {
+        val s = state(); s.put("bear", bears, "me").summoningSick = false
+        val j = s.put("jitte", jitte, "me"); j.attachedTo = "bear"
+        val e = Engine(s); e.declareAttacker("me", "bear", Ref.Player("opp")); e.combatDamage(); e.resolveAll()
+        assertEquals(2, s.obj("jitte").counters["charge"])
+    }
+
+    private val mutavault = card("Mutavault", "Land", "{T}: Add {C}.\n{1}: Mutavault becomes a 2/2 creature with all creature types until end of turn. It's still a land.", "")
+    private val colonnade = card("Celestial Colonnade", "Land", "{3}{W}{U}: Until end of turn, Celestial Colonnade becomes a 4/4 white and blue Elemental creature with flying and vigilance. It's still a land.", "")
+
+    @Test
+    fun `an animated land is a creature, keeps its land types and can attack`() {
+        val s = state(); val mv = s.put("mv", mutavault, "me"); mv.summoningSick = false
+        val e = Engine(s); e.activate("me", "mv", 1, emptyList()); e.resolveAll()
+        assertTrue(s.isCreature(mv)); assertEquals(2, mv.power); assertEquals(2, mv.toughness)
+        assertTrue("Land" in mv.def.types)
+        e.declareAttacker("me", "mv", Ref.Player("opp"))
+        assertTrue(mv.attacking != null, s.trace.steps.joinToString("\n") { it.text })
+    }
+
+    @Test
+    fun `an animated land takes its colours and keywords from the ability`() {
+        val s = state(); val cc = s.put("cc", colonnade, "me"); cc.summoningSick = false
+        val e = Engine(s); e.activate("me", "cc", 0, emptyList()); e.resolveAll()
+        assertEquals(4, cc.power)
+        assertTrue(s.hasKeyword(cc, "flying")); assertTrue(s.hasKeyword(cc, "vigilance"))
+        assertEquals(setOf('W', 'U'), s.colorsOf(cc))
+    }
+
+    @Test
+    fun `wrath takes an animated land and misses an unanimated one`() {
+        val s = state(); val mv = s.put("mv", mutavault, "me"); s.put("plain", mutavault, "opp")
+        mv.summoningSick = false
+        val e = Engine(s); e.activate("me", "mv", 1, emptyList()); e.resolveAll()
+        s.put("wrath", wrath, "opp", Zone.HAND)
+        e.cast("opp", wrath, emptyList(), "wrath"); e.resolveAll()
+        assertEquals(Zone.GRAVEYARD, s.obj("mv").zone)
+        assertEquals(Zone.BATTLEFIELD, s.obj("plain").zone)
+    }
+
+    private val muxus = card("Muxus, Goblin Grandee", "Legendary Creature \u2014 Goblin Noble", "Whenever Muxus, Goblin Grandee attacks, Muxus, Goblin Grandee gets +1/+1 until end of turn for each other Goblin you control.", "{4}{R}{R}", "R", "4", "4")
+    private val goblin = card("Mogg Fanatic", "Creature \u2014 Goblin", "", "{R}", "R", "1", "1")
+
+    @Test
+    fun `a self-pump for each counts the others and not itself`() {
+        val s = state(); val mx = s.put("muxus", muxus, "me"); mx.summoningSick = false
+        s.put("g1", goblin, "me"); s.put("g2", goblin, "me")
+        val e = Engine(s); e.declareAttacker("me", "muxus", Ref.Player("opp")); e.resolveAll()
+        assertEquals(6, mx.power); assertEquals(6, mx.toughness)
+        assertTrue(s.trace.steps.any { "X is 2" in it.text }, s.trace.steps.joinToString("\n") { it.text })
+    }
+
+    private val primarch = card("Kavu Primarch", "Creature \u2014 Kavu", "Kicker {5}\nIf Kavu Primarch was kicked, it enters with four +1/+1 counters on it.", "{3}{G}", "G", "3", "3", "Kicker")
+    private val eomer = card("Eomer", "Legendary Creature \u2014 Human Noble", "Eomer enters with a +1/+1 counter on it for each other Human you control.", "{2}{R}", "R", "2", "2")
+
+    @Test
+    fun `kicker decides the counters a permanent enters with`() {
+        val kicked = state(); kicked.put("kp", primarch, "me", Zone.HAND)
+        Engine(kicked).let { it.cast("me", primarch, emptyList(), "kp", kicked = true); it.resolveAll() }
+        assertEquals(4, kicked.obj("kp").counters["+1/+1"])
+
+        val plain = state(); plain.put("kp", primarch, "me", Zone.HAND)
+        Engine(plain).let { it.cast("me", primarch, emptyList(), "kp"); it.resolveAll() }
+        assertEquals(null, plain.obj("kp").counters["+1/+1"])
+    }
+
+    @Test
+    fun `a counter for each other one counts the others, not itself`() {
+        val s = state(); s.put("h1", human, "me"); s.put("h2", human, "me"); s.put("eomer", eomer, "me", Zone.HAND)
+        Engine(s).let { it.cast("me", eomer, emptyList(), "eomer"); it.resolveAll() }
+        assertEquals(2, s.obj("eomer").counters["+1/+1"])
+    }
+
+    private val sentinels = card("Palace Sentinels", "Creature \u2014 Human Soldier", "When Palace Sentinels enters, you become the monarch.", "{3}{W}", "W", "2", "2")
+
+    @Test
+    fun `only one player is the monarch at a time`() {
+        val s = state(); s.put("ps", sentinels, "me", Zone.HAND)
+        val e = Engine(s); e.enter("ps"); e.resolveAll()
+        assertEquals("me", s.monarch)
+        s.put("ps2", sentinels, "opp", Zone.HAND)
+        e.enter("ps2"); e.resolveAll()
+        assertEquals("opp", s.monarch)
+    }
+
+    @Test
+    fun `the monarch draws at the beginning of their own end step only`() {
+        val s = state(); s.monarch = "me"
+        val e = Engine(s)
+        e.beginStep("end", "opp")
+        assertTrue(s.trace.steps.none { "monarch draws a card" in it.text }, "drew on the wrong player's end step")
+        e.beginStep("end", "me")
+        assertTrue(s.trace.steps.any { "monarch draws a card" in it.text }, s.trace.steps.joinToString("\n") { it.text })
+    }
+
+    @Test
+    fun `combat damage to the monarch hands over the crown`() {
+        val s = state(); s.monarch = "me"
+        val bear = s.put("bear", bears, "opp"); bear.summoningSick = false
+        val e = Engine(s); e.declareAttacker("opp", "bear", Ref.Player("me")); e.combatDamage()
+        assertEquals("opp", s.monarch)
+    }
+
+    @Test
+    fun `the germ dies once the equipment leaves`() {
+        val s = state(); s.put("skull", batterskull, "me", Zone.HAND)
+        val e = Engine(s); e.enter("skull"); e.resolveAll()
+        val germ = s.objects.values.single { it.def.name.contains("Germ") }
+        e.leave("skull", Zone.GRAVEYARD)
+        e.stateBasedActions()
+        assertEquals(Zone.GRAVEYARD, germ.zone)
+    }
+}

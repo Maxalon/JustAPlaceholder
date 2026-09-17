@@ -1,0 +1,199 @@
+name: Fetch card data
+
+# Pulls the raw upstream sources (Scryfall bulk data, MTGJSON, the Comprehensive
+# Rules), builds the SQLite database from them (judge.db.xz, carrying Oracle text
+# history forward from the previous day's database), and publishes everything as
+# a single orphan commit on the `data` branch. Large files are split into <90 MB
+# parts to stay under GitHub's file limit; `manifest.json` lists every file, its
+# parts, and its checksum.
+#
+# Reassemble a split file with:  cat NAME.part* > NAME
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * *"   # daily, after Scryfall's overnight bulk refresh
+  push:
+    branches:
+      - claude/mtg-player-bot-design-j52iiz
+    paths:
+      - ".github/workflows/fetch-data.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-data
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    env:
+      UA: "mtg-judge-data-fetch/0.1 (+https://github.com/${{ github.repository }})"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Download upstream sources
+        run: |
+          set -euo pipefail
+          SRC="$RUNNER_TEMP/src"; OUT="$RUNNER_TEMP/out"
+          mkdir -p "$SRC" "$OUT"
+          cd "$SRC"
+
+          echo "::group::Scryfall bulk data"
+          curl -fsSL --retry 3 -A "$UA" -H "Accept: application/json" \
+            https://api.scryfall.com/bulk-data -o scryfall-bulk-manifest.json
+          echo "--- bulk-data manifest ---"
+          jq . scryfall-bulk-manifest.json | head -c 4000; echo
+          echo "--------------------------"
+          # Scryfall publishes each bulk file as gzipped JSON Lines under `jsonl_download_uri`
+          # (the older `download_uri` plain-JSON field is no longer present in the listing).
+          for t in oracle_cards default_cards rulings; do
+            url=$(jq -r ".data[] | select(.type==\"$t\") | (.jsonl_download_uri // empty)" scryfall-bulk-manifest.json | head -1)
+            if [ -z "$url" ]; then
+              echo "::error::No jsonl_download_uri for bulk type $t in the Scryfall manifest"
+              exit 1
+            fi
+            echo "$t <- $url"
+            curl -fsSL --retry 3 -A "$UA" "$url" -o "scryfall-$t.jsonl.gz"
+            ls -l "scryfall-$t.jsonl.gz"
+            gzip -t "scryfall-$t.jsonl.gz"
+          done
+          echo "::endgroup::"
+
+          echo "::group::MTGJSON"
+          curl -fsSL --retry 3 -A "$UA" https://mtgjson.com/api/v5/Meta.json -o mtgjson-meta.json
+          cat mtgjson-meta.json
+          curl -fsSL --retry 3 -A "$UA" https://mtgjson.com/api/v5/AllPrintings.json.xz -o mtgjson-AllPrintings.json.xz
+          ls -l mtgjson-AllPrintings.json.xz
+          echo "::endgroup::"
+
+          echo "::group::Comprehensive Rules"
+          BROWSER_UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
+          cr_url=""
+          code=$(curl -sSL --retry 2 -A "$BROWSER_UA" -o rules.html -w "%{http_code}" https://magic.wizards.com/en/rules || true)
+          echo "rules page http status: $code ($(stat -c %s rules.html 2>/dev/null || echo 0) bytes)"
+          if [ "$code" = "200" ]; then
+            cr_url=$(grep -oiE 'https?://media\.wizards\.com/[^"'"'"' <>]*MagicCompRules[^"'"'"' <>]*\.txt' rules.html | head -1 || true)
+          fi
+          echo "rules txt url: ${cr_url:-<not found>}"
+          if [ -n "$cr_url" ] && curl -fsSL --retry 2 -A "$BROWSER_UA" "$cr_url" -o MagicCompRules.txt; then
+            echo "$cr_url" > MagicCompRules.source.txt
+          else
+            echo "Falling back to the mtg.wtf mirror of the rules text"
+            curl -fsSL --retry 3 -A "$UA" \
+              https://raw.githubusercontent.com/taw/magic-search-engine/master/data/MagicCompRules.txt -o MagicCompRules.txt
+            echo "https://raw.githubusercontent.com/taw/magic-search-engine/master/data/MagicCompRules.txt" > MagicCompRules.source.txt
+          fi
+          rm -f rules.html
+          head -c 400 MagicCompRules.txt; echo
+          echo "::endgroup::"
+
+      - name: Fetch the previous database (for Oracle text history)
+        run: |
+          set -euo pipefail
+          SRC="$RUNNER_TEMP/src"; OUT="$RUNNER_TEMP/out"
+          mkdir -p "$RUNNER_TEMP/prev"
+          if git fetch --depth=1 origin data 2>/dev/null; then
+            parts=$(git ls-tree --name-only origin/data | grep -E '^judge\.db\.xz(\.part[0-9]+)?$' | sort || true)
+            if [ -n "$parts" ]; then
+              for p in $parts; do git show "origin/data:$p"; done > "$RUNNER_TEMP/prev/judge.db.xz"
+              xz -d "$RUNNER_TEMP/prev/judge.db.xz"
+              echo "previous database: $(stat -c %s "$RUNNER_TEMP/prev/judge.db") bytes"
+            else
+              echo "no database on the data branch yet"
+            fi
+          else
+            echo "no data branch yet"
+          fi
+
+      - name: Build the database
+        run: |
+          set -euo pipefail
+          SRC="$RUNNER_TEMP/src"; OUT="$RUNNER_TEMP/out"
+          cd "$SRC"
+          cr_source=$(cat MagicCompRules.source.txt)
+          mv scryfall-*.jsonl.gz mtgjson-AllPrintings.json.xz scryfall-bulk-manifest.json mtgjson-meta.json \
+             MagicCompRules.txt "$OUT/"
+          echo "$cr_source" > "$RUNNER_TEMP/cr_source.txt"
+          cd "$GITHUB_WORKSPACE"
+          ./gradlew installDist --no-daemon -q
+          prev=""; [ -f "$RUNNER_TEMP/prev/judge.db" ] && prev="--previous $RUNNER_TEMP/prev/judge.db"
+          # The manifest is not written yet, so pass the source metadata for `meta` via a stub manifest.
+          jq -n --arg fetched_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg cr_source "$cr_source" \
+            --slurpfile scry "$OUT/scryfall-bulk-manifest.json" --slurpfile mtg "$OUT/mtgjson-meta.json" \
+            '{fetched_at:$fetched_at, scryfall:($scry[0].data|map({type,updated_at,compressed_size})), mtgjson:$mtg[0].data, comprehensive_rules:{source:$cr_source}, files:[]}' > "$OUT/manifest.json"
+          build/install/mtg-judge/bin/mtg-judge build --data "$OUT" --out "$RUNNER_TEMP/judge.db" $prev
+          rm "$OUT/manifest.json"
+          xz -T0 -6 -c "$RUNNER_TEMP/judge.db" > "$OUT/judge.db.xz"
+          ls -l "$OUT/judge.db.xz"
+
+      - name: Compress, split and build manifest
+        run: |
+          set -euo pipefail
+          SRC="$RUNNER_TEMP/src"; OUT="$RUNNER_TEMP/out"
+          cr_source=$(cat "$RUNNER_TEMP/cr_source.txt")
+          cd "$OUT"
+
+          # Split anything over 90 MB so every blob stays under GitHub's 100 MB limit.
+          for f in *; do
+            size=$(stat -c %s "$f")
+            if [ "$size" -gt 94371840 ]; then
+              split -b 90m -d -a 2 "$f" "$f.part"
+              rm "$f"
+            fi
+          done
+
+          # Manifest: one entry per logical file, with parts and sha256 of the whole.
+          fetched_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          cr_effective=$(grep -m1 -oE 'effective as of [A-Za-z]+ [0-9]+, [0-9]{4}' MagicCompRules.txt | sed 's/effective as of //' || true)
+          entries="[]"
+          for logical in $(ls | sed -E 's/\.part[0-9]+$//' | sort -u | grep -v '^manifest.json$'); do
+            parts=$(ls "$logical".part* 2>/dev/null | sort || true)
+            if [ -n "$parts" ]; then
+              sha=$(cat $parts | sha256sum | cut -d' ' -f1)
+              bytes=$(cat $parts | wc -c)
+              plist=$(printf '%s\n' $parts | jq -R . | jq -s .)
+            else
+              sha=$(sha256sum "$logical" | cut -d' ' -f1)
+              bytes=$(stat -c %s "$logical")
+              plist="[]"
+            fi
+            entries=$(echo "$entries" | jq --arg n "$logical" --arg s "$sha" --argjson b "$bytes" --argjson p "$plist" \
+              '. + [{name:$n, sha256:$s, bytes:$b, parts:$p}]')
+          done
+          jq -n \
+            --arg fetched_at "$fetched_at" \
+            --arg cr_effective "$cr_effective" \
+            --arg cr_source "$cr_source" \
+            --slurpfile scry scryfall-bulk-manifest.json \
+            --slurpfile mtg mtgjson-meta.json \
+            --argjson files "$entries" \
+            '{fetched_at:$fetched_at,
+              scryfall: ($scry[0].data | map({type, updated_at, compressed_size}) ),
+              mtgjson: $mtg[0].data,
+              comprehensive_rules: {effective: $cr_effective, source: $cr_source},
+              files: $files}' > manifest.json
+          cat manifest.json
+          ls -l
+
+      - name: Publish to the data branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          SRC="$RUNNER_TEMP/src"; OUT="$RUNNER_TEMP/out"
+          cd "$OUT"
+          git init -q -b data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Card data snapshot $(date -u +%Y-%m-%d)"
+          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
+          echo "Published $(git rev-parse --short HEAD) to data"

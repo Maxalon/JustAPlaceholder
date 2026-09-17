@@ -1,0 +1,534 @@
+package mtg.judge.engine
+
+/** Who an effect or trigger refers to, relative to the ability's controller. */
+enum class Who { YOU, OPPONENT, ANY_PLAYER, THAT_PLAYER, TARGET_PLAYER, CONTROLLER_OF_TARGET, EACH_PLAYER, EACH_OPPONENT }
+
+/** What an object filter may match. */
+enum class Kind { CREATURE, ARTIFACT, ENCHANTMENT, LAND, PLANESWALKER, BATTLE, PERMANENT, SPELL, ABILITY, PLAYER, CARD }
+
+/**
+ * A description like "creature an opponent controls" or "activated or triggered ability".
+ * `kinds` is a disjunction ("artifact or enchantment"); `notKinds` handles "noncreature";
+ * `unknownWords` holds qualifiers the parser did not understand, which makes legality unverifiable.
+ */
+data class ObjFilter(
+    val kinds: Set<Kind>,
+    val notKinds: Set<Kind> = emptySet(),
+    /** Creature types the filter excludes ("non-Human creatures you control"). */
+    val notSubtypes: List<String> = emptyList(),
+    val controller: Who? = null,
+    val attacking: Boolean? = null,
+    val tapped: Boolean? = null,
+    val unknownWords: List<String> = emptyList(),
+    val raw: String = "",
+    /** Required creature/other subtypes ("Elf creatures"), singular lowercase. */
+    val subtypes: Set<String> = emptySet(),
+    /** Required keywords ("creature with flying"). */
+    val keywords: Set<String> = emptySet(),
+    /** "creatures without flying", "nonflying creatures": every one of these must be absent. */
+    val notKeywords: Set<String> = emptySet(),
+    val token: Boolean? = null,
+    val legendary: Boolean? = null,
+    /** "other …": excludes the source of the effect. */
+    val other: Boolean = false,
+    /** "enchanted creature" / "equipped creature": only the object the source is attached to. */
+    val attachedToSource: Boolean = false,
+    /** "with power N or greater" / "with power N or less". */
+    val minPower: Int? = null,
+    val maxPower: Int? = null,
+    /** "a Plains or an Island": any one of [subtypes] suffices instead of all of them. */
+    val subtypesAny: Boolean = false,
+    /** "black creature" / "nonblack creature": colour letters (W U B R G) required / forbidden. */
+    val colors: Set<Char> = emptySet(),
+    val notColors: Set<Char> = emptySet(),
+    /** "creature with mana value 2 or less" / "if it has mana value 2 or less". */
+    val maxManaValue: Int? = null,
+    val minManaValue: Int? = null,
+) {
+    val verifiable get() = unknownWords.isEmpty()
+}
+
+data class TargetSpec(val filter: ObjFilter, val raw: String)
+
+sealed interface Trigger {
+    /** [orCopied] is magecraft: "whenever you cast or copy an instant or sorcery spell". */
+    data class SpellCast(val who: Who, val spellFilter: ObjFilter? = null, val orCopied: Boolean = false) : Trigger
+    /** Chalice of the Void: "When a player casts a spell with mana value equal to the number of charge counters on ~". */
+    data class SpellCastMvEqualsCounters(val counter: String) : Trigger
+    /** "Whenever you cast your second spell each turn" (Flurry and friends): once a turn, on the Nth spell. */
+    data class NthSpellEachTurn(val n: Int, val who: Who) : Trigger
+    data object ThisEnters : Trigger
+    data object ThisDies : Trigger
+    data object ThisLeavesBattlefield : Trigger
+    data object ThisAttacks : Trigger
+    /** "When you cast ~" */
+    data object ThisCast : Trigger
+    /** "At the beginning of [whose] [step]" (603.2b). step: upkeep | draw | precombat_main | combat | declare_attackers | end | ... */
+    data class BeginningOfStep(val step: String, val whose: Who) : Trigger
+    /** "Whenever ~ deals combat damage to a player" (toPlayer) / "deals damage to a creature" etc. */
+    data class ThisDealsDamage(val combatOnly: Boolean, val toPlayer: Boolean?) : Trigger
+    /** "Whenever a [filter] enters (the battlefield under your control)" incl. landfall. */
+    data class PermanentEnters(val filter: ObjFilter, val other: Boolean) : Trigger
+    /** "Whenever you attack" / "Whenever you attack with one or more creatures". */
+    data object YouAttack : Trigger
+    /** Exalted: "Whenever a creature you control attacks alone". */
+    data object CreatureAttacksAlone : Trigger
+    /** "Whenever you attack with two or more creatures" / "with one or more Elves": once per combat, on the declaration. */
+    data class AttackWithNOrMore(val n: Int, val filter: ObjFilter?) : Trigger
+    /** "Whenever you gain life". */
+    data object YouGainLife : Trigger
+    /** "Whenever a [filter] dies". */
+    data class PermanentDies(val filter: ObjFilter, val other: Boolean) : Trigger
+    /** "Whenever you draw a card". */
+    data object YouDraw : Trigger
+    /** "Whenever one or more land cards are put into your graveyard from anywhere" (The Gitrog Monster). */
+    data class CardsToYourGraveyard(val filter: ObjFilter) : Trigger
+    /** "Whenever an opponent draws a card" / "a player draws a card". */
+    data class PlayerDraws(val who: Who) : Trigger
+    /** "Whenever you draw your second card each turn". */
+    data class YouDrawNth(val n: Int) : Trigger
+    /** "Whenever ~ is dealt damage". */
+    data object ThisIsDealtDamage : Trigger
+    /** "Whenever ~ becomes blocked". */
+    data object ThisBecomesBlocked : Trigger
+    /** "Whenever ~ becomes blocked by a creature" — once for each creature that blocks it (509.1h). */
+    data object ThisBecomesBlockedByCreature : Trigger
+    /** "Whenever ~ blocks". */
+    data object ThisBlocks : Trigger
+    /** "Whenever ~ attacks and isn't blocked" — checked once blockers are declared (509.1h). */
+    data object ThisAttacksUnblocked : Trigger
+    /** "Whenever ~ becomes the target of a spell or ability". */
+    /** "Whenever ~ becomes the target of a spell or ability (an opponent controls) (for the first time each turn)". */
+    data class ThisBecomesTarget(val opponentsOnly: Boolean = false, val firstEachTurn: Boolean = false) : Trigger
+    /** "When ~ becomes monstrous" (701.31a). */
+    data object ThisBecomesMonstrous : Trigger
+    /** "Whenever ~ becomes tapped". */
+    data object ThisBecomesTapped : Trigger
+    /** "When you cycle ~". */
+    data object ThisCycled : Trigger
+    /** "Whenever [filter] attacks" (e.g. equipped creature attacks). */
+    data class PermanentAttacks(val filter: ObjFilter) : Trigger
+    /** "Whenever [filter] deals combat damage to a player". */
+    data class PermanentDealsCombatDamageToPlayer(val filter: ObjFilter) : Trigger
+    /** "Whenever [filter] deals combat damage" — to anything, a blocker included (Umezawa's Jitte). */
+    data class PermanentDealsCombatDamage(val filter: ObjFilter) : Trigger
+    /** "Whenever one or more creatures you control deal combat damage to a player". */
+    data object YourCreaturesDealCombatDamageToPlayer : Trigger
+    data class Unknown(val text: String) : Trigger
+}
+
+sealed interface Effect {
+    data class Draw(val who: Who, val count: Int, val x: Boolean = false) : Effect
+    /** `x` = the amount is X, chosen when the spell is cast (107.3a). */
+    data class Damage(val amount: Int, val target: TargetSpec, val x: Boolean = false, val kickedAmount: Int? = null, val sacrificedPower: Boolean = false, val masteryAmount: Int? = null) : Effect
+    /** "Proliferate" (701.34a): assumed to choose everything of yours and your opponents' poison counters. */
+    data object Proliferate : Effect
+    /** "Exile all attacking creatures target player controls": an action on everything matching, among a target player's permanents. */
+    data class ForAllTargeted(val target: TargetSpec, val filter: ObjFilter, val action: String) : Effect
+    /** "Counter target spell. If that spell is countered this way, exile it instead …" — where the card goes ("exile", "hand", "library"). */
+    data class Counter(val target: TargetSpec, val insteadZone: String? = null) : Effect
+    data class Destroy(val target: TargetSpec, val noRegen: Boolean = false) : Effect
+    /** "~ deals N damage to that player / each opponent / each player / you". */
+    data class DamagePlayer(val who: Who, val amount: Int) : Effect
+    /** "Create a 3/3 green Beast creature token" / "Its controller creates …": [who] gets [count] tokens described by [token]. */
+    data class CreateToken(val who: Who, val count: Int, val token: String, val countBy: CountExpr? = null, val x: Boolean = false) : Effect
+    /**
+     * "Create a token that's a copy of target creature you control." (Kiki-Jiki, Cackling Counterpart, 707.2).
+     * [target] is null when the card copies itself. [except] is the card's own rider, kept as text.
+     */
+    data class CreateTokenCopy(val target: TargetSpec?, val count: Int, val except: String?) : Effect
+
+    /** "Copy target instant or sorcery spell. You may choose new targets for the copy." (707.10) */
+    data class CopySpell(val target: TargetSpec, val newTargets: Boolean) : Effect
+    /** "Change the target of target spell with a single target" / "you may choose new targets for target spell". */
+    data class ChangeTarget(val target: TargetSpec, val singleOnly: Boolean) : Effect
+    /** Modular: "you may put its +1/+1 counters on target artifact creature" (702.43b). */
+    data class MoveSourceCounters(val target: TargetSpec, val kind: String) : Effect
+    /** Evolve: a +1/+1 counter if the creature that entered is bigger in either direction (702.100a). */
+    data object Evolve : Effect
+    /** "Monstrosity N": N +1/+1 counters and it becomes monstrous, once only (701.31a). */
+    data class Monstrosity(val amount: Int) : Effect
+    /** "~ deals N damage divided as you choose among one or two targets" (601.2d). */
+    data class DamageDivided(val amount: Int, val target: TargetSpec, val maxTargets: Int?) : Effect
+    /** Storm: copy the spell this trigger came from once for each spell cast before it this turn (702.40a). */
+    data object StormCopy : Effect
+    /** Thassa's Oracle: "look at the top X cards … where X is your devotion to [color] … If X is greater than or equal to the number of cards in your library, you win the game." */
+    data class WinIfDevotionCoversLibrary(val color: Char) : Effect
+    /** Aetherflux Reservoir: "you gain N life for each spell you've cast this turn". */
+    data class GainLifePerSpellThisTurn(val who: Who, val per: Int) : Effect
+    /** "Target player mills N cards" (701.17a). */
+    data class Mill(val who: Who, val count: Int) : Effect
+    /** Nykthos: "Choose a color. Add an amount of mana of that color equal to your devotion to that color." */
+    data object AddManaDevotion : Effect
+    /** Gaea's Cradle, Cabal Coffers: "Add {G} for each creature you control." */
+    data class AddManaPer(val symbol: String, val filter: ObjFilter) : Effect
+    /** "If you control an Urza's Mine and an Urza's Power-Plant, add {C}{C}{C} instead." */
+    data class AddManaInstead(val required: List<String>, val text: String) : Effect
+    /** "Exile target player's graveyard" (Bojuka Bog, Relic of Progenitus): every card in it leaves at once. */
+    data class ExileGraveyard(val who: Who) : Effect
+    /** "Each other player sacrifices a creature of their choice." */
+    data class SacrificeEach(val who: Who, val filter: ObjFilter, val greatestPower: Boolean = false) : Effect
+    /** Cloudshift, Ephemerate: "Exile target creature you control, then return it to the battlefield under your / its owner's control." */
+    data class Blink(val target: TargetSpec, val ownersControl: Boolean) : Effect
+    /** Spellskite: "Change a target of target spell or ability to ~." */
+    data class RedirectToSelf(val target: TargetSpec) : Effect
+    /** Prey Upon, Pounce: "Target creature you control fights target creature you don't control." (701.14a) */
+    data class Fight(val mine: TargetSpec, val theirs: TargetSpec) : Effect
+    /** Rabid Bite: "Target creature you control deals damage equal to its power to target creature you don't control." */
+    data class DealsPowerTo(val mine: TargetSpec, val theirs: TargetSpec) : Effect
+    /** "Target player discards X cards at random" / "each player discards two cards". */
+    data class Discard(val who: Who, val count: Int, val x: Boolean = false, val random: Boolean = false) : Effect
+    /** "Counter that spell": the spell whose casting made this trigger. */
+    data object CounterThatSpell : Effect
+    /** Cabal Therapy: "Choose a nonland card name. Target player reveals their hand and discards all cards with that name." */
+    data class DiscardNamed(val who: Who, val what: String) : Effect
+    /** Thoughtseize, Duress: "… reveals their hand. You choose a nonland card from it. That player discards that card." */
+    data class DiscardChosen(val who: Who, val filter: ObjFilter?, val what: String) : Effect
+    /** Kor Skyfisher, Whitemane Lion: "Return a permanent you control to its owner's hand." Not targeted — the controller chooses on resolution. */
+    data class BounceChosen(val filter: ObjFilter, val what: String) : Effect
+    /** Living weapon (702.92a): create a 0/0 Germ, then attach this Equipment to it. */
+    data object LivingWeapon : Effect
+    /** Anger of the Gods: "If a creature dealt damage this way would die this turn, exile it instead." */
+    data object ExileIfDamagedDies : Effect
+    /** "Repeat the following process X times." followed by the process. */
+    data class Repeat(val body: Effect, val times: Int, val x: Boolean) : Effect
+    /** "Each opponent loses N life unless that player sacrifices a [filter] of their choice or discards a card." (Torment of Hailfire) */
+    data class LoseLifeUnlessSacOrDiscard(val who: Who, val amount: Int, val filter: ObjFilter?, val discard: Boolean) : Effect
+    /** "Sacrifice this permanent" (evoke's trigger, "sacrifice ~"). */
+    object SacrificeSource : Effect
+    /** "That player sacrifices that many permanents" (Phyrexian Obliterator): as many as the causing amount, their choice. */
+    data class SacrificeThatMany(val who: Who, val filter: ObjFilter) : Effect
+    /** "Put a creature card from your hand onto the battlefield" (Aether Vial: with mana value equal to its charge counters). */
+    data class PutFromHand(val filter: ObjFilter, val mvEqualsCounters: String? = null, val tapped: Boolean = false, val attacking: Boolean = false, val fromLibrary: Boolean = false, val maxMv: Int? = null, val fromGraveyard: Boolean = false) : Effect
+    /** Maze of Ith: "Prevent all combat damage that would be dealt to and dealt by that creature this turn." */
+    data class PreventCombatToAndBy(val target: TargetSpec) : Effect
+    /** Approach of the Second Sun: win if another spell with this name was cast this game, else tuck it seventh from the top and gain life. */
+    data class WinIfCastBefore(val life: Int) : Effect
+    /** "Return target X to its owner's hand" (null target = ~). */
+    data class Bounce(val target: TargetSpec?) : Effect
+    /** "Its controller gains life equal to its power" (uses last known information after a zone change). */
+    data class GainLifeEqualToPower(val who: Who) : Effect
+    /** Something that targets but whose effect is only narrated ("Target player reveals their hand"). */
+    data class NarratedTargeted(val target: TargetSpec, val text: String, val rules: List<String>) : Effect
+    data class Exile(val target: TargetSpec) : Effect
+    data class Tap(val target: TargetSpec) : Effect
+    data class Untap(val target: TargetSpec) : Effect
+    data class Pump(val target: TargetSpec, val power: Int, val toughness: Int) : Effect
+    /** Exalted's "that creature gets +1/+1": the attacking creature that caused the trigger. */
+    /** [unlessCausingHas]: flanking skips a blocker that has flanking itself (702.25a). */
+    data class PumpCausing(val power: Int, val toughness: Int, val keywords: List<String> = emptyList(), val unlessCausingHas: String? = null) : Effect
+    /** "target creature gains flying until end of turn" (layer 6, 611.2a). */
+    data class GainKeywords(val target: TargetSpec, val keywords: Set<String>) : Effect
+    data class GainLife(val who: Who, val amount: Int) : Effect
+    data class LoseLife(val who: Who, val amount: Int, val x: Boolean = false) : Effect
+    /** Exsanguinate: "You gain life equal to the life lost this way." */
+    data object GainLifeLostThisWay : Effect
+    /** Dark Confidant: "Reveal the top card of your library and put that card into your hand." */
+    data class RevealTopToHand(val who: Who) : Effect
+    /** Sensei's Divining Top: "put ~ on top of its owner's library". */
+    data object PutSelfOnLibraryTop : Effect
+    /** Dark Confidant: "You lose life equal to its mana value." (the card just revealed) */
+    data class LoseLifeEqualToRevealedMv(val who: Who) : Effect
+    /** Condemn: "Put target attacking creature on the bottom of its owner's library." */
+    data class PutOnBottom(val target: TargetSpec) : Effect
+    /** Condemn: "Its controller gains life equal to its toughness." */
+    data class GainLifeEqualToToughness(val who: Who) : Effect
+    /** "Target opponent loses that much life" after "whenever you gain life": the amount of the causing event. */
+    data class LoseLifeThatMuch(val who: Who) : Effect
+    /** Palace Sentinels: "you become the monarch" (725). [who] is the player who takes the crown. */
+    data class BecomeMonarch(val who: Who) : Effect
+    /** Muxus: "~ gets +1/+1 until end of turn for each other Goblin you control." */
+    data class PumpSelfCount(val count: CountExpr, val power: Int, val toughness: Int) : Effect
+    /** Waterknot: "Tap enchanted creature." */
+    data object TapAttached : Effect
+    /** Mutavault, Celestial Colonnade: "Until end of turn, ~ becomes a 4/4 Elemental creature with flying. It's still a land." (Layers 4, 5 and 7b.) */
+    data class AnimateSelf(val power: Int, val toughness: Int, val subtypes: List<String>, val colors: Set<Char>, val keywords: List<String>, val allCreatureTypes: Boolean, val stillALand: Boolean) : Effect
+    /** Bloodghast, Gravecrawler: "return ~ from your graveyard to the battlefield." The ability functions while the card is in the graveyard (603.6e). */
+    data class ReturnSelfFromGraveyard(val tapped: Boolean = false) : Effect
+    /** Questing Beast: "it deals that much damage to target planeswalker that player controls" — the amount comes from the trigger. */
+    data class DamageThatMuch(val target: TargetSpec) : Effect
+    /** "Creatures you control get +X/+X (and gain trample) until end of turn, where X is the number of [count]." */
+    data class PumpAllCount(val filter: ObjFilter, val count: CountExpr, val keywords: List<String>) : Effect
+    /** "The owner of target permanent shuffles it into their library." */
+    data class ShuffleIntoLibrary(val target: TargetSpec) : Effect
+    /** "~ gets +N/+N until end of turn" (no target). */
+    data class PumpSelf(val power: Int, val toughness: Int) : Effect
+    /** "[filter] get +N/+N until end of turn": affects the objects present when it resolves (611.2c). */
+    data class PumpAll(val filter: ObjFilter, val power: Int, val toughness: Int, val keywords: List<String> = emptyList(), val x: Boolean = false) : Effect
+    /** "[filter] have base power and toughness N/N (X/X) until end of turn": a layer-7b setting effect (613.4b) on the objects present when it resolves. */
+    data class SetBasePtAll(val filter: ObjFilter, val power: Int, val toughness: Int, val x: Boolean = false, val allCreatureTypes: Boolean = false) : Effect
+    /** "Gain control of target creature (until end of turn)". */
+    data class GainControl(val target: TargetSpec, val untilEndOfTurn: Boolean) : Effect
+    /** "Put N [kind] counters on target …" / "… on ~" (target null = self). */
+    /** `target` = "target …"; null = on ~; `all` = "on each …". */
+    data class PutCounters(val target: TargetSpec?, val kind: String, val count: Int, val all: ObjFilter? = null, val x: Boolean = false) : Effect
+    /** "Remove all counters from target permanent." (Vampire Hexmage) */
+    data class RemoveAllCounters(val target: TargetSpec) : Effect
+    /** Mana abilities: "Add {G}", "Add one mana of any color". Doesn't use the stack (605.3b). */
+    data class AddMana(val text: String) : Effect
+    /** Effects the engine understands well enough to narrate with rule citations but doesn't track state for (libraries, hands). */
+    data class Narrated(val text: String, val rules: List<String>) : Effect
+    /** "Destroy all [filter]" / "Exile all …" / "~ deals N damage to each [filter]". */
+    data class ForAll(val filter: ObjFilter, val action: String, val amount: Int = 0, val noRegen: Boolean = false) : Effect
+    /** "You may pay [cost]. If you do, [effect]." / "You may [do X]. If you do, [effect]." */
+    data class IfYouDo(val choice: Effect, val then: Effect, val cost: String?) : Effect
+    /** "If you control five or more Mountains, …" — the condition is checked as the effect happens. */
+    data class IfCondition(val condition: Condition, val then: Effect, val raw: String) : Effect
+    /** Attach the source (Aura on resolution, Equipment via equip) to the target (301.5, 303.4). */
+    data class Attach(val target: TargetSpec) : Effect
+    /** "~ gains flying until end of turn". */
+    data class GainKeywordsSelf(val keywords: Set<String>) : Effect
+    /** "Choose one —" with bulleted modes (700.2). */
+    data class Modal(val count: String, val modes: List<Effect>, val modeTexts: List<String>) : Effect
+    /** One-shot effects that create a prevention shield until end of turn (615.7, 615.8): "Prevent the next 3 damage that would be dealt to any target this turn", "Prevent all combat damage that would be dealt this turn". */
+    data class CreateShield(val replacement: Replacement.PreventDamage, val target: TargetSpec?) : Effect
+    /** "Regenerate target creature" (701.19a). target null = self. */
+    data class Regenerate(val target: TargetSpec?) : Effect
+    /** "You may …" / "Its controller may …": [who] decides. */
+    data class May(val effect: Effect, val who: Who = Who.YOU) : Effect
+    data class UnlessPays(val effect: Effect, val payer: Who, val cost: String) : Effect
+    data class Seq(val effects: List<Effect>) : Effect
+    data class Unparsed(val text: String) : Effect
+
+    /** Every target specification this effect (recursively) needs, in order. */
+    fun targets(): List<TargetSpec> = when (this) {
+        is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target); is Blink -> listOf(target); is RedirectToSelf -> listOf(target); is Fight -> listOf(mine, theirs); is DealsPowerTo -> listOf(mine, theirs)
+        is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
+        is PutCounters -> listOfNotNull(target); is RemoveAllCounters -> listOf(target); is PutOnBottom -> listOf(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is CreateTokenCopy -> listOfNotNull(target); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is ExileGraveyard -> emptyList(); is DiscardChosen -> emptyList(); is BounceChosen -> emptyList(); is LivingWeapon -> emptyList(); is DiscardNamed -> emptyList(); is CounterThatSpell -> emptyList(); is AddManaInstead -> emptyList(); is AddManaPer -> emptyList(); is AddManaDevotion -> emptyList(); is GainLifePerSpellThisTurn -> emptyList(); is WinIfDevotionCoversLibrary -> emptyList(); is CopySpell -> listOf(target); is StormCopy -> emptyList(); is DamageDivided -> listOf(target); is Monstrosity -> emptyList(); is MoveSourceCounters -> listOf(target); is ChangeTarget -> listOf(target); is Evolve -> emptyList(); is PreventCombatToAndBy -> listOf(target); is WinIfCastBefore -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is BecomeMonarch -> emptyList(); is ReturnSelfFromGraveyard -> emptyList(); is AnimateSelf -> emptyList(); is PumpSelfCount -> emptyList(); is TapAttached -> emptyList(); is DamageThatMuch -> listOf(target); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
+        is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
+        is IfYouDo -> choice.targets() + then.targets()
+        is IfCondition -> then.targets()
+        is Repeat -> body.targets()
+        is LoseLifeUnlessSacOrDiscard -> emptyList()
+        is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
+        is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is GainLifeLostThisWay, is GainLifeEqualToToughness, is Discard, is ExileIfDamagedDies, is RevealTopToHand, is LoseLifeEqualToRevealedMv, is PutSelfOnLibraryTop, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
+    }
+
+    fun hasUnparsed(): Boolean = when (this) {
+        is Unparsed -> true; is May -> effect.hasUnparsed(); is UnlessPays -> effect.hasUnparsed(); is Seq -> effects.any { it.hasUnparsed() }
+        is IfYouDo -> choice.hasUnparsed() || then.hasUnparsed()
+        is IfCondition -> then.hasUnparsed()
+        is Repeat -> body.hasUnparsed()
+        is Modal -> modes.any { it.hasUnparsed() }
+        else -> false
+    }
+}
+
+/** Continuous effects from static abilities (604), applied in the layer system (613). */
+/** A condition on a static ability: "as long as you control a Swamp", "as long as it's your turn". */
+sealed interface Condition {
+    data class ControlsMatching(val filter: ObjFilter, val atLeast: Int = 1) : Condition
+    /** Serra Ascendant: "as long as you have 30 or more life". */
+    data class LifeAtLeast(val amount: Int, val opponent: Boolean = false) : Condition
+    data object YourTurn : Condition
+    data object NotYourTurn : Condition
+    /** Threshold ("seven or more cards in your graveyard") and delirium ("four or more card types among them"). */
+    data class GraveyardAtLeast(val amount: Int, val cardTypes: Boolean = false) : Condition
+    /** "if this spell was kicked" (702.33d). */
+    data object WasKicked : Condition
+    /** "if ~ is untapped" (Howling Mine) — about the permanent the ability is on. */
+    data class SourceTapped(val tapped: Boolean) : Condition
+    data class Unknown(val text: String) : Condition
+}
+
+/** How a characteristic-defining ability computes a number (604.3, 613.4a). */
+sealed interface CountExpr {
+    data class Permanents(val filter: ObjFilter) : CountExpr
+    /** Tarmogoyf: "the number of card types among cards in all graveyards". */
+    data object CardTypesInGraveyards : CountExpr
+    /** Death's Shadow: "your life total". */
+    data object YourLifeTotal : CountExpr
+    data class Unknown(val text: String) : CountExpr
+}
+
+sealed interface StaticEffect {
+    /** Death's Shadow: "~ gets -X/-X, where X is your life total" (layer 7c, recomputed continuously). */
+    /** [power]/[toughness] are the step per counted thing: "+1/+0 for each artifact you control" is 1 and 0. */
+    data class PtModifyByCount(val count: CountExpr, val negative: Boolean, val power: Int = 1, val toughness: Int = 1) : StaticEffect
+    /** Layer 7c: "[filter] get +N/+N". `self` = "~ gets"; `condition` = "as long as …". */
+    data class PtModify(val filter: ObjFilter, val power: Int, val toughness: Int, val self: Boolean = false, val condition: Condition? = null) : StaticEffect
+    /** Layer 7a: "~'s power and toughness are each equal to the number of …" (604.3). */
+    data class PtCda(val power: CountExpr?, val toughness: CountExpr?, val plus: Int = 0, val toughnessPlus: Int? = null) : StaticEffect
+    /** Layer 6: "[filter] have [keywords]". */
+    data class KeywordGrant(val filter: ObjFilter, val keywords: Set<String>) : StaticEffect
+    /** Containment Priest: "If a nontoken creature would enter and it wasn't cast, exile it instead." */
+    data class ExileIfEntersUncast(val filter: ObjFilter) : StaticEffect
+    /** Grafdigger's Cage: "Creature cards in graveyards and libraries can't enter the battlefield." */
+    data class CantEnterFrom(val filter: ObjFilter, val zones: Set<String>) : StaticEffect
+    /** Rule of Law, Ethersworn Canonist: a limit on how many spells a player may cast each turn. */
+    data class SpellsPerTurn(val count: Int, val filter: ObjFilter?) : StaticEffect
+    /** Narset, Spirit of the Labyrinth: "Each opponent can't draw more than one card each turn." */
+    data class CantDrawMoreThan(val count: Int, val who: Who) : StaticEffect
+    /** Humility: "All creatures lose all abilities and have base power and toughness 1/1." */
+    data class LoseAbilitiesSetPt(val filter: ObjFilter, val power: Int, val toughness: Int) : StaticEffect
+    /** "~ enters tapped" (614.1c replacement on entering). */
+    /** "~ enters tapped" / "~ enters tapped unless [condition]". */
+    data class EntersTapped(val unless: Condition? = null, val onlyIf: Condition? = null) : StaticEffect
+    /** Blind Obedience, Urabrask, Kismet: "[Permanents] your opponents control enter tapped." */
+    data class OthersEnterTapped(val filter: ObjFilter, val opponentsOnly: Boolean) : StaticEffect
+    /** "~ enters with N +1/+1 counters on it" (614.1c). count null = X. */
+    /** [per] counts them as it enters (Chasm Skulker); [onlyIfKicked] is the "if this spell was kicked" form (Kavu Primarch). */
+    data class EntersWithCounters(val kind: String, val count: Int?, val per: CountExpr? = null, val onlyIfKicked: Boolean = false) : StaticEffect
+    /** "You may have ~ enter as a copy of any creature on the battlefield." (Clone, 706.2). [except] is the card's own rider, kept as text. */
+    data class EntersAsCopy(val filter: ObjFilter, val tapped: Boolean, val except: String?) : StaticEffect
+    /** "~ can't block" / "~ can't attack" / "~ can't be countered" / "~ can't be blocked". */
+    /** "You have hexproof" (Leyline of Sanctity): the controller can't be targeted by opponents (702.11c). */
+    data object PlayerHexproof : StaticEffect
+    /** "You can't lose the game and your opponents can't win the game" (Platinum Angel). */
+    data object CantLose : StaticEffect
+    /** "You have no maximum hand size." (Reliquary Tower and the rest) — nothing is discarded at cleanup. */
+    data object NoMaximumHandSize : StaticEffect
+    /** Seedborn Muse: "Untap all permanents you control during each other player's untap step." */
+    data class UntapInOthersUntapStep(val filter: ObjFilter) : StaticEffect
+    /** Meekstone: "Creatures with power 3 or greater don't untap during their controllers' untap steps." */
+    data class DontUntap(val filter: ObjFilter) : StaticEffect
+    /**
+     * A line that says something true about the card outside the game and nothing inside it ("~ can be your
+     * commander"). Counted as read, because there is nothing for a situation to turn on.
+     */
+    data class Narration(val text: String, val rules: List<String>) : StaticEffect
+    /** "Nonbasic lands are Mountains" (Blood Moon): a type-changing effect, layer 4 (613.1d, 305.7). */
+    data object NonbasicLandsAreMountains : StaticEffect
+    /** Fog Bank: "Prevent all combat damage that would be dealt to and dealt by ~." as a static ability of the creature itself. */
+    data object PreventOwnCombatDamage : StaticEffect
+    /** "You control enchanted creature" (Mind Control): a control-changing static, layer 2. */
+    data object ControlEnchanted : StaticEffect
+    /** Panharmonicon (artifacts and creatures) and Elesh Norn (any permanent): entering makes your triggers trigger an additional time. */
+    data class ExtraEtbTrigger(val anyPermanent: Boolean = false) : StaticEffect
+    /** Elesh Norn, Mother of Machines: "Permanents entering don't cause abilities of permanents your opponents control to trigger." */
+    data object NoEtbTriggersForOpponents : StaticEffect
+    /** Propaganda / Ghostly Prison: "Creatures can't attack you unless their controller pays [cost] for each creature …". */
+    data class AttackTax(val cost: String) : StaticEffect
+    /** "Creatures entering the battlefield (or dying) don't cause abilities to trigger." (Torpor Orb, Hushbringer) */
+    data class NoEtbTriggers(val alsoDies: Boolean) : StaticEffect
+    /** "~ can't attack" / "~ can't be blocked by [filter]" (`by` restricts which blockers the rule applies to). */
+    /**
+     * [unlessDefenderControls] / [unlessYouControl]: "~ can't attack unless defending player controls an Island",
+     * "~ can't attack unless you control another artifact" — a restriction checked as attackers are declared.
+     */
+    /** "~ can block only creatures with flying" — a blocking restriction on ~ itself (509.1b). */
+    data class BlockOnly(val filter: ObjFilter) : StaticEffect
+    data class Cant(val what: String, val by: ObjFilter? = null, val applies: ObjFilter? = null, val powerAboveHand: Boolean = false,
+                    val unlessDefenderControls: ObjFilter? = null, val unlessYouControl: ObjFilter? = null,
+                    val unlessCount: Int = 1) : StaticEffect
+    /** Teferi, Time Raveler: "Each opponent can cast spells only any time they could cast a sorcery." */
+    data object OpponentsSorcerySpeed : StaticEffect
+    /** Dosan the Falling Leaf, Grand Abolisher's cousin: "Players can cast spells only during their own turns." */
+    data object OwnTurnOnly : StaticEffect
+    /** Stony Silence, Linvala: "Activated abilities of [filter] can't be activated." ([mana] restricts it to mana abilities, as Damping Sphere-style text does not). */
+    data class CantActivate(val filter: ObjFilter, val manaOnly: Boolean = false, val opponentsOnly: Boolean = false, val named: Boolean = false, val exceptMana: Boolean = false) : StaticEffect
+    /** Meddling Mage: "Spells with the chosen name can't be cast." (the name is chosen as it enters and given in the situation). */
+    data object CantCastNamed : StaticEffect
+    /** Gaddock Teeg: "Noncreature spells with mana value 4 or greater can't be cast." */
+    data class CantCastFiltered(val filter: ObjFilter, val minManaValue: Int? = null, val xInCost: Boolean = false, val chosenNumber: Boolean = false) : StaticEffect
+    /** Grand Abolisher: "During your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments." */
+    data object OpponentsLockedOnYourTurn : StaticEffect
+    /** Serra Avenger: "You can't cast this spell during your first, second, or third turns of the game." */
+    data class CantCastBeforeTurn(val turn: Int) : StaticEffect
+    /** Yixlid Jailer: "Cards in graveyards lose all abilities." */
+    data object GraveyardCardsLoseAbilities : StaticEffect
+    /** Painter's Servant: "All cards that aren't on the battlefield, spells, and permanents are the chosen color in addition to their other colors." */
+    data object EverythingIsChosenColour : StaticEffect
+    /** The Theros gods: "As long as your devotion to white is less than five, ~ isn't a creature." (It stays an enchantment and keeps its other abilities.) */
+    data class NotACreatureUnlessDevotion(val colour: Char, val threshold: Int) : StaticEffect
+    /** Thalia: "Noncreature spells cost {1} more to cast." (a tax on spells matching the filter; `yours` limits it to the controller's / opponents' spells) */
+    data class CostTax(val filter: ObjFilter, val amount: Int, val whose: Who? = null) : StaticEffect
+    /** Cost modifiers and additional costs: narrated when the spell is cast (601.2b, 601.2f). */
+    data class CostText(val text: String) : StaticEffect
+    /** "~ attacks each combat if able." (508.1d) */
+    data object MustAttack : StaticEffect
+    /** Vedalken Orrery, Leyline of Anticipation: "You may cast [spells] as though they had flash." null filter = every spell. */
+    data class CastAsThoughFlash(val filter: ObjFilter?) : StaticEffect
+    /**
+     * "Your opponents can't cast spells from anywhere other than their hands" (Drannith Magistrate),
+     * "Players can't cast spells from graveyards or libraries" (Grafdigger's Cage). [zones] are the zones a
+     * spell may not be cast from; [opponentsOnly] limits it to the controller's opponents.
+     */
+    data class CantCastFromZone(val zones: Set<String>, val opponentsOnly: Boolean) : StaticEffect
+    /** Recognised static text the engine cites but has no game model for (level-up stats, "look at the top card any time", …). */
+    data class Note(val text: String, val rules: List<String>) : StaticEffect
+    /** A continuous replacement or prevention effect from a static ability (614, 615). */
+    data class Replace(val replacement: Replacement) : StaticEffect
+}
+
+/** Replacement and prevention effects (614, 615). */
+sealed interface Replacement {
+    /** Prevent [amount] (null = all) damage that would be dealt to things matching [to] (or the player [toPlayer]), optionally only combat damage / only from sources matching [from]. */
+    data class PreventDamage(val amount: Int?, val to: ObjFilter?, val toPlayer: Who?, val combatOnly: Boolean, val from: ObjFilter?, val fromSelf: Boolean = false,
+                             /** "The next time … would deal damage": all of one damage event, then the shield is gone (615.8). */
+                             val once: Boolean = false) : Replacement
+    /** "If [filter] would die, [instead] instead" / "would be put into a graveyard from anywhere". instead: exile | hand | library_bottom | library_top */
+    data class GraveyardReplacement(val filter: ObjFilter, val self: Boolean, val instead: String, val fromAnywhere: Boolean, val alsoDo: Effect? = null) : Replacement
+    /** "If a source (you control) would deal damage …, it deals double that damage instead." */
+    data class DamageMultiplier(val factor: Int, val sourceControl: Who?) : Replacement
+    /** "If you would gain life, you gain twice that much life instead." */
+    data class LifeGainMultiplier(val factor: Int, val anyPlayer: Boolean = false) : Replacement
+    /** "If an effect would place one or more counters on a permanent you control, it places twice that many instead." (Doubling Season) */
+    data class CounterMultiplier(val factor: Int, val anyPlayer: Boolean = false, val extra: Int = 0, val kind: String? = null) : Replacement
+    /** "If an effect would create one or more tokens under your control, it creates twice that many instead." */
+    /** Doubling Season doubles its controller's tokens; Primal Vigor doubles everyone's (anyPlayer). */
+    data class TokenMultiplier(val factor: Int, val anyPlayer: Boolean = false) : Replacement
+    /** Regeneration shield: the next time it would be destroyed this turn (701.19a). */
+    data object Regenerate : Replacement
+}
+
+sealed interface Ability { val text: String }
+data class TriggeredAbility(val trigger: Trigger, val effect: Effect, override val text: String) : Ability
+data class ActivatedAbility(val cost: String, val effect: Effect, override val text: String, val restriction: String? = null) : Ability {
+    /** Loyalty abilities have a +N / −N / 0 cost (606.2). */
+    val loyaltyCost: Int? get() = Regex("""^([+\u2212-]?\d+)$""").matchEntire(cost.trim())?.groupValues?.get(1)?.replace('\u2212', '-')?.toIntOrNull()
+}
+data class StaticAbility(override val text: String, val keyword: String? = null, val effects: List<StaticEffect> = emptyList()) : Ability
+data class UnparsedAbility(override val text: String) : Ability
+
+/** Everything the engine knows about a card, independent of any game. */
+data class CardDef(
+    val oracleId: String,
+    val name: String,
+    val typeLine: String,
+    val supertypes: Set<String>,
+    val types: Set<String>,
+    val subtypes: Set<String>,
+    val manaCost: String?,
+    val manaValue: Double,
+    val colors: Set<Char>,
+    val power: Int?,
+    val toughness: Int?,
+    val keywords: Set<String>,
+    val abilities: List<Ability>,
+    /** For instants and sorceries: what the spell does on resolution. */
+    val spellEffect: Effect?,
+    val oracleText: String,
+    /** Auras: what this can enchant (702.5a); the Aura spell targets accordingly (303.4a). */
+    val enchant: ObjFilter? = null,
+    /** Changeling: every creature type (702.73a). */
+    val changeling: Boolean = false,
+    /** Printed loyalty for planeswalkers (306.5a). */
+    val loyalty: Int? = null,
+) {
+    val isPlaneswalker get() = "Planeswalker" in types
+    val isAura get() = "Aura" in subtypes
+    val isEquipment get() = "Equipment" in subtypes
+    val isCreature get() = "Creature" in types
+    val isPermanentCard get() = types.any { it in permanentTypes }
+    val isInstantOrSorcery get() = "Instant" in types || "Sorcery" in types
+    fun has(keyword: String) = keywords.any { it.equals(keyword, ignoreCase = true) }
+
+    companion object {
+        val permanentTypes = setOf("Creature", "Artifact", "Enchantment", "Land", "Planeswalker", "Battle", "Kindred")
+        private val nameNoise = Regex("""^"?(.+?)"?$""")
+
+        /** "Legendary Creature — Human Wizard" -> (Legendary), (Creature), (Human, Wizard). */
+        fun splitTypeLine(typeLine: String): Triple<Set<String>, Set<String>, Set<String>> {
+            val front = typeLine.substringBefore(" // ")
+            val (left, right) = if (" — " in front) front.split(" — ", limit = 2).let { it[0] to it[1] } else front to ""
+            val words = left.split(' ').filter { it.isNotBlank() }
+            val supers = words.filter { it in setOf("Legendary", "Basic", "Snow", "World", "Ongoing", "Elite", "Host") }.toSet()
+            val types = words.filter { it !in supers }.toSet()
+            val subs = right.split(' ').filter { it.isNotBlank() }.toSet()
+            return Triple(supers, types, subs)
+        }
+
+        fun parseStat(s: String?): Int? = s?.toIntOrNull()
+    }
+}
