@@ -143,6 +143,7 @@ What happens next, in order. The engine applies these to the described state.
 | `fight` | `object`, `targets`: [the other creature] (each deals damage equal to its power to the other, 701.14a) |
 | `concede` | `player` (that player leaves the game and loses, 104.3a) |
 | `proliferate` | `player` (one more of each kind of counter already there, 701.34a) |
+| `monarch` | `player` (that player is the monarch, 725.1) |
 | `setPt` | `object`, `to`: `"4/4"` (a base size set outright — layer 7b, so counters still apply on top) |
 
 `activate` also accepts `to: "mana"` (the object's mana ability) or a loyalty cost such as `"+1"`.

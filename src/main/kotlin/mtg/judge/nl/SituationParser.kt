@@ -231,6 +231,10 @@ class SituationParser(private val names: NameIndex) {
         "planeswalker", "planeswalkers", "instant", "instants", "sorcery", "sorceries", "permanent", "permanents", "spell", "spells", "battle", "battles")
     /** Phrases that name a zone or a part of the game, whatever card shares the words. */
     private val zonePhrases = setOf("the command zone", "command zone", "the battlefield", "the stack", "the graveyard")
+    /** Mechanic and status words that are also card names ("Delirium", "The Monarch"); said of a player they mean the mechanic. */
+    private val mechanicWords = setOf("delirium", "threshold", "metalcraft", "revolt", "spell mastery", "ferocious", "formidable",
+        "hellbent", "undergrowth", "the monarch", "monarch", "the city's blessing", "landfall", "morbid", "raid", "monstrosity",
+        "ascend", "constellation", "prowess", "coven", "the initiative")
     private val typeShortNames = setOf("wall", "angel", "demon", "dragon", "giant", "wizard", "knight", "elf", "goblin", "sphinx", "beast", "bird", "cat", "wolf", "bear", "elemental", "spirit", "soldier", "warrior", "lord", "king", "queen", "rat", "dog", "zombie", "vampire", "hydra", "titan", "golem", "wurm", "drake", "djinn", "phoenix", "shaman", "druid", "cleric", "rogue", "archer")
 
     private val shortNameStop = setOf("the", "and", "with", "from", "into", "onto", "for", "that", "this", "your", "you", "all", "each", "any", "one", "two", "three", "of",
@@ -295,6 +299,8 @@ class SituationParser(private val names: NameIndex) {
         val found = (full + normWords.indices.filter { it !in covered }.mapNotNull { i -> shortAt(i)?.let { NameIndex.Found(i, i + 1, it) } })
             // "cast my commander from the command zone": the zone, not the card called "The Command Zone".
             .filter { f -> (f.start until f.end).joinToString(" ") { normWords[it] } !in zonePhrases }
+            // "I have delirium", "my opponent is the monarch": the mechanic, not the card that shares its name.
+            .filter { f -> (f.start until f.end).joinToString(" ") { normWords[it] } !in mechanicWords }
             // "a Goblin", "two Walls": a bare creature type after an indefinite article or a count is a description, not the card of that name.
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in typeShortNames && normWords.getOrNull(f.start - 1) in indefiniteWords) }
             // "three artifacts", "two creatures": a bare card-type word after a count or an article describes what
@@ -1363,6 +1369,12 @@ class SituationParser(private val names: NameIndex) {
                 targets = if (tg.isEmpty()) ctx.events[i].targets else ctx.events[i].targets + tg)
             return true
         }
+        // "my opponent is the monarch": whoever it is keeps drawing at their end step until someone takes it (725.1).
+        Regex("""^(?:(i|we|they|he|she|my opponent|the opponent|opponent|@\w+) )?(?:is|am|are|becomes?|became|'m|'re) the monarch$|^(?:(i|we|they|he|she|my opponent|the opponent|opponent|@\w+) )?(?:has|have) the monarch(?:ship)?$""").find(c)?.let { r ->
+            val said = r.groupValues[1].ifEmpty { r.groupValues[2] }.let { w -> when (w) { "" -> null; "i", "we" -> "me"; "my opponent", "the opponent", "opponent" -> pronounPlayer(ctx, "their"); else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w) } }
+            val who = said ?: actor ?: ctx.lastActor ?: "me"
+            ctx.events += EventSpec("monarch", player = who); ctx.note(who); return true
+        }
         // "it triggers" / "its ability triggers" / "the Blood Artist trigger goes off": the permanent's triggered
         // ability, said out loud. When something has already happened the engine put the trigger on the stack
         // itself and saying so again would put a second one there; with nothing else described it is the event.
@@ -2056,6 +2068,39 @@ class SituationParser(private val names: NameIndex) {
             val who = possessiveOwner(r.groupValues[2].ifEmpty { r.groupValues[3] }, ctx, m) ?: actor ?: subject ?: "me"
             val word = r.groupValues[1].ifEmpty { r.groupValues[4] }
             ctx.librarySize[who] = if (word.isEmpty() || word == "no") 0 else number(word) ?: 0; ctx.note(who); return true
+        }
+        // "I have threshold", "my delirium is on", "they have metalcraft", "I'm hellbent": a mechanic said to be
+        // met. It is a statement about the board, and each one says what the board has to look like.
+        Regex("""^(?:(?:has|have|got|'ve got|am|is|are|reached|with) )?(?:my |their |his |her |the )?(threshold|delirium|metalcraft|hellbent)(?: is| are)?(?: on| active| met| satisfied| turned on| online| enabled| up| already)?$""").find(c)?.let { r ->
+            val who = actor ?: ctx.lastActor ?: "me"
+            val whose = if (who == "me") "Your" else (ctx.players[who] ?: "Your opponent") + "'s"
+            when (r.groupValues[1]) {
+                "threshold" -> { ctx.graveyardSize[who] = maxOf(7, ctx.graveyardSize[who] ?: 0); ctx.notes += "$whose graveyard is read as holding seven cards, which is what threshold asks for." }
+                "delirium" -> {
+                    for (kind in listOf("instant", "creature", "land", "sorcery")) {
+                        val name = (if (kind.first() in "aeiou") "an " else "a ") + kind
+                        if (ctx.objects.values.any { it.zone == "graveyard" && it.controller == who && it.card.name == name }) continue
+                        var id = slug("$kind card"); var k = 2; while (ctx.objects.containsKey(id)) id = slug("$kind card") + "_" + (k++)
+                        ctx.objects[id] = ObjectSpec(id, CardRef(name = name), zone = "graveyard", controller = who)
+                    }
+                    ctx.notes += "$whose graveyard is read as holding an instant, a creature, a land and a sorcery, which is the four card types delirium asks for."
+                }
+                "metalcraft" -> {
+                    val have = ctx.objects.values.count { it.controller == who && it.zone == "battlefield" && (it.card.name ?: "").contains("artifact", true) }
+                    repeat(maxOf(0, 3 - have)) { var id = slug("an artifact"); var k = 2; while (ctx.objects.containsKey(id)) id = slug("an artifact") + "_" + (k++); ctx.objects[id] = ObjectSpec(id, CardRef(name = "an artifact"), controller = who) }
+                    ctx.notes += "$whose board is read as having three artifacts, which is what metalcraft asks for."
+                }
+                "hellbent" -> { ctx.handSize[who] = 0; ctx.notes += "$whose hand is read as empty, which is what hellbent asks for." }
+            }
+            ctx.note(who); if (actor != null) ctx.lastActor = actor; return true
+        }
+        // "I tap three lands": mana that has been made and is there to spend.
+        Regex("""^taps? (\d+|one|two|three|four|five|six|seven|eight|nine|ten) (?:lands?|mana sources?|permanents?) ?(?:for mana)?$""").find(c)?.let { r ->
+            val who = actor ?: ctx.lastActor ?: "me"
+            val n = number(r.groupValues[1]) ?: return@let
+            ctx.mana[who] = n; ctx.note(who)
+            ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} $n mana available; costs are checked against that."
+            return true
         }
         // "my graveyard has seven cards" / "there are 7 cards in my graveyard": a graveyard given as a count
         // rather than by naming the cards, which is what threshold and delirium are asked about.
@@ -3602,9 +3647,11 @@ class SituationParser(private val names: NameIndex) {
         // "what are its stats?" / "how big is Tarmogoyf?" / "what's Kird Ape's power and toughness?": the creature's size once everything is done.
         Regex("""^(?:what (?:are|is|'s|s) (?:its|(?:my |their |the |@\w+'s )?(c\d+)(?:'s)?) (?:stats|size|power and toughness|p/t|power|toughness|power/toughness)|how big is (?:it|(?:my |their |the |@\w+'s )?(c\d+))|what size is (?:it|(?:my |their |the )?(c\d+)))(?: now| right now| then| after that| at that point)?$""").find(clause0)?.let { q ->
             val ph = q.groupValues[1].ifEmpty { q.groupValues[2] }.ifEmpty { q.groupValues[3] }
-            val id = if (ph.isEmpty()) (ctx.lastMentioned?.takeIf { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) }
-                ?: ctx.objects.values.lastOrNull { it.controller == "me" && isCreatureName(it.card.name) }?.id
-                ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null && isCreatureName(it.card.name) }?.card?.name?.let { slug(it) }
+            // "My delirium is on and I cast Grim Flayer. How big is it?": a card described in a graveyard is still
+            // a creature card, so without the zone check "it" was answered about that rather than the new creature.
+            val id = if (ph.isEmpty()) (ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null && isCreatureName(it.card.name) }?.card?.name?.let { slug(it) }
+                ?: ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).zone == "battlefield" && isCreatureName(ctx.objects.getValue(it).card.name) }
+                ?: ctx.objects.values.lastOrNull { it.controller == "me" && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id
                 ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let) else m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, to = "pt"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }

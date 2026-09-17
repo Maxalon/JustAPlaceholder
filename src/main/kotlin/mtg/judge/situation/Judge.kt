@@ -192,6 +192,12 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "untap" -> engine.untapObject(e.obj ?: throw JudgeException("untap needs an object"))
             "mill" -> engine.millCards(e.player ?: throw JudgeException("mill needs a player"), e.amount ?: 1)
             "proliferate" -> engine.proliferate(e.player ?: state.players.first().id)
+            // "my opponent is the monarch": the monarch draws at their end step and loses it to combat damage (725).
+            "monarch" -> {
+                val p = state.player(e.player ?: throw JudgeException("monarch needs a player"))
+                state.monarch = p.id
+                state.trace.step("${p.subject} ${p.v("is", "are")} the monarch: at the beginning of ${p.possessive} end step ${p.subject.lowercase()} ${p.v("draws", "draw")} a card, and whoever deals combat damage to ${p.subject.lowercase()} becomes the monarch instead.", "725.1", "725.2")
+            }
             // "my Grizzly Bears becomes a 4/4 until end of turn": a base size set outright (layer 7b), so counters
             // and +N/+N effects still apply on top of it.
             "setpt" -> {
@@ -434,6 +440,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "untap" -> "${state.objects[e.obj]?.name ?: e.obj} untaps"
             "mill" -> "${who ?: "the player"} ${if (who == "you") "mill" else "mills"} ${e.amount ?: 1} card${if ((e.amount ?: 1) == 1) "" else "s"}"
             "proliferate" -> "${who ?: "the player"} ${if (who == "you") "proliferate" else "proliferates"}"
+            "monarch" -> "${who ?: "the player"} ${if (who == "you") "are" else "is"} the monarch"
             "setpt" -> "${state.objects[e.obj]?.name ?: e.obj} becomes ${e.to ?: "?"}"
             "concede" -> "${who ?: "the player"} ${if (who == "you") "concede" else "concedes"}"
             "discardcount" -> "${who ?: "the player"} ${if (who == "you") "discard" else "discards"} ${e.amount ?: 1} card${if ((e.amount ?: 1) == 1) "" else "s"}"

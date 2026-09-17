@@ -11137,5 +11137,62 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "threshold-said-outright",
+    "text": "I have threshold and cast Werebear. How big is it?",
+    "expect": [
+      "Werebear is 4/4"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "delirium-said-outright",
+    "text": "My delirium is on and I cast Grim Flayer. How big is it?",
+    "expect": [
+      "Grim Flayer is 4/4"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "metalcraft-said-outright",
+    "text": "I have metalcraft and cast Galvanic Blast at their Grizzly Bears.",
+    "expect": [
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "monarch-lost-to-combat-damage",
+    "text": "My opponent is the monarch and I attack them with a 2/2. What happens?",
+    "expect": [
+      "You are the monarch."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "725.2"
+    ]
+  },
+  {
+    "id": "tap-three-lands",
+    "text": "I tap three lands and cast Wrath of God. What happens?",
+    "expect": [
+      "can't be cast (costs 4, only 3 mana available)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
