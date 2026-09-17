@@ -11216,5 +11216,51 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "attack-a-planeswalker-with-a-described-creature",
+    "text": "I attack my opponent's Jace Beleren with a 3/3.",
+    "expect": [
+      "Jace Beleren has 0 loyalty",
+      "Jace Beleren: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "planeswalker-loyalty-said-outright",
+    "text": "My opponent's Jace Beleren has 4 loyalty. I attack it with two 2/2s.",
+    "expect": [
+      "Jace Beleren: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "crew-a-vehicle",
+    "text": "I crew my Smuggler's Copter with a 2/2 and attack with it.",
+    "expect": [
+      "Smuggler's Copter is a 3/3 creature until end of turn",
+      "opponent takes 3 damage"
+    ],
+    "notExpect": [
+      "can't attack"
+    ],
+    "cite": []
+  },
+  {
+    "id": "vehicle-uncrewed-cant-attack",
+    "text": "I control Smuggler's Copter. Can it attack?",
+    "expect": [
+      "Smuggler's Copter can't attack"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

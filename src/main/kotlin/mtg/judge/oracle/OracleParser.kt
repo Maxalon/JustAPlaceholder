@@ -118,7 +118,14 @@ object OracleParser {
                         "storm" -> abilities += TriggeredAbility(Trigger.ThisCast, Effect.StormCopy, "Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for the copies.)")
                         "exalted" -> abilities += TriggeredAbility(Trigger.CreatureAttacksAlone, Effect.PumpCausing(1, 1), "Exalted (Whenever a creature you control attacks alone, that creature gets +1/+1 until end of turn.)")
                         "living weapon" -> abilities += TriggeredAbility(Trigger.ThisEnters, Effect.LivingWeapon, "Living weapon (When this Equipment enters, create a 0/0 black Phyrexian Germ creature token, then attach this to it.)")
-                        "crew" -> abilities += ActivatedAbility(part.trimEnd('.') + " (tap any number of other untapped creatures you control with total power N or more)", Effect.Narrated("~ becomes an artifact creature until end of turn", listOf("702.122a")), part)
+                        // Crew animates the Vehicle at its printed size, so a crewed Vehicle can attack and block
+                        // like any other creature rather than the animation being narrated and left untracked.
+                        "crew" -> {
+                            val pw = power?.toIntOrNull(); val tf = toughness?.toIntOrNull()
+                            val eff = if (pw != null && tf != null) Effect.AnimateSelf(pw, tf, listOf("Vehicle"), emptySet(), emptyList(), false, false)
+                                      else Effect.Narrated("~ becomes an artifact creature until end of turn", listOf("702.122a"))
+                            abilities += ActivatedAbility(part.trimEnd('.') + " (tap any number of other untapped creatures you control with total power N or more)", eff, part)
+                        }
                         else -> abilities += StaticAbility(part, kw)
                     }
                 }

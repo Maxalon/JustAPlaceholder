@@ -2974,13 +2974,29 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(ctx.other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
         }
         // "attack Jace with Hill Giant", "attacks their planeswalker with c2": the defender comes first.
-        Regex("""^(?:attacks?|attacking|swings? at|swinging at)\s+((?:an? |the |my |their |@\w+'s )?(?:c\d+|me|them|him|her|my opponent|the opponent|opponent|@\w+))\s+with\s+(?:an? |the |my |their )?(my commander |commander )?(c\d+)(?: alone| by itself| only)?$""").find(c)?.let { r ->
+        // "I attack their Jace with a 3/3" / "… with two 2/2s": the attacker may be described by its size too.
+        Regex("""^(?:attacks?|attacking|swings? at|swinging at)\s+((?:$possPrefix|an? )?(?:c\d+|planeswalker|me|them|him|her|my opponent|the opponent|opponent|@\w+))\s+with\s+(an? |the |my |their |\d+ |two |three |four |five )?(my commander |commander )?(c\d+|\d+/\d+)s?(?: ($kwNouns))?(?: ($creatureKinds))?(?: alone| by itself| only)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
-            val card = m.cards.getValue(r.groupValues[3])
-            val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
-            if (r.groupValues[2].isNotEmpty()) ctx.objects[id] = ctx.objects.getValue(id).copy(commander = true)
-            val defender = targetsIn("at " + r.groupValues[1], m, ctx).ifEmpty { listOf(ctx.other(who) ?: "opp") }
-            ctx.events += EventSpec("attack", player = who, obj = id, targets = defender); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
+            val what = r.groupValues[4]
+            val ids = if (cardRef.matches(what)) {
+                val card = m.cards.getValue(what)
+                val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
+                if (r.groupValues[3].isNotEmpty()) ctx.objects[id] = ctx.objects.getValue(id).copy(commander = true)
+                listOf(id)
+            } else describedCreatures(r.groupValues[2].ifEmpty { "a " }, what, r.groupValues[6], who, ctx,
+                r.groupValues[5].let { k -> if (k.isEmpty()) "" else k.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") })
+            if (ids.isEmpty()) return@let
+            // "their planeswalker": one nobody named, which the defender has to have for the attack to mean anything.
+            val defTail = r.groupValues[1]
+            val defender = if (Regex("""\bplaneswalker$""").containsMatchIn(defTail)) {
+                val foe = possessiveOwner(defTail.substringBefore("planeswalker"), ctx, m) ?: ctx.other(who) ?: "opp"
+                // A planeswalker nobody named has no loyalty to count the damage against, so the attack is read as
+                // being at its controller and the question is asked rather than a stand-in being invented.
+                listOfNotNull(ctx.objects.values.lastOrNull { it.controller == foe && it.zone == "battlefield" && names.lookup(Names.normalize(it.card.name ?: ""))?.typeLine?.contains("Planeswalker", true) == true }?.id
+                    ?: run { ctx.notes += "No planeswalker was named, so the attack is read as being at ${if (foe == "me") "you" else (ctx.players[foe] ?: "your opponent")}; name the planeswalker and its loyalty for the answer you want."; foe })
+            } else targetsIn("at " + defTail, m, ctx).ifEmpty { listOf(ctx.other(who) ?: "opp") }
+            for (id in ids) ctx.events += EventSpec("attack", player = who, obj = id, targets = defender)
+            ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = ids.last(); return true
         }
         Regex("""^(?:attacks?|attacking|swings?|swinging)(?: with)?\s+(\d+|two|three|four|five) (elves|elf|goblins|zombies|soldiers|humans|spirits|angels|dragons|beasts|elementals|saprolings|thopters|knights|warriors|wizards|vampires|merfolk|cats|dogs|birds|insects|squirrels|servos|tokens)(?: tokens?)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
@@ -3107,6 +3123,30 @@ class SituationParser(private val names: NameIndex) {
             val id = if (r.groupValues[2].isEmpty() || r.groupValues[2] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
                      else m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, possessiveOwner(r.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
             ctx.events += EventSpec("setPt", obj = id, to = "${r.groupValues[3]}/${r.groupValues[4]}")
+            ctx.lastMentioned = id; return true
+        }
+        // "I crew my Smuggler's Copter with a 2/2": crewing is the Vehicle's own activated ability, paid by tapping
+        // creatures; said this way round neither the Vehicle nor the crew was read.
+        Regex("""^crews?(?: up)? ($possPrefix|an? )?(c\d+|it|that)(?: with (?:$possPrefix|an? )?(c\d+|\d+/\d+|creature|creatures))?$""").find(c)?.let { r ->
+            val who = actor ?: ctx.lastActor ?: "me"
+            val vid = if (r.groupValues[2] in setOf("it", "that")) ctx.objects.values.lastOrNull { o -> o.controller == who && o.zone == "battlefield" && names.lookup(Names.normalize(o.card.name ?: ""))?.typeLine?.contains("Vehicle", true) == true }?.id
+                          ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                      else m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) } ?: return@let
+            // The crew is a cost, not something the answer tracks; a creature said to pay it is put out if it isn't.
+            r.groupValues[3].takeIf { it.isNotEmpty() }?.let { ph ->
+                if (cardRef.matches(ph)) m.cards[ph]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) }
+                else if (Regex("""^\d+/\d+$""").matches(ph)) describedCreatures("a ", ph, "creature", who, ctx).firstOrNull()
+                else null
+            }
+            ctx.events += EventSpec("activate", player = who, obj = vid)
+            ctx.lastActor = who; ctx.lastMentioned = vid; return true
+        }
+        // "my opponent's Jace Beleren has 4 loyalty": a loyalty total said as a statement of its own.
+        Regex("""^($possPrefix)?(c\d+|it|that) (?:is at|has|have|starts at|sits at|is on) (\d+) loyalty(?: counters?)?$""").find(c)?.let { r ->
+            val id = if (r.groupValues[2] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, possessiveOwner(r.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
+            val spec = ctx.objects.getValue(id)
+            ctx.objects[id] = spec.copy(counters = spec.counters + ("loyalty" to (r.groupValues[3].toInt())))
             ctx.lastMentioned = id; return true
         }
         // "my opponent scoops" / "they concede": that player loses the game (104.3a).
