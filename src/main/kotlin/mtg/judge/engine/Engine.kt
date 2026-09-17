@@ -929,6 +929,7 @@ class Engine(val state: GameState) {
         val firstBlocker = blockersOf(a).isEmpty()
         b.blocking = a.id; a.wasBlocked = true
         if (firstBlocker) onEvent(GameEvent.BecomesBlocked(a))
+        onEvent(GameEvent.BecomesBlockedBy(a, b))
         onEvent(GameEvent.Blocks(b))
         trace.step("${p.subject} ${p.v("blocks", "block")} ${a.name} with ${b.name} (${state.describePt(b)}). ${a.name} is now a blocked creature and stays blocked even if ${b.name} leaves combat.", "509.1a", "509.1g", "509.1h")
     }
@@ -1030,6 +1031,8 @@ class Engine(val state: GameState) {
         data class DamageDealt(val source: GameObject, val target: Ref, val amount: Int, val combat: Boolean) : GameEvent
         data class LifeGained(val playerId: String, val amount: Int) : GameEvent
         data class BecomesBlocked(val obj: GameObject) : GameEvent
+        /** Fired once per blocker, unlike BecomesBlocked which fires only when the attacker first becomes blocked. */
+        data class BecomesBlockedBy(val obj: GameObject, val blocker: GameObject) : GameEvent
         data class Blocks(val obj: GameObject) : GameEvent
         data class BecomesTarget(val obj: GameObject, val by: String, val sourceId: String) : GameEvent
         data class BecomesTapped(val obj: GameObject) : GameEvent
@@ -1114,6 +1117,7 @@ class Engine(val state: GameState) {
                 is GameEvent.DamageDealt -> "${event.source.name} dealing ${event.amount} damage to ${state.nameOf(event.target)}"
                 is GameEvent.LifeGained -> "${state.player(event.playerId).subject.lowercase()} gaining life"
                 is GameEvent.BecomesBlocked -> "${event.obj.name} becoming blocked"
+                is GameEvent.BecomesBlockedBy -> "${event.obj.name} becoming blocked by ${event.blocker.name}"
                 is GameEvent.Blocks -> "${event.obj.name} blocking"
                 is GameEvent.BecomesTarget -> "${event.obj.name} becoming the target of a spell or ability"
                 is GameEvent.BecomesTapped -> "${event.obj.name} becoming tapped"
@@ -1179,6 +1183,7 @@ class Engine(val state: GameState) {
         is Trigger.YouDrawNth -> event is GameEvent.Drew && event.playerId == obj.controller && onBf() && state.player(event.playerId).drew == trigger.n
         Trigger.ThisIsDealtDamage -> event is GameEvent.DamageDealt && (event.target as? Ref.Obj)?.id == obj.id
         Trigger.ThisBecomesBlocked -> event is GameEvent.BecomesBlocked && event.obj === obj
+        Trigger.ThisBecomesBlockedByCreature -> event is GameEvent.BecomesBlockedBy && event.obj === obj
         Trigger.ThisBlocks -> event is GameEvent.Blocks && event.obj === obj
         is Trigger.ThisBecomesTarget -> event is GameEvent.BecomesTarget && event.obj === obj &&
             (!trigger.opponentsOnly || event.by != obj.controller) &&

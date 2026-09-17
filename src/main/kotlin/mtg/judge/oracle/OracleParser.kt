@@ -75,6 +75,12 @@ object OracleParser {
                         "prowess" -> abilities += TriggeredAbility(Trigger.SpellCast(Who.YOU, ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE), raw = "noncreature spell")), Effect.PumpSelf(1, 1), "Prowess (Whenever you cast a noncreature spell, ~ gets +1/+1 until end of turn.)")
                         "unearth" -> abilities += ActivatedAbility(part.trimEnd('.') + " (from your graveyard)", Effect.Narrated("return ~ from your graveyard to the battlefield; it gains haste; exile it at the beginning of the next end step or if it would leave the battlefield", listOf("702.84a")), part, "Activate only as a sorcery")
                         "level up" -> abilities += ActivatedAbility(part.trimEnd('.'), Effect.PutCounters(null, "level", 1), part, "Activate only as a sorcery")
+                        "bushido" -> {
+                            val n = part.substringAfter(' ').trim().trimEnd('.').toIntOrNull()
+                            val txt = "Bushido $n (Whenever this creature blocks or becomes blocked, it gets +$n/+$n until end of turn.)"
+                            if (n == null) abilities += StaticAbility(part, kw)
+                            else { abilities += TriggeredAbility(Trigger.ThisBlocks, Effect.PumpSelf(n, n), txt); abilities += TriggeredAbility(Trigger.ThisBecomesBlocked, Effect.PumpSelf(n, n), txt) }
+                        }
                         "exalted" -> abilities += TriggeredAbility(Trigger.CreatureAttacksAlone, Effect.PumpCausing(1, 1), "Exalted (Whenever a creature you control attacks alone, that creature gets +1/+1 until end of turn.)")
                         "living weapon" -> abilities += TriggeredAbility(Trigger.ThisEnters, Effect.LivingWeapon, "Living weapon (When this Equipment enters, create a 0/0 black Phyrexian Germ creature token, then attach this to it.)")
                         "crew" -> abilities += ActivatedAbility(part.trimEnd('.') + " (tap any number of other untapped creatures you control with total power N or more)", Effect.Narrated("~ becomes an artifact creature until end of turn", listOf("702.122a")), part)
@@ -162,9 +168,9 @@ object OracleParser {
         val cond = m.groupValues[2].trim().replace(Regex("""^Landfall — """), "")
         val trigger = parseTrigger(cond)
         // "Whenever ~ attacks, it gets +1/+1" / "…, put a +1/+1 counter on it": in a self-trigger, a leading "it" is ~.
-        val selfTrigger = trigger is Trigger.ThisDies || trigger is Trigger.ThisLeavesBattlefield || trigger is Trigger.ThisAttacks || trigger is Trigger.ThisEnters || trigger is Trigger.ThisDealsDamage || trigger is Trigger.ThisBecomesBlocked || trigger is Trigger.ThisBlocks ||
+        val selfTrigger = trigger is Trigger.ThisDies || trigger is Trigger.ThisLeavesBattlefield || trigger is Trigger.ThisAttacks || trigger is Trigger.ThisEnters || trigger is Trigger.ThisDealsDamage || trigger is Trigger.ThisBecomesBlocked || trigger is Trigger.ThisBecomesBlockedByCreature || trigger is Trigger.ThisBlocks ||
             trigger is Trigger.ThisBecomesTarget || trigger is Trigger.ThisBecomesTapped || trigger is Trigger.ThisIsDealtDamage || trigger is Trigger.ThisCast
-        val effText = if (selfTrigger) m.groupValues[3].replace(Regex("""^it (gets|gains) """), "~ $1 ").replace(Regex("""^(put (?:a|an|\w+|\d+|X) [+-]\d/[+-]\d counters? on) it\b"""), "$1 ~").replace(Regex("""^return it to its owner's hand"""), "return ~ to its owner's hand") else m.groupValues[3]
+        val effText = if (selfTrigger) selfEffText(m.groupValues[3]) else m.groupValues[3]
         // "Whenever a creature you control attacks alone, it gains double strike / gets +2/+2 until end of turn": the attacking creature.
         if (trigger is Trigger.CreatureAttacksAlone) {
             Regex("""^(?:it|that creature) gets ([+-]\d+)/([+-]\d+)(?: and gains (.+?))? until end of turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(effText)?.let { r ->
@@ -179,6 +185,11 @@ object OracleParser {
         return TriggeredAbility(trigger, parseEffect(effText), line)
     }
 
+    /** In a trigger about ~ itself, a leading "it" is ~. */
+    private fun selfEffText(t: String) = t.replace(Regex("""^it (gets|gains) """), "~ $1 ")
+        .replace(Regex("""^(put (?:a|an|\w+|\d+|X) [+-]\d/[+-]\d counters? on) it\b"""), "$1 ~")
+        .replace(Regex("""^return it to its owner's hand"""), "return ~ to its owner's hand")
+
     /** "Whenever ~ enters or attacks, …" is two triggered abilities with the same effect. */
     private fun parseTriggeredAll(line: String): List<Ability> {
         // An ability word ("Landfall — ", "Flurry of Blows — ") is flavour: it names the ability and says nothing.
@@ -186,13 +197,20 @@ object OracleParser {
         val m = triggerRe.matchEntire(joinTypeLists(line.replace(abilityWord, ""))) ?: return listOf(UnparsedAbility(line))
         val cond = m.groupValues[2].trim()
         Regex("""^~ enters or attacks$""", RegexOption.IGNORE_CASE).matchEntire(cond)?.let {
-            val eff = parseEffect(m.groupValues[3]); return listOf(TriggeredAbility(Trigger.ThisEnters, eff, line), TriggeredAbility(Trigger.ThisAttacks, eff, line))
+            val eff = parseEffect(selfEffText(m.groupValues[3])); return listOf(TriggeredAbility(Trigger.ThisEnters, eff, line), TriggeredAbility(Trigger.ThisAttacks, eff, line))
+        }
+        // "Whenever ~ blocks or becomes blocked(, by a creature)" — the two halves are separate triggers, and the
+        // "by a creature" half triggers once for each creature blocking it, so it keeps its own trigger.
+        Regex("""^~ blocks or becomes blocked( by a creature)?$""", RegexOption.IGNORE_CASE).matchEntire(cond)?.let { bm ->
+            val eff = parseEffect(selfEffText(m.groupValues[3]))
+            val blocked = if (bm.groupValues[1].isEmpty()) Trigger.ThisBecomesBlocked else Trigger.ThisBecomesBlockedByCreature
+            return listOf(TriggeredAbility(Trigger.ThisBlocks, eff, line), TriggeredAbility(blocked, eff, line))
         }
         Regex("""^~ attacks or blocks$""", RegexOption.IGNORE_CASE).matchEntire(cond)?.let {
-            val eff = parseEffect(m.groupValues[3]); return listOf(TriggeredAbility(Trigger.ThisAttacks, eff, line), TriggeredAbility(Trigger.ThisBlocks, eff, line))
+            val eff = parseEffect(selfEffText(m.groupValues[3])); return listOf(TriggeredAbility(Trigger.ThisAttacks, eff, line), TriggeredAbility(Trigger.ThisBlocks, eff, line))
         }
         Regex("""^~ enters or dies$""", RegexOption.IGNORE_CASE).matchEntire(cond)?.let {
-            val eff = parseEffect(m.groupValues[3]); return listOf(TriggeredAbility(Trigger.ThisEnters, eff, line), TriggeredAbility(Trigger.ThisDies, eff, line))
+            val eff = parseEffect(selfEffText(m.groupValues[3])); return listOf(TriggeredAbility(Trigger.ThisEnters, eff, line), TriggeredAbility(Trigger.ThisDies, eff, line))
         }
         return listOf(parseTriggered(m.groupValues[1] + " " + cond + ", " + m.groupValues[3]))
     }
@@ -218,6 +236,7 @@ object OracleParser {
         if (Regex("""^~ is put into a graveyard from the battlefield$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisDies
         if (Regex("""^~ is dealt damage$|^a source deals damage to ~$|^~ is dealt damage by a source$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisIsDealtDamage
         if (Regex("""^~ becomes blocked$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBecomesBlocked
+        if (Regex("""^~ becomes blocked by a creature$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBecomesBlockedByCreature
         if (Regex("""^one or more creatures you control deal combat damage to a player$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.YourCreaturesDealCombatDamageToPlayer
         // "~ becomes the target of a spell (or ability) (an opponent controls) (for the first time each turn)"
         Regex("""^~ becomes the target of a spell(?: or ability)?( an opponent controls| you control)?( for the first time each turn)?$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->

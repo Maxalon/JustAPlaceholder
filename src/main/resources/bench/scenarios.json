@@ -8944,5 +8944,50 @@
     ],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "bushido-attacker-blocked",
+    "text": "I attack with Kitsune Blademaster and my opponent blocks with Hill Giant. What happens?",
+    "expect": [
+      "Kitsune Blademaster is 3/3 until end of turn",
+      "Hill Giant: the battlefield"
+    ],
+    "notExpect": [
+      "Kitsune Blademaster: the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "bushido-blocker",
+    "text": "My opponent attacks with Hill Giant and I block with Jade Avenger. What happens?",
+    "expect": [
+      "Jade Avenger is 4/4 until end of turn"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "blocks-or-becomes-blocked-pump",
+    "text": "My opponent attacks with Hill Giant and I block with Raging Gorilla. What happens?",
+    "expect": [
+      "Raging Gorilla is 4/1 until end of turn"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "blocks-or-becomes-blocked-attacker",
+    "text": "I attack with Brushwagg and my opponent blocks with Grizzly Bears. What happens?",
+    "expect": [
+      "Brushwagg is 1/4 until end of turn"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": []
   }
 ]

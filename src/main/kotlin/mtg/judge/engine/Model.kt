@@ -89,6 +89,8 @@ sealed interface Trigger {
     data object ThisIsDealtDamage : Trigger
     /** "Whenever ~ becomes blocked". */
     data object ThisBecomesBlocked : Trigger
+    /** "Whenever ~ becomes blocked by a creature" — once for each creature that blocks it (509.1h). */
+    data object ThisBecomesBlockedByCreature : Trigger
     /** "Whenever ~ blocks". */
     data object ThisBlocks : Trigger
     /** "Whenever ~ becomes the target of a spell or ability". */
