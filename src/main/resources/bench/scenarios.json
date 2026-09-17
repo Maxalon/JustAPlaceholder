@@ -56,7 +56,7 @@
     "text": "I swing with Colossal Dreadmaw, they block with Grizzly Bears and then cast Giant Growth on the Bears.",
     "expect": [
       "remaining 1 to opponent",
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "702.19b",
@@ -144,8 +144,8 @@
     "id": "deathtouch-block",
     "text": "I attack with Colossal Dreadmaw and they block with Typhoid Rats.",
     "expect": [
-      "Colossal Dreadmaw: the battlefield \u2192 your graveyard",
-      "Typhoid Rats: the battlefield \u2192 opponent's graveyard"
+      "Colossal Dreadmaw: the battlefield → your graveyard",
+      "Typhoid Rats: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "704.5h"
@@ -155,7 +155,7 @@
     "id": "first-strike",
     "text": "I attack with Youthful Knight and they block with Grizzly Bears.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Youthful Knight: the battlefield"
@@ -369,7 +369,7 @@
     "id": "pw-bolt-dies",
     "text": "My opponent has Liliana of the Veil at 1 loyalty. I cast Lightning Bolt targeting Liliana.",
     "expect": [
-      "Liliana of the Veil: the battlefield \u2192 opponent's graveyard"
+      "Liliana of the Veil: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "306.8",
@@ -380,7 +380,7 @@
     "id": "pw-attack-blocked",
     "text": "My opponent controls Jace, the Mind Sculptor with 2 loyalty. I attack Jace with Grizzly Bears and they block with Hill Giant.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "cite": [
       "509.1a",
@@ -391,7 +391,7 @@
     "id": "counters-damage",
     "text": "I have Grizzly Bears with two +1/+1 counters and 1 damage on it. Opponent casts Lightning Bolt on it.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "cite": [
       "704.5g"
@@ -490,7 +490,7 @@
     "id": "wrath-vs-regeneration",
     "text": "My opponent controls Drudge Skeletons with a regeneration shield. I cast Wrath of God.",
     "expect": [
-      "Drudge Skeletons: the battlefield \u2192 opponent's graveyard"
+      "Drudge Skeletons: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "701.19c",
@@ -534,7 +534,7 @@
     "id": "path-question",
     "text": "I cast Path to Exile on my opponent's Grizzly Bears. Do they get a land?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 exile"
+      "Grizzly Bears: the battlefield → exile"
     ],
     "cite": [
       "701.23a"
@@ -544,8 +544,8 @@
     "id": "elesh-norn-sba",
     "text": "Opponent has Elesh Norn, Grand Cenobite. I control Llanowar Elves and Grizzly Bears.",
     "expect": [
-      "Llanowar Elves: the battlefield \u2192 your graveyard",
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Llanowar Elves: the battlefield → your graveyard",
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "cite": [
       "704.5f"
@@ -568,7 +568,7 @@
     "text": "I attack with Serra Angel. They block with Grizzly Bears. After blockers I cast Lightning Bolt on the Bears.",
     "expect": [
       "Grizzly Bears can't block Serra Angel (flying)",
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "702.9b"
@@ -599,7 +599,7 @@
     "text": "I attack with Grizzly Bears and Hill Giant. Opponent blocks Hill Giant with Serra Angel and doesn't block the Bears.",
     "expect": [
       "opponent takes 2 damage",
-      "Hill Giant: the battlefield \u2192 your graveyard"
+      "Hill Giant: the battlefield → your graveyard"
     ],
     "cite": [
       "510.1c"
@@ -609,8 +609,8 @@
     "id": "rift-overload",
     "text": "Opponent casts Cyclonic Rift overloaded. I control Grizzly Bears and Sol Ring.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your hand",
-      "Sol Ring: the battlefield \u2192 your hand"
+      "Grizzly Bears: the battlefield → your hand",
+      "Sol Ring: the battlefield → your hand"
     ],
     "cite": [
       "702.96a",
@@ -633,7 +633,7 @@
     "id": "generic-token-doom-blade",
     "text": "My opponent has a 5/5 Zombie token. I cast Doom Blade on it.",
     "expect": [
-      "Zombie token: the battlefield \u2192 opponent's graveyard"
+      "Zombie token: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "701.8a"
@@ -643,7 +643,7 @@
     "id": "legend-rule",
     "text": "I cast a second Sheoldred, the Apocalypse while I already control one.",
     "expect": [
-      "Sheoldred, the Apocalypse: the battlefield \u2192 your graveyard"
+      "Sheoldred, the Apocalypse: the battlefield → your graveyard"
     ],
     "cite": [
       "704.5j"
@@ -653,7 +653,7 @@
     "id": "flash-blocker",
     "text": "My opponent attacks me with Grizzly Bears. I flash in Ambush Viper and block.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "704.5g",
@@ -675,7 +675,7 @@
     "text": "Opponent casts Krosan Grip on my Sol Ring. I respond with Cyclonic Rift on Krosan Grip.",
     "expect": [
       "Cyclonic Rift can't be cast while Krosan Grip is on the stack (split second)",
-      "Sol Ring: the battlefield \u2192 your graveyard"
+      "Sol Ring: the battlefield → your graveyard"
     ],
     "cite": [
       "702.61a"
@@ -707,7 +707,7 @@
     "text": "I tap Llanowar Elves for mana and then my opponent casts Lightning Bolt on it.",
     "expect": [
       "Llanowar Elves's mana ability: add {G}",
-      "Llanowar Elves: the battlefield \u2192 your graveyard"
+      "Llanowar Elves: the battlefield → your graveyard"
     ],
     "cite": [
       "605.3b"
@@ -730,7 +730,7 @@
     "id": "zulaport-damnation",
     "text": "I control Zulaport Cutthroat and my opponent casts Damnation. I have three creatures.",
     "expect": [
-      "opponent loses 1 life. (\u00d74)"
+      "opponent loses 1 life. (×4)"
     ],
     "cite": [
       "603.10a",
@@ -751,7 +751,7 @@
     "id": "beast-within",
     "text": "I cast Beast Within on my own Sol Ring.",
     "expect": [
-      "Sol Ring: the battlefield \u2192 your graveyard",
+      "Sol Ring: the battlefield → your graveyard",
       "You get a Beast token"
     ],
     "cite": [
@@ -762,7 +762,7 @@
     "id": "panharmonicon-mulldrifter",
     "text": "I control Panharmonicon and cast Mulldrifter.",
     "expect": [
-      "You draw 2 cards. (\u00d72)"
+      "You draw 2 cards. (×2)"
     ],
     "cite": [
       "603.2"
@@ -795,8 +795,8 @@
     "id": "grave-pact",
     "text": "Opponent has Grave Pact. I cast Murder on their Grizzly Bears while I control Llanowar Elves.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard",
-      "Llanowar Elves: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard",
+      "Llanowar Elves: the battlefield → your graveyard"
     ],
     "cite": [
       "701.21a"
@@ -838,7 +838,7 @@
     "id": "blasphemous-act-token",
     "text": "My opponent casts Blasphemous Act. I control Grizzly Bears, Serra Angel and a 7/7 token.",
     "expect": [
-      "a 7/7 token: the battlefield \u2192 your graveyard"
+      "a 7/7 token: the battlefield → your graveyard"
     ],
     "cite": [
       "704.5g"
@@ -860,7 +860,7 @@
     "id": "mixed-counters-shock",
     "text": "My Bears has two -1/-1 counters and one +1/+1 counter. Opponent casts Shock on it.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "cite": [
       "704.5g"
@@ -870,7 +870,7 @@
     "id": "swords-attacker-growth",
     "text": "I cast Swords to Plowshares on Colossal Dreadmaw while it's attacking me. Opponent responds with Giant Growth.",
     "expect": [
-      "Colossal Dreadmaw: the battlefield \u2192 exile",
+      "Colossal Dreadmaw: the battlefield → exile",
       "opponent gains 9 life"
     ],
     "cite": [
@@ -901,7 +901,7 @@
     "id": "chaos-warp-own",
     "text": "I cast Chaos Warp targeting my own Sol Ring.",
     "expect": [
-      "Sol Ring: the battlefield \u2192 your library"
+      "Sol Ring: the battlefield → your library"
     ],
     "cite": [
       "701.24a"
@@ -911,7 +911,7 @@
     "id": "rip-vs-blood-artist",
     "text": "I control Rest in Peace. My opponent's Grizzly Bears dies and they have Blood Artist.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 exile (replaced by Rest in Peace)"
+      "Grizzly Bears: the battlefield → exile (replaced by Rest in Peace)"
     ],
     "cite": [
       "614.6"
@@ -931,7 +931,7 @@
     "id": "three-players-rhystic-nobody-pays",
     "text": "Alice, Bob and Carol are playing. Alice has Rhystic Study. Bob casts Sol Ring and Carol casts Counterspell on it. Nobody pays.",
     "expect": [
-      "Alice draws 1 card. (\u00d72)",
+      "Alice draws 1 card. (×2)",
       "Sol Ring is countered"
     ],
     "cite": [
@@ -943,7 +943,7 @@
     "id": "exalted-commander-alone",
     "text": "I attack Bob with my commander Rafiq of the Many alone. Bob is at 6.",
     "expect": [
-      "Bob takes 4 damage. (\u00d72)",
+      "Bob takes 4 damage. (×2)",
       "Bob has taken 8 commander damage from Rafiq of the Many",
       "Bob loses the game"
     ],
@@ -1020,8 +1020,8 @@
     "id": "rancor-returns",
     "text": "I control Grizzly Bears and cast Rancor on it. Then my opponent kills the Bears with Doom Blade.",
     "expect": [
-      "Rancor: the battlefield \u2192 your graveyard",
-      "Rancor: your graveyard \u2192 your hand"
+      "Rancor: the battlefield → your graveyard",
+      "Rancor: your graveyard → your hand"
     ],
     "cite": [
       "704.5m",
@@ -1044,7 +1044,7 @@
     "text": "I cast Naturalize on their Sol Ring in response to them tapping it for mana.",
     "expect": [
       "Sol Ring's mana ability: add {C}{C}",
-      "Sol Ring: the battlefield \u2192 opponent's graveyard"
+      "Sol Ring: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "605.3b"
@@ -1054,8 +1054,8 @@
     "id": "settle-after-attack",
     "text": "I have Kaalia of the Vast. Opponent casts Settle the Wreckage after I attack with Kaalia and Serra Angel.",
     "expect": [
-      "Kaalia of the Vast: the battlefield \u2192 exile",
-      "Serra Angel: the battlefield \u2192 exile"
+      "Kaalia of the Vast: the battlefield → exile",
+      "Serra Angel: the battlefield → exile"
     ],
     "cite": [
       "701.13a"
@@ -1112,7 +1112,7 @@
     "id": "ponder-preordain",
     "text": "I cast Ponder. Then I cast Preordain. Do I draw?",
     "expect": [
-      "You draw 1 card. (\u00d72)"
+      "You draw 1 card. (×2)"
     ],
     "cite": [
       "121.1"
@@ -1152,7 +1152,7 @@
     "id": "chupacabra-etb-target",
     "text": "I cast Ravenous Chupacabra targeting their Grizzly Bears.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "603.3d",
@@ -1175,7 +1175,7 @@
     "id": "kicked-burst-lightning",
     "text": "I cast Burst Lightning kicked at their Serra Angel.",
     "expect": [
-      "Serra Angel: the battlefield \u2192 opponent's graveyard"
+      "Serra Angel: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "702.33d"
@@ -1186,7 +1186,7 @@
     "text": "My opponent attacks with two Grizzly Bears. I block one with Hill Giant.",
     "expect": [
       "You take 2 damage",
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "510.1c"
@@ -1237,7 +1237,7 @@
     "id": "cast-it-from-hand",
     "text": "I have Wrath of God in hand. Opponent controls Grizzly Bears, Serra Angel and Darksteel Colossus. I cast it.",
     "expect": [
-      "Serra Angel: the battlefield \u2192 opponent's graveyard",
+      "Serra Angel: the battlefield → opponent's graveyard",
       "Darksteel Colossus is indestructible and isn't destroyed"
     ],
     "cite": [
@@ -1279,7 +1279,7 @@
     "id": "naturalize-rancor",
     "text": "I control Grizzly Bears with Rancor. Opponent casts Naturalize on Rancor.",
     "expect": [
-      "Rancor: your graveyard \u2192 your hand"
+      "Rancor: your graveyard → your hand"
     ],
     "cite": [
       "400.7"
@@ -1289,7 +1289,7 @@
     "id": "elder-sac-in-response",
     "text": "I cast Sakura-Tribe Elder and sacrifice it in response to Lightning Bolt.",
     "expect": [
-      "Sakura-Tribe Elder: the battlefield \u2192 your graveyard",
+      "Sakura-Tribe Elder: the battlefield → your graveyard",
       "Lightning Bolt doesn't resolve (all targets illegal)"
     ],
     "cite": [
@@ -1301,7 +1301,7 @@
     "id": "aura-shards-target",
     "text": "I control Aura Shards and cast Grizzly Bears. Opponent has Sol Ring.",
     "expect": [
-      "Sol Ring: the battlefield \u2192 opponent's graveyard"
+      "Sol Ring: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "701.8a"
@@ -1345,7 +1345,7 @@
     "text": "Opponent casts Krosan Grip on my Sol Ring. Can I tap Sol Ring for mana in response?",
     "expect": [
       "Sol Ring's mana ability: add {C}{C}",
-      "Sol Ring: the battlefield \u2192 your graveyard"
+      "Sol Ring: the battlefield → your graveyard"
     ],
     "cite": [
       "702.61a",
@@ -1356,7 +1356,7 @@
     "id": "unsummon-recast",
     "text": "I cast Unsummon on my own Mulldrifter and recast it.",
     "expect": [
-      "Mulldrifter: the battlefield \u2192 your hand",
+      "Mulldrifter: the battlefield → your hand",
       "You draw 2 cards"
     ],
     "cite": [
@@ -1368,7 +1368,7 @@
     "id": "bolt-wall-before-damage",
     "text": "I attack with Grizzly Bears and my opponent blocks with Wall of Omens. Then I cast Lightning Bolt on the Wall before damage.",
     "expect": [
-      "Wall of Omens: the battlefield \u2192 opponent's graveyard"
+      "Wall of Omens: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "704.5g"
@@ -1378,7 +1378,7 @@
     "id": "both-bears-boros-charm",
     "text": "Both of us control Grizzly Bears. I cast Wrath of God. My opponent responds with Boros Charm for indestructible.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard",
+      "Grizzly Bears: the battlefield → your graveyard",
       "Grizzly Bears is indestructible and isn't destroyed"
     ],
     "cite": [
@@ -1420,7 +1420,7 @@
     "id": "path-their-token",
     "text": "I cast Path to Exile on my opponent's token.",
     "expect": [
-      "a 1/1 token: the battlefield \u2192 exile"
+      "a 1/1 token: the battlefield → exile"
     ],
     "cite": [
       "701.13a"
@@ -1451,8 +1451,8 @@
     "id": "rift-end-step",
     "text": "I control Grizzly Bears and Serra Angel. My opponent casts Cyclonic Rift overloaded during my end step. Do I get them back?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your hand",
-      "Serra Angel: the battlefield \u2192 your hand"
+      "Grizzly Bears: the battlefield → your hand",
+      "Serra Angel: the battlefield → your hand"
     ],
     "cite": [
       "702.96a",
@@ -1474,7 +1474,7 @@
     "id": "baneslayer-vs-nighthawk",
     "text": "Opponent attacks with Baneslayer Angel. I block with Vampire Nighthawk.",
     "expect": [
-      "Vampire Nighthawk: the battlefield \u2192 your graveyard",
+      "Vampire Nighthawk: the battlefield → your graveyard",
       "opponent gains 5 life"
     ],
     "cite": [
@@ -1487,7 +1487,7 @@
     "text": "I cast Skullclamp and equip it to a 1/1 Elf token.",
     "expect": [
       "Skullclamp is attached to Elf token",
-      "Elf token: the battlefield \u2192 your graveyard"
+      "Elf token: the battlefield → your graveyard"
     ],
     "cite": [
       "704.5f",
@@ -1498,7 +1498,7 @@
     "id": "naturalize-pacifism-attack",
     "text": "My opponent controls Grizzly Bears with a Pacifism on it. I cast Naturalize on Pacifism and then they attack with the Bears.",
     "expect": [
-      "Pacifism: the battlefield \u2192 opponent's graveyard",
+      "Pacifism: the battlefield → opponent's graveyard",
       "You take 2 damage"
     ],
     "cite": [
@@ -1510,7 +1510,7 @@
     "text": "I have 3 poison counters. My opponent attacks with Blightsteel Colossus and I block with Grizzly Bears.",
     "expect": [
       "Grizzly Bears has 2 -1/-1 counter(s)",
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "cite": [
       "702.90c"
@@ -1520,7 +1520,7 @@
     "id": "craterhoof-under-norn",
     "text": "My opponent has Elesh Norn, Grand Cenobite. I cast Craterhoof Behemoth with two Llanowar Elves in play.",
     "expect": [
-      "Llanowar Elves: the battlefield \u2192 your graveyard. (\u00d72)",
+      "Llanowar Elves: the battlefield → your graveyard. (×2)",
       "Craterhoof Behemoth is 4/4 until end of turn"
     ],
     "cite": [
@@ -1532,7 +1532,7 @@
     "text": "I attack with Grizzly Bears. Opponent blocks with Wall of Omens and then casts Swords to Plowshares on my Bears after damage.",
     "expect": [
       "Wall of Omens has 2 damage marked",
-      "Grizzly Bears: the battlefield \u2192 exile"
+      "Grizzly Bears: the battlefield → exile"
     ],
     "cite": [
       "510.2",
@@ -1555,7 +1555,7 @@
     "id": "named-then-bolts",
     "text": "I attack Alice with Grizzly Bears and she blocks with Hill Giant. Bob then bolts my Bears.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard",
+      "Grizzly Bears: the battlefield → your graveyard",
       "Lightning Bolt deals 3 damage to Grizzly Bears"
     ],
     "cite": [
@@ -1567,7 +1567,7 @@
     "text": "I control Sheoldred, the Apocalypse and cast Divination.",
     "expect": [
       "You draw 2 cards",
-      "You gain 2 life. (\u00d72)"
+      "You gain 2 life. (×2)"
     ],
     "cite": [
       "119.3"
@@ -1577,7 +1577,7 @@
     "id": "settle-in-hand-cast-it",
     "text": "My opponent attacks with Serra Angel and I have Settle the Wreckage. I cast it on them.",
     "expect": [
-      "Serra Angel: the battlefield \u2192 exile"
+      "Serra Angel: the battlefield → exile"
     ],
     "cite": [
       "701.13a"
@@ -1587,9 +1587,9 @@
     "id": "rancor-bears-vs-angel",
     "text": "I have Grizzly Bears with Rancor and attack. They block with Serra Angel.",
     "expect": [
-      "Serra Angel: the battlefield \u2192 opponent's graveyard",
-      "Grizzly Bears: the battlefield \u2192 your graveyard",
-      "Rancor: your graveyard \u2192 your hand"
+      "Serra Angel: the battlefield → opponent's graveyard",
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Rancor: your graveyard → your hand"
     ],
     "cite": [
       "704.5g",
@@ -1668,7 +1668,7 @@
     "text": "Bob casts Lightning Bolt at Alice's Grizzly Bears. Alice responds by casting Brainstorm.",
     "expect": [
       "Alice draws 3 cards",
-      "Grizzly Bears: the battlefield \u2192 Alice's graveyard"
+      "Grizzly Bears: the battlefield → Alice's graveyard"
     ],
     "cite": [
       "121.1"
@@ -1701,7 +1701,7 @@
     "expect": [
       "Grizzly Bears is 5/5 until end of turn",
       "Grizzly Bears has 6 damage marked",
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "cite": [
       "704.5g"
@@ -1792,7 +1792,7 @@
     "id": "aether-vial-wrong-mv",
     "text": "I activate Aether Vial with 3 counters to put Grizzly Bears onto the battlefield.",
     "expect": [
-      "Grizzly Bears stays in hand (mana value 2 \u2260 3 counters)"
+      "Grizzly Bears stays in hand (mana value 2 ≠ 3 counters)"
     ],
     "cite": [
       "202.3"
@@ -1802,7 +1802,7 @@
     "id": "obliterator-bolted",
     "text": "My opponent has Phyrexian Obliterator. I have three Forests and Grizzly Bears. I bolt the Obliterator.",
     "expect": [
-      "Forest: the battlefield \u2192 your graveyard. (\u00d73)"
+      "Forest: the battlefield → your graveyard. (×3)"
     ],
     "cite": [
       "701.21a"
@@ -1812,8 +1812,8 @@
     "id": "obliterator-blocked",
     "text": "My opponent attacks me with Phyrexian Obliterator and I block with Grizzly Bears. I control two Forests.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard",
-      "Forest: the battlefield \u2192 your graveyard. (\u00d72)"
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Forest: the battlefield → your graveyard. (×2)"
     ],
     "cite": [
       "701.21a",
@@ -1834,7 +1834,7 @@
     "id": "rancor-question",
     "text": "I have Grizzly Bears with Rancor. My opponent casts Doom Blade on the Bears. Does Rancor come back?",
     "expect": [
-      "Rancor: your graveyard \u2192 your hand"
+      "Rancor: your graveyard → your hand"
     ],
     "cite": [
       "704.5m"
@@ -1844,8 +1844,8 @@
     "id": "nighthawk-block-with-it-next-turn",
     "text": "My opponent has Grizzly Bears with a +1/+1 counter. I cast Vampire Nighthawk and block the Bears with it next turn.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard",
-      "Vampire Nighthawk: the battlefield \u2192 your graveyard",
+      "Grizzly Bears: the battlefield → opponent's graveyard",
+      "Vampire Nighthawk: the battlefield → your graveyard",
       "You gain 2 life"
     ],
     "cite": [
@@ -1857,7 +1857,7 @@
     "id": "rhystic-three-spells-none-paid",
     "text": "I have Rhystic Study and my opponent casts three spells this turn, paying for none of them.",
     "expect": [
-      "You draw 1 card. (\u00d73)"
+      "You draw 1 card. (×3)"
     ],
     "cite": [
       "608.2g"
@@ -1888,8 +1888,8 @@
     "id": "ambush-viper-flash-block",
     "text": "It's my turn. I attack with Grizzly Bears and my opponent flashes in Ambush Viper to block it.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard",
-      "Ambush Viper: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Ambush Viper: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "702.8a"
@@ -1923,8 +1923,8 @@
     "id": "three-three-blocked-by-two-two-twos",
     "text": "I attack with a 3/3 and my opponent blocks with two 2/2s. How do I assign damage?",
     "expect": [
-      "a 3/3 creature: the battlefield \u2192 your graveyard",
-      "a 2/2 creature: the battlefield \u2192 opponent's graveyard",
+      "a 3/3 creature: the battlefield → your graveyard",
+      "a 2/2 creature: the battlefield → opponent's graveyard",
       "2 to a 2/2 creature, 1 to a 2/2 creature"
     ],
     "cite": [
@@ -1945,7 +1945,7 @@
     "id": "wrath-vs-regeneration-from-ezuri",
     "text": "I cast Wrath of God. I have Grizzly Bears with regeneration from Ezuri.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "cite": [
       "701.19c"
@@ -1969,7 +1969,7 @@
     "id": "krenko-three-goblins",
     "text": "I control Krenko, Mob Boss and 3 other goblins. I tap Krenko.",
     "expect": [
-      "You get a Goblin token. (\u00d74)"
+      "You get a Goblin token. (×4)"
     ],
     "cite": [
       "608.2h",
@@ -1980,7 +1980,7 @@
     "id": "terminus-indestructible-counter",
     "text": "I cast Terminus. My opponent has Grizzly Bears with an indestructible counter.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's library"
+      "Grizzly Bears: the battlefield → opponent's library"
     ],
     "cite": [
       "400.7"
@@ -2000,7 +2000,7 @@
     "id": "pyroclasm-described-creatures",
     "text": "I have two 2/2 zombies and a 4/4 with flying. My opponent casts Pyroclasm.",
     "expect": [
-      "a 2/2 zombie creature: the battlefield \u2192 your graveyard. (\u00d72)",
+      "a 2/2 zombie creature: the battlefield → your graveyard. (×2)",
       "a 4/4 creature with flying has 2 damage marked"
     ],
     "cite": [
@@ -2011,8 +2011,8 @@
     "id": "sheoldred-wheel",
     "text": "I control Sheoldred, the Apocalypse and my opponent casts Wheel of Fortune.",
     "expect": [
-      "opponent loses 2 life. (\u00d77)",
-      "You gain 2 life. (\u00d77)"
+      "opponent loses 2 life. (×7)",
+      "You gain 2 life. (×7)"
     ],
     "cite": [
       "121.1"
@@ -2032,8 +2032,8 @@
     "id": "rift-overloaded-treasure",
     "text": "I cast Cyclonic Rift overloaded. My opponent has two Forests, Grizzly Bears and a Treasure token.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's hand",
-      "Treasure token: the battlefield \u2192 opponent's hand"
+      "Grizzly Bears: the battlefield → opponent's hand",
+      "Treasure token: the battlefield → opponent's hand"
     ],
     "notExpect": [
       "Forest: the battlefield"
@@ -2109,7 +2109,7 @@
     "id": "ghostly-prison-named-two-creatures",
     "text": "Bob has Ghostly Prison. I attack Bob with two creatures but only have 2 mana.",
     "expect": [
-      "Bob takes 1 damage. (\u00d72)"
+      "Bob takes 1 damage. (×2)"
     ],
     "cite": [
       "508.1c"
@@ -2143,7 +2143,7 @@
     "id": "rest-in-peace-blood-artist-question",
     "text": "My opponent casts Rest in Peace. Then my Grizzly Bears dies. Does my Blood Artist trigger?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 exile (replaced by Rest in Peace)",
+      "Grizzly Bears: the battlefield → exile (replaced by Rest in Peace)",
       "No: Blood Artist's ability didn't trigger"
     ],
     "cite": [
@@ -2166,7 +2166,7 @@
     "text": "My opponent bolts my Grizzly Bears and I copy it with Twincast targeting their Hill Giant.",
     "expect": [
       "A copy of Lightning Bolt is put on the stack targeting Hill Giant",
-      "Hill Giant: the battlefield \u2192 opponent's graveyard"
+      "Hill Giant: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "707.10",
@@ -2298,7 +2298,7 @@
     "id": "solemnity-ballista",
     "text": "My opponent has Solemnity. I cast Walking Ballista for X=2.",
     "expect": [
-      "Walking Ballista: the battlefield \u2192 your graveyard"
+      "Walking Ballista: the battlefield → your graveyard"
     ],
     "cite": [
       "704.5f",
@@ -2365,7 +2365,7 @@
     "id": "reach-blocks-one-angel",
     "text": "I attack with two 4/4 Angel tokens with flying. My opponent has a 2/2 with reach and blocks one.",
     "expect": [
-      "a 2/2 creature with reach: the battlefield \u2192 opponent's graveyard",
+      "a 2/2 creature with reach: the battlefield → opponent's graveyard",
       "opponent takes 4 damage"
     ],
     "cite": [
@@ -2388,7 +2388,7 @@
     "text": "My opponent attacks with a 5/5 trample and I block with a 2/2. How much damage do I take?",
     "expect": [
       "You take 3 damage",
-      "a 2/2 creature: the battlefield \u2192 your graveyard"
+      "a 2/2 creature: the battlefield → your graveyard"
     ],
     "cite": [
       "702.19b"
@@ -2422,7 +2422,7 @@
     "id": "settle-should-i-cast-after-blockers",
     "text": "My opponent attacks me with Grizzly Bears and I have Settle the Wreckage. Should I cast it after blockers?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 exile"
+      "Grizzly Bears: the battlefield → exile"
     ],
     "cite": [
       "701.13a"
@@ -2432,7 +2432,7 @@
     "id": "kci-two-treasures",
     "text": "I have Krark-Clan Ironworks and sacrifice two Treasure tokens to it.",
     "expect": [
-      "Krark-Clan Ironworks's mana ability: add {C}{C}. (\u00d72)"
+      "Krark-Clan Ironworks's mana ability: add {C}{C}. (×2)"
     ],
     "cite": [
       "605.1a",
@@ -2455,7 +2455,7 @@
     "id": "swords-in-response-to-giant-growth",
     "text": "I cast Swords to Plowshares on Grizzly Bears in response to my opponent's Giant Growth on it.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 exile",
+      "Grizzly Bears: the battlefield → exile",
       "You gain 2 life",
       "Giant Growth doesn't resolve (all targets illegal)"
     ],
@@ -2467,20 +2467,20 @@
     "id": "propaganda-pay-for-two",
     "text": "My opponent has Propaganda and I attack with three creatures but can only pay for two.",
     "expect": [
-      "opponent takes 1 damage. (\u00d72)"
+      "opponent takes 1 damage. (×2)"
     ],
     "cite": [
       "508.1c"
     ],
     "notExpect": [
-      "(\u00d73)"
+      "(×3)"
     ]
   },
   {
     "id": "tutor-get-bolt",
     "text": "I cast Demonic Tutor and get Lightning Bolt. Then I bolt my opponent's Grizzly Bears.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "701.23a"
@@ -2523,7 +2523,7 @@
     "id": "ashnods-altar-sac-to-it",
     "text": "I have Ashnod's Altar and sacrifice Grizzly Bears to it.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard",
+      "Grizzly Bears: the battlefield → your graveyard",
       "Ashnod's Altar's mana ability: add {C}{C}"
     ],
     "cite": [
@@ -2633,7 +2633,7 @@
     "id": "wall-dies-question-after-damage",
     "text": "My opponent attacks with Grizzly Bears and I block with Wall of Omens. They cast Giant Growth on the Bears. Does my Wall die?",
     "expect": [
-      "Wall of Omens: the battlefield \u2192 your graveyard",
+      "Wall of Omens: the battlefield → your graveyard",
       "Yes: Wall of Omens died (it's in the graveyard)"
     ],
     "cite": [
@@ -2654,7 +2654,7 @@
     "id": "sheoldred-brainstorm-at-five",
     "text": "My opponent has Sheoldred, the Apocalypse and I cast Brainstorm at 5 life. Do I die?",
     "expect": [
-      "You lose 2 life. (\u00d73)",
+      "You lose 2 life. (×3)",
       "You lose the game",
       "Yes: You have lost the game"
     ],
@@ -2690,7 +2690,7 @@
     "expect": [
       "You pay 3 life",
       "Serra Angel is 1/1 until end of turn",
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "704.5f",
@@ -2701,7 +2701,7 @@
     "id": "rancor-disenchant-question",
     "text": "I have Grizzly Bears with Rancor. My opponent casts Disenchant on Rancor. Does Rancor come back to my hand?",
     "expect": [
-      "Rancor: your graveyard \u2192 your hand"
+      "Rancor: your graveyard → your hand"
     ],
     "cite": [
       "603.2"
@@ -2711,7 +2711,7 @@
     "id": "path-the-blocker-no-damage",
     "text": "I attack with Grizzly Bears and my opponent blocks with Hill Giant. Before damage I cast Path to Exile on the Giant. Does the Bears deal damage to my opponent?",
     "expect": [
-      "Hill Giant: the battlefield \u2192 exile",
+      "Hill Giant: the battlefield → exile",
       "No: Grizzly Bears dealt no damage to opponent (it was blocked"
     ],
     "notExpect": [
@@ -2725,7 +2725,7 @@
     "id": "trample-blocker-bounced",
     "text": "I attack with a 5/5 trample and my opponent blocks with a 2/2. They then bounce their blocker with Unsummon.",
     "expect": [
-      "a 2/2 creature: the battlefield \u2192 opponent's hand",
+      "a 2/2 creature: the battlefield → opponent's hand",
       "opponent takes 5 damage"
     ],
     "cite": [
@@ -2758,7 +2758,7 @@
     "id": "settle-during-declare-blockers",
     "text": "My opponent attacks me with Serra Angel and I have Settle the Wreckage. I cast it during the declare blockers step.",
     "expect": [
-      "Serra Angel: the battlefield \u2192 exile"
+      "Serra Angel: the battlefield → exile"
     ],
     "notExpect": [
       "You take 4 damage"
@@ -2771,7 +2771,7 @@
     "id": "dismember-counters",
     "text": "I have Grizzly Bears with two +1/+1 counters and my opponent casts Dismember on it.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "cite": [
       "704.5f"
@@ -2804,7 +2804,7 @@
     "text": "My opponent has Wall of Omens and I have Lightning Bolt. I attack with Grizzly Bears, they block, and I bolt the Wall in response to nothing.",
     "expect": [
       "opponent blocks with Wall of Omens",
-      "Wall of Omens: the battlefield \u2192 opponent's graveyard"
+      "Wall of Omens: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "opponent takes 2 damage"
@@ -2831,7 +2831,7 @@
     "id": "overrun-attack-with-both",
     "text": "I have two Grizzly Bears and cast Overrun. I attack with both. My opponent blocks one with a 1/1.",
     "expect": [
-      "Grizzly Bears is 5/5 until end of turn. (\u00d72)",
+      "Grizzly Bears is 5/5 until end of turn. (×2)",
       "opponent takes 4 damage",
       "opponent takes 5 damage"
     ],
@@ -2940,7 +2940,7 @@
     "id": "sheoldred-draw-two",
     "text": "I have Sheoldred, the Apocalypse. My opponent draws a card. Then I draw two.",
     "expect": [
-      "You gain 2 life. (\u00d72)",
+      "You gain 2 life. (×2)",
       "opponent loses 2 life"
     ],
     "cite": [
@@ -2953,7 +2953,7 @@
     "expect": [
       "Wall of Omens can't block Serra Angel (flying)",
       "opponent takes 4 damage",
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "cite": [
       "702.9b",
@@ -2965,7 +2965,7 @@
     "text": "My opponent casts Vindicate on my Sol Ring. I respond by tapping it for mana.",
     "expect": [
       "Sol Ring's mana ability: add {C}{C}",
-      "Sol Ring: the battlefield \u2192 your graveyard"
+      "Sol Ring: the battlefield → your graveyard"
     ],
     "cite": [
       "605.3b"
@@ -2976,7 +2976,7 @@
     "text": "My opponent controls Hill Giant. I cast Lightning Bolt at the Giant and they respond with Giant Growth on it. Then I bolt it again.",
     "expect": [
       "Hill Giant is 6/6 until end of turn",
-      "Hill Giant: the battlefield \u2192 opponent's graveyard"
+      "Hill Giant: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "704.5g"
@@ -3001,7 +3001,7 @@
     "text": "I attack with a 2/2 with first strike. My opponent blocks with Grizzly Bears. Does my creature survive?",
     "expect": [
       "Yes: a 2/2 creature with first strike is still on the battlefield",
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "702.7b"
@@ -3011,7 +3011,7 @@
     "id": "rancor-where-does-it-go",
     "text": "I control Grizzly Bears enchanted with Rancor. My opponent casts Doom Blade on the Bears. Where does Rancor go?",
     "expect": [
-      "Rancor: your graveyard \u2192 your hand"
+      "Rancor: your graveyard → your hand"
     ],
     "notExpect": [
       "Not understood"
@@ -3054,7 +3054,7 @@
     "id": "token-blocks-does-their-creature-die",
     "text": "My opponent attacks with a 4/4. I block with a 2/2 token. Does their creature die?",
     "expect": [
-      "a 2/2 token: the battlefield \u2192 your graveyard",
+      "a 2/2 token: the battlefield → your graveyard",
       "No: a 4/4 creature is still on the battlefield"
     ],
     "cite": [
@@ -3065,7 +3065,7 @@
     "id": "mirror-entity-x4-attack",
     "text": "I have Mirror Entity and three 1/1 Soldier tokens. I activate Mirror Entity with X=4 and attack with everything.",
     "expect": [
-      "opponent takes 4 damage. (\u00d74)"
+      "opponent takes 4 damage. (×4)"
     ],
     "notExpect": [
       "not modeled"
@@ -3082,7 +3082,7 @@
       "Ravenous Chupacabra's triggered ability has no legal target and is removed from the stack"
     ],
     "notExpect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard",
+      "Grizzly Bears: the battlefield → your graveyard",
       "Not understood"
     ],
     "cite": [
@@ -3131,7 +3131,7 @@
     "id": "doom-blade-skips-hexproof-creature",
     "text": "I control Grizzly Bears with hexproof and Serra Angel. My opponent casts Doom Blade.",
     "expect": [
-      "Serra Angel: the battlefield \u2192 your graveyard"
+      "Serra Angel: the battlefield → your graveyard"
     ],
     "notExpect": [
       "Grizzly Bears: the battlefield"
@@ -3144,8 +3144,8 @@
     "id": "torment-of-hailfire-x3",
     "text": "I cast Torment of Hailfire with X=3. My opponent has no cards in hand and controls Grizzly Bears.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard",
-      "opponent loses 3 life. (\u00d72)"
+      "Grizzly Bears: the battlefield → opponent's graveyard",
+      "opponent loses 3 life. (×2)"
     ],
     "notExpect": [
       "not modeled"
@@ -3199,7 +3199,7 @@
     "id": "ghostly-prison-four-lands-three-attackers",
     "text": "My opponent has Ghostly Prison. I have 4 lands and attack with three creatures.",
     "expect": [
-      "opponent takes 1 damage. (\u00d72)"
+      "opponent takes 1 damage. (×2)"
     ],
     "notExpect": [
       "Not understood",
@@ -3254,7 +3254,7 @@
     "id": "tarmogoyf-bolt-dies-with-instant-already",
     "text": "I cast Lightning Bolt targeting my opponent's Tarmogoyf. They have an instant and a creature in their graveyard.",
     "expect": [
-      "Tarmogoyf: the battlefield \u2192 opponent's graveyard"
+      "Tarmogoyf: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "704.5g"
@@ -3267,7 +3267,7 @@
       "Rancor doesn't resolve (all targets illegal)"
     ],
     "notExpect": [
-      "Rancor: your graveyard \u2192 your hand"
+      "Rancor: your graveyard → your hand"
     ],
     "cite": [
       "603.6c",
@@ -3278,7 +3278,7 @@
     "id": "block-with-same-named-creature",
     "text": "My opponent attacks me with Grizzly Bears. I block with Grizzly Bears and cast Shock on their Bears after blockers.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "can't block (tapped)"
@@ -3348,7 +3348,7 @@
       "You lose 2 life."
     ],
     "notExpect": [
-      "(\u00d72)"
+      "(×2)"
     ],
     "cite": [
       "119.3"
@@ -3439,7 +3439,7 @@
     "id": "unsummon-in-response-to-bolt",
     "text": "My opponent controls Grizzly Bears. I cast Lightning Bolt on it and they respond by bouncing it with Unsummon. Does Bolt fizzle?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's hand",
+      "Grizzly Bears: the battlefield → opponent's hand",
       "Lightning Bolt doesn't resolve (all targets illegal)"
     ],
     "notExpect": [
@@ -3453,7 +3453,7 @@
     "id": "shatter-in-response-to-attack",
     "text": "I control Grizzly Bears equipped with Bonesplitter. My opponent casts Shatter on Bonesplitter in response to my attack.",
     "expect": [
-      "Bonesplitter: the battlefield \u2192 your graveyard",
+      "Bonesplitter: the battlefield → your graveyard",
       "opponent takes 2 damage"
     ],
     "notExpect": [
@@ -3510,7 +3510,7 @@
     "text": "I cast Crackling Doom. My opponent controls Grizzly Bears and Serra Angel.",
     "expect": [
       "opponent takes 2 damage",
-      "Serra Angel: the battlefield \u2192 opponent's graveyard"
+      "Serra Angel: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "not tracked",
@@ -3535,7 +3535,7 @@
     "id": "sword-stays-when-bears-dies",
     "text": "I have Sword of Fire and Ice equipped to Grizzly Bears. My opponent casts Doom Blade on the Bears. What happens to the Sword?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard",
+      "Grizzly Bears: the battlefield → your graveyard",
       "Sword of Fire and Ice stays on the battlefield, unattached"
     ],
     "cite": [
@@ -3592,7 +3592,7 @@
     "id": "bolt-growth-then-shock-in-response",
     "text": "I control Grizzly Bears. My opponent casts Lightning Bolt on it and I respond with Giant Growth. Then they respond with Shock on the Bears.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard",
+      "Grizzly Bears: the battlefield → your graveyard",
       "Giant Growth doesn't resolve (all targets illegal)"
     ],
     "notExpect": [
@@ -3606,7 +3606,7 @@
     "id": "wrath-regenerates-it",
     "text": "I cast Wrath of God. My opponent controls a 2/2 with regenerate and regenerates it.",
     "expect": [
-      "a 2/2 creature with regenerate: the battlefield \u2192 opponent's graveyard",
+      "a 2/2 creature with regenerate: the battlefield → opponent's graveyard",
       "the effect says it can't be regenerated"
     ],
     "notExpect": [
@@ -3620,7 +3620,7 @@
     "id": "deathtouch-first-strike-blocker",
     "text": "I control Grizzly Bears and my opponent controls a 2/2 with deathtouch and first strike. I attack and they block.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "notExpect": [
       "Not understood"
@@ -3634,7 +3634,7 @@
     "text": "I attack with Grizzly Bears. My opponent flashes in a 0/4 wall and blocks. I cast Lightning Bolt on the wall.",
     "expect": [
       "a 0/4 wall creature with flash has 5 damage marked",
-      "a 0/4 wall creature with flash: the battlefield \u2192 opponent's graveyard"
+      "a 0/4 wall creature with flash: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Not understood",
@@ -3661,7 +3661,7 @@
     "id": "condemn-attacking-angel",
     "text": "I attack with Serra Angel. My opponent casts Condemn on it.",
     "expect": [
-      "Serra Angel: the battlefield \u2192 your library",
+      "Serra Angel: the battlefield → your library",
       "You gain 4 life"
     ],
     "notExpect": [
@@ -3676,7 +3676,7 @@
     "id": "duress-two-cards-in-hand",
     "text": "I cast Duress targeting my opponent. They have Counterspell and Grizzly Bears in hand.",
     "expect": [
-      "Counterspell: opponent's hand \u2192 opponent's graveyard"
+      "Counterspell: opponent's hand → opponent's graveyard"
     ],
     "notExpect": [
       "Not understood",
@@ -3691,7 +3691,7 @@
     "id": "vapor-snag-loses-life",
     "text": "I control Grizzly Bears with two +1/+1 counters. My opponent casts Vapor Snag on it. What happens to the counters?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your hand",
+      "Grizzly Bears: the battlefield → your hand",
       "You lose 1 life"
     ],
     "notExpect": [
@@ -3783,8 +3783,8 @@
     "id": "blood-artist-pyroclasm-three-triggers",
     "text": "I have Blood Artist and my opponent casts Pyroclasm. I control two 1/1 tokens. How much life do they lose?",
     "expect": [
-      "opponent loses 1 life. (\u00d73)",
-      "You gain 1 life. (\u00d73)"
+      "opponent loses 1 life. (×3)",
+      "You gain 1 life. (×3)"
     ],
     "cite": [
       "603.10a"
@@ -3794,7 +3794,7 @@
     "id": "mind-twist-x3-five-cards",
     "text": "My opponent casts Mind Twist for X=3. I have 5 cards in hand.",
     "expect": [
-      "You discard 3 cards (5 \u2192 2 in hand)"
+      "You discard 3 cards (5 → 2 in hand)"
     ],
     "notExpect": [
       "not tracked"
@@ -3830,8 +3830,8 @@
     "id": "aetherize-attackers",
     "text": "I attack with Grizzly Bears and Serra Angel. My opponent casts Aetherize.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your hand",
-      "Serra Angel: the battlefield \u2192 your hand"
+      "Grizzly Bears: the battlefield → your hand",
+      "Serra Angel: the battlefield → your hand"
     ],
     "notExpect": [
       "opponent takes",
@@ -3873,7 +3873,7 @@
     "id": "fatal-push-revolt-four-four",
     "text": "I control Grizzly Bears and my opponent controls a 4/4. I attack and they block. I cast Fatal Push on the 4/4 with revolt.",
     "expect": [
-      "a 4/4 creature: the battlefield \u2192 opponent's graveyard"
+      "a 4/4 creature: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "needs 1 target"
@@ -3886,8 +3886,8 @@
     "id": "anger-of-the-gods-kitchen-finks",
     "text": "I cast Anger of the Gods. My opponent controls Grizzly Bears and Kitchen Finks.",
     "expect": [
-      "Kitchen Finks: the battlefield \u2192 exile (replaced by Anger of the Gods's \"exile it instead\")",
-      "Grizzly Bears: the battlefield \u2192 exile"
+      "Kitchen Finks: the battlefield → exile (replaced by Anger of the Gods's \"exile it instead\")",
+      "Grizzly Bears: the battlefield → exile"
     ],
     "notExpect": [
       "not modeled",
@@ -3914,7 +3914,7 @@
     "id": "craterhoof-attack-with-everything",
     "text": "I control two Grizzly Bears and cast Craterhoof Behemoth. How much damage do I deal if I attack with everything?",
     "expect": [
-      "opponent takes 5 damage. (\u00d72)",
+      "opponent takes 5 damage. (×2)",
       "opponent takes 8 damage"
     ],
     "cite": [
@@ -3986,7 +3986,7 @@
     "id": "bears-vs-bears-both-die",
     "text": "I attack with Grizzly Bears and my opponent blocks with Grizzly Bears. Both die?",
     "expect": [
-      "Yes: Grizzly Bears died (it's in the graveyard). (\u00d72)"
+      "Yes: Grizzly Bears died (it's in the graveyard). (×2)"
     ],
     "notExpect": [
       "Not understood"
@@ -3999,7 +3999,7 @@
     "id": "prey-upon-fight",
     "text": "I attack with Grizzly Bears. My opponent blocks with Hill Giant. I cast Prey Upon on my Bears targeting theirs before damage.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "notExpect": [
       "not modeled",
@@ -4048,7 +4048,7 @@
     "id": "grave-titan-tokens",
     "text": "I have Grave Titan. It enters. How many tokens do I get?",
     "expect": [
-      "You get a Zombie token. (\u00d72)"
+      "You get a Zombie token. (×2)"
     ],
     "notExpect": [
       "not tracked"
@@ -4075,7 +4075,7 @@
     "id": "self-correction-murder",
     "text": "My opponent controls Grizzly Bears. I cast Eaten Alive... I mean Murder on it.",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Not understood",
@@ -4118,7 +4118,7 @@
     "text": "I control Grizzly Bears and cast Titanic Growth on it. My opponent blocks with Serra Angel.",
     "expect": [
       "Grizzly Bears is 6/6 until end of turn",
-      "Serra Angel: the battlefield \u2192 opponent's graveyard"
+      "Serra Angel: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "block needs the attacker"
@@ -4168,7 +4168,7 @@
     "id": "academy-rector-dies",
     "text": "I control Academy Rector and it dies.",
     "expect": [
-      "Academy Rector: the battlefield \u2192 your graveyard"
+      "Academy Rector: the battlefield → your graveyard"
     ],
     "notExpect": [
       "Not understood"
@@ -4221,7 +4221,7 @@
     "text": "I control Sensei's Divining Top and activate its second ability.",
     "expect": [
       "You draw 1 card",
-      "Sensei's Divining Top: the battlefield \u2192 your library"
+      "Sensei's Divining Top: the battlefield → your library"
     ],
     "notExpect": [
       "not modeled"
@@ -4250,7 +4250,7 @@
     "id": "kalitas-replaces-a-death",
     "text": "I control Kalitas, Traitor of Ghet and my opponent's Grizzly Bears dies. What happens?",
     "expect": [
-      "the battlefield \u2192 exile (replaced by Kalitas, Traitor of Ghet)",
+      "the battlefield → exile (replaced by Kalitas, Traitor of Ghet)",
       "You get a Zombie token"
     ],
     "notExpect": [
@@ -4351,7 +4351,7 @@
     "id": "humility-kills-serra-with-bolt",
     "text": "My opponent has Humility and I cast Lightning Bolt on their Serra Angel.",
     "expect": [
-      "Serra Angel: the battlefield \u2192 opponent's graveyard"
+      "Serra Angel: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Rules text not modeled: All creatures lose all abilities"
@@ -4364,8 +4364,8 @@
     "id": "humility-lets-bears-block-serra",
     "text": "I control Humility and my opponent attacks with Serra Angel. I block with Grizzly Bears. What happens?",
     "expect": [
-      "Serra Angel: the battlefield \u2192 opponent's graveyard",
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Serra Angel: the battlefield → opponent's graveyard",
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "notExpect": [
       "can't block"
@@ -4398,7 +4398,7 @@
     "id": "thoughtseize-names-the-card",
     "text": "My opponent has Lightning Bolt, Brainstorm and an Island in hand. I cast Thoughtseize on them. What do they discard?",
     "expect": [
-      "Lightning Bolt: opponent's hand \u2192 opponent's graveyard",
+      "Lightning Bolt: opponent's hand → opponent's graveyard",
       "You lose 2 life"
     ],
     "notExpect": [
@@ -4413,7 +4413,7 @@
     "id": "inquisition-respects-mana-value",
     "text": "My opponent has Lightning Bolt and Force of Will in hand. I cast Inquisition of Kozilek. What do they discard?",
     "expect": [
-      "Lightning Bolt: opponent's hand \u2192 opponent's graveyard"
+      "Lightning Bolt: opponent's hand → opponent's graveyard"
     ],
     "notExpect": [
       "Force of Will: opponent's hand"
@@ -4478,7 +4478,7 @@
     "text": "My opponent sacrifices Polluted Delta. I control Blood Moon. What happens?",
     "expect": [
       "no ability of its own under Blood Moon",
-      "Polluted Delta: the battlefield \u2192 opponent's graveyard"
+      "Polluted Delta: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "adds {R} (only)"
@@ -4619,7 +4619,7 @@
     "text": "I control a 2/2 with lifelink and deathtouch and attack. My opponent blocks with a 5/5. What happens?",
     "expect": [
       "You gain 2 life",
-      "a 5/5 creature: the battlefield \u2192 opponent's graveyard"
+      "a 5/5 creature: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Not understood"
@@ -4669,7 +4669,7 @@
     "id": "containment-priest-exiles-it",
     "text": "My opponent controls Containment Priest. I cast Sun Titan and return Grizzly Bears from my graveyard. What happens?",
     "expect": [
-      "your graveyard \u2192 exile (replaced by Containment Priest)"
+      "your graveyard → exile (replaced by Containment Priest)"
     ],
     "notExpect": [
       "Grizzly Bears enters the battlefield"
@@ -4708,7 +4708,7 @@
     "id": "dauthi-voidwalker-exiles",
     "text": "I control Dauthi Voidwalker and my opponent's Grizzly Bears dies. What happens?",
     "expect": [
-      "the battlefield \u2192 exile (replaced by Dauthi Voidwalker)"
+      "the battlefield → exile (replaced by Dauthi Voidwalker)"
     ],
     "notExpect": [
       "Rules text not modeled: If a card would be put"
@@ -4721,7 +4721,7 @@
     "id": "block-with-both",
     "text": "My opponent attacks with a 3/3 and I have a 2/2 and a 1/1. Can I block with both?",
     "expect": [
-      "a 3/3 creature: the battlefield \u2192 opponent's graveyard"
+      "a 3/3 creature: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "You take 3 damage"
@@ -4774,7 +4774,7 @@
       "Nothing here says you would aim at it, so the target isn't assumed"
     ],
     "notExpect": [
-      "Aura Shards: the battlefield \u2192 your graveyard"
+      "Aura Shards: the battlefield → your graveyard"
     ],
     "cite": [
       "115.1"
@@ -4845,7 +4845,7 @@
     "id": "blood-artist-on-two-deaths",
     "text": "I control Blood Artist and two of my creatures die at once. How much life does my opponent lose?",
     "expect": [
-      "opponent loses 1 life. (\u00d72)"
+      "opponent loses 1 life. (×2)"
     ],
     "notExpect": [
       "Not understood"
@@ -4856,7 +4856,7 @@
     "id": "anafenza-exiles-an-opponents-creature",
     "text": "I control Anafenza, the Foremost and my opponent's Grizzly Bears dies. What happens?",
     "expect": [
-      "the battlefield \u2192 exile (replaced by Anafenza, the Foremost)"
+      "the battlefield → exile (replaced by Anafenza, the Foremost)"
     ],
     "notExpect": [
       "Rules text not modeled: If a nontoken creature an opponent owns"
@@ -4869,7 +4869,7 @@
     "id": "anafenza-leaves-mine-alone",
     "text": "I control Anafenza, the Foremost and my Grizzly Bears dies. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "notExpect": [
       "replaced by Anafenza"
@@ -4895,7 +4895,7 @@
     "text": "I control Elesh Norn, Mother of Machines and Soul Warden. A creature enters under my control. What happens?",
     "expect": [
       "trigger an additional time",
-      "You gain 1 life. (\u00d72)"
+      "You gain 1 life. (×2)"
     ],
     "notExpect": [
       "Not understood"
@@ -4908,7 +4908,7 @@
     "id": "described-attacker-already-attacking",
     "text": "My opponent's 6/6 is attacking me. I block with a 2/2. What happens?",
     "expect": [
-      "a 2/2 creature: the battlefield \u2192 your graveyard"
+      "a 2/2 creature: the battlefield → your graveyard"
     ],
     "notExpect": [
       "Not understood"
@@ -4933,7 +4933,7 @@
     "text": "I control Toxic Deluge and cast it for 3. My opponent has a 4/4 and a 2/2. What happens?",
     "expect": [
       "You pay 3 life",
-      "a 2/2 creature: the battlefield \u2192 opponent's graveyard"
+      "a 2/2 creature: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Not understood"
@@ -4947,7 +4947,7 @@
     "id": "what-happens-when-it-enters",
     "text": "I control Reclamation Sage and my opponent has a Sol Ring. What happens when it enters?",
     "expect": [
-      "Sol Ring: the battlefield \u2192 opponent's graveyard"
+      "Sol Ring: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Nothing changes"
@@ -4980,7 +4980,7 @@
     "id": "crack-lions-eye-diamond",
     "text": "I control Lion's Eye Diamond and crack it. What happens?",
     "expect": [
-      "Lion's Eye Diamond: the battlefield \u2192 your graveyard"
+      "Lion's Eye Diamond: the battlefield → your graveyard"
     ],
     "notExpect": [
       "Not understood"
@@ -5029,8 +5029,8 @@
     "id": "two-blockers-one-with-deathtouch",
     "text": "I attack with a 3/3 and my opponent blocks with a 1/1 with deathtouch and a 1/1. What happens?",
     "expect": [
-      "a 1/1 creature: the battlefield \u2192 opponent's graveyard",
-      "a 3/3 creature: the battlefield \u2192 your graveyard"
+      "a 1/1 creature: the battlefield → opponent's graveyard",
+      "a 3/3 creature: the battlefield → your graveyard"
     ],
     "notExpect": [
       "Not understood"
@@ -5068,7 +5068,7 @@
     "text": "I cast Black Sun's Zenith for 2. My opponent has a 3/3 and a 1/1. What happens?",
     "expect": [
       "a 3/3 creature has 2 -1/-1 counters",
-      "a 1/1 creature: the battlefield \u2192 opponent's graveyard"
+      "a 1/1 creature: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Put X -1/-1 counters on each creature"
@@ -5105,7 +5105,7 @@
     "id": "skullclamp-draws-on-death",
     "text": "I control Skullclamp and equip it to a 1/1. What happens?",
     "expect": [
-      "a 1/1 creature: the battlefield \u2192 your graveyard",
+      "a 1/1 creature: the battlefield → your graveyard",
       "You draw 2 cards"
     ],
     "notExpect": [
@@ -5120,7 +5120,7 @@
     "id": "dismember-on-a-described-creature",
     "text": "I control Dismember and cast it on a 4/4 paying 4 life. What happens?",
     "expect": [
-      "a 4/4 creature: the battlefield \u2192 opponent's graveyard"
+      "a 4/4 creature: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "but 0 were given"
@@ -5230,7 +5230,7 @@
     "id": "mikaeus-skips-humans",
     "text": "I control Mikaeus, the Unhallowed and my Elite Vanguard dies. What happens?",
     "expect": [
-      "Elite Vanguard: the battlefield \u2192 your graveyard"
+      "Elite Vanguard: the battlefield → your graveyard"
     ],
     "notExpect": [
       "comes back"
@@ -5267,8 +5267,8 @@
     "id": "both-have-first-strike",
     "text": "I attack with a 2/2 and my opponent blocks with a 2/2. Both have first strike. What happens?",
     "expect": [
-      "a 2/2 creature with first strike: the battlefield \u2192 your graveyard",
-      "a 2/2 creature with first strike: the battlefield \u2192 opponent's graveyard"
+      "a 2/2 creature with first strike: the battlefield → your graveyard",
+      "a 2/2 creature with first strike: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Not understood"
@@ -5281,7 +5281,7 @@
     "id": "mine-has-deathtouch",
     "text": "I attack with a 2/2 and my opponent blocks with a 3/3. Mine has deathtouch. What happens?",
     "expect": [
-      "a 3/3 creature: the battlefield \u2192 opponent's graveyard"
+      "a 3/3 creature: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Players: you, Mine"
@@ -5294,10 +5294,10 @@
     "id": "theirs-has-first-strike",
     "text": "I attack with a 2/2 and my opponent blocks with a 3/3. Theirs has first strike. What happens?",
     "expect": [
-      "a 2/2 creature: the battlefield \u2192 your graveyard"
+      "a 2/2 creature: the battlefield → your graveyard"
     ],
     "notExpect": [
-      "a 3/3 creature: the battlefield \u2192 opponent's graveyard"
+      "a 3/3 creature: the battlefield → opponent's graveyard"
     ],
     "cite": [
       "510.4"
@@ -5318,7 +5318,7 @@
     "id": "deaths-shadow-at-thirteen",
     "text": "I control Death's Shadow and I am at 13 life. What are its stats?",
     "expect": [
-      "Death's Shadow: the battlefield \u2192 your graveyard"
+      "Death's Shadow: the battlefield → your graveyard"
     ],
     "notExpect": [
       "Death's Shadow is 13/13"
@@ -5335,7 +5335,7 @@
       "Doom Blade doesn't resolve (all targets illegal)"
     ],
     "notExpect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "cite": [
       "608.2b"
@@ -5363,7 +5363,7 @@
       "Doom Blade doesn't resolve"
     ],
     "notExpect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "cite": [
       "608.2b"
@@ -5422,7 +5422,7 @@
     "id": "wurmcoil-makes-two-tokens",
     "text": "I control Wurmcoil Engine and it dies. What happens?",
     "expect": [
-      "You get a Phyrexian Wurm token. (\u00d72)"
+      "You get a Phyrexian Wurm token. (×2)"
     ],
     "notExpect": [
       "not tracked in detail"
@@ -5924,7 +5924,7 @@
     "id": "enters-with-a-counter-for-each-other-human",
     "text": "I control two Humans and cast Eomer, King of Rohan. What happens?",
     "expect": [
-      "\u00c9omer, King of Rohan enters with 2 +1/+1 counters on it, counted as it enters"
+      "Éomer, King of Rohan enters with 2 +1/+1 counters on it, counted as it enters"
     ],
     "notExpect": [
       "enters with 3 +1/+1"
@@ -6023,7 +6023,7 @@
     "text": "I control Krenko, Mob Boss with five Goblins and I activate it. How many tokens do I get?",
     "expect": [
       "X is 6: the number of Goblins you control",
-      "You get a Goblin token. (\u00d76)"
+      "You get a Goblin token. (×6)"
     ],
     "notExpect": [
       "X is 1"
@@ -6097,7 +6097,7 @@
     "id": "chump-block-said-the-passive-way",
     "text": "I attack with my Grizzly Bears and it gets chumped by a 1/1. What happens?",
     "expect": [
-      "a 1/1 creature: the battlefield \u2192 opponent's graveyard"
+      "a 1/1 creature: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Not understood",
@@ -6146,7 +6146,7 @@
     "id": "killing-their-creature-still-targets-theirs",
     "text": "I kill their Grizzly Bears with Murder. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "your graveyard"
@@ -6159,7 +6159,7 @@
     "id": "a-possessive-belongs-to-the-speaker-not-the-actor",
     "text": "My opponent kills my Grizzly Bears with Murder. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "notExpect": [
       "opponent's graveyard"
@@ -6183,7 +6183,7 @@
     "id": "a-named-player-kills-another-named-players-creature",
     "text": "Alice kills Bob's Grizzly Bears with Murder. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 Bob's graveyard",
+      "Grizzly Bears: the battlefield → Bob's graveyard",
       "Alice casts Murder"
     ],
     "notExpect": [
@@ -6493,7 +6493,7 @@
     "id": "discarding-a-named-card",
     "text": "I discard Vengevine. What happens?",
     "expect": [
-      "Vengevine: your hand \u2192 your graveyard"
+      "Vengevine: your hand → your graveyard"
     ],
     "notExpect": [],
     "cite": [
@@ -6507,7 +6507,7 @@
       "exile (replaced by Leyline of the Void)"
     ],
     "notExpect": [
-      "Vengevine: your hand \u2192 your graveyard"
+      "Vengevine: your hand → your graveyard"
     ],
     "cite": [
       "614.1a"
@@ -6771,7 +6771,7 @@
     "id": "exiling-a-permanent-makes-no-dies-trigger",
     "text": "I control Wurmcoil Engine and it is exiled. What happens?",
     "expect": [
-      "Wurmcoil Engine: the battlefield \u2192 exile"
+      "Wurmcoil Engine: the battlefield → exile"
     ],
     "notExpect": [
       "Exile finishes resolving",
@@ -6808,7 +6808,7 @@
     "id": "sacrificing-a-number-of-creatures",
     "text": "I control Ashnod's Altar and sacrifice two creatures. How much mana do I get?",
     "expect": [
-      "a creature: the battlefield \u2192 your graveyard. (\u00d72)"
+      "a creature: the battlefield → your graveyard. (×2)"
     ],
     "notExpect": [],
     "cite": [
@@ -6878,7 +6878,7 @@
     "id": "one-of-each-on-the-battlefield",
     "text": "There are two Grizzly Bears on the battlefield, mine and theirs. I cast Doom Blade on theirs. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "your graveyard",
@@ -6905,7 +6905,7 @@
     "id": "anafenza-does-not-exile-your-own-creature",
     "text": "I control Anafenza, the Foremost and my own Grizzly Bears dies. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "notExpect": [
       "exile"
@@ -6968,7 +6968,7 @@
     "id": "a-permanent-said-to-be-bounced",
     "text": "Their Serra Angel is returned to their hand. What happens?",
     "expect": [
-      "Serra Angel: the battlefield \u2192 opponent's hand"
+      "Serra Angel: the battlefield → opponent's hand"
     ],
     "notExpect": [],
     "cite": [
@@ -7048,7 +7048,7 @@
     "id": "discarding-a-card-nobody-named",
     "text": "I have 3 cards in hand. I discard a card. What happens?",
     "expect": [
-      "You discard 1 card (3 \u2192 2 in hand)"
+      "You discard 1 card (3 → 2 in hand)"
     ],
     "notExpect": [],
     "cite": [
@@ -7505,7 +7505,7 @@
     "id": "a-blocker-with-deathtouch-kills-what-it-blocks",
     "text": "I'm at 3 life. They attack with a 4/4 and I have a blocker with deathtouch. What happens?",
     "expect": [
-      "a 4/4 creature: the battlefield \u2192 opponent's graveyard"
+      "a 4/4 creature: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "You lose the game"
@@ -7549,7 +7549,7 @@
     "id": "remove-is-a-verb-not-a-card",
     "text": "They remove my Grizzly Bears with Swords to Plowshares. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 exile",
+      "Grizzly Bears: the battlefield → exile",
       "You gain 2 life"
     ],
     "notExpect": [
@@ -7594,7 +7594,7 @@
     "id": "board-wipe-is-a-cast",
     "text": "They board wipe with Damnation and I have Grizzly Bears. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "notExpect": [
       "I couldn't find"
@@ -7641,7 +7641,7 @@
     "id": "a-hypothetical-is-the-same-question",
     "text": "Suppose they cast Doom Blade on my Grizzly Bears. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "notExpect": [
       "I couldn't find"
@@ -7652,7 +7652,7 @@
     "id": "past-and-future-tense-read-the-same",
     "text": "They have cast Doom Blade on my Grizzly Bears. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "notExpect": [
       "I couldn't find"
@@ -7663,7 +7663,7 @@
     "id": "blocked-said-from-the-attackers-side",
     "text": "They attack with Grizzly Bears. Their Grizzly Bears is blocked by my Hill Giant. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "You take 2 damage"
@@ -7674,7 +7674,7 @@
     "id": "a-blocker-thrown-in-front",
     "text": "They attack with Grizzly Bears. I throw Hill Giant in front of their Grizzly Bears. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "You take 2 damage"
@@ -7696,7 +7696,7 @@
     "id": "a-spell-pointed-at-something",
     "text": "I control Grizzly Bears. They point Doom Blade at my Grizzly Bears. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "notExpect": [
       "I couldn't find"
@@ -7707,7 +7707,7 @@
     "id": "use-a-spell-on-something",
     "text": "I control Grizzly Bears. They use Doom Blade on my Grizzly Bears. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "notExpect": [
       "I couldn't find"
@@ -7908,8 +7908,8 @@
     "id": "grave-pact-in-a-three-player-game",
     "text": "Alice, Bob and I are playing. I control Grave Pact and Alice controls a 2/2 and Bob controls a 3/3. My Grizzly Bears dies. What happens?",
     "expect": [
-      "a 2/2 creature: the battlefield \u2192 Alice's graveyard",
-      "a 3/3 creature: the battlefield \u2192 Bob's graveyard"
+      "a 2/2 creature: the battlefield → Alice's graveyard",
+      "a 3/3 creature: the battlefield → Bob's graveyard"
     ],
     "notExpect": [],
     "cite": []
@@ -7997,7 +7997,7 @@
       "can't target Grizzly Bears while it's still a spell"
     ],
     "notExpect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard"
+      "Grizzly Bears: the battlefield → your graveyard"
     ],
     "cite": [
       "109.2"
@@ -8237,7 +8237,7 @@
     "id": "six-creatures-said-as-a-word",
     "text": "I control six Grizzly Bears and my opponent casts Wrath of God. What happens?",
     "expect": [
-      "(\u00d76)"
+      "(×6)"
     ],
     "notExpect": [],
     "cite": []
@@ -8547,7 +8547,7 @@
       "You gain 5 life."
     ],
     "notExpect": [
-      "(\u00d75)"
+      "(×5)"
     ],
     "cite": [
       "119.3"
@@ -8595,7 +8595,7 @@
     "id": "kalitas-does-not-exile-your-own",
     "text": "I control Kalitas, Traitor of Ghet. I control three 2/2s. I cast Wrath of God. What happens?",
     "expect": [
-      "a 2/2 creature: the battlefield \u2192 your graveyard"
+      "a 2/2 creature: the battlefield → your graveyard"
     ],
     "notExpect": [
       "replaced by Kalitas"
@@ -8699,7 +8699,7 @@
       "Phyrexian Germ token"
     ],
     "notExpect": [
-      "(\u00d72)"
+      "(×2)"
     ],
     "cite": [
       "702.92a"
@@ -8821,7 +8821,7 @@
     "id": "primal-vigor-doubles-everyones-tokens",
     "text": "My opponent controls Primal Vigor and casts Lingering Souls. What happens?",
     "expect": [
-      "(\u00d74)"
+      "(×4)"
     ],
     "notExpect": [],
     "cite": [
@@ -8832,10 +8832,10 @@
     "id": "doubling-season-is-only-yours",
     "text": "I control Doubling Season and my opponent casts Lingering Souls. What happens?",
     "expect": [
-      "(\u00d72)"
+      "(×2)"
     ],
     "notExpect": [
-      "(\u00d74)"
+      "(×4)"
     ],
     "cite": [
       "111.1"
@@ -8907,7 +8907,7 @@
     "id": "solitude-exiles-and-gives-life",
     "text": "My opponent controls Serra Angel and I cast Solitude on it. What happens?",
     "expect": [
-      "Serra Angel: the battlefield \u2192 exile",
+      "Serra Angel: the battlefield → exile",
       "opponent gains 4 life"
     ],
     "notExpect": [],
@@ -8995,7 +8995,7 @@
     "text": "I have cast three spells this turn and I cast Grapeshot targeting my opponent. What happens?",
     "expect": [
       "Storm puts 3 copies of Grapeshot on the stack",
-      "opponent takes 1 damage. (\u00d74)"
+      "opponent takes 1 damage. (×4)"
     ],
     "notExpect": [
       "Not modeled"
@@ -9009,7 +9009,7 @@
     "text": "I have cast two spells this turn and my opponent has cast one spell this turn. I cast Empty the Warrens. What happens?",
     "expect": [
       "Storm puts 3 copies of Empty the Warrens",
-      "Goblin token. (\u00d78)"
+      "Goblin token. (×8)"
     ],
     "notExpect": [
       "Not modeled"
@@ -9070,7 +9070,7 @@
     "text": "I control three artifacts and cast Dispatch on my opponent's attacking Grizzly Bears. What happens?",
     "expect": [
       "Grizzly Bears is tapped",
-      "Grizzly Bears: the battlefield \u2192 exile"
+      "Grizzly Bears: the battlefield → exile"
     ],
     "notExpect": [
       "Not understood",
@@ -9086,7 +9086,7 @@
       "it needs its controller to control 3 or more artifacts"
     ],
     "notExpect": [
-      "\u2192 exile",
+      "→ exile",
       "Not understood"
     ],
     "cite": []
@@ -9196,7 +9196,7 @@
       "Grizzly Bears has 1 damage marked"
     ],
     "notExpect": [
-      "the battlefield \u2192 your graveyard",
+      "the battlefield → your graveyard",
       "Not understood"
     ],
     "cite": []
@@ -9205,7 +9205,7 @@
     "id": "kicked-with-goblins-out",
     "text": "I control Goblin Bushwhacker and cast it kicked with three 1/1 Goblins out. What happens?",
     "expect": [
-      "a 1/1 goblin creature is 2/1 until end of turn. (\u00d73)"
+      "a 1/1 goblin creature is 2/1 until end of turn. (×3)"
     ],
     "notExpect": [
       "Not understood",
@@ -9338,7 +9338,7 @@
     ],
     "notExpect": [
       "Not modeled",
-      "(\u00d72)"
+      "(×2)"
     ],
     "cite": []
   },
@@ -9346,8 +9346,8 @@
     "id": "magecraft-counts-the-copy",
     "text": "I control Archmage Emeritus. I cast Lightning Bolt at my opponent, then cast Twincast targeting Lightning Bolt. What happens?",
     "expect": [
-      "You draw 1 card. (\u00d73)",
-      "opponent takes 3 damage. (\u00d72)"
+      "You draw 1 card. (×3)",
+      "opponent takes 3 damage. (×2)"
     ],
     "notExpect": [
       "Not modeled"
@@ -9358,11 +9358,11 @@
     "id": "dockside-counts-both-kinds",
     "text": "I control Dockside Extortionist and my opponent controls three artifacts and two enchantments. I cast Dockside Extortionist. What happens?",
     "expect": [
-      "You get a Treasure token. (\u00d75)"
+      "You get a Treasure token. (×5)"
     ],
     "notExpect": [
       "Not understood",
-      "(\u00d73)"
+      "(×3)"
     ],
     "cite": []
   },
@@ -9610,7 +9610,7 @@
     "id": "block-the-attacker-named-by-size",
     "text": "My opponent attacks me with a 3/3 and a 2/2. I block the 3/3 with a 4/4. What happens?",
     "expect": [
-      "a 3/3 creature: the battlefield \u2192 opponent's graveyard",
+      "a 3/3 creature: the battlefield → opponent's graveyard",
       "You take 2 damage"
     ],
     "notExpect": [
@@ -9687,7 +9687,7 @@
     "id": "killed-with-nothing-named",
     "text": "I control Blood Artist and my opponent kills my Grizzly Bears. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 your graveyard",
+      "Grizzly Bears: the battlefield → your graveyard",
       "opponent loses 1 life"
     ],
     "notExpect": [
@@ -9710,7 +9710,7 @@
     "id": "exiled-by-an-opponent",
     "text": "My opponent exiles my Grizzly Bears. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 exile"
+      "Grizzly Bears: the battlefield → exile"
     ],
     "notExpect": [
       "Not understood"
@@ -9744,7 +9744,7 @@
     "id": "opponents-creature-attacks",
     "text": "My opponent's Grizzly Bears attacks me and I block with Serra Angel. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Not understood"
@@ -9755,7 +9755,7 @@
     "id": "destroyed-by-my-spell",
     "text": "My opponent's Sol Ring is destroyed by my Vandalblast. What happens?",
     "expect": [
-      "Sol Ring: the battlefield \u2192 opponent's graveyard"
+      "Sol Ring: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "can't target",
@@ -9846,7 +9846,7 @@
     "id": "table-talk-with-a-possessive",
     "text": "My opponent's Grizzly Bears hits the bin. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Not understood"
@@ -9868,7 +9868,7 @@
     "id": "blocks-attacker-first-named",
     "text": "My opponent blocks my Hill Giant with their Grizzly Bears. What happens?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Not understood"
@@ -9879,7 +9879,7 @@
     "id": "blocks-attacker-first-mine",
     "text": "I block their Hill Giant with my Serra Angel. What happens?",
     "expect": [
-      "Hill Giant: the battlefield \u2192 opponent's graveyard"
+      "Hill Giant: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Not understood"
@@ -9942,7 +9942,7 @@
     "id": "howling-mine-draws-one-more",
     "text": "I control Howling Mine and it is my draw step. How many cards do I draw?",
     "expect": [
-      "You draw 1 card. (\u00d72)"
+      "You draw 1 card. (×2)"
     ],
     "notExpect": [
       "Not modeled",
@@ -9965,7 +9965,7 @@
     "id": "what-happens-if-i",
     "text": "My opponent has Grizzly Bears. What happens if I Doom Blade it?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Not understood"
@@ -10011,7 +10011,7 @@
     "id": "can-a-flyer-block-a-ground-creature",
     "text": "Can Serra Angel block Grizzly Bears?",
     "expect": [
-      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+      "Grizzly Bears: the battlefield → opponent's graveyard"
     ],
     "notExpect": [
       "Not understood",
@@ -10068,7 +10068,7 @@
     "id": "how-do-two-cards-interact",
     "text": "How does Kalitas, Traitor of Ghet interact with Wrath of God?",
     "expect": [
-      "Kalitas, Traitor of Ghet: the battlefield \u2192 your graveyard"
+      "Kalitas, Traitor of Ghet: the battlefield → your graveyard"
     ],
     "notExpect": [
       "Not understood"
@@ -10116,7 +10116,7 @@
     "id": "a-described-creature-dies",
     "text": "I control Blood Artist and a 2/2 dies. What happens?",
     "expect": [
-      "a 2/2 creature: the battlefield \u2192 your graveyard",
+      "a 2/2 creature: the battlefield → your graveyard",
       "opponent loses 1 life"
     ],
     "notExpect": [
@@ -10128,8 +10128,8 @@
     "id": "rancor-returns-when-the-creature-dies",
     "text": "I control Grizzly Bears enchanted with Rancor and it dies. Where does Rancor go?",
     "expect": [
-      "Rancor: the battlefield \u2192 your graveyard",
-      "Rancor: your graveyard \u2192 your hand"
+      "Rancor: the battlefield → your graveyard",
+      "Rancor: your graveyard → your hand"
     ],
     "notExpect": [
       "Not understood"
@@ -10140,7 +10140,7 @@
     "id": "aura-dies-with-its-creature",
     "text": "I control Grizzly Bears enchanted with Pacifism and it dies. Where does Pacifism go?",
     "expect": [
-      "Pacifism: the battlefield \u2192 your graveyard"
+      "Pacifism: the battlefield → your graveyard"
     ],
     "notExpect": [
       "your hand",
@@ -10189,6 +10189,28 @@
     "text": "I control Gaea's Cradle and three creatures. How much mana does it make?",
     "expect": [
       "{G}{G}{G} right now"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "mana-question-picks-mana-ability",
+    "text": "I control Grim Monolith and activate it. How much mana do I get?",
+    "expect": [
+      "add {C}{C}{C}"
+    ],
+    "notExpect": [
+      "Untap Grim Monolith"
+    ],
+    "cite": []
+  },
+  {
+    "id": "mana-question-sol-ring",
+    "text": "I control Sol Ring and tap it for mana. How much mana do I get?",
+    "expect": [
+      "add {C}{C}"
     ],
     "notExpect": [
       "Not understood"

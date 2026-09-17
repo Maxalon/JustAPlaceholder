@@ -126,6 +126,12 @@ class SituationParser(private val names: NameIndex) {
         // An explicit "it resolves" mid-situation settles what was on the stack then; anything cast after it still needs to resolve.
         val tail = ctx.events.lastOrNull()?.verb
         if (ctx.events.isNotEmpty() && (!ctx.explicitResolve || tail in setOf("cast", "activate", "trigger", "attack", "attackAll", "block"))) ctx.events += EventSpec("resolveAll")
+        // "I activate Grim Monolith. How much mana do I get?" — the question says which of its abilities is meant.
+        for (ask in ctx.asks.filter { it.verb == "ask" && (it.to == "mana" || it.to == "manaAvailable") }) {
+            // "how much mana do I get?" names no card, so the activation it is about is the last one.
+            val i = ctx.events.indexOfLast { it.verb == "activate" && it.to == null && (ask.obj == null || it.obj == ask.obj) }
+            if (i >= 0) ctx.events[i] = ctx.events[i].copy(to = "mana")
+        }
         ctx.events += ctx.asks
         // Every player that took part; "me" and "opponent" only when the text spoke of them (or named nobody).
         for (e in ctx.events) { e.player?.let { ctx.note(it) }; e.targets.forEach { if (it == "me" || it == "opp") ctx.note(it) } }
