@@ -375,6 +375,8 @@ sealed interface StaticEffect {
     data object CantLose : StaticEffect
     /** "You have no maximum hand size." (Reliquary Tower and the rest) — nothing is discarded at cleanup. */
     data object NoMaximumHandSize : StaticEffect
+    /** Seedborn Muse: "Untap all permanents you control during each other player's untap step." */
+    data class UntapInOthersUntapStep(val filter: ObjFilter) : StaticEffect
     /** Meekstone: "Creatures with power 3 or greater don't untap during their controllers' untap steps." */
     data class DontUntap(val filter: ObjFilter) : StaticEffect
     /**

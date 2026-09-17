@@ -675,6 +675,14 @@ class Engine(val state: GameState) {
             val wereTapped = (mine - held.toSet()).filter { it.tapped == true }
             (mine - held.toSet()).forEach { it.tapped = false; it.summoningSick = false; it.attacking = null; it.blocking = null }
             for (o in wereTapped) state.outcomes += "${o.name} untaps."
+            // Seedborn Muse: another player's permanents untap in this player's untap step too.
+            for (src in state.objects.values.filter { it.isOnBattlefield() && it.controller != activePlayer }) {
+                val e = src.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.filterIsInstance<StaticEffect.UntapInOthersUntapStep>().firstOrNull() ?: continue
+                val theirs = state.objects.values.filter { it.isOnBattlefield() && it.controller == src.controller && it.tapped == true && state.matches(e.filter, it, src.controller, src) }
+                if (theirs.isEmpty()) { trace.step("${src.name} would untap ${state.player(src.controller).possessive} ${e.filter.raw ?: "permanents"} in this untap step, but none of them are tapped.", "502.3"); continue }
+                trace.step("${src.name} untaps ${state.player(src.controller).possessive} ${e.filter.raw ?: "permanents"} during this player's untap step as well.", "502.3", "614.1")
+                theirs.forEach { it.tapped = false; state.outcomes += "${it.name} untaps (${src.name})." }
+            }
             held.forEach { it.summoningSick = false; it.attacking = null; it.blocking = null }
             trace.step("${p.possessive.replaceFirstChar { it.uppercase() }} turn begins: ${p.subject.lowercase()} ${p.v("untaps", "untap")} all ${p.possessive} permanents, and everything ${p.subject.lowercase()} ${p.v("has", "have")} controlled since the turn began can attack and use {T} abilities.", "502.3", "302.6")
             return

@@ -9909,5 +9909,19 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "seedborn-muse-untaps-on-their-turn",
+    "text": "I control Seedborn Muse and a tapped Sol Ring. It is my opponent's untap step. What happens?",
+    "expect": [
+      "Sol Ring untaps (Seedborn Muse)"
+    ],
+    "notExpect": [
+      "Not modeled",
+      "Not understood"
+    ],
+    "cite": [
+      "502.3"
+    ]
   }
 ]
