@@ -10775,5 +10775,38 @@
       "you don't control it"
     ],
     "cite": []
+  },
+  {
+    "id": "equip-it",
+    "text": "I control Bonesplitter and Grizzly Bears, my opponent controls Serra Angel. I equip it.",
+    "expect": [
+      "Bonesplitter is attached to Grizzly Bears"
+    ],
+    "notExpect": [
+      "Grizzly Bears is tapped"
+    ],
+    "cite": []
+  },
+  {
+    "id": "plus-counter-on-it-is-yours",
+    "text": "I control Grizzly Bears and my opponent controls Serra Angel. I put a +1/+1 counter on it.",
+    "expect": [
+      "Grizzly Bears has 1 +1/+1 counter"
+    ],
+    "notExpect": [
+      "Serra Angel has 1 +1/+1 counter"
+    ],
+    "cite": []
+  },
+  {
+    "id": "exile-it",
+    "text": "I control Grizzly Bears and my opponent controls Serra Angel. I exile it.",
+    "expect": [
+      "Serra Angel: the battlefield → exile"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]

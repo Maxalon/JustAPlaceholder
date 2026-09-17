@@ -1374,6 +1374,17 @@ class SituationParser(private val names: NameIndex) {
         // "activate it (targeting X)": the last-mentioned permanent's ability.
         // "use her +1" is a loyalty ability, read further down; this rule must not take it first.
         // "activate it for green" names a colour the ability asks for: that rule is further down and needs the whole clause.
+        // "I equip it": equipping is an Equipment's ability aimed at a creature you control, so neither "it" is
+        // just the last permanent named — read that way it activated the creature and targeted the opponent's.
+        Regex("""^(?:equips?|equipping)(?: (?:it|that|them))?$""").find(c)?.let {
+            val who = actor ?: subject ?: "me"
+            fun isEquipment(o: ObjectSpec) = o.card.name?.let { n -> names.lookup(Names.normalize(n))?.typeLine?.contains("Equipment", true) } == true
+            val eq = ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" && isEquipment(it) } ?: return@let
+            val crea = ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" && it.id != eq.id && isCreatureName(it.card.name) } ?: return@let
+            ctx.events += EventSpec("activate", player = who, obj = eq.id, targets = listOf(crea.id))
+            ctx.notes += "\"${restore(clause0, m)}\" is read as equipping ${eq.card.name} to ${crea.card.name}."
+            ctx.lastActor = who; ctx.lastMentioned = crea.id; return true
+        }
         Regex("""^(?:$activateVerbs)\s+(?:it|that|him|her|them|its ability|his ability|her ability|it's ability)\b(?!\s*[+\u2212-]?\d)(?!\s+(?:choosing|naming|picking|for|on) (?:white|blue|black|red|green|colou?rless)\b)(.*)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             // "I control Mutavault and they control Serra Angel. I activate it": you can only activate your own,
@@ -1771,7 +1782,9 @@ class SituationParser(private val names: NameIndex) {
                 val ref = castPermanentObject(ctx) ?: ctx.lastMentioned?.takeIf { it in ctx.objects }
                 // A +1/+1 or -1/-1 counter goes on a creature. "I control Grizzly Bears and Doubling Season and
                 // put a +1/+1 counter on it" put the counter on Doubling Season, and nothing said so.
-                if (Regex("""^[+-]\d+/[+-]\d+$""").matches(kind) && (ref == null || !isCreatureName(ctx.objects[ref]?.card?.name)))
+                // "+1/+1 counter on it" helps the creature, so with one on each side it is the actor's own.
+                val mine = !Regex("""^\+\d+/\+\d+$""").matches(kind) || actor == null || ctx.objects[ref]?.controller == actor
+                if (Regex("""^[+-]\d+/[+-]\d+$""").matches(kind) && (ref == null || !isCreatureName(ctx.objects[ref]?.card?.name) || !mine))
                     ctx.objects.values.lastOrNull { it.zone == "battlefield" && (actor == null || it.controller == actor) && isCreatureName(it.card.name) }?.id ?: ref ?: return@let
                 else ref ?: return@let
             } else m.cards[r.groupValues[3]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
@@ -2105,6 +2118,16 @@ class SituationParser(private val names: NameIndex) {
             if (r.groupValues[6].contains("sacrific")) ctx.events += EventSpec("sacrifice", player = who, obj = id)
             else ctx.events += EventSpec("leave", obj = id, to = "graveyard")
             ctx.lastMentioned = id; ctx.lastOwner = who; ctx.note(who); return true
+        }
+        // "I exile it" / "they bounce it": removal aimed at whatever was named last, said the active way.
+        Regex("""^(?:kills?|killed|destroys?|destroyed|exiles?|exiled|bounces?|bounced|removes?|removed|nukes?|nuked) (?:it|that|them|him|her)$""").find(c)?.let {
+            // A card the actor said they hold is how they would do it, and the rule above casts it; this one is
+            // for when nothing was named at all.
+            if (ctx.inHand[actor ?: ctx.lastActor ?: "me"]?.any { !it.typeLine.contains("Land", true) } == true) return@let
+            val id = ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).zone == "battlefield" }
+                ?: ctx.objects.values.lastOrNull { it.zone == "battlefield" }?.id ?: return@let
+            val to = when { c.contains("exile") -> "exile"; c.contains("bounce") -> "hand"; else -> "graveyard" }
+            ctx.events += EventSpec("leave", obj = id, to = to); ctx.lastMentioned = id; return true
         }
         Regex("""^(?:it|that|this|he|she|they) (dies|died|is destroyed|gets destroyed|goes to the graveyard|leaves the battlefield|is exiled|gets exiled|is bounced|is sacrificed|gets sacrificed)$""").find(c)?.let { r ->
             val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.objects.values.lastOrNull()?.id ?: return@let
