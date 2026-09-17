@@ -564,6 +564,8 @@ class Engine(val state: GameState) {
     fun leave(objectId: String, to: Zone) {
         val obj = state.obj(objectId)
         move(obj, to, "${obj.name} is put into ${zoneName(to, obj)}.", "400.7")
+        // An Aura that was on it is now attached to nothing, and dies to state-based actions (704.5m).
+        stateBasedActions()
     }
 
     /** Damage the user states as a given (e.g. "Bolt already dealt 3 to it"). */

@@ -10123,5 +10123,29 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "rancor-returns-when-the-creature-dies",
+    "text": "I control Grizzly Bears enchanted with Rancor and it dies. Where does Rancor go?",
+    "expect": [
+      "Rancor: the battlefield \u2192 your graveyard",
+      "Rancor: your graveyard \u2192 your hand"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "aura-dies-with-its-creature",
+    "text": "I control Grizzly Bears enchanted with Pacifism and it dies. Where does Pacifism go?",
+    "expect": [
+      "Pacifism: the battlefield \u2192 your graveyard"
+    ],
+    "notExpect": [
+      "your hand",
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
