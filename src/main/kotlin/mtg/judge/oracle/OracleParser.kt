@@ -835,8 +835,13 @@ object OracleParser {
     private val tuckAllRe = Regex("""^put (?:all|each) (.+?) on the bottom of (?:their|its) owners?' librar(?:y|ies)(?: in a random order)?\.?$""", RegexOption.IGNORE_CASE)
     private val damageEachRe = Regex("""^(?:~|it) deals (\d+) damage to each (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val narratedRes: List<Pair<Regex, List<String>>> = listOf(
-        Regex("""^(?:then )?reveals? the top card of (?:their|your) library\.?$""", RegexOption.IGNORE_CASE) to listOf("701.20a"),
+        Regex("""^(?:then )?(?:(?:defending|that|target|each) player )?reveals? the top card of (?:their|your) library\.?$""", RegexOption.IGNORE_CASE) to listOf("701.20a"),
+        // "~ connives": draw then discard, with a counter if a nonland card was discarded (701.50a).
+        Regex("""^(?:~|it|each of them) connives?(?: \d+)?\.?$""", RegexOption.IGNORE_CASE) to listOf("701.50a"),
+        // "You may play the exiled card this turn": a permission the engine doesn't track.
+        Regex("""^(?:you may )?play (?:the exiled card|that card|those cards|the exiled cards)(?: this turn| until the end of your next turn| for as long as it remains exiled)?\.?$""", RegexOption.IGNORE_CASE) to listOf("601.3"),
         Regex("""^if it's a permanent card, they put it onto the battlefield\.?$""", RegexOption.IGNORE_CASE) to listOf("608.2c"),
+        Regex("""^if it's an? \w+(?: \w+)? card, (?:that player|they|you) puts? it into (?:their|your) hand\.?$""", RegexOption.IGNORE_CASE) to listOf("608.2c"),
         Regex("""^you choose an? (?:(?:nonland|noncreature|nonbasic|nonartifact|creature|land|artifact|enchantment|instant or sorcery|instant|sorcery),? )*card from it\.?$""", RegexOption.IGNORE_CASE) to listOf("701.20a"),
         Regex("""^that player discards (?:that card|it|a card|\w+ cards?)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.9a"),
         Regex("""^put (?:a|an|\w+|\d+) cards? from your hand on top of your library(?: in any order)?\.?$""", RegexOption.IGNORE_CASE) to listOf("401.4"),

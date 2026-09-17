@@ -8912,5 +8912,17 @@
     ],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "goblin-guide-attack-trigger",
+    "text": "I attack with Goblin Guide. What happens?",
+    "expect": [
+      "reveals the top card of their library",
+      "opponent takes 2 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
