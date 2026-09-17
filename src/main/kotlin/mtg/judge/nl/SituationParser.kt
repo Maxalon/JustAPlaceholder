@@ -508,6 +508,19 @@ class SituationParser(private val names: NameIndex) {
             t2 = t2.substring(0, r.range.first).trim().let { if (it.isEmpty()) "" else "$it, " }.replace(Regex("""(?:i|they|he|she|my opponent|the opponent|opponent|@\w+), $"""), "") + cards.joinToString(", ") { "${if (who == "me") "i have" else if (who == "opp") "they have" else "@$who has"} $it in hand" }
         }
         // "they have an instant and a creature in their graveyard": card types in a graveyard (Tarmogoyf), kept together before the clause split.
+        // "my graveyard has a land and an instant", "their graveyard contains a creature": the owner said first.
+        // Read clause by clause the "and" splits the list, so this has to happen before the sentence is split.
+        Regex("""\b(my|their|his|her|the|my opponent's|the opponent's|opponent's|@\w+'s) graveyards? (?:has|have|contains?|holds?|is|are) ((?:an? |two |three |\d+ )?(?:instant|sorcery|sorceries|creature|land|artifact|enchantment|planeswalker|battle)s?(?: cards?)?(?:,? (?:and )?(?:an? |two |three |\d+ )?(?:instant|sorcery|sorceries|creature|land|artifact|enchantment|planeswalker|battle)s?(?: cards?)?)*)(?: in it| in there)?""").find(t2)?.let { r ->
+            val who = when (val w = r.groupValues[1]) { "my" -> "me"; "the" -> "me"; else -> if (w.startsWith("@")) w.removePrefix("@").removeSuffix("'s").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else pronounPlayer(ctx, "their") }
+            for (part in r.groupValues[2].split(Regex(""",\s*(?:and\s+)?|\s+and\s+"""))) {
+                val pm = Regex("""^(?:(an?|two|three|\d+) )?(\w+?)(?:s)?(?: cards?)?$""").find(part.trim()) ?: continue
+                val n = pm.groupValues[1].let { if (it.isEmpty() || it == "a" || it == "an") 1 else number(it) ?: 1 }
+                val kind = pm.groupValues[2].let { if (it == "sorcerie") "sorcery" else it }
+                val name = (if (kind.startsWith("i") || kind.startsWith("a") || kind.startsWith("e")) "an " else "a ") + kind
+                repeat(n) { var id = slug("$kind card"); var k = 2; while (ctx.objects.containsKey(id)) id = slug("$kind card") + "_" + (k++); ctx.objects[id] = ObjectSpec(id, CardRef(name = name), zone = "graveyard", controller = who) }
+            }
+            ctx.note(who); any = true; t2 = t2.removeRange(r.range)
+        }
         Regex("""\b(?:has|have|with|got|holds?|there is|there are|there's) ((?:an? |two |three |\d+ )?(?:instant|sorcery|sorceries|creature|land|artifact|enchantment|planeswalker|battle)s?(?: cards?)?(?:,? (?:and )?(?:an? |two |three |\d+ )?(?:instant|sorcery|sorceries|creature|land|artifact|enchantment|planeswalker|battle)s?(?: cards?)?)*) (?:is |are )?in (?:(my|their|his|her|the|my opponent's|the opponent's|opponent's) )?graveyards?\b""").find(t2)?.let { r ->
             val before = t2.substring(0, r.range.first)
             // "in the graveyards" with no owner: the card types are all that matter, and the engine counts every
@@ -1448,16 +1461,20 @@ class SituationParser(private val names: NameIndex) {
         }
         // "has 2 poison counters", "has 0 cards in hand", "with three cards in hand"
         Regex("""^(?:(?:already |now |currently )?(?:has|have|is at|at|with|sits at|is on)(?: already| now)? )?(\d+|\w+) poison(?: counters?)?(?: already| so far| now)?$""").find(c)?.let { r -> val who = actor ?: subject ?: "me"; ctx.poison[who] = number(r.groupValues[1]) ?: 0; ctx.note(who); return true }
-        Regex("""^(?:(?:has|have|holds?|holding|with) )?(\d+|\w+|no) cards? in (?:their |my |his |her )?hand(?: (?:at|during|in) (?:(?:their|my|his|her|the) )?(cleanup|end of turn|end|discard)(?: step)?)?$""").find(c)?.let { r ->
-            if (r.groupValues[2].isNotEmpty()) { val who = actor ?: subject ?: "me"; ctx.activePlayer = who; ctx.events += EventSpec("step", player = who, to = if (r.groupValues[2].startsWith("end")) "end" else "cleanup") }
-            val who = actor ?: (if (c.startsWith("ha") || c.startsWith("ho") || c.startsWith("with")) subject else ctx.lastOwner ?: subject) ?: "me"; ctx.handSize[who] = if (r.groupValues[1] == "no") 0 else number(r.groupValues[1]) ?: 0; ctx.note(who); if (actor != null) ctx.lastActor = actor; return true }
+        Regex("""^(?:there (?:is|are) )?(?:(?:has|have|holds?|holding|with) )?(\d+|\w+|no) cards? in (?:(their|my|his|her|my opponent's|the opponent's|opponent's) )?hand(?: (?:at|during|in) (?:(?:their|my|his|her|the) )?(cleanup|end of turn|end|discard)(?: step)?)?$""").find(c)?.let { r ->
+            if (r.groupValues[3].isNotEmpty()) { val who = actor ?: subject ?: "me"; ctx.activePlayer = who; ctx.events += EventSpec("step", player = who, to = if (r.groupValues[3].startsWith("end")) "end" else "cleanup") }
+            // "there are 3 cards in my opponent's hand": whose hand it is, said in the clause rather than by the
+            // subject. Without reading it the count landed on the asker and the answer had the wrong hand.
+            val whose = r.groupValues[2].takeIf { it.isNotEmpty() }?.let { w -> if (w == "my") "me" else pronounPlayer(ctx, w.substringAfterLast(' ').removeSuffix("'s")) }
+            val who = whose ?: actor ?: (if (c.startsWith("ha") || c.startsWith("ho") || c.startsWith("with")) subject else ctx.lastOwner ?: subject) ?: "me"
+            ctx.handSize[who] = if (r.groupValues[1] == "no") 0 else number(r.groupValues[1]) ?: 0; ctx.note(who); if (actor != null) ctx.lastActor = actor; return true }
         // "only has one Mountain untapped", "has 2 untapped lands", "with 3 mana open/available/up"
         Regex("""^(?:only )?(?:has|have|with|got)(?: only)? (\d+|\w+) (?:(?:untapped |open )(?:lands?|c\d+s?|mana sources?)|(?:lands?|c\d+s?|mana sources?) (?:untapped|open|available|up|left)|mana(?: (?:open|available|up|left|untapped))?)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"; val n = number(r.groupValues[1]) ?: return@let
             ctx.mana[who] = n; ctx.note(who); ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} $n mana available; costs are checked against that."; return true
         }
         // "have an instant and a creature in their graveyard" / "my graveyard has a land and a sorcery": card types in a graveyard (Tarmogoyf).
-        Regex("""^(?:(?:there (?:is|are)|there's )?(?:has|have|with|got)? ?((?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?(?:,? (?:and )?(?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?)*) (?:is |are )?in (?:their|my|his|her|the|my opponent's|the opponent's|opponent's) graveyards?|(?:my|their|his|her) graveyard (?:has|contains|is) ((?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?(?:,? (?:and )?(?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?)*))$""").find(c)?.let { r ->
+        Regex("""^(?:(?:there (?:is|are)|there's )?(?:has|have|with|got)? ?((?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?(?:,? (?:and )?(?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?)*) (?:is |are )?in (?:their|my|his|her|the|my opponent's|the opponent's|opponent's) graveyards?|(?:my|their|his|her|my opponent's|the opponent's|opponent's) graveyard (?:has|contains|is) ((?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?(?:,? (?:and )?(?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?)*))(?: in it| in there)?$""").find(c)?.let { r ->
             val who = actor ?: (if (clauseIn.trim().startsWith("my")) "me" else if (Regex("""^(?:their|his|her)""").containsMatchIn(clauseIn.trim())) pronounPlayer(ctx, "their") else subject) ?: "me"
             val list = r.groupValues[1].ifEmpty { r.groupValues[2] }
             for (part in list.split(Regex(""",\s*(?:and\s+)?|\s+and\s+"""))) {
