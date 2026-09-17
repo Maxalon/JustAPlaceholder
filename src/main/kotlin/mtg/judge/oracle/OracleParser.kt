@@ -710,6 +710,8 @@ object OracleParser {
     fun parseCondition(text: String): Condition? {
         val t = text.trim().trimEnd('.')
         if (Regex("""^(?:~|it|this spell) was kicked$""", RegexOption.IGNORE_CASE).matches(t)) return Condition.WasKicked
+        if (Regex("""^~ is untapped$""", RegexOption.IGNORE_CASE).matches(t)) return Condition.SourceTapped(false)
+        if (Regex("""^~ is tapped$""", RegexOption.IGNORE_CASE).matches(t)) return Condition.SourceTapped(true)
         if (Regex("""^it's your turn$""", RegexOption.IGNORE_CASE).matches(t)) return Condition.YourTurn
         if (Regex("""^it's not your turn$""", RegexOption.IGNORE_CASE).matches(t)) return Condition.NotYourTurn
         Regex("""^you have (\d+) or more life$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m -> return Condition.LifeAtLeast(m.groupValues[1].toInt()) }
@@ -873,7 +875,8 @@ object OracleParser {
 
     private val unlessRe = Regex("""^(.+?) unless (that player|its controller|an opponent|you|target player|they) pays? (\{[^}]+\}(?:\{[^}]+\})*(?:, where X is [^.]+)?|\d+ life)\.?$""", RegexOption.IGNORE_CASE)
     private val mayRe = Regex("""^you may (.+)$""", RegexOption.IGNORE_CASE)
-    private val drawRe = Regex("""^(you |target player |that player |each player )?draws? (a|an|\w+|\d+) cards?\.?$""", RegexOption.IGNORE_CASE)
+    // "draws an additional card" is one card more, which is a draw of one.
+    private val drawRe = Regex("""^(you |target player |that player |each player )?draws? (a|an|\w+|\d+)(?: additional)? cards?\.?$""", RegexOption.IGNORE_CASE)
     private val damageRe = Regex("""^(?:~|it) deals (\d+|X) damage to (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val counterRe = Regex("""^counter target (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val destroyRe = Regex("""^destroy target (.+?)\.?$""", RegexOption.IGNORE_CASE)

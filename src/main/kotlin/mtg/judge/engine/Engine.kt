@@ -713,6 +713,12 @@ class Engine(val state: GameState) {
         // "end" and "upkeep" are steps; "main" is a phase. Say which, so the line reads as Magic does.
         val stepName = step.replace('_', ' ').let { n -> if (n.endsWith(" step") || n.endsWith(" phase") || n == "combat") n else if (n == "main") "$n phase" else "$n step" }
         trace.step("${state.player(activePlayer).possessive.replaceFirstChar { it.uppercase() }} $stepName begins.", when (step) { "upkeep" -> "503.1"; "end" -> "513.1"; "draw" -> "504.1"; else -> "500.1" })
+        // 504.1: the active player draws a card as a turn-based action. Triggers on the step happen after it.
+        if (step == "draw") {
+            trace.step("${state.player(activePlayer).subject} ${state.player(activePlayer).v("draws", "draw")} a card for the turn. It is a turn-based action, so it happens before anyone gets priority and before any \"at the beginning of the draw step\" trigger resolves.", "504.1", "117.3a")
+            draw(activePlayer, 1)
+            state.assumptions += "This isn't the first turn of the game, so the active player draws for the turn (the starting player skips that draw, 103.7a)."
+        }
         if (step == "end" && state.objects.values.any { it.isOnBattlefield() && (it.pumps.isNotEmpty() || it.tempKeywords.isNotEmpty()) }) {
             trace.step("\"Until end of turn\" effects don't end in the end step: \"at the beginning of the end step\" abilities trigger now, and the effects last until the cleanup step that follows.", "513.1", "514.2")
             state.outcomes += "Until-end-of-turn effects still apply during the end step; they end in the cleanup step."

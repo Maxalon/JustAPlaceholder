@@ -9923,5 +9923,42 @@
     "cite": [
       "502.3"
     ]
+  },
+  {
+    "id": "draw-step-draws-for-the-turn",
+    "text": "It is my draw step. How many cards do I draw?",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "Nothing changes",
+      "Not understood"
+    ],
+    "cite": [
+      "504.1"
+    ]
+  },
+  {
+    "id": "howling-mine-draws-one-more",
+    "text": "I control Howling Mine and it is my draw step. How many cards do I draw?",
+    "expect": [
+      "You draw 1 card. (\u00d72)"
+    ],
+    "notExpect": [
+      "Not modeled",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "howling-mine-tapped",
+    "text": "I control a tapped Howling Mine and it is my draw step. How many cards do I draw?",
+    "expect": [
+      "it needs it to be untapped"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": []
   }
 ]

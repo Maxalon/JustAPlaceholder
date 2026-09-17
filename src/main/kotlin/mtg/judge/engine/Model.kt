@@ -325,6 +325,8 @@ sealed interface Condition {
     data class GraveyardAtLeast(val amount: Int, val cardTypes: Boolean = false) : Condition
     /** "if this spell was kicked" (702.33d). */
     data object WasKicked : Condition
+    /** "if ~ is untapped" (Howling Mine) — about the permanent the ability is on. */
+    data class SourceTapped(val tapped: Boolean) : Condition
     data class Unknown(val text: String) : Condition
 }
 

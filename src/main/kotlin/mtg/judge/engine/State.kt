@@ -278,6 +278,7 @@ class GameState(
              else maxOf(cards.size, stated)) >= c.amount
         }
         Condition.WasKicked -> src.wasKicked
+        is Condition.SourceTapped -> (src.tapped == true) == c.tapped
         is Condition.Unknown -> false
     }
 
@@ -289,6 +290,7 @@ class GameState(
         is Condition.ControlsMatching -> "its controller to control ${if (c.atLeast > 1) "${c.atLeast} or more " else "a "}${c.filter.raw ?: "matching permanent"}"
         is Condition.GraveyardAtLeast -> "${c.amount} or more ${if (c.cardTypes) "card types among cards in" else "cards in"} its controller's graveyard"
         Condition.WasKicked -> "the spell to have been kicked"
+        is Condition.SourceTapped -> "it to be ${if (c.tapped) "tapped" else "untapped"}"
         is Condition.Unknown -> c.text
     }
 
