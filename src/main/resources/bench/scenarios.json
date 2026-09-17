@@ -10842,5 +10842,50 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "described-attacker-subject-first",
+    "text": "My 2/2 with lifelink attacks and isn't blocked. How much life do I gain?",
+    "expect": [
+      "opponent takes 2 damage",
+      "You gain 2 life"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "first-striker-blocks",
+    "text": "My 3/3 with first strike blocks a 3/3. What happens?",
+    "expect": [
+      "a 3/3 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "described-blocker-other-way-round",
+    "text": "A 3/3 with first strike blocks my 3/3. What happens?",
+    "expect": [
+      "a 3/3 creature: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "trampler-attacks-subject-first",
+    "text": "Their 6/6 with trample attacks me and I block with a 1/1.",
+    "expect": [
+      "You take 5 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
