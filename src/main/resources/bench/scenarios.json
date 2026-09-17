@@ -10074,5 +10074,29 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "what-happens-when-it-attacks",
+    "text": "I control Slith Firewalker. What happens when it attacks unblocked?",
+    "expect": [
+      "opponent takes 1 damage",
+      "Slith Firewalker has 1 +1/+1 counter"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "damage-when-it-attacks-unblocked",
+    "text": "I control Serra Angel. How much damage does it deal when it attacks unblocked?",
+    "expect": [
+      "opponent takes 4 damage"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]

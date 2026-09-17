@@ -514,6 +514,9 @@ class SituationParser(private val names: NameIndex) {
                 val blk = r.groupValues[1].ifEmpty { "my " }; val atk = r.groupValues[3].ifEmpty { "their " }
                 "$atk${r.groupValues[4]} attacks, can $blk${r.groupValues[2]} block it"
             } }
+            // "how much damage does it deal when it attacks unblocked?": the "when" clause is the situation.
+            .replace(Regex("""^what happens when (it|they|(?:$possPrefix)?c\d+) attacks?( unblocked| unopposed)?\??$"""), "$1 attacks$2")
+            .replace(Regex("""\bwhen (it|they|(?:$possPrefix)?c\d+) attacks?( unblocked| unopposed)?\b"""), "and $1 attacks$2")
             // "Does Torpor Orb stop Mulldrifter?" / "how does Kalitas interact with Wrath of God?": a question about
             // two cards with no situation around them. One reading is picked and said in the notes.
             .let { t0 -> Regex("""^(?:does|do|can|could|will|would) ($possPrefix)?(c\d+) (?:stop|shut off|turn off|beat|answer) ($possPrefix)?(c\d+)\??$""").replace(t0) { r ->
