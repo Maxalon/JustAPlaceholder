@@ -989,7 +989,8 @@ object OracleParser {
     // verify is still reported unparsed.
     // "this turn" sits either after what the damage is dealt to or right at the end, depending on the card.
     private val preventAllTurnRe = Regex("""^prevent all (combat )?damage that would be dealt(?: to (?!and\b)([a-z][a-z' ]*?))?(?: this turn)?(?: by ([a-z][a-z' ]*?))?(?: this turn)?\.?$""", RegexOption.IGNORE_CASE)
-    private val regenerateRe = Regex("""^regenerate (~|target .+?)\.?$""", RegexOption.IGNORE_CASE)
+    // "Regenerate it" on an ability of the creature itself (Experiment One) is "regenerate ~".
+    private val regenerateRe = Regex("""^regenerate (~|it|target .+?)\.?$""", RegexOption.IGNORE_CASE)
 
     private fun parseSentence(s0: String): Effect {
         // "Metalcraft — If you control three or more artifacts, …": the ability word names the ability and says
@@ -1005,7 +1006,7 @@ object OracleParser {
             val modeTexts = m.groupValues[3].split("•").map { it.trim().trimEnd('.') }.filter { it.isNotEmpty() }
             return Effect.Modal(m.groupValues[2].lowercase(), modeTexts.map { parseEffect(it) }, modeTexts)
         }
-        regenerateRe.matchEntire(s)?.let { m -> return Effect.Regenerate(if (m.groupValues[1] == "~") null else target(m.groupValues[1])) }
+        regenerateRe.matchEntire(s)?.let { m -> return Effect.Regenerate(if (m.groupValues[1] == "~" || m.groupValues[1].equals("it", true)) null else target(m.groupValues[1])) }
         // "~ deals 2 damage divided as you choose among one or two targets" and its cousins. The count words only
         // cap how many targets may be chosen; the filter is what they have to be.
         Regex("""^(?:~|it) deals (\d+) damage divided as you choose among (one or two|one, two, or three|any number of|up to \w+|\w+) (targets?|target .+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
