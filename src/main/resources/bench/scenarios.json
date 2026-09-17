@@ -8565,5 +8565,18 @@
     "cite": [
       "302.6"
     ]
+  },
+  {
+    "id": "poison-given-by-someone",
+    "text": "I have 9 poison counters and my opponent gives me a poison counter. What happens?",
+    "expect": [
+      "lose the game"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "704.5c"
+    ]
   }
 ]

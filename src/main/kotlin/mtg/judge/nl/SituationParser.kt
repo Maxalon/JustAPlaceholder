@@ -1008,6 +1008,10 @@ class SituationParser(private val names: NameIndex) {
             val who = actorOfClause(c) ?: ctx.lastActor ?: "me"
             ctx.events += EventSpec("mill", player = who, amount = number(r.groupValues[1]) ?: 1); ctx.lastActor = who; ctx.note(who); return true
         }
+        Regex("""^(?:(?:i|we|they|he|she|my opponent|the opponent|@\w+) )?(?:gives?|gave|deals?|dealt) (me|us|them|him|her|my opponent|the opponent|@\w+) (an?|one|two|three|four|five|\d+) (?:more |additional |extra |further )?poison counters?$""").find(c)?.let { r ->
+            val victim = when (val w = r.groupValues[1]) { "me", "us" -> "me"; "them", "him", "her", "my opponent", "the opponent" -> pronounPlayer(ctx, "their"); else -> w.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } }
+            ctx.events += EventSpec("poison", player = victim, amount = number(r.groupValues[2]) ?: 1); ctx.note(victim); return true
+        }
         Regex("""^(?:(?:i|we|they|he|she|my opponent|the opponent|@\w+) )?(?:gets?|got|gains?|gained|takes?|took|receives?|received|is dealt|are dealt|was dealt|were dealt|is given|are given) (an?|one|two|three|four|five|\d+) (?:more |additional |extra |further )?poison counters?$""").find(c)?.let { r ->
             val who = actorOfClause(c) ?: ctx.lastActor ?: "me"
             ctx.events += EventSpec("poison", player = who, amount = number(r.groupValues[1]) ?: 1); ctx.lastActor = who; ctx.note(who); return true
