@@ -1003,9 +1003,15 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "how much does my Lightning Bolt cost?": the printed cost plus every tax on the battlefield.
-        Regex("""^(?:how (?:much|many)(?: mana)?|what) (?:does|do|would|will|did) ($possPrefix|an? )?(c\d+) cost(?: to cast)?(?: me| us| them| for me| for them)?(?: to cast)?(?: now| right now| at the moment)?$""").find(clause0)?.let { q ->
+        Regex("""^(?:how (?:much|many)(?: mana)?|what) (?:does|do|would|will|did) ($possPrefix|an? )?(c\d+|it|that|commander) cost(?: to cast)?(?: me| us| them| for me| for them)?(?: to cast)?(?: now| right now| at the moment)?$""").find(clause0)?.let { q ->
             val who = when { q.groupValues[1].startsWith("@") -> q.groupValues[1].removePrefix("@").removeSuffix("'s "); q.groupValues[1] == "their " -> pronounPlayer(ctx, "their"); else -> "me" }
-            val card = m.cards.getValue(q.groupValues[2])
+            // "My commander is Atraxa … how much does it cost now?": the card was named earlier in the question.
+            // A card the asker said they hold is the one they are about to cast; then a commander waiting in the
+            // command zone; only then whatever was mentioned last.
+            val card = m.cards[q.groupValues[2]]
+                ?: ctx.inHand[who]?.lastOrNull()
+                ?: (ctx.objects.values.lastOrNull { it.zone == "command" } ?: ctx.lastMentioned?.let { ctx.objects[it] } ?: ctx.objects.values.lastOrNull())
+                    ?.card?.name?.let { n -> names.lookup(Names.normalize(n)) } ?: return@let
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx).also { ctx.objects[it] = ctx.objects.getValue(it).copy(zone = "hand") }
             ctx.asks += EventSpec("ask", obj = id, to = "spellCost")
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
@@ -1022,7 +1028,18 @@ class SituationParser(private val names: NameIndex) {
             }
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
-        if (Regex("""^(?:where|what) (?:does|do|did|will|would|happens? to|is|are)\b.*\b(?:go|end up|land|happen|happens|it|them|now)$""").matches(clause0) || Regex("""^what happens to\b""").containsMatchIn(clause0)) { ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true }
+        if (Regex("""^(?:where|what) (?:does|do|did|will|would|happens? to|is|are)\b.*\b(?:go|end up|land|happen|happens|it|them|now)$""").matches(clause0) || Regex("""^what happens to\b""").containsMatchIn(clause0)) {
+            // "What happens to Bob's Grizzly Bears?" can be the first time that card is named, and with nothing on
+            // the battlefield the answer was "Nothing changes". The owner said in the question puts it there.
+            Regex("""^what happens to ($possPrefix)(c\d+)$""").find(clause0)?.let { q ->
+                val card = m.cards[q.groupValues[2]] ?: return@let
+                if (objectIdFor(card, ctx) != null || card.isSpellOnly) return@let
+                val who = possessiveOwner(q.groupValues[1], ctx, m) ?: return@let
+                addObject(card, who, false, ctx)
+                ctx.notes += "${card.display} was named only in the question; it is taken to be on the battlefield under ${if (who == "me") "your" else (ctx.players[who] ?: "your opponent") + "'s"} control."
+            }
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
         // "Can my opponent respond …?" / "Could I block with …?": the question is read as the action.
         Regex("""^(?:can|could|may|should|is it legal for|am i allowed to|are they allowed to|do|does|will|would|am|is|are) ((?:i|my opponent|the opponent|opponent|they|he|she|we|it|that|@\w+|(?:my |the |their |his |her )?(?:c\d+|\d+/\d+(?: [a-z]+)*|creature|token|guy|attacker|blocker|dude|beater))\b.*)$""").find(clause0)?.let { r ->
             // A question about what can be done now comes after what was described, unless it says "in response".
@@ -1949,7 +1966,8 @@ class SituationParser(private val names: NameIndex) {
             return readClause(r.groupValues[1] + " " + ph + " " + tail.replace(Regex("""^from the command zone\b"""), "").trim(), m, ctx)
         }
         // "it has been countered twice" / "Kaalia was countered once": the commander tax.
-        Regex("""^(?:(?:my |their |his |her )?commander )?(?:(?:my |their |his |her )?(c\d+)|it|that)? ?(?:has been|was|got|has already been|had been|have been) (?:countered|killed|cast) (once|twice|three times|four times|\d+ times?)(?: (?:already|before|so far|this game))?$""").find(c)?.let { r ->
+        // "it died twice" says the same thing in the active voice, and went unread, so the tax came out as {0}.
+        Regex("""^(?:(?:my |their |his |her )?commander )?(?:(?:my |their |his |her )?(c\d+)|it|that)? ?(?:(?:has been|was|got|has already been|had been|have been) (?:countered|killed|cast)|died|has died|have died|was sacrificed|went to the command zone) (once|twice|three times|four times|\d+ times?)(?: (?:already|before|so far|this game))?$""").find(c)?.let { r ->
             val id = r.groupValues[1].takeIf { it.isNotEmpty() }?.let { m.cards.getValue(it) }?.let { objectIdFor(it, ctx) ?: addObject(it, actor ?: "me", false, ctx) } ?: ctx.objects.values.lastOrNull { it.commander } ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
             val n = when (val w = r.groupValues[2]) { "once" -> 1; "twice" -> 2; "three times" -> 3; "four times" -> 4; else -> w.substringBefore(' ').toIntOrNull() ?: 1 }
             val idStr = if (id is String) id else (id as ObjectSpec).id

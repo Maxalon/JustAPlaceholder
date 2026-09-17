@@ -10675,5 +10675,39 @@
       "opponent gains 7 life"
     ],
     "cite": []
+  },
+  {
+    "id": "what-happens-to-a-card-named-in-the-question",
+    "text": "Alice, Bob and I are playing. I cast Wrath of God. What happens to Bob's Grizzly Bears?",
+    "expect": [
+      "Grizzly Bears: the battlefield → Bob's graveyard"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "commander-tax-after-it-died-twice",
+    "text": "My commander is Atraxa, Praetors' Voice and it died twice. How much does it cost now?",
+    "expect": [
+      "the commander tax adds {4}",
+      "8 mana in all"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "cost-question-about-the-card-in-hand",
+    "text": "My opponent controls Thalia, Guardian of Thraben and I have Lightning Bolt. How much does it cost?",
+    "expect": [
+      "Lightning Bolt costs {R} plus {1} more"
+    ],
+    "notExpect": [
+      "Thalia, Guardian of Thraben costs"
+    ],
+    "cite": []
   }
 ]
