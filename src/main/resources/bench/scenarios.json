@@ -8902,5 +8902,15 @@
       "is 3/3"
     ],
     "cite": []
+  },
+  {
+    "id": "solitude-exiles-and-gives-life",
+    "text": "My opponent controls Serra Angel and I cast Solitude on it. What happens?",
+    "expect": [
+      "Serra Angel: the battlefield \u2192 exile",
+      "opponent gains 4 life"
+    ],
+    "notExpect": [],
+    "cite": []
   }
 ]

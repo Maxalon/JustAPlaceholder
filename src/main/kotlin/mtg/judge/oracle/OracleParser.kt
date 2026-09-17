@@ -702,7 +702,10 @@ object OracleParser {
     fun parseEffect(text: String): Effect {
         Regex("""^look at the top X cards of your library, where X is your devotion to (white|blue|black|red|green)\. Put up to one of them on top of your library and the rest on the bottom of your library in a random order\. If X is greater than or equal to the number of cards in your library, you win the game\.?$""", RegexOption.IGNORE_CASE).matchEntire(text.trim())?.let { return Effect.WinIfDevotionCoversLibrary(mapOf("white" to 'W', "blue" to 'U', "black" to 'B', "red" to 'R', "green" to 'G').getValue(it.groupValues[1].lowercase())) }
         if (Regex("""^If ~ was cast from your hand and you've cast another spell named ~ this game, you win the game\. Otherwise, put ~ into its owner's library seventh from the top and you gain (\d+) life\.?$""", RegexOption.IGNORE_CASE).matchEntire(text.trim())?.let { return Effect.WinIfCastBefore(it.groupValues[1].toInt()) } != null) Unit
-        val t = text.trim().replace(Regex("""(?i)^(copy target [^.]+?)\. You may choose new targets for the copy\."""), "$1. you may choose new targets for the copy.").let { s ->
+        // "Exile up to one other target creature" (Solitude): read as one target. A spell cast with none chosen
+        // is rarer than one cast with one, and the answer says what happens to the creature that was named.
+        val t = text.trim().replace(Regex("""(?i)\bup to one (other )?target """), "target $1")
+            .replace(Regex("""(?i)^(copy target [^.]+?)\. You may choose new targets for the copy\."""), "$1. you may choose new targets for the copy.").let { s ->
             Regex("""(?i)^(copy target [^.]+?)\. you may choose new targets for the copy\.$""").matchEntire(s)?.let { r -> return Effect.CopySpell(target(r.groupValues[1].removePrefix("copy target ").removePrefix("Copy target "), Kind.SPELL), true) } ?: s
         }
         // "Counter target spell. If that spell is countered this way, exile it instead of putting it into its
@@ -1183,7 +1186,8 @@ object OracleParser {
             val f = parseFilter(greatest?.groupValues?.get(1) ?: m.groupValues[2], Kind.CREATURE)
             return if (f.verifiable) Effect.SacrificeEach(if (m.groupValues[1].lowercase() == "player") Who.EACH_PLAYER else Who.EACH_OPPONENT, f, greatestPower = greatest != null) else Effect.Unparsed(s)
         }
-        if (Regex("""^its controller gains life equal to its power\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.GainLifeEqualToPower(Who.CONTROLLER_OF_TARGET)
+        // "That creature's controller gains life equal to its power" (Solitude) is the same as "its controller …".
+        if (Regex("""^(?:its|that (?:creature|permanent)'s) controller gains life equal to its power\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.GainLifeEqualToPower(Who.CONTROLLER_OF_TARGET)
         if (Regex("""^its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.May(Effect.Narrated("search their library for a basic land card, put it onto the battlefield tapped, then shuffle", listOf("701.23a", "701.23e")), Who.CONTROLLER_OF_TARGET)
         // "Draw three cards, then put two cards from your hand on top of your library in any order."
         Regex("""^(.+?), then (.+)$""").matchEntire(s)?.let { m ->
