@@ -140,6 +140,15 @@ object OracleParser {
 
     private val triggerRe = Regex("""^(When|Whenever|At)\s+(.+?),\s+(.+)$""", RegexOption.IGNORE_CASE)
     /**
+     * "an Aura, Equipment, or Vehicle spell": the commas inside a list of card descriptions are not the comma
+     * that separates a trigger from its effect. Sram read only the Aura and reported the rest unparsed, so the
+     * list is joined with "or" before the split, which the filter parser already reads.
+     */
+    private fun joinTypeLists(line: String): String =
+        Regex("""\b([A-Za-z][\w'-]*)((?:, [A-Za-z][\w'-]*)+),? or ([A-Za-z][\w'-]*)(?= (?:spell|spells|card|cards)\b)""").replace(line) { r ->
+            (listOf(r.groupValues[1]) + r.groupValues[2].split(", ").filter { it.isNotBlank() } + r.groupValues[3]).joinToString(" or ")
+        }.let { t -> Regex("""\b([A-Za-z][\w'-]*), or ([A-Za-z][\w'-]*)(?= (?:spell|spells|card|cards)\b)""").replace(t) { r -> "${r.groupValues[1]} or ${r.groupValues[2]}" } }
+    /**
      * An ability word ("Landfall — ", "Flurry of Blows — ") names an ability and says nothing by itself (207.2c).
      * Matched only when a trigger word follows, so a modal "Choose one —" is left alone.
      */
@@ -148,7 +157,7 @@ object OracleParser {
     private val abilityWordStatic = Regex("""^[A-Z][A-Za-z'’]*(?: [A-Za-z'’]+){0,4}\s*[—–]\s*(?=As long as\b|~|Creatures\b|Each\b|You\b|If\b)""")
 
     private fun parseTriggered(line: String): Ability {
-        val m = triggerRe.matchEntire(line) ?: return UnparsedAbility(line)
+        val m = triggerRe.matchEntire(joinTypeLists(line)) ?: return UnparsedAbility(line)
         val cond = m.groupValues[2].trim().replace(Regex("""^Landfall — """), "")
         val trigger = parseTrigger(cond)
         // "Whenever ~ attacks, it gets +1/+1" / "…, put a +1/+1 counter on it": in a self-trigger, a leading "it" is ~.
@@ -173,7 +182,7 @@ object OracleParser {
     private fun parseTriggeredAll(line: String): List<Ability> {
         // An ability word ("Landfall — ", "Flurry of Blows — ") is flavour: it names the ability and says nothing.
         // Stripped only when a trigger word follows, so a modal "Choose one —" is left alone.
-        val m = triggerRe.matchEntire(line.replace(abilityWord, "")) ?: return listOf(UnparsedAbility(line))
+        val m = triggerRe.matchEntire(joinTypeLists(line.replace(abilityWord, ""))) ?: return listOf(UnparsedAbility(line))
         val cond = m.groupValues[2].trim()
         Regex("""^~ enters or attacks$""", RegexOption.IGNORE_CASE).matchEntire(cond)?.let {
             val eff = parseEffect(m.groupValues[3]); return listOf(TriggeredAbility(Trigger.ThisEnters, eff, line), TriggeredAbility(Trigger.ThisAttacks, eff, line))
@@ -1280,6 +1289,8 @@ object OracleParser {
             subtypes.all { it in setOf("instant", "sorcery") } -> Kind.SPELL
             subtypes.all { it in artifactSubtypes } -> Kind.ARTIFACT
             subtypes.all { it in enchantmentSubtypes } -> Kind.ENCHANTMENT
+            // "an Aura, Equipment, or Vehicle spell" mixes card types, so the kind is whatever the caller asked for.
+            subtypes.all { it in artifactSubtypes || it in enchantmentSubtypes || it in landTypes } -> defaultKind ?: Kind.PERMANENT
             else -> Kind.CREATURE
         }
         if (kinds.isEmpty() && notKinds.isNotEmpty()) kinds += defaultKind ?: Kind.PERMANENT

@@ -2616,8 +2616,14 @@ class Engine(val state: GameState) {
         val kindOk = Kind.SPELL in f.kinds || f.kinds.any { k -> when (k) { Kind.CREATURE -> d.isCreature; Kind.ARTIFACT -> "Artifact" in d.types; Kind.ENCHANTMENT -> "Enchantment" in d.types; else -> false } }
         val spellTypes = f.subtypes.filter { it in setOf("instant", "sorcery") }
         val spellTypeOk = spellTypes.isEmpty() || spellTypes.any { t -> d.types.any { it.equals(t, true) } }
+        // Subtypes on a spell filter were never checked, so "whenever you cast an Aura, Equipment, or Vehicle
+        // spell" drew a card off a Grizzly Bears.
+        fun hasSub(t: String) = d.subtypes.any { it.equals(t, true) } || (d.changeling && d.isCreature)
+        val subs = f.subtypes.filter { it !in setOf("instant", "sorcery") }
+        val subOk = subs.isEmpty() || (if (f.subtypesAny) subs.any { hasSub(it) } else subs.all { hasSub(it) })
+        val notSubOk = f.notSubtypes.none { hasSub(it) }
         val ctrlOk = when (f.controller) { Who.YOU -> s.controller == controller; Who.OPPONENT -> s.controller != controller; else -> true }
-        return notOk && kindOk && spellTypeOk && ctrlOk
+        return notOk && kindOk && spellTypeOk && subOk && notSubOk && ctrlOk
     }
 
     // ---- helpers ---------------------------------------------------------------------------

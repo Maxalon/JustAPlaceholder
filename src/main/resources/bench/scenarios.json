@@ -8704,5 +8704,25 @@
     "cite": [
       "702.92a"
     ]
+  },
+  {
+    "id": "sram-draws-off-an-equipment",
+    "text": "I control Sram, Senior Edificer and cast Batterskull. What happens?",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "sram-does-not-draw-off-a-creature",
+    "text": "I control Sram, Senior Edificer and cast Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears enters the battlefield"
+    ],
+    "notExpect": [
+      "You draw 1 card"
+    ],
+    "cite": []
   }
 ]
