@@ -10619,5 +10619,27 @@
       "not tracked in detail"
     ],
     "cite": []
+  },
+  {
+    "id": "do-i-draw-torpor-orb",
+    "text": "My opponent controls Torpor Orb and I cast Mulldrifter. Do I draw?",
+    "expect": [
+      "No: You don't draw."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "do-i-draw-rhystic",
+    "text": "I control Rhystic Study and my opponent casts Sol Ring. Do I draw?",
+    "expect": [
+      "Yes: You draw 1 card in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
