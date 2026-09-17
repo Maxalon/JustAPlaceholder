@@ -8645,5 +8645,16 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "countered-and-exiled-instead",
+    "text": "My opponent casts Wrath of God and I cast Force of Negation on it. What happens?",
+    "expect": [
+      "exiled instead of going to its owner's graveyard"
+    ],
+    "notExpect": [],
+    "cite": [
+      "701.6a"
+    ]
   }
 ]

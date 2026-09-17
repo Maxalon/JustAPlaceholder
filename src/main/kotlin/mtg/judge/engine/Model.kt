@@ -117,7 +117,8 @@ sealed interface Effect {
     data object Proliferate : Effect
     /** "Exile all attacking creatures target player controls": an action on everything matching, among a target player's permanents. */
     data class ForAllTargeted(val target: TargetSpec, val filter: ObjFilter, val action: String) : Effect
-    data class Counter(val target: TargetSpec) : Effect
+    /** "Counter target spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard." */
+    data class Counter(val target: TargetSpec, val exileInstead: Boolean = false) : Effect
     data class Destroy(val target: TargetSpec, val noRegen: Boolean = false) : Effect
     /** "~ deals N damage to that player / each opponent / each player / you". */
     data class DamagePlayer(val who: Who, val amount: Int) : Effect

@@ -150,6 +150,13 @@ class StaysParsedTest {
         check("Circle of Protection: Black", "Enchantment", "{1}: The next time a black source of your choice would deal damage to you this turn, prevent that damage.")
     }
 
+    /** The two-sentence wordings whose second sentence modifies the first rather than adding an effect. */
+    @Test
+    fun `counter-and-exile stays one effect`() {
+        check("Force of Negation", "Instant", "Counter target noncreature spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.")
+        check("Dissipate", "Instant", "Counter target spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.")
+    }
+
     @Test
     fun `gets-for-each wordings stay modelled`() {
         check("Nim Lasher", "Creature — Zombie", "~ gets +1/+0 for each artifact you control.")

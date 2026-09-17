@@ -668,6 +668,11 @@ object OracleParser {
         val t = text.trim().replace(Regex("""(?i)^(copy target [^.]+?)\. You may choose new targets for the copy\."""), "$1. you may choose new targets for the copy.").let { s ->
             Regex("""(?i)^(copy target [^.]+?)\. you may choose new targets for the copy\.$""").matchEntire(s)?.let { r -> return Effect.CopySpell(target(r.groupValues[1].removePrefix("copy target ").removePrefix("Copy target "), Kind.SPELL), true) } ?: s
         }
+        // "Counter target spell. If that spell is countered this way, exile it instead of putting it into its
+        // owner's graveyard." — the second sentence says where the countered card goes, not a second effect.
+        Regex("""(?i)^(counter target [^.]+?)\. if that spell is countered this way, exile it instead of putting it into its owner's graveyard\.?$""").matchEntire(t)?.let { r ->
+            return Effect.Counter(target(r.groupValues[1].removePrefix("counter target ").removePrefix("Counter target "), Kind.SPELL), exileInstead = true)
+        }
         val sentences = t.split(sentenceSplit).map { it.trim() }.filter { it.isNotEmpty() }
         if (sentences.size > 1) {
             // "You may pay {2}. If you do, draw a card." / "You may sacrifice a creature. If you do, …"
