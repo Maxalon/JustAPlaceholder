@@ -238,7 +238,10 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         // "which of my creatures can block it?": the attacker's evasion decides it, and answering
                         // yes for a ground creature against a flyer is the wrong answer, not a missing one.
                         e.to == "block" && attackerFacing(o, state) != null ->
-                            attackerFacing(o, state)!!.let { att -> engine.cantBlockWhy(att, o)?.let { (_, _, out) -> "No: $out" } ?: "Yes: ${o.name} can block ${att.name}." }
+                            attackerFacing(o, state)!!.let { att ->
+                                engine.cantBlockWhy(att, o)?.let { (why, rules, out) -> state.trace.step(why, *rules.toTypedArray()); "No: $out" }
+                                    ?: "Yes: ${o.name} can block ${att.name}."
+                            }
                         else -> engine.cantWhy(o.id, e.to)?.let { why -> "No: ${o.name} can't ${e.to} (${if (why == o.name) "its own ability" else why} says so)." }
                             ?: if (o.isOnBattlefield()) "Yes: ${o.name} can ${e.to}${if (e.to == "attack" && o.summoningSick == true && !o.has("haste")) ", but not this turn: it's summoning sick (302.6)" else ""}." else "No: ${o.name} isn't on the battlefield."
                     }
