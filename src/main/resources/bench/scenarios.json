@@ -9817,5 +9817,29 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "aura-on-an-opponents-creature",
+    "text": "I control Pacifism on my opponent's Grizzly Bears. Can it attack?",
+    "expect": [
+      "Grizzly Bears can't attack"
+    ],
+    "notExpect": [
+      "Not understood",
+      "opponent takes 2 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "clone-copying-the-opponents-creature",
+    "text": "I cast Clone copying the opponent's Serra Angel. What happens?",
+    "expect": [
+      "Clone, a copy of Serra Angel, enters the battlefield"
+    ],
+    "notExpect": [
+      "Not understood",
+      "your graveyard"
+    ],
+    "cite": []
   }
 ]

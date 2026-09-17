@@ -922,7 +922,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "how much does my Lightning Bolt cost?": the printed cost plus every tax on the battlefield.
-        Regex("""^how (?:much|many)(?: mana)? (?:does|do|would|will|did) (my |their |the |an? |@\w+'s )?(c\d+) cost(?: to cast| me| us| them| now| right now)?$""").find(clause0)?.let { q ->
+        Regex("""^how (?:much|many)(?: mana)? (?:does|do|would|will|did) ($possPrefix|an? )?(c\d+) cost(?: to cast| me| us| them| now| right now)?$""").find(clause0)?.let { q ->
             val who = when { q.groupValues[1].startsWith("@") -> q.groupValues[1].removePrefix("@").removeSuffix("'s "); q.groupValues[1] == "their " -> pronounPlayer(ctx, "their"); else -> "me" }
             val card = m.cards.getValue(q.groupValues[2])
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx).also { ctx.objects[it] = ctx.objects.getValue(it).copy(zone = "hand") }
@@ -2354,7 +2354,7 @@ class SituationParser(private val names: NameIndex) {
                 }
             }
             // "has Lightning Greaves on Grizzly Bears" / "has Rancor on their Bears": the first card is attached to the second.
-            Regex("""^ (?:on|attached to|equipped to|enchanting|equipping) (my |their |the |an? |@\w+'s )?(c\d+)(?: (?:creature )?token)?$""").find(rest)?.let { a ->
+            Regex("""^ (?:on|attached to|equipped to|enchanting|equipping) ($possPrefix|an? )?(c\d+)(?: (?:creature )?token)?$""").find(rest)?.let { a ->
                 val hostOwner = when { a.groupValues[1].startsWith("@") -> a.groupValues[1].removePrefix("@").removeSuffix("'s "); a.groupValues[1] == "my " -> "me"; a.groupValues[1] == "their " -> pronounPlayer(ctx, "their"); else -> owner }
                 val target = m.cards.getValue(a.groupValues[2]).let { objectIdFor(it, ctx) ?: addObject(it, hostOwner, false, ctx) }
                 ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(attachedTo = target); ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner; ctx.lastMentioned = target; return true
@@ -3304,7 +3304,7 @@ class SituationParser(private val names: NameIndex) {
         val kicked = Regex("""\b(?:kicked|with (?:the )?kicker|with kicker paid|paying (?:the )?kicker|kicking it)\b""").containsMatchIn(rest)
         // "copying their Grizzly Bears", "as a copy of Serra Angel": which permanent a Clone enters as a copy of.
         val copyOf = Regex("""\b(?:copying|as a copy of|to copy) (?:it|that|them)\b""").find(rest)?.let { ctx.lastMentioned?.takeIf { lm -> lm in ctx.objects } }
-            ?: Regex("""\b(?:copying|as a copy of|to copy) (my |their |the |an? |my opponent's |@\w+'s )?(c\d+)\b""").find(rest)?.let { r ->
+            ?: Regex("""\b(?:copying|as a copy of|to copy) ($possPrefix|an? )?(c\d+)\b""").find(rest)?.let { r ->
             val copied = m.cards[r.groupValues[2]] ?: return@let null
             val owner = when (val w = r.groupValues[1].trim()) {
                 "my" -> "me"
