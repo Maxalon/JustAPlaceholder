@@ -982,6 +982,13 @@ object OracleParser {
             val t = target(what, Kind.CREATURE)
             if (t.filter.verifiable) return Effect.DamageDivided(m.groupValues[1].toInt(), t, max)
         }
+        // "Target creature can't be blocked this turn" — a keyword grant for the turn, checked with the rest of
+        // the blocking restrictions.
+        if (Regex("""^(?:~|it) can't be blocked this turn\.?$""", RegexOption.IGNORE_CASE).matches(s.trim())) return Effect.GainKeywordsSelf(setOf("unblockable"))
+        Regex("""^target (.+?) can't be blocked this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            val t = target(m.groupValues[1], Kind.CREATURE)
+            if (t.filter.verifiable) return Effect.GainKeywords(t, setOf("unblockable"))
+        }
         preventNextRe.matchEntire(s)?.let { m ->
             val n = m.groupValues[1].toInt(); val to = m.groupValues[2].ifEmpty { m.groupValues[3] }.lowercase()
             if (to == "you") return Effect.CreateShield(Replacement.PreventDamage(n, null, Who.YOU, false, null), null)

@@ -9274,5 +9274,18 @@
       "but 2 given"
     ],
     "cite": []
+  },
+  {
+    "id": "cant-be-blocked-this-turn",
+    "text": "I attack with Grizzly Bears and cast Slip Through Space on it. My opponent blocks with Hill Giant. What happens?",
+    "expect": [
+      "Grizzly Bears can't be blocked this turn",
+      "Hill Giant can't block Grizzly Bears",
+      "opponent takes 2 damage"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": []
   }
 ]

@@ -1919,8 +1919,10 @@ class Engine(val state: GameState) {
                 val kws = effect.keywords.map { k -> if (k == "protection from the color of your choice") "protection from ${item.choice ?: run { state.clarifications += Clarification("${item.describe}'s colour", "${item.describe} grants protection from a colour of your choice; which colour? (assuming none)"); "nothing" }}" else k }
                 if (kws.toSet() != effect.keywords.toSet()) { trace.step("${state.player(item.controller).subject} ${state.player(item.controller).v("chooses", "choose")} ${item.choice ?: "no colour"}.", "608.2c"); it.tempKeywords += kws; trace.step("${it.name} gains ${kws.joinToString(" and ")} until end of turn.", "611.2a"); state.outcomes += "${it.name} has ${kws.joinToString(" and ")} until end of turn."; return@let }
                 it.tempKeywords += effect.keywords
-                trace.step("${it.name} gains ${effect.keywords.joinToString(" and ")} until end of turn.", "611.2a")
-                state.outcomes += "${it.name} has ${effect.keywords.joinToString(" and ")} until end of turn."
+                // "unblockable" is how the engine carries "can't be blocked"; it isn't a keyword anybody prints.
+                val said = effect.keywords.joinToString(" and ") { k -> if (k == "unblockable") "\"can't be blocked\"" else k }
+                trace.step("${it.name} gains $said until end of turn.", "611.2a")
+                state.outcomes += if (effect.keywords.singleOrNull() == "unblockable") "${it.name} can't be blocked this turn." else "${it.name} has $said until end of turn."
             } }
             is Effect.GainLife -> resolvePlayers(effect.who, item).forEach { p -> gainLife(p, effect.amount) }
             is Effect.LoseLife -> { val n = if (effect.x) (item.x ?: 0) else effect.amount; resolvePlayers(effect.who, item).forEach { p -> p.life = p.life?.minus(n); item.lifeLost += n; trace.step("${p.subject} ${p.v("loses", "lose")} $n life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} $n life." } }
@@ -2035,7 +2037,10 @@ class Engine(val state: GameState) {
                 if (o.def.isCreature) o.summoningSick = true
                 state.outcomes += "${state.player(item.controller).subject} ${state.player(item.controller).v("controls", "control")} ${o.name}${if (effect.untilEndOfTurn) " until end of turn" else ""}."
             } }
-            is Effect.GainKeywordsSelf -> { val o = item.source; if (o.isOnBattlefield()) { o.tempKeywords += effect.keywords; trace.step("${o.name} gains ${effect.keywords.joinToString(" and ")} until end of turn.", "611.2a"); state.outcomes += "${o.name} has ${effect.keywords.joinToString(" and ")} until end of turn." } }
+            is Effect.GainKeywordsSelf -> { val o = item.source; if (o.isOnBattlefield()) { o.tempKeywords += effect.keywords
+                val said = effect.keywords.joinToString(" and ") { k -> if (k == "unblockable") "\"can't be blocked\"" else k }
+                trace.step("${o.name} gains $said until end of turn.", "611.2a")
+                state.outcomes += if (effect.keywords.singleOrNull() == "unblockable") "${o.name} can't be blocked this turn." else "${o.name} has $said until end of turn." } }
             is Effect.Modal -> {
                 val chosen = item.modes
                 if (chosen.isEmpty()) {
@@ -2217,6 +2222,8 @@ class Engine(val state: GameState) {
     }
 
     private fun cant(o: GameObject, what: String): Boolean {
+        // "Target creature can't be blocked this turn" is granted for the turn, not printed on the card.
+        if (what == "be blocked" && o.has("unblockable")) return true
         val own = o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.Cant && it.by == null && it.applies == null && !it.powerAboveHand && it.unlessDefenderControls == null && it.unlessYouControl == null && (it.what == what || it.what == "attack or block" && (what == "attack" || what == "block")) }
         if (own) return true
         // "Enchanted creature can't attack or block" and the like, from other permanents.
