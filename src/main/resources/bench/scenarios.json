@@ -8433,5 +8433,12 @@
     ],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "an-imprinted-card-is-in-exile",
+    "text": "I control Isochron Scepter imprinting Lightning Bolt. What happens?",
+    "expect": [],
+    "notExpect": [],
+    "cite": []
   }
 ]

@@ -778,7 +778,7 @@ object OracleParser {
         Regex("""^scry (\d+)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.22a"),
         Regex("""^surveil (\d+)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.25a"),
         Regex("""^(?:you |target player |each player )?mills? (\w+|\d+) cards?\.?$""", RegexOption.IGNORE_CASE) to listOf("701.17a"),
-        Regex("""^look at the top (\w+|\d+) cards? of your library.*$""", RegexOption.IGNORE_CASE) to listOf("701.22a"),
+        Regex("""^look at the top (?:(\w+|\d+) )?cards? of your library.*$""", RegexOption.IGNORE_CASE) to listOf("701.22a"),
         Regex("""^search your library for (?:a|an|up to \w+) .+?(?:, then shuffle|\. Then shuffle|then shuffle)?\.?$""", RegexOption.IGNORE_CASE) to listOf("701.23a", "701.24a"),
         Regex("""^shuffle\.?$""", RegexOption.IGNORE_CASE) to listOf("701.24a"),
         Regex("""^(?:you |target player |each player )?discards? (a|an|\w+|\d+) cards?(?: at random)?\.?$""", RegexOption.IGNORE_CASE) to listOf("701.9a"),

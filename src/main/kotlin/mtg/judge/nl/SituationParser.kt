@@ -737,6 +737,20 @@ class SituationParser(private val names: NameIndex) {
                 if (readClause("have " + part.groupValues[1] + " out", m, ctx)) read = true
             if (read) return true
         }
+        // "Isochron Scepter imprinting Lightning Bolt" / "with Lightning Bolt imprinted on it": the imprinted card
+        // is in exile, not on the battlefield. Read as part of the permanent it was put there as a second permanent,
+        // so an instant turned up on the battlefield and nothing said so.
+        Regex("""^(.+?)\s+(?:imprinting (?:an? |the )?(c\d+)|with (?:an? |the )?(c\d+) imprinted(?: on it| on that)?)$""").find(clauseIn.trim())?.let { r ->
+            val ph = r.groupValues[2].ifEmpty { r.groupValues[3] }
+            val card = m.cards[ph] ?: return@let
+            val read = readClause(r.groupValues[1], m, ctx)
+            val host = ctx.lastMentioned?.takeIf { it in ctx.objects }?.let { ctx.objects.getValue(it).card.name }
+            val was = ctx.lastMentioned
+            addObject(card, ctx.lastOwner, false, ctx, zone = "exile", allowDuplicate = true)
+            ctx.lastMentioned = was
+            ctx.notes += "${card.display} is imprinted on ${host ?: "it"} (exiled). The engine doesn't model imprint, so nothing in the answer turns on what the imprinted card says."
+            return read
+        }
         // "taps out for Grizzly Bears": a cast, said the way players say it. The mana is spent, not available.
         Regex("""^(.*?)\btaps? out (?:for|to cast|casting|and casts?) (.+)$""", RegexOption.IGNORE_CASE).find(clauseIn.trim())?.let { r ->
             val read = readClause((r.groupValues[1].trim() + " casts " + r.groupValues[2].trim()).trim(), m, ctx)
