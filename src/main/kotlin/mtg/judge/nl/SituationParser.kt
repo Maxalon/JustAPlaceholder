@@ -755,10 +755,10 @@ class SituationParser(private val names: NameIndex) {
         // "There is a Lightning Bolt on the stack targeting my Bears" and "my Bears has a Bolt on the stack
         // targeting it" say the same thing as "they have a Bolt on the stack targeting my Bears", which is read.
         // Whose spell it is follows from whose permanent it points at.
-        t2 = Regex("""^there(?:'s| is| are) (?:an? |the )?(c\d+) on the stack targeting (my|their|my opponent's|the) (c\d+)$""").replace(t2) { r ->
+        t2 = Regex("""\bthere(?:'s| is| are) (?:an? |the )?(c\d+) on the stack targeting (my|their|my opponent's|the) (c\d+)""").replace(t2) { r ->
             "${if (r.groupValues[2] == "my") "they have" else "i have"} a ${r.groupValues[1]} on the stack targeting ${r.groupValues[2]} ${r.groupValues[3]}"
         }
-        t2 = Regex("""^(my|their|my opponent's|the) (c\d+) has (?:an? |the )?(c\d+) on the stack targeting it$""").replace(t2) { r ->
+        t2 = Regex("""\b(my|their|my opponent's|the) (c\d+) has (?:an? |the )?(c\d+) on the stack targeting it""").replace(t2) { r ->
             "${if (r.groupValues[1] == "my") "they have" else "i have"} a ${r.groupValues[3]} on the stack targeting ${r.groupValues[1]} ${r.groupValues[2]}"
         }
         val t = t2.trim()

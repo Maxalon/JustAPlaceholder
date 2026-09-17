@@ -10808,5 +10808,27 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "stack-statement-mid-sentence",
+    "text": "There's a Lightning Bolt on the stack targeting my Bears and I cast Counterspell.",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "notExpect": [
+      "a spell is countered"
+    ],
+    "cite": []
+  },
+  {
+    "id": "stack-statement-from-the-creature",
+    "text": "My Grizzly Bears has a Doom Blade on the stack targeting it and I cast Counterspell.",
+    "expect": [
+      "Doom Blade is countered"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
