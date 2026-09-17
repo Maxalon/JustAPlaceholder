@@ -10898,5 +10898,27 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "making-tokens-triggers-etb",
+    "text": "I control Impact Tremors and I make three 1/1 tokens. What happens?",
+    "expect": [
+      "opponent takes 1 damage. (×3)"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "creating-tokens-triggers-soul-warden",
+    "text": "I control Soul Warden and create two 2/2 tokens. What happens?",
+    "expect": [
+      "You gain 1 life. (×2)"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]

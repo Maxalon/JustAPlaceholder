@@ -1638,9 +1638,13 @@ class SituationParser(private val names: NameIndex) {
             val who = actor ?: subject ?: "me"
             val n = r.groupValues[1].trim().let { if (it.isEmpty()) 1 else number(it) ?: 1 }
             val name = r.groupValues[2].trim().removeSuffix("s").let { if (it.endsWith(" token")) it else "$it token" }
+            // "I make three 1/1 tokens" is something happening, not a board that was already there: without the
+            // enter events an Impact Tremors sitting next to them never triggered.
+            val made = Regex("""^(?:makes?|made|creates?|created)\b""").containsMatchIn(c)
             repeat(n) { i ->
                 var id = slug(name); var k = 2; while (ctx.objects.containsKey(id)) id = slug(name) + "_" + (k++)
                 ctx.objects[id] = ObjectSpec(id, CardRef(name = name), controller = who, token = true, tapped = r.groupValues[3].contains("tapped") && !r.groupValues[3].contains("untapped"))
+                if (made) ctx.events += EventSpec("enter", obj = id)
                 ctx.lastMentioned = id
             }
             ctx.lastVerb = "have"; ctx.lastOwner = who; ctx.lastActor = who; return true
