@@ -1133,6 +1133,19 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("activate", player = who, obj = id, abilityIndex = which, targets = targetsIn(r.groupValues[3].ifEmpty { r.groupValues[6] }, m, ctx))
             ctx.lastActor = who; ctx.lastMentioned = id; return true
         }
+        // "it triggers" / "its ability triggers" / "the Blood Artist trigger goes off": the permanent's triggered
+        // ability, said out loud. When something has already happened the engine put the trigger on the stack
+        // itself and saying so again would put a second one there; with nothing else described it is the event.
+        Regex("""^(?:(c\d+|it|that|they)(?:'s)? )?(?:(?:the|its|his|her|their) )?(?:triggered )?(?:ability |abilities )?(?:triggers?|triggered|goes off|go off|went off|fires?|fired)$""").find(c)?.let { r ->
+            if (ctx.events.isNotEmpty()) {
+                ctx.notes += "\"${restore(clause0, m)}\" is read as the trigger the engine already puts on the stack for what was described; it isn't added a second time."
+                return true
+            }
+            val ph = r.groupValues[1]
+            val id = (if (cardRef.matches(ph)) m.cards[ph]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner, false, ctx) }
+                      else ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).zone == "battlefield" }) ?: return@let
+            ctx.events += EventSpec("trigger", obj = id); ctx.lastMentioned = id; return true
+        }
         // "activate it (targeting X)": the last-mentioned permanent's ability.
         // "use her +1" is a loyalty ability, read further down; this rule must not take it first.
         // "activate it for green" names a colour the ability asks for: that rule is further down and needs the whole clause.

@@ -8440,5 +8440,27 @@
     "expect": [],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "it-triggers-said-out-loud",
+    "text": "I control Blood Artist and my Grizzly Bears dies and its ability triggers. What happens?",
+    "expect": [
+      "opponent loses 1 life"
+    ],
+    "notExpect": [
+      "No triggered ability was recognised on Grizzly Bears"
+    ],
+    "cite": []
+  },
+  {
+    "id": "a-trigger-with-nothing-else-described",
+    "text": "My opponent controls Dark Confidant and it triggers. What happens?",
+    "expect": [
+      "Dark Confidant"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
