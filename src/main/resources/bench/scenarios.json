@@ -8328,5 +8328,16 @@
     "cite": [
       "704.5a"
     ]
+  },
+  {
+    "id": "a-named-players-library",
+    "text": "Alice's library has 2 cards and Alice draws 3. What happens?",
+    "expect": [
+      "Alice loses the game"
+    ],
+    "notExpect": [],
+    "cite": [
+      "704.5b"
+    ]
   }
 ]

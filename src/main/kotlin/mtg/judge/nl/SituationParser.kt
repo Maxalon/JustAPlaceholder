@@ -340,12 +340,17 @@ class SituationParser(private val names: NameIndex) {
     /** The possessives a card name can be introduced by: "my Bears", "my opponent's Bears", "Alice's Bears". */
     private val possPrefix = """(?:my |their |his |her |the |own |my opponent's |the opponent's |opponent's |an opponent's |@\w+'s )"""
     /** Who such a possessive points at, or null when it names nobody ("the Bears"). */
-    private fun possessiveOwner(prefix: String, ctx: Ctx): String? = when (val w = prefix.trim().removeSuffix("'s").removePrefix("@")) {
-        "my", "own", "i" -> "me"
-        "their", "his", "her" -> pronounPlayer(ctx, "their")
-        "my opponent", "the opponent", "opponent", "an opponent" -> pronounPlayer(ctx, "opponent")
-        "", "the", "a", "an" -> null
-        else -> w.takeIf { it in ctx.players }
+    private fun possessiveOwner(prefix: String, ctx: Ctx, m: Marked? = null): String? {
+        val raw = prefix.trim()
+        // "@alice's library": a named player, who may not have been registered yet by anything else in the sentence.
+        if (raw.startsWith("@")) return raw.removePrefix("@").removeSuffix("'s").also { ctx.players.putIfAbsent(it, m?.players?.get(it) ?: it) }
+        return when (val w = raw.removeSuffix("'s")) {
+            "my", "own", "i" -> "me"
+            "their", "his", "her" -> pronounPlayer(ctx, "their")
+            "my opponent", "the opponent", "opponent", "an opponent" -> pronounPlayer(ctx, "opponent")
+            "", "the", "a", "an" -> null
+            else -> w.takeIf { it in ctx.players }
+        }
     }
 
     private fun pronounPlayer(ctx: Ctx, word: String = "opponent"): String {
@@ -1561,11 +1566,11 @@ class SituationParser(private val names: NameIndex) {
             }
             ctx.poison[who] = number(r.groupValues[1]) ?: 0; ctx.note(who); ctx.lastStat = "poison counters"; ctx.lastStatWho = who; return true
         }
-        Regex("""^(?:there (?:is|are) )?(?:(?:has|have|holds?|holding|with) )?(\d+|\w+|no) cards? in (?:(their|my|his|her|my opponent's|the opponent's|opponent's) )?hand(?: (?:at|during|in) (?:(?:their|my|his|her|the) )?(cleanup|end of turn|end|discard)(?: step)?)?$""").find(c)?.let { r ->
+        Regex("""^(?:there (?:is|are) )?(?:(?:has|have|holds?|holding|with) )?(\d+|\w+|no) cards? in ($possPrefix)?hand(?: (?:at|during|in) (?:(?:their|my|his|her|the) )?(cleanup|end of turn|end|discard)(?: step)?)?$""").find(c)?.let { r ->
             if (r.groupValues[3].isNotEmpty()) { val who = actor ?: subject ?: "me"; ctx.activePlayer = who; ctx.events += EventSpec("step", player = who, to = if (r.groupValues[3].startsWith("end")) "end" else "cleanup") }
             // "there are 3 cards in my opponent's hand": whose hand it is, said in the clause rather than by the
             // subject. Without reading it the count landed on the asker and the answer had the wrong hand.
-            val whose = r.groupValues[2].takeIf { it.isNotEmpty() }?.let { w -> if (w == "my") "me" else pronounPlayer(ctx, w.substringAfterLast(' ').removeSuffix("'s")) }
+            val whose = possessiveOwner(r.groupValues[2], ctx, m)
             val who = whose ?: actor ?: (if (c.startsWith("ha") || c.startsWith("ho") || c.startsWith("with")) subject else ctx.lastOwner ?: subject) ?: "me"
             ctx.handSize[who] = if (r.groupValues[1] == "no") 0 else number(r.groupValues[1]) ?: 0; ctx.note(who); if (actor != null) ctx.lastActor = actor; return true }
         // "only has one Mountain untapped", "has 2 untapped lands", "with 3 mana open/available/up"
@@ -1636,19 +1641,17 @@ class SituationParser(private val names: NameIndex) {
             ctx.objects[idStr] = ctx.objects.getValue(idStr).copy(commander = true, commanderCasts = n, zone = if (r.groupValues[0].contains(" cast ")) ctx.objects.getValue(idStr).zone else "command"); ctx.notes += "${ctx.objects.getValue(idStr).card.name} has been cast from the command zone $n time${if (n == 1) "" else "s"} already, so the commander tax applies (903.8)."; return true
         }
         // "have 0 cards in library", "with no cards left in my library", "my library is empty", "library has 2 cards"
-        Regex("""^(?:there (?:is|are) )?(?:(?:has|have|with|am at|is at|at) )?(\d+|\w+|no) cards? (?:left )?in (?:(their|my|his|her|the|my opponent's|the opponent's|opponent's) )?library$|^(?:(their|my|his|her|the|my opponent's|the opponent's|opponent's) )?library (?:is empty|has (\d+|\w+|no) cards?(?: left)?|is out of cards)$|^(?:has|have) (?:an )?empty library$|^(?:has|have) no library(?: left)?$|^(?:am|is|are) out of cards$""").find(c)?.let { r ->
+        Regex("""^(?:there (?:is|are) )?(?:(?:has|have|with|am at|is at|at) )?(\d+|\w+|no) cards? (?:left )?in ($possPrefix)?library$|^($possPrefix)?library (?:is empty|has (\d+|\w+|no) cards?(?: left)?|is out of cards)$|^(?:has|have) (?:an )?empty library$|^(?:has|have) no library(?: left)?$|^(?:am|is|are) out of cards$""").find(c)?.let { r ->
             // "there are 2 cards in my opponent's library": whose library it is, said in the clause. Without it the
             // count landed on the asker and the answer drew from the wrong library.
-            val whose = (r.groupValues[2].ifEmpty { r.groupValues[3] }).takeIf { it.isNotEmpty() && it != "the" }
-                ?.let { w -> if (w == "my") "me" else pronounPlayer(ctx, w.substringAfterLast(' ').removeSuffix("'s")) }
-            val who = whose ?: actor ?: subject ?: "me"
+            val who = possessiveOwner(r.groupValues[2].ifEmpty { r.groupValues[3] }, ctx, m) ?: actor ?: subject ?: "me"
             val word = r.groupValues[1].ifEmpty { r.groupValues[4] }
             ctx.librarySize[who] = if (word.isEmpty() || word == "no") 0 else number(word) ?: 0; ctx.note(who); return true
         }
         // "my graveyard has seven cards" / "there are 7 cards in my graveyard": a graveyard given as a count
         // rather than by naming the cards, which is what threshold and delirium are asked about.
         Regex("""^(?:there (?:is|are) )?(?:(?:has|have|with|holds?) )?(\d+|\w+|no) cards? in ($possPrefix)?(?:graveyard|yard|bin)$|^($possPrefix)?(?:graveyard|yard|bin) (?:has|contains|holds) (\d+|\w+|no) cards?(?: in it)?$""").find(c)?.let { r ->
-            val who = possessiveOwner(r.groupValues[2].ifEmpty { r.groupValues[3] }, ctx) ?: actor ?: subject ?: "me"
+            val who = possessiveOwner(r.groupValues[2].ifEmpty { r.groupValues[3] }, ctx, m) ?: actor ?: subject ?: "me"
             val word = r.groupValues[1].ifEmpty { r.groupValues[4] }
             val n = if (word == "no") 0 else number(word) ?: return@let
             ctx.graveyardSize[who] = n; ctx.note(who); return true
