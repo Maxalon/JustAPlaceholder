@@ -10006,5 +10006,50 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "can-a-flyer-block-a-ground-creature",
+    "text": "Can Serra Angel block Grizzly Bears?",
+    "expect": [
+      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood",
+      "can't block"
+    ],
+    "cite": []
+  },
+  {
+    "id": "can-a-ground-creature-block-a-flyer",
+    "text": "Can Grizzly Bears block Serra Angel?",
+    "expect": [
+      "Grizzly Bears can't block Serra Angel (flying)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "can-a-spell-target-a-creature",
+    "text": "Can Doom Blade target Black Knight?",
+    "expect": [
+      "Doom Blade can't target Black Knight"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "does-an-aura-stop-an-attack",
+    "text": "Does Pacifism stop Serra Angel from attacking?",
+    "expect": [
+      "Serra Angel can't attack"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

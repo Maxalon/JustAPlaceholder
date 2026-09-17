@@ -508,6 +508,24 @@ class SituationParser(private val names: NameIndex) {
             // with nothing else said. The spell is cast at the creature and the question is whether it dies.
             .replace(Regex("""^(?:does|do|will|would|can|could) ((?:$possPrefix)?c\d+) (?:kill|destroy|finish off) ((?:$possPrefix)?c\d+)\??$"""), "i cast $1 targeting their $2, does their $2 die")
             .replace(Regex("""^(?:will|would|does|do|is|are|can|could) ((?:$possPrefix)?c\d+) (?:die|be killed|be destroyed) to ((?:$possPrefix|an? )?c\d+)\??$"""), "they cast $2 targeting $1, does $1 die")
+            // "Can Serra Angel block Grizzly Bears?": the second card is the attacker, whichever way round the
+            // sentence puts them. Without this the first card was read as attacking and combat ran backwards.
+            .let { t0 -> Regex("""^can ($possPrefix)?(c\d+) block ($possPrefix)?(c\d+)\??$""").replace(t0) { r ->
+                val blk = r.groupValues[1].ifEmpty { "my " }; val atk = r.groupValues[3].ifEmpty { "their " }
+                "$atk${r.groupValues[4]} attacks, can $blk${r.groupValues[2]} block it"
+            } }
+            // "Does Pacifism stop Serra Angel from attacking?": an Aura is on the creature, anything else is just
+            // on the battlefield beside it, and the question is whether the creature can attack or block.
+            .let { t0 -> Regex("""^does ($possPrefix)?(c\d+) (?:stop|prevent|keep) ($possPrefix)?(c\d+) from (attacking|blocking)\??$""").replace(t0) { r ->
+                val aura = m.cards[r.groupValues[2]]?.typeLine?.contains("Aura", true) == true
+                val verb = if (r.groupValues[5] == "attacking") "attack" else "block"
+                if (aura) "i control ${r.groupValues[4]} enchanted with ${r.groupValues[2]}, can ${r.groupValues[4]} $verb"
+                else "i control ${r.groupValues[2]} and ${r.groupValues[4]}, can ${r.groupValues[4]} $verb"
+            } }
+            // "Can Doom Blade target Black Knight?": cast it and the answer says whether the target is legal.
+            .let { t0 -> Regex("""^can ($possPrefix)?(c\d+) target ($possPrefix)?(c\d+)\??$""").replace(t0) { r ->
+                "i cast ${r.groupValues[1]}${r.groupValues[2]} targeting ${r.groupValues[3].ifEmpty { "their " }}${r.groupValues[4]}"
+            } }
             // "Is Serra Angel able to block?" is "can Serra Angel block?"
             .replace(Regex("""\b(?:is|are) ((?:$possPrefix)?c\d+) able to """), "can $1 ")
             // "What happens if I Doom Blade it?" / "if I block, do I die?": the "if" is the question, not a condition.
