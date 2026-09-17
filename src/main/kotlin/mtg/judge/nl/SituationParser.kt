@@ -1499,6 +1499,18 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "$n unnamed ${kind}${if (n > 1) "s" else ""} on the battlefield; only being ${if (kind.first() in "aeiou") "an" else "a"} $kind matters to the answer."
             ctx.lastMentioned = ids.last(); ctx.lastOwner = who; ctx.lastActor = who; ctx.note(who); return true
         }
+        // "I put Rancor on my Grizzly Bears" / "attach Bonesplitter to it": an Aura or Equipment on a permanent
+        // that is already there. Without this the attachment was dropped and the creature answered its bare size.
+        Regex("""^(?:puts?|attach(?:es)?|attached|sticks?|stuck|enchants? with|hangs?) (?:an? |the |my |their )?(c\d+) (?:on|onto|to|on top of) (?:($possPrefix|an? ))?(c\d+|it|that)$""").find(c)?.let { r ->
+            val aura = m.cards[r.groupValues[1]] ?: return@let
+            if (aura.typeLine.let { !it.contains("Aura", true) && !it.contains("Equipment", true) && !it.contains("Enchantment", true) }) return@let
+            val hostWho = possessiveOwner(r.groupValues[2], ctx, m) ?: actor ?: ctx.lastOwner ?: "me"
+            val host = if (r.groupValues[3] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                       else m.cards[r.groupValues[3]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, hostWho, false, ctx) } ?: return@let
+            val att = objectIdFor(aura, ctx) ?: addObject(aura, actor ?: ctx.lastOwner ?: "me", false, ctx)
+            ctx.objects[att] = ctx.objects.getValue(att).copy(attachedTo = host)
+            ctx.lastMentioned = host; return true
+        }
         // "a creature enchanted with Pacifism", "a 2/2 equipped with Bonesplitter": a creature nobody named,
         // carrying something that is named.
         Regex("""^(?:(?:have|has|got|controls?|controlling)\s+)?(an? |\d+ |two |three )?(?:(\d+/\d+)s?\s*)?($creatureKinds)?\s*(?:enchanted with|equipped with|wearing|carrying) (?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->
@@ -1687,6 +1699,15 @@ class SituationParser(private val names: NameIndex) {
             if (c.contains("draw step")) { ctx.activePlayer = who; ctx.events += EventSpec("step", player = who, to = "draw") }
             ctx.events += EventSpec("draw", player = who, amount = number(r.groupValues[1]) ?: 1); ctx.lastActor = who; return true
         }
+        // readClause0 had grown past the JVM's 64 KB limit on one method, so the rules carry on in a second
+        // function. The split is only for size: the order the rules are tried in is unchanged.
+        return readClause1(c, clause0, actor, subject, clauseIn, m, ctx)
+    }
+
+    /** The rest of [readClause0]'s rules, in the same order; see the note there. */
+    private fun readClause1(c0: String, clause0: String, actor: String?, subject: String?, clauseIn: String, m: Marked, ctx: Ctx): Boolean {
+        var c = c0
+        val kwList = """$kwPhrase(?:(?:,|,? and|,? &) $kwPhrase)*"""
         // "two spells are cast this turn": the same statement as "I have cast two spells this turn", in the passive.
         Regex("""^(a|an|one|two|three|four|five|six|seven|eight|nine|ten|\d+) spells? (?:are|is|were|was|have been|has been) (?:already )?cast(?: by (me|them|my opponent|@\w+))?(?: this turn| so far this turn| already)$""").find(c)?.let { r ->
             val who = r.groupValues[2].takeIf { it.isNotEmpty() }?.let { w -> if (w == "me") "me" else if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, "their") } ?: actor ?: subject ?: "me"
@@ -1730,9 +1751,23 @@ class SituationParser(private val names: NameIndex) {
         // "My Grizzly Bears gets +2/+2", "it untaps", "their Serra Angel is returned to their hand": short
         // statements about a permanent already on the battlefield. The leading possessive has been taken as the
         // actor by now, so what arrives here starts with the card.
-        Regex("""^(?:my |their |his |her |the |own )?(c\d+|it|that) (?:gets?|gains?|gained|is given|has) ([+-]\d+/[+-]\d+)(?: until end of turn| this turn)?$""").find(c)?.let { r ->
+        // "My 2/2 gets +2/+2" / "my creature gets -3/-3 from Disfigure": the creature may be described rather than
+        // named, and the card that does it may be said — in which case it is cast at that creature.
+        Regex("""^($possPrefix|an? )?(c\d+|it|that|creature|\d+/\d+)(?: creature)? (?:gets?|gains?|gained|is given|has) ([+-]\d+/[+-]\d+)(?: until end of turn| this turn)?(?: from (?:an? |the |my |their )?(c\d+))?$""").find(c)?.let { r0 ->
+            val r = object { val groupValues = listOf(r0.groupValues[0], r0.groupValues[2], r0.groupValues[3]) }
+            val who = possessiveOwner(r0.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me"
             val id = if (r.groupValues[1] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
-                     else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
+                     else if (r.groupValues[1] == "creature") ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id
+                        ?: describedCreatures("a ", "", "creature", who, ctx).firstOrNull() ?: return@let
+                     else if (Regex("""^\d+/\d+$""").matches(r.groupValues[1])) describedCreatures("the ", r.groupValues[1], "creature", who, ctx).firstOrNull()
+                        ?: describedCreatures("a ", r.groupValues[1], "creature", who, ctx).firstOrNull() ?: return@let
+                     else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) } ?: return@let
+            // "… from Disfigure": the spell is cast at it rather than the size being taken as a given.
+            r0.groupValues[4].takeIf { it.isNotEmpty() }?.let { ph -> m.cards[ph] }?.let { card ->
+                emitCast(ctx.other(who) ?: "opp", card, "", m, ctx)
+                ctx.events.indexOfLast { it.verb == "cast" }.takeIf { it >= 0 }?.let { i -> ctx.events[i] = ctx.events[i].copy(targets = listOf(id)) }
+                ctx.lastMentioned = id; return true
+            }
             val spec = ctx.objects.getValue(id)
             ctx.objects[id] = spec.copy(pump = r.groupValues[2])
             ctx.notes += "${spec.card.name ?: id} is read as having ${r.groupValues[2]} until end of turn (from an effect; say what gives it if that matters)."

@@ -10920,5 +10920,49 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "put-an-aura-on-a-creature",
+    "text": "I put Rancor on my Grizzly Bears. What are its stats?",
+    "expect": [
+      "Grizzly Bears is 4/2"
+    ],
+    "notExpect": [
+      "Grizzly Bears is 2/2."
+    ],
+    "cite": []
+  },
+  {
+    "id": "attach-equipment",
+    "text": "I attach Bonesplitter to my Grizzly Bears. What are its stats?",
+    "expect": [
+      "Grizzly Bears is 4/2"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "described-creature-gets-a-pump",
+    "text": "My 2/2 gets +2/+2. What are its stats?",
+    "expect": [
+      "a 2/2 creature is 4/4"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "pump-from-a-named-spell",
+    "text": "My creature gets -3/-3 from Disfigure. Does it die?",
+    "expect": [
+      "Yes: a creature died"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
