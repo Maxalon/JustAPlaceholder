@@ -745,6 +745,8 @@ class SituationParser(private val names: NameIndex) {
         val clauseIn = clauseIn0.replace(Regex("""\b(?:tr(?:y|ies|ied)|attempts?|attempted|want(?:s|ed)?|would like) to (?=(?:activate|use|tap|untap|block|attack|cast|play|sacrifice|equip|counter|draw|search|target|crack|pop|fire|give|put|destroy|exile|bounce|kill|return|regenerate)\b)"""), "")
             // "I control Valakut and five other Mountains": "other" only says they aren't the card just named.
             .replace(Regex("""^(\d+) other (?=c\d+\b|[a-z])"""), "$1 ")
+            // "activate its monstrosity" / "activate its ability": the permanent is the thing being activated.
+            .replace(Regex("""\b(activates?|activating|uses?|using) (?:its|his|her|their) (?:monstrosity|ability)\b"""), "$1 it")
         val read = readClause0(clauseIn, m, ctx)
         // "I am at 20 life and cast Toxic Deluge": the first player named in the situation is the one acting until
         // someone else acts. Without this the cast fell to a default and became the opponent's. Set after the
@@ -1209,7 +1211,11 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:$activateVerbs)\s+(?:it|that|him|her|them|its ability|his ability|her ability|it's ability)\b(?!\s*[+\u2212-]?\d)(?!\s+(?:choosing|naming|picking|for|on) (?:white|blue|black|red|green|colou?rless)\b)(.*)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return false
-            ctx.events += EventSpec("activate", player = who, obj = id, targets = targetsIn(r.groupValues[1], m, ctx)); ctx.lastActor = who; return true
+            val timesRe = Regex("""\b(twice|two times|three times|four times|five times|(\d+) times)\b""")
+            val times = timesRe.find(r.groupValues[1])?.let { t -> if (t.groupValues[1].startsWith("twice")) 2 else number(t.groupValues[2].ifEmpty { t.groupValues[1].substringBefore(' ') }) ?: 1 } ?: 1
+            val targets = targetsIn(r.groupValues[1].replace(timesRe, "").trim(), m, ctx)
+            repeat(times) { ctx.events += EventSpec("activate", player = who, obj = id, targets = targets) }
+            ctx.lastActor = who; return true
         }
         // Read before isNoise: "is dealt 2 more" opens with a question word and would be dropped as noise.
         // "… and I get 2 more" / "… and loses 2 more": the running total the clause before it stated
@@ -2513,7 +2519,12 @@ class SituationParser(private val names: NameIndex) {
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
             val xRe = Regex("""\b(?:with|for|where|at) x ?(?:=|equal to|equals|being|of|as) ?(\d+)\b|\bx ?= ?(\d+)\b""")
             val xValue = xRe.find(r.groupValues[2])?.let { x -> (x.groupValues[1].ifEmpty { x.groupValues[2] }).toIntOrNull() }
-            ctx.events += EventSpec("activate", player = who, obj = id, targets = targetsIn(r.groupValues[2].replace(xRe, ""), m, ctx), amount = xValue); ctx.lastActor = who; return true
+            // "activate it twice", "activate it three times": the ability is used that many times in a row.
+            val timesRe = Regex("""\b(twice|two times|three times|four times|five times|(\d+) times)\b""")
+            val times = timesRe.find(r.groupValues[2])?.let { t -> if (t.groupValues[1].startsWith("twice")) 2 else number(t.groupValues[2].ifEmpty { t.groupValues[1].substringBefore(' ') }) ?: 1 } ?: 1
+            val targets = targetsIn(r.groupValues[2].replace(xRe, "").replace(timesRe, "").trim(), m, ctx)
+            repeat(times) { ctx.events += EventSpec("activate", player = who, obj = id, targets = targets, amount = xValue) }
+            ctx.lastActor = who; return true
         }
         // Step beginnings: "at the beginning of my upkeep", "on their end step", "my upkeep starts".
         Regex("""^(?:at the beginning of |at the start of |during |on |at )?(my|their|the opponent's|opponent's|my opponent's|each|the) (upkeep|draw step|end step|end of turn|precombat main phase|main phase|combat|beginning of combat)(?: begins| starts)?$""").find(c)?.let { r ->

@@ -9287,5 +9287,46 @@
       "Not modeled"
     ],
     "cite": []
+  },
+  {
+    "id": "monstrosity-once",
+    "text": "I control Ill-Tempered Cyclops and activate its monstrosity. What are its stats?",
+    "expect": [
+      "Ill-Tempered Cyclops is monstrous",
+      "Ill-Tempered Cyclops is 6/6"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Not modeled"
+    ],
+    "cite": [
+      "701.31a"
+    ]
+  },
+  {
+    "id": "monstrosity-only-once",
+    "text": "I control Ill-Tempered Cyclops and activate its monstrosity twice. What are its stats?",
+    "expect": [
+      "already monstrous, so nothing happens",
+      "Ill-Tempered Cyclops is 6/6"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "701.31b"
+    ]
+  },
+  {
+    "id": "becomes-monstrous-trigger",
+    "text": "I control Ember Swallower and activate its monstrosity. What happens?",
+    "expect": [
+      "Ember Swallower is monstrous",
+      "Each player sacrifices three lands"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

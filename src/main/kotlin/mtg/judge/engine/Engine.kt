@@ -1065,6 +1065,7 @@ class Engine(val state: GameState) {
         data class BecomesUnblocked(val obj: GameObject) : GameEvent
         data class BecomesTarget(val obj: GameObject, val by: String, val sourceId: String) : GameEvent
         data class BecomesTapped(val obj: GameObject) : GameEvent
+        data class BecomesMonstrous(val obj: GameObject) : GameEvent
         data class Cycled(val obj: GameObject) : GameEvent
         data class Drew(val playerId: String) : GameEvent
         data class CreaturesDealtCombatDamageToPlayer(val playerId: String) : GameEvent
@@ -1149,6 +1150,7 @@ class Engine(val state: GameState) {
                 is GameEvent.BecomesBlockedBy -> "${event.obj.name} becoming blocked by ${event.blocker.name}"
                 is GameEvent.Blocks -> "${event.obj.name} blocking"
                 is GameEvent.BecomesUnblocked -> "${event.obj.name} attacking and not being blocked"
+                is GameEvent.BecomesMonstrous -> "${event.obj.name} becoming monstrous"
                 is GameEvent.BecomesTarget -> "${event.obj.name} becoming the target of a spell or ability"
                 is GameEvent.BecomesTapped -> "${event.obj.name} becoming tapped"
                 is GameEvent.Cycled -> "${event.obj.name} being cycled"
@@ -1216,6 +1218,7 @@ class Engine(val state: GameState) {
         Trigger.ThisBecomesBlockedByCreature -> event is GameEvent.BecomesBlockedBy && event.obj === obj
         Trigger.ThisBlocks -> event is GameEvent.Blocks && event.obj === obj
         Trigger.ThisAttacksUnblocked -> event is GameEvent.BecomesUnblocked && event.obj === obj
+        Trigger.ThisBecomesMonstrous -> event is GameEvent.BecomesMonstrous && event.obj === obj
         is Trigger.ThisBecomesTarget -> event is GameEvent.BecomesTarget && event.obj === obj &&
             (!trigger.opponentsOnly || event.by != obj.controller) &&
             // "for the first time each turn": only the first one counts, and the count is kept per permanent.
@@ -1573,6 +1576,20 @@ class Engine(val state: GameState) {
                             stateBasedActions()
                         }
                     }
+                }
+            }
+            is Effect.Monstrosity -> {
+                val o = item.source
+                if (!o.isOnBattlefield()) trace.step("${o.name} isn't on the battlefield, so monstrosity does nothing.", "608.2b")
+                else if (o.monstrous) {
+                    trace.step("${o.name} is already monstrous, so monstrosity ${effect.amount} does nothing at all — no counters, and no \"becomes monstrous\" trigger.", "701.31b")
+                    state.outcomes += "${o.name} is already monstrous, so nothing happens."
+                } else {
+                    trace.step("${o.name} isn't monstrous, so it gets ${effect.amount} +1/+1 counters and becomes monstrous. Being monstrous isn't a counter or an ability; it just stays true while it's on the battlefield.", "701.31a", "701.31b")
+                    putCounters(o.id, effect.amount, "+1/+1")
+                    o.monstrous = true
+                    state.outcomes += "${o.name} is monstrous."
+                    onEvent(GameEvent.BecomesMonstrous(o))
                 }
             }
             is Effect.Fight -> {
@@ -2789,7 +2806,7 @@ class Engine(val state: GameState) {
     private fun describe(effect: Effect, item: StackItem): String = when (effect) {
         is Effect.Draw -> "draw ${if (effect.x) "X" else effect.count.toString()} card${if (effect.count > 1 || effect.x) "s" else ""}"
         is Effect.Damage -> "deal ${effect.amount} damage to ${effect.target.raw}"
-        is Effect.CounterThatSpell -> "counter that spell"; is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Fight -> "${effect.mine.raw} fights ${effect.theirs.raw}"; is Effect.DealsPowerTo -> "${effect.mine.raw} deals damage equal to its power to ${effect.theirs.raw}"; is Effect.RedirectToSelf -> "change a target of ${effect.target.raw} to ${item.source.name}"; is Effect.Blink -> "exile ${effect.target.raw}, then return it to the battlefield under ${if (effect.ownersControl) "its owner's" else "your"} control"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.StormCopy -> "copy it for each spell cast before it this turn"; is Effect.DamageDivided -> "deal ${effect.amount} damage divided as you choose among ${effect.maxTargets?.let { "up to $it " } ?: ""}${effect.target.raw}"; is Effect.PreventCombatToAndBy -> "prevent all combat damage dealt to and by ${effect.target.raw} this turn"; is Effect.WinIfCastBefore -> "win the game if another spell with this name was cast this game, otherwise tuck it seventh from the top and gain ${effect.life} life"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
+        is Effect.CounterThatSpell -> "counter that spell"; is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Fight -> "${effect.mine.raw} fights ${effect.theirs.raw}"; is Effect.DealsPowerTo -> "${effect.mine.raw} deals damage equal to its power to ${effect.theirs.raw}"; is Effect.RedirectToSelf -> "change a target of ${effect.target.raw} to ${item.source.name}"; is Effect.Blink -> "exile ${effect.target.raw}, then return it to the battlefield under ${if (effect.ownersControl) "its owner's" else "your"} control"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.StormCopy -> "copy it for each spell cast before it this turn"; is Effect.Monstrosity -> "become monstrous with ${effect.amount} +1/+1 counters"; is Effect.DamageDivided -> "deal ${effect.amount} damage divided as you choose among ${effect.maxTargets?.let { "up to $it " } ?: ""}${effect.target.raw}"; is Effect.PreventCombatToAndBy -> "prevent all combat damage dealt to and by ${effect.target.raw} this turn"; is Effect.WinIfCastBefore -> "win the game if another spell with this name was cast this game, otherwise tuck it seventh from the top and gain ${effect.life} life"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
         is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.AnimateSelf -> "${item.source.name} becomes a ${effect.power}/${effect.toughness} creature until end of turn"; is Effect.BecomeMonarch -> "become the monarch"; is Effect.PumpSelfCount -> "${item.source.name} gets ${signed(effect.power)}/${signed(effect.toughness)} for each of them"; is Effect.TapAttached -> "tap the creature ${item.source.name} is attached to"; is Effect.ReturnSelfFromGraveyard -> "return ${item.source.name} from your graveyard to the battlefield${if (effect.tapped) " tapped" else ""}"; is Effect.DamageThatMuch -> "deal that much damage to ${effect.target.raw}"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
         is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.CreateTokenCopy -> "create ${effect.count} token${if (effect.count > 1) "s" else ""} that's a copy of ${effect.target?.raw ?: item.source.name}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.GainLifePerSpellThisTurn -> "gain ${effect.per} life for each spell cast this turn"; is Effect.WinIfDevotionCoversLibrary -> "look at the top X cards (X = your devotion) and win if X is at least your library size"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.ExileGraveyard -> "exile ${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "your"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }}${if (effect.who == Who.YOU) "" else "'s"} graveyard"; is Effect.DiscardNamed -> "that player reveals their hand and discards every card with the name you chose"; is Effect.BounceChosen -> "return ${withArticle(effect.what)} you control to its owner's hand"; is Effect.LivingWeapon -> "create a 0/0 black Phyrexian Germ creature token, then attach ${item.source.name} to it"; is Effect.DiscardChosen -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }} reveals their hand and discards ${effect.what} of your choice"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"} onto the battlefield"

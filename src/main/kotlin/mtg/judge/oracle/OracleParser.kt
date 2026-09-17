@@ -170,7 +170,7 @@ object OracleParser {
         val trigger = parseTrigger(cond)
         // "Whenever ~ attacks, it gets +1/+1" / "…, put a +1/+1 counter on it": in a self-trigger, a leading "it" is ~.
         val selfTrigger = trigger is Trigger.ThisDies || trigger is Trigger.ThisLeavesBattlefield || trigger is Trigger.ThisAttacks || trigger is Trigger.ThisEnters || trigger is Trigger.ThisDealsDamage || trigger is Trigger.ThisBecomesBlocked || trigger is Trigger.ThisBecomesBlockedByCreature || trigger is Trigger.ThisBlocks || trigger is Trigger.ThisAttacksUnblocked ||
-            trigger is Trigger.ThisBecomesTarget || trigger is Trigger.ThisBecomesTapped || trigger is Trigger.ThisIsDealtDamage || trigger is Trigger.ThisCast
+            trigger is Trigger.ThisBecomesTarget || trigger is Trigger.ThisBecomesTapped || trigger is Trigger.ThisBecomesMonstrous || trigger is Trigger.ThisIsDealtDamage || trigger is Trigger.ThisCast
         val effText = if (selfTrigger) selfEffText(m.groupValues[3]) else m.groupValues[3]
         // "Whenever a creature you control attacks alone, it gains double strike / gets +2/+2 until end of turn": the attacking creature.
         if (trigger is Trigger.CreatureAttacksAlone) {
@@ -244,6 +244,7 @@ object OracleParser {
             return Trigger.ThisBecomesTarget(m.groupValues[1].trim() == "an opponent controls", m.groupValues[2].isNotEmpty())
         }
         if (Regex("""^~ becomes tapped$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBecomesTapped
+        if (Regex("""^~ becomes monstrous$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBecomesMonstrous
         if (Regex("""^you cycle ~$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisCycled
         if (Regex("""^~ blocks$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBlocks
         if (Regex("""^~ attacks and isn't blocked$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisAttacksUnblocked
@@ -982,6 +983,7 @@ object OracleParser {
             val t = target(what, Kind.CREATURE)
             if (t.filter.verifiable) return Effect.DamageDivided(m.groupValues[1].toInt(), t, max)
         }
+        Regex("""^monstrosity (\d+)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Monstrosity(it.groupValues[1].toInt()) }
         // "Target creature can't be blocked this turn" — a keyword grant for the turn, checked with the rest of
         // the blocking restrictions.
         if (Regex("""^(?:~|it) can't be blocked this turn\.?$""", RegexOption.IGNORE_CASE).matches(s.trim())) return Effect.GainKeywordsSelf(setOf("unblockable"))

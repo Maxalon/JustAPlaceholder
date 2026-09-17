@@ -83,6 +83,8 @@ class GameObject(
 
     /** Until-end-of-turn keyword grants from resolved effects. */
     val tempKeywords = mutableSetOf<String>()
+    /** Monstrous: set by monstrosity and never unset while the permanent stays on the battlefield (701.31b). */
+    var monstrous: Boolean = false
     /** Set by the owning GameState so characteristics include static effects from other permanents. */
     var state: GameState? = null
 

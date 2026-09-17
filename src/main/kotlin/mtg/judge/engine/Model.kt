@@ -99,6 +99,8 @@ sealed interface Trigger {
     /** "Whenever ~ becomes the target of a spell or ability". */
     /** "Whenever ~ becomes the target of a spell or ability (an opponent controls) (for the first time each turn)". */
     data class ThisBecomesTarget(val opponentsOnly: Boolean = false, val firstEachTurn: Boolean = false) : Trigger
+    /** "When ~ becomes monstrous" (701.31a). */
+    data object ThisBecomesMonstrous : Trigger
     /** "Whenever ~ becomes tapped". */
     data object ThisBecomesTapped : Trigger
     /** "When you cycle ~". */
@@ -137,6 +139,8 @@ sealed interface Effect {
 
     /** "Copy target instant or sorcery spell. You may choose new targets for the copy." (707.10) */
     data class CopySpell(val target: TargetSpec, val newTargets: Boolean) : Effect
+    /** "Monstrosity N": N +1/+1 counters and it becomes monstrous, once only (701.31a). */
+    data class Monstrosity(val amount: Int) : Effect
     /** "~ deals N damage divided as you choose among one or two targets" (601.2d). */
     data class DamageDivided(val amount: Int, val target: TargetSpec, val maxTargets: Int?) : Effect
     /** Storm: copy the spell this trigger came from once for each spell cast before it this turn (702.40a). */
@@ -282,7 +286,7 @@ sealed interface Effect {
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target); is Blink -> listOf(target); is RedirectToSelf -> listOf(target); is Fight -> listOf(mine, theirs); is DealsPowerTo -> listOf(mine, theirs)
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
-        is PutCounters -> listOfNotNull(target); is RemoveAllCounters -> listOf(target); is PutOnBottom -> listOf(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is CreateTokenCopy -> listOfNotNull(target); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is ExileGraveyard -> emptyList(); is DiscardChosen -> emptyList(); is BounceChosen -> emptyList(); is LivingWeapon -> emptyList(); is DiscardNamed -> emptyList(); is CounterThatSpell -> emptyList(); is AddManaInstead -> emptyList(); is AddManaPer -> emptyList(); is AddManaDevotion -> emptyList(); is GainLifePerSpellThisTurn -> emptyList(); is WinIfDevotionCoversLibrary -> emptyList(); is CopySpell -> listOf(target); is StormCopy -> emptyList(); is DamageDivided -> listOf(target); is PreventCombatToAndBy -> listOf(target); is WinIfCastBefore -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is BecomeMonarch -> emptyList(); is ReturnSelfFromGraveyard -> emptyList(); is AnimateSelf -> emptyList(); is PumpSelfCount -> emptyList(); is TapAttached -> emptyList(); is DamageThatMuch -> listOf(target); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
+        is PutCounters -> listOfNotNull(target); is RemoveAllCounters -> listOf(target); is PutOnBottom -> listOf(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is CreateTokenCopy -> listOfNotNull(target); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is ExileGraveyard -> emptyList(); is DiscardChosen -> emptyList(); is BounceChosen -> emptyList(); is LivingWeapon -> emptyList(); is DiscardNamed -> emptyList(); is CounterThatSpell -> emptyList(); is AddManaInstead -> emptyList(); is AddManaPer -> emptyList(); is AddManaDevotion -> emptyList(); is GainLifePerSpellThisTurn -> emptyList(); is WinIfDevotionCoversLibrary -> emptyList(); is CopySpell -> listOf(target); is StormCopy -> emptyList(); is DamageDivided -> listOf(target); is Monstrosity -> emptyList(); is PreventCombatToAndBy -> listOf(target); is WinIfCastBefore -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is BecomeMonarch -> emptyList(); is ReturnSelfFromGraveyard -> emptyList(); is AnimateSelf -> emptyList(); is PumpSelfCount -> emptyList(); is TapAttached -> emptyList(); is DamageThatMuch -> listOf(target); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is ForAllTargeted -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
         is IfCondition -> then.targets()
