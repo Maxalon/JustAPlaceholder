@@ -1066,6 +1066,8 @@ class Engine(val state: GameState) {
         data class BecomesTarget(val obj: GameObject, val by: String, val sourceId: String) : GameEvent
         data class BecomesTapped(val obj: GameObject) : GameEvent
         data class BecomesMonstrous(val obj: GameObject) : GameEvent
+        /** A copy of a spell was put on the stack; a copy isn't cast, so only magecraft-style triggers see it. */
+        data class SpellCopied(val item: StackItem) : GameEvent
         data class Cycled(val obj: GameObject) : GameEvent
         data class Drew(val playerId: String) : GameEvent
         data class CreaturesDealtCombatDamageToPlayer(val playerId: String) : GameEvent
@@ -1151,6 +1153,7 @@ class Engine(val state: GameState) {
                 is GameEvent.Blocks -> "${event.obj.name} blocking"
                 is GameEvent.BecomesUnblocked -> "${event.obj.name} attacking and not being blocked"
                 is GameEvent.BecomesMonstrous -> "${event.obj.name} becoming monstrous"
+                is GameEvent.SpellCopied -> "a copy of ${event.item.source.name} being put on the stack"
                 is GameEvent.BecomesTarget -> "${event.obj.name} becoming the target of a spell or ability"
                 is GameEvent.BecomesTapped -> "${event.obj.name} becoming tapped"
                 is GameEvent.Cycled -> "${event.obj.name} being cycled"
@@ -1180,11 +1183,14 @@ class Engine(val state: GameState) {
         // A trigger that functions from a graveyard (603.6e, Bloodghast) is live there; every other one needs its source on the battlefield.
         fun onBf() = obj.isOnBattlefield() || (fromGraveyard && obj.zone == Zone.GRAVEYARD)
         return when (trigger) {
-        is Trigger.SpellCast -> event is GameEvent.SpellCast && onBf() && when (trigger.who) {
-            Who.YOU -> event.item.controller == obj.controller
-            Who.OPPONENT -> event.item.controller != obj.controller
-            else -> true
-        } && (trigger.spellFilter == null || filterMatchesSpell(trigger.spellFilter, event.item, obj.controller))
+        is Trigger.SpellCast -> (event as? GameEvent.SpellCast)?.item.let { cast ->
+            val item = cast ?: (event as? GameEvent.SpellCopied)?.takeIf { trigger.orCopied }?.item
+            item != null && onBf() && when (trigger.who) {
+                Who.YOU -> item.controller == obj.controller
+                Who.OPPONENT -> item.controller != obj.controller
+                else -> true
+            } && (trigger.spellFilter == null || filterMatchesSpell(trigger.spellFilter, item, obj.controller))
+        }
         // 603.2: it triggers on exactly that spell, so the count as it was cast has to be the Nth.
         is Trigger.NthSpellEachTurn -> event is GameEvent.SpellCast && onBf() && when (trigger.who) {
             Who.YOU -> event.item.controller == obj.controller
@@ -1536,6 +1542,7 @@ class Engine(val state: GameState) {
                 state.stack += copy
                 trace.step("${you.subject} ${you.v("puts", "put")} a copy of ${target.source.name} on the stack, above ${item.describe}. The copy isn't cast (so \"when you cast\" abilities don't trigger and it can't be countered by \"counter target spell\" only while it's a spell on the stack, which it is), and it copies every choice made for the original: modes, targets, X${if (targets != target.targets) ", except the targets changed" else ""}.", "707.10", "707.10c")
                 state.outcomes += "A copy of ${target.source.name} is put on the stack${describeTargets(targets)}."
+                onEvent(GameEvent.SpellCopied(copy))
             }
             is Effect.StormCopy -> {
                 val you = state.player(item.controller)
@@ -1548,13 +1555,15 @@ class Engine(val state: GameState) {
                         state.outcomes += "Storm makes no copies (no spell was cast before ${item.source.name} this turn)."
                     }
                     else -> {
-                        repeat(prior) {
+                        val copies = (1..prior).map {
                             val copyObj = state.add(GameObject(freshObjectId(spell.source.name + " copy"), spell.source.def, Zone.STACK, item.controller, token = true))
-                            state.stack += StackItem(state.newStackId(), StackKind.SPELL, item.controller, copyObj, spell.effect, spell.targets, zonesOf(spell.targets), spell.text, spell.modes, x = spell.x, kicked = spell.kicked)
+                            StackItem(state.newStackId(), StackKind.SPELL, item.controller, copyObj, spell.effect, spell.targets, zonesOf(spell.targets), spell.text, spell.modes, x = spell.x, kicked = spell.kicked)
                         }
+                        state.stack += copies
                         trace.step("$prior spell${if (prior == 1) " was" else "s were"} cast before ${item.source.name} this turn, so storm puts $prior cop${if (prior == 1) "y" else "ies"} of it on the stack. The copies aren't cast, so they don't trigger \"when you cast\" abilities and they don't add to the storm count themselves; each copies every choice made for the original, and ${you.subject.lowercase()} may choose new targets for them.", "702.40a", "707.10", "707.10c")
                         if (spell.targets.isNotEmpty()) state.assumptions += "The storm copies keep the original's targets (707.10c allows new ones)."
                         state.outcomes += "Storm puts $prior cop${if (prior == 1) "y" else "ies"} of ${spell.source.name} on the stack, above the original."
+                        copies.forEach { onEvent(GameEvent.SpellCopied(it)) }
                     }
                 }
             }

@@ -9328,5 +9328,30 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "magecraft-on-a-cast",
+    "text": "I control Archmage Emeritus and cast Lightning Bolt at my opponent. What happens?",
+    "expect": [
+      "You draw 1 card",
+      "opponent takes 3 damage"
+    ],
+    "notExpect": [
+      "Not modeled",
+      "(\u00d72)"
+    ],
+    "cite": []
+  },
+  {
+    "id": "magecraft-counts-the-copy",
+    "text": "I control Archmage Emeritus. I cast Lightning Bolt at my opponent, then cast Twincast targeting Lightning Bolt. What happens?",
+    "expect": [
+      "You draw 1 card. (\u00d73)",
+      "opponent takes 3 damage. (\u00d72)"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": []
   }
 ]

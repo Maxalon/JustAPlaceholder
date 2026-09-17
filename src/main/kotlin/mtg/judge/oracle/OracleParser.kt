@@ -298,6 +298,14 @@ object OracleParser {
             if (!f.verifiable) return@let
             return Trigger.AttackWithNOrMore(n, f)
         }
+        // Magecraft: "whenever you cast or copy an instant or sorcery spell" — a copy isn't cast, so the trigger
+        // says both. The copy half only fires for a copy the engine actually put on the stack.
+        Regex("""^(an opponent|you|a player|another player|each player) (?:casts?|cast) or cop(?:y|ies) (?:a|an) (.+?)(?: spell)?$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
+            val who = when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "an opponent" -> Who.OPPONENT; else -> Who.ANY_PLAYER }
+            val what = m.groupValues[2].trim().lowercase()
+            val filter = if (what == "spell") null else parseFilter(what, Kind.SPELL).let { if (Kind.SPELL in it.kinds) it else it.copy(kinds = it.kinds + Kind.SPELL) }
+            if (filter == null || filter.verifiable) return Trigger.SpellCast(who, filter, orCopied = true)
+        }
         spellCastRe.matchEntire(c)?.let { m ->
             val who = when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "an opponent" -> Who.OPPONENT; else -> Who.ANY_PLAYER }
             val what = m.groupValues[3].trim().lowercase()
