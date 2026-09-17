@@ -8552,5 +8552,18 @@
     "cite": [
       "119.3"
     ]
+  },
+  {
+    "id": "cast-a-creature-and-attack-with-everything",
+    "text": "I cast Grizzly Bears and attack. What happens?",
+    "expect": [
+      "can't attack (summoning sick)"
+    ],
+    "notExpect": [
+      "no creatures of yours were described"
+    ],
+    "cite": [
+      "302.6"
+    ]
   }
 ]

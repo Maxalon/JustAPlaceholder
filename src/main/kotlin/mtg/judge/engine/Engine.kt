@@ -621,7 +621,7 @@ class Engine(val state: GameState) {
     private fun usesX(e: Effect): Boolean = when (e) { is Effect.Damage -> e.x; is Effect.Draw -> e.x; is Effect.LoseLife -> e.x; is Effect.Discard -> e.x; is Effect.PumpAll -> e.x; is Effect.SetBasePtAll -> e.x; is Effect.PutCounters -> e.x; is Effect.Repeat -> e.x || usesX(e.body); is Effect.Seq -> e.effects.any { usesX(it) }; is Effect.May -> usesX(e.effect); is Effect.Modal -> e.modes.any { usesX(it) }; else -> false }
 
     /** Steps and combat can't begin while something is on the stack: everything pending resolves first (500.2). */
-    private fun emptyStackFirst(what: String) {
+    fun emptyStackFirst(what: String) {
         if (state.stack.isEmpty()) return
         trace.step("The stack isn't empty, and $what can't happen until it is and all players pass, so everything on the stack resolves first.", "500.2", "117.4")
         state.assumptions += "Everything on the stack resolved before $what (a step can't end with objects on the stack, 500.2)."
