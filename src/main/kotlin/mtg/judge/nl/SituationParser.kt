@@ -590,9 +590,15 @@ class SituationParser(private val names: NameIndex) {
         Regex("""\b(?:we're|we are|we|both of us|everyone|everybody) (?:both |each |all )?(?:is |are |'re )?(?:at|on) (\d+)(?: life)?\b""").find(t2)?.let {
             val n = it.groupValues[1].toInt(); ctx.life["me"] = n; ctx.life[pronounPlayer(ctx)] = n; ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range)
         }
+        // "There are two Grizzly Bears on the battlefield, one mine one theirs": an existential way of saying who
+        // has what. With nobody said it is the speaker's side; "one mine, one theirs" puts one on each.
+        t2 = Regex("""\bthere(?: is| are|'s| was| were) ((?:an?|one|two|three|four|five|six|\d+) )?((?:$possPrefix|an? )?c\d+)(?: on the battlefield| in play| out)(,? ?(?:and )?(?:one (?:of )?)?(?:mine|yours),? ?(?:and )?(?:one (?:of )?)?(?:theirs|his|hers))?""").replace(t2) { r ->
+            val card = r.groupValues[2]
+            if (r.groupValues[3].isNotEmpty()) "i control $card and my opponent controls $card" else "i control ${r.groupValues[1]}$card"
+        }
         // "I go to 0 life", "they drop to 3": a life total after something, said as a change.
-        Regex("""\b(?:i|we) (?:go|goes|went|drop|drops|dropped|fall|falls|fell) (?:to|down to) (\d+)(?: life)?\b""").find(t2)?.let { ctx.life["me"] = it.groupValues[1].toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
-        Regex("""\b(?:they|he|she|my opponent|the opponent|opponent) (?:go|goes|went|drop|drops|dropped|fall|falls|fell) (?:to|down to) (\d+)(?: life)?\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = it.groupValues[1].toInt(); any = true; t2 = t2.removeRange(it.range) }
+        Regex("""\b(?:i|we) (?:go|goes|went|drop|drops|dropped|fall|falls|fell) (?:to|down to) (-?\d+)(?: life)?\b""").find(t2)?.let { ctx.life["me"] = it.groupValues[1].toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
+        Regex("""\b(?:they|he|she|my opponent|the opponent|opponent) (?:go|goes|went|drop|drops|dropped|fall|falls|fell) (?:to|down to) (-?\d+)(?: life)?\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = it.groupValues[1].toInt(); any = true; t2 = t2.removeRange(it.range) }
         Regex("""\s*\b(?:with|at|and) (\d+) life (?:left|remaining|to go)(?: for me| on my side)?\b""").find(t2)?.let { ctx.life["me"] = it.groupValues[1].toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
         Regex("""\s*\b(?:with|and) (?:them|my opponent|the opponent|opponent) (?:at|on) (\d+)(?: life)?\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = it.groupValues[1].toInt(); any = true; t2 = t2.removeRange(it.range) }
         Regex("""\b(opponent|they|they're|opp|my opponent|he|he's|she|she's)(?: who)? (?:(?:is at|are at|at|is on|are on|'re at|'s at) (\d+)(?: life)?|(?:has|have) (\d+) life)\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = (it.groupValues[2].ifEmpty { it.groupValues[3] }).toInt(); any = true; t2 = t2.replaceRange(it.range, it.groupValues[1]) }
@@ -1278,6 +1284,9 @@ class SituationParser(private val names: NameIndex) {
 
         // "… and 51 life" / "at 51 life": a life total for the actor.
         Regex("""^(?:at |with |on |am at |is at |are at )?(\d+) life$""").find(c)?.let { r -> val who = actor ?: ctx.lastActor ?: "me"; ctx.life[who] = r.groupValues[1].toInt(); ctx.note(who); ctx.lastStat = "life"; ctx.lastStatWho = who; return true }
+        // "I control Platinum Angel and go to -5 life": said as a second clause the subject is left out, so the
+        // sentence-level reading of "I go to N life" never saw it and the life change was dropped.
+        Regex("""^(?:go(?:es)?|went|drops?|dropped|falls?|fell)(?: down)? to (-?\d+)(?: life)?$""").find(c)?.let { r -> val who = actor ?: ctx.lastActor ?: "me"; ctx.life[who] = r.groupValues[1].toInt(); ctx.note(who); ctx.lastStat = "life"; ctx.lastStatWho = who; return true }
         // "tries to Murder it", "attempts to cast Bolt on it": the attempt is the action.
         Regex("""^(?:tries|tried|attempts|attempted|wants|goes) to (.+)$""").find(c)?.let { r ->
             if (ctx.events.lastOrNull()?.verb in setOf("cast", "activate", "trigger")) ctx.events += EventSpec("resolveAll")   // the attempt comes after what was already happening
@@ -2412,7 +2421,11 @@ class SituationParser(private val names: NameIndex) {
                 ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner
                 return true
             }
-            val hostId = addObject(m.cards.getValue(r.groupValues[2]), owner, tapped = rest.contains("tapped") && !rest.contains("untapped"), ctx)
+            // "I control Grizzly Bears and my opponent controls Grizzly Bears": two permanents, not one. Matching on
+            // the card alone collapsed them and a board wipe then killed only one of the two.
+            val hostCard = m.cards.getValue(r.groupValues[2])
+            val otherSide = ctx.objects.values.any { it.card.oracleId == hostCard.oracleId && it.zone == "battlefield" && it.controller != owner }
+            val hostId = addObject(hostCard, owner, tapped = rest.contains("tapped") && !rest.contains("untapped"), ctx, allowDuplicate = otherSide)
             if (isCommander) ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(commander = true)
             // "Meddling Mage naming Lightning Bolt" / "Pithing Needle on Sensei's Divining Top" (named): the chosen card name.
             Regex("""\b(?:naming|that names|which names|named on|set to|choosing|on) (?:the number )?(\d+)\b""").find(rest)?.let { n ->

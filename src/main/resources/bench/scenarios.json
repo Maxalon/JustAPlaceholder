@@ -10368,5 +10368,53 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "same-card-both-sides",
+    "text": "I control Grizzly Bears and my opponent controls Grizzly Bears. I cast Wrath of God. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "there-are-two-one-each",
+    "text": "There are two Grizzly Bears on the battlefield, one mine one theirs. I cast Wrath of God. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "there-is-a-permanent-in-play",
+    "text": "There's a Rhystic Study in play. My opponent casts Sol Ring.",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "platinum-angel-negative-life",
+    "text": "I control Platinum Angel and go to -5 life. Do I lose?",
+    "expect": [
+      "No: You are still in the game"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5a"
+    ]
   }
 ]
