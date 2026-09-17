@@ -8578,5 +8578,28 @@
     "cite": [
       "704.5c"
     ]
+  },
+  {
+    "id": "kalitas-dying-alongside-what-it-exiles",
+    "text": "I control Kalitas, Traitor of Ghet. My opponent controls three 2/2s. I cast Wrath of God. What happens?",
+    "expect": [
+      "exile (replaced by Kalitas, Traitor of Ghet)",
+      "You get a Zombie token"
+    ],
+    "notExpect": [],
+    "cite": [
+      "603.10a"
+    ]
+  },
+  {
+    "id": "kalitas-does-not-exile-your-own",
+    "text": "I control Kalitas, Traitor of Ghet. I control three 2/2s. I cast Wrath of God. What happens?",
+    "expect": [
+      "a 2/2 creature: the battlefield \u2192 your graveyard"
+    ],
+    "notExpect": [
+      "replaced by Kalitas"
+    ],
+    "cite": []
   }
 ]

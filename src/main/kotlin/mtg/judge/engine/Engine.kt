@@ -2281,7 +2281,10 @@ class Engine(val state: GameState) {
     private fun graveyardReplacement(obj: GameObject, from: Zone): GyRepl? {
         if (from == Zone.BATTLEFIELD && obj.exileOnDeath != null) return GyRepl(Zone.EXILE, "${obj.exileOnDeath}'s \"exile it instead\"", null, null)
         for (o in state.objects.values) {
-            if (!o.isOnBattlefield()) continue
+            // A permanent leaving alongside the one that would die still applies its replacement: replacement
+            // effects are applied to the game state as it was before the event (616.1, 603.10a). Wrath of God
+            // killing Kalitas and the creatures it exiles at once was answered as a plain trip to the graveyard.
+            if (!o.isOnBattlefield() && o.id !in leavingTogether) continue
             for (e in o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }) {
                 val r = (e as? StaticEffect.Replace)?.replacement as? Replacement.GraveyardReplacement ?: continue
                 if (r.self && o !== obj) continue
