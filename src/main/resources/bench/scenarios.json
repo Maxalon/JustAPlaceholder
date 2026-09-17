@@ -10416,5 +10416,49 @@
     "cite": [
       "704.5a"
     ]
+  },
+  {
+    "id": "keyword-noun-after-size",
+    "text": "My opponent has a 2/2 flier. I attack with Serra Angel. Can they block?",
+    "expect": [
+      "a 2/2 creature with flying: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "trampler-noun-after-size",
+    "text": "My opponent has a 3/3 trampler. I block with a 1/1.",
+    "expect": [
+      "You take 2 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "counter-without-an-article",
+    "text": "My Grizzly Bears has +1/+1 counter on it. What are its stats?",
+    "expect": [
+      "Grizzly Bears is 3/3"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "counter-without-an-article-with-form",
+    "text": "I control a Walking Ballista with +1/+1 counter. What are its stats?",
+    "expect": [
+      "Walking Ballista is 1/1"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

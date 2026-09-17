@@ -1494,11 +1494,15 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastMentioned = ids.last(); return true
         }
         // Unnamed creatures: "I have three creatures", "control two other creatures" (stats unknown; assumed 1/1 and said so).
-        Regex("""^(?:(?:have|has|got|control|controls|controlling|'ve got)\s+)?(an? |one |\d+ |two |three |four |five )?(?:other |more )?(tapped |untapped )?(?:(\d+/\d+)s?\s*)?((?:first strike |double strike |[a-z]+ )*)($creatureKinds|blockers?|attackers?|guys?|dudes?|beaters?|bodies|body)?(?: with ([a-z ,&]+?|(?:an? |one |two |three |four |five |\d+ )?[+-]\d+/[+-]\d+ counters?(?: on it)?))?(?: plus .*)?(?: on the battlefield| in play| out)?((?: that (?:i|they|he|she) just (?:played|cast)(?: this turn)?| that just came down| i just played| with summoning sickness| that has been out| from last turn)?)$""").find(c)?.let { r ->
+        Regex("""^(?:(?:have|has|got|control|controls|controlling|'ve got)\s+)?(an? |one |\d+ |two |three |four |five )?(?:other |more )?(tapped |untapped )?(?:(\d+/\d+)s?\s*)?((?:first strike |double strike |(?!with )[a-z]+ )*)($creatureKinds|blockers?|attackers?|guys?|dudes?|beaters?|bodies|body|$kwNouns)?(?: with ([a-z ,&]+?|(?:an? |one |two |three |four |five |\d+ )?[+-]\d+/[+-]\d+ counters?(?: on it)?))?(?: plus .*)?(?: on the battlefield| in play| out)?((?: that (?:i|they|he|she) just (?:played|cast)(?: this turn)?| that just came down| i just played| with summoning sickness| that has been out| from last turn)?)$""").find(c)?.let { r ->
             val hasVerb = Regex("""^(?:have|has|got|control|controls|controlling|'ve got)\b""").containsMatchIn(c)
             val pt = r.groupValues[3]; val adj = r.groupValues[4].trim()
+            // "a 2/2 flier", "a 3/3 trampler": the word after the size is the keyword, not a creature type.
+            val kindKw = r.groupValues[5].takeIf { Regex("""^$kwNouns$""").matches(it) && !Regex("""^$creatureKinds$""").matches(it) }
+                ?.removeSuffix("s")?.replace("flier", "flying")?.replace("flyer", "flying")?.replace("trampler", "trample")
+                ?.replace("deathtoucher", "deathtouch")?.replace("lifelinker", "lifelink")?.replace("first striker", "first strike")?.replace("double striker", "double strike")
             // "one blocker", "two beaters": words for a creature that aren't creature types.
-            val kind = r.groupValues[5].let { if (Regex("""^(?:blockers?|attackers?|guys?|dudes?|beaters?|bodies|body)$""").matches(it)) "creature" else it }
+            val kind = if (kindKw != null) "creature" else r.groupValues[5].let { if (Regex("""^(?:blockers?|attackers?|guys?|dudes?|beaters?|bodies|body)$""").matches(it)) "creature" else it }
             // Needs a verb or a state context, and something creature-like: "a 3/3", "two goblins", "3 other goblins"; not "the", "it", or a lone number.
             if (kind.isEmpty() && pt.isEmpty()) return@let
             if (!hasVerb && ctx.lastVerb != "have" && ctx.lastOwner == null) return@let
@@ -1513,7 +1517,7 @@ class SituationParser(private val names: NameIndex) {
             // "a 1/1 with a +1/+1 counter on it": that's a counter, not a keyword, and it goes on every creature described.
             val withTail = r.groupValues[6]
             val counterTail = withTail.takeIf { Regex("""[+-]\d+/[+-]\d+ counters?""").containsMatchIn(it) }
-            val kw = (listOfNotNull(withTail.takeIf { it.isNotEmpty() && counterTail == null }) + adjKw).joinToString(", ")
+            val kw = (listOfNotNull(withTail.takeIf { it.isNotEmpty() && counterTail == null }, kindKw) + adjKw).distinct().joinToString(", ")
             val colour = plainAdj.firstOrNull { it in setOf("red", "green", "white", "blue", "black") }
             val made = describedCreatures(r.groupValues[1], pt, if (colour != null) "$colour ${kind.ifEmpty { "creature" }}" else kind, who, ctx, kw)
             // "a tapped 4/4": the word in front of the size says how it is on the battlefield.
@@ -1650,11 +1654,12 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastMentioned = id; return true
         }
         // "My Grizzly Bears gets a +1/+1 counter", "it has two charge counters on it".
-        Regex("""^($possPrefix)?(c\d+|it|that) (?:gets?|has|have|is given|gains?|gained) (an?|one|two|three|four|five|\d+) ([+-]\d+/[+-]\d+|[a-z]+) counters?(?: on it)?$""").find(c)?.let { r ->
+        // "has +1/+1 counter on it": people leave the article out, and dropping the clause quietly lost the counter.
+        Regex("""^($possPrefix)?(c\d+|it|that) (?:gets?|has|have|is given|gains?|gained) (an?|one|two|three|four|five|\d+)? ?([+-]\d+/[+-]\d+|[a-z]+) counters?(?: on it)?$""").find(c)?.let { r ->
             val owner = possessiveOwner(r.groupValues[1], ctx) ?: actor ?: ctx.lastOwner
             val id = if (r.groupValues[2] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
                      else m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, owner, false, ctx) } ?: return@let
-            val n = number(r.groupValues[3]) ?: return@let
+            val n = r.groupValues[3].ifEmpty { "one" }.let { number(it) } ?: return@let
             val kind = r.groupValues[4]
             val spec = ctx.objects.getValue(id)
             ctx.objects[id] = spec.copy(counters = spec.counters + (kind to ((spec.counters[kind] ?: 0) + n)))
@@ -3780,8 +3785,8 @@ class SituationParser(private val names: NameIndex) {
         if (Regex("""\b(?:without summoning sickness|not summoning sick|has been out|since before this turn|from last turn)\b""").containsMatchIn(rest)) spec = spec.copy(summoningSick = false)
         val counters = spec.counters.toMutableMap()
         Regex("""(?:with|at|has|having) (\d+|\w+) loyalty(?: counters?)?""").find(rest)?.let { r -> number(r.groupValues[1])?.let { counters["loyalty"] = it } }
-        Regex("""(?:with|has|having) (\d+|\w+) ([+-]\d+/[+-]\d+|[a-z]+) counters?(?: on it)?""").findAll(rest).forEach { r ->
-            val n = number(r.groupValues[1]) ?: return@forEach
+        Regex("""(?:with|has|having) (?:(\d+|\w+) )?([+-]\d+/[+-]\d+|[a-z]+) counters?(?: on it)?""").findAll(rest).forEach { r ->
+            val n = number(r.groupValues[1].ifEmpty { "one" }) ?: return@forEach
             val kind = r.groupValues[2]
             if (kind == "loyalty") counters["loyalty"] = n else counters[kind] = (counters[kind] ?: 0) + n
         }
