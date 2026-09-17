@@ -3204,6 +3204,17 @@ class SituationParser(private val names: NameIndex) {
             ctx.asks += EventSpec("ask", player = who, to = "playerDamage"); ctx.note(who)
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
+        // "what's their life total?" / "how much life do I have left?" / "what am I at?"
+        Regex("""^(?:what(?:'s| is| are)? (?:my|their|his|her|the|@\w+'s) life(?: total)?|what life (?:total )?(?:do|does) (i|we|they|he|she|my opponent|the opponent|opponent|@\w+) (?:have|end (?:up )?(?:at|on))|how much life (?:do|does|will|would) (i|we|they|he|she|my opponent|the opponent|opponent|@\w+) (?:have|end (?:up )?(?:at|on|with)|end at)(?: left| now| in the end)?|what (?:am|are|is) (i|we|they|he|she|my opponent|the opponent|opponent|@\w+) (?:at|on)|how much life (?:do|does) (i|we|they|he|she|my opponent|the opponent|opponent|@\w+) end at)$""").find(clause0)?.let { q ->
+            val word = q.groupValues.drop(1).firstOrNull { it.isNotEmpty() }
+                ?: Regex("""^what(?:'s| is| are)? (my|their|his|her|@\w+'s) """).find(clause0)?.groupValues?.get(1) ?: "i"
+            val who = when (val w = word.removeSuffix("'s")) {
+                "i", "we", "my", "me" -> "me"
+                else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w.substringAfterLast(' '))
+            }
+            ctx.asks += EventSpec("ask", player = who, to = "playerLife"); ctx.note(who)
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
         // "does the Bears deal damage to my opponent?" / "does it hit me?"
         Regex("""^(?:does|do|did|will|would)\b.*?\b(?:my |their |his |her |the |@\w+'s )?(c\d+)(?:'s)?\b.*?\b(?:deals?|dealt|hits?|connects?|damages?|gets? through|gets? in|go(?:es)? through)\b(?: (?:any |its |combat )?damage)?(?: to)? (me|myself|them|my opponent|the opponent|opponent|him|her|@\w+|(?:my|their) face)\b""").find(clause0)?.let { q ->
             val card = m.cards[q.groupValues[1]] ?: return@let

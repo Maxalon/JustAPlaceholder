@@ -225,6 +225,13 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 }
                 if (e.to == "spellCost") { state.outcomes += engine.spellCost(e.obj ?: throw JudgeException("ask needs an object")); return }
                 if (e.to == "playerSurvive" || e.to == "playerDie" || e.to == "playerWin") { state.outcomes += playerAnswer(e.to, state.player(e.player ?: throw JudgeException("ask needs a player")), state); return }
+                // "what's their life total?": the total once everything is done, said plainly.
+                if (e.to == "playerLife") {
+                    val p = state.player(e.player ?: throw JudgeException("ask needs a player"))
+                    state.outcomes += p.life?.let { "${p.subject} ${p.v("is", "are")} at $it life." }
+                        ?: "${p.subject} ${p.v("has", "have")} no life total in this situation; say what ${p.subject.lowercase()} started at for a number."
+                    return
+                }
                 val o = generateSequence(state.obj(e.obj ?: throw JudgeException("ask needs an object"))) { it.successor?.let { id -> state.objects[id] } }.last()
                 // "does my Serra Angel still have flying?": whether it has that keyword once everything is done,
                 // and if it doesn't, what took it away.
@@ -406,7 +413,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "pay" -> "${who ?: "the player"} ${if (e.to == "no") "${if (who == "you") "don't" else "doesn't"} pay" else "${if (who == "you") "pay" else "pays"}"}"
             "resolve", "pass" -> "the top of the stack resolves"
             "resolveall" -> "everything on the stack resolves"
-            "ask" -> if (e.to == "playerSurvive") "question: ${if (who == "you") "do you" else "does $who"} survive?" else if (e.to == "playerDie") "question: ${if (who == "you") "do you" else "does $who"} lose?" else if (e.to == "playerWin") "question: ${if (who == "you") "do you" else "does $who"} win?" else if (e.to == "playerDamage") "question: ${if (who == "you") "do you" else "does $who"} take damage?" else "question: ${if (e.to == "block" || e.to == "attack") "can" else "does"} ${state.objects[e.obj]?.name ?: e.obj} ${if (e.to == "damage") "deal damage to ${e.targets.firstOrNull()?.let { t -> state.players.firstOrNull { it.id == t }?.let { if (it.you) "you" else it.name } } ?: "the player"}" else e.to}?"
+            "ask" -> if (e.to == "playerLife") "question: what ${if (who == "you") "is your" else "is $who's"} life total?" else if (e.to == "playerSurvive") "question: ${if (who == "you") "do you" else "does $who"} survive?" else if (e.to == "playerDie") "question: ${if (who == "you") "do you" else "does $who"} lose?" else if (e.to == "playerWin") "question: ${if (who == "you") "do you" else "does $who"} win?" else if (e.to == "playerDamage") "question: ${if (who == "you") "do you" else "does $who"} take damage?" else "question: ${if (e.to == "block" || e.to == "attack") "can" else "does"} ${state.objects[e.obj]?.name ?: e.obj} ${if (e.to == "damage") "deal damage to ${e.targets.firstOrNull()?.let { t -> state.players.firstOrNull { it.id == t }?.let { if (it.you) "you" else it.name } } ?: "the player"}" else e.to}?"
             "enter" -> "${state.objects[e.obj]?.name ?: e.obj} enters the battlefield"
             "leave" -> "${state.objects[e.obj]?.name ?: e.obj} goes to ${e.to}"
             "damage" -> "${e.source} deals ${e.amount} damage${tg.replace(" targeting ", " to ")}"

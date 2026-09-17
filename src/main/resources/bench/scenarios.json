@@ -10495,5 +10495,27 @@
       "(×3)"
     ],
     "cite": []
+  },
+  {
+    "id": "life-total-question",
+    "text": "My opponent is at 20. I attack with a 5/5 and they don't block. What's their life total?",
+    "expect": [
+      "opponent is at 15 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "life-total-question-what-are-they-at",
+    "text": "My opponent is at 5 and I cast Lightning Bolt at them. What are they at?",
+    "expect": [
+      "opponent is at 2 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
