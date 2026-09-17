@@ -10887,5 +10887,16 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "menace-hint-with-a-second-blocker",
+    "text": "My opponent attacks with a 2/2 with menace and I have two 1/1s. Can I block?",
+    "expect": [
+      "Another creature blocking alongside it would be a legal block"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

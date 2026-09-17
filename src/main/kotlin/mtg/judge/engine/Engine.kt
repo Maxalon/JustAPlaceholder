@@ -1044,7 +1044,7 @@ class Engine(val state: GameState) {
         // Menace: a single blocker is not a legal block.
         for (a in attackers) if (a.has("menace")) {
             val bs = blockersOf(a)
-            if (bs.size == 1) { trace.step("${a.name} has menace and can't be blocked except by two or more creatures; blocking it with only ${bs[0].name} isn't a legal block, so ${a.name} is unblocked.", "702.111b", "509.1a"); state.outcomes += "${bs[0].name} can't block ${a.name} on its own (menace)."; bs[0].blocking = null; a.wasBlocked = false }
+            if (bs.size == 1) { trace.step("${a.name} has menace and can't be blocked except by two or more creatures; blocking it with only ${bs[0].name} isn't a legal block, so ${a.name} is unblocked.", "702.111b", "509.1a"); state.outcomes += "${bs[0].name} can't block ${a.name} on its own (menace)." + (state.objects.values.count { it.isOnBattlefield() && it.controller == bs[0].controller && it.def.isCreature && it.tapped != true && it.id != bs[0].id }.takeIf { it > 0 }?.let { " Another creature blocking alongside it would be a legal block." } ?: ""); bs[0].blocking = null; a.wasBlocked = false }
         }
         // "Whenever ~ attacks and isn't blocked": the condition is checked once blockers are declared, so the
         // trigger goes on the stack then and resolves before any combat damage.
