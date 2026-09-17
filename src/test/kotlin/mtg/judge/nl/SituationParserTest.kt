@@ -183,7 +183,9 @@ class SituationParserTest {
         assertEquals(5, p.situation.players.first { it.id == "me" }.life)
         val ask = p.situation.events.last(); assertEquals("ask", ask.verb); assertEquals("playerDie", ask.to); assertEquals("me", ask.player)
         val q = parser.parse("I have Stifle in hand. I cast it paying 3 life.")
-        assertEquals(listOf("loseLife", "cast", "resolveAll"), q.situation.events.map { it.verb }); assertEquals(3, q.situation.events[1].amount)
+        // The life rides on the cast event: the engine pays it only if the card's own cost doesn't already.
+        assertEquals(listOf("cast", "resolveAll"), q.situation.events.map { it.verb })
+        assertEquals(3, q.situation.events[0].amount); assertEquals(3, q.situation.events[0].payLife)
     }
 
     @Test

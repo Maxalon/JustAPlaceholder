@@ -2688,7 +2688,7 @@
     "id": "toxic-deluge-paying-three",
     "text": "I control Toxic Deluge and cast it paying 3 life. My opponent has Grizzly Bears and Serra Angel.",
     "expect": [
-      "You lose 3 life",
+      "You pay 3 life",
       "Serra Angel is 1/1 until end of turn",
       "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
     ],
@@ -9198,6 +9198,42 @@
     "notExpect": [
       "the battlefield \u2192 your graveyard",
       "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "kicked-with-goblins-out",
+    "text": "I control Goblin Bushwhacker and cast it kicked with three 1/1 Goblins out. What happens?",
+    "expect": [
+      "a 1/1 goblin creature is 2/1 until end of turn. (\u00d73)"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "not-kicked-no-pump",
+    "text": "I control Goblin Bushwhacker and cast it with three 1/1 Goblins out. What happens?",
+    "expect": [
+      "it needs the spell to have been kicked"
+    ],
+    "notExpect": [
+      "is 2/1",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "paying-life-is-paid-once",
+    "text": "I am at 20 life and cast Toxic Deluge paying 3 life. My opponent has Grizzly Bears. How much life do I have?",
+    "expect": [
+      "You go from 20 to 17 life"
+    ],
+    "notExpect": [
+      "Not understood",
+      "opponent pays"
     ],
     "cite": []
   }

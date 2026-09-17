@@ -676,6 +676,7 @@ object OracleParser {
     /** "you control a Swamp", "you control an artifact", "it's your turn", "you control three or more creatures". */
     fun parseCondition(text: String): Condition? {
         val t = text.trim().trimEnd('.')
+        if (Regex("""^(?:~|it|this spell) was kicked$""", RegexOption.IGNORE_CASE).matches(t)) return Condition.WasKicked
         if (Regex("""^it's your turn$""", RegexOption.IGNORE_CASE).matches(t)) return Condition.YourTurn
         if (Regex("""^it's not your turn$""", RegexOption.IGNORE_CASE).matches(t)) return Condition.NotYourTurn
         Regex("""^you have (\d+) or more life$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m -> return Condition.LifeAtLeast(m.groupValues[1].toInt()) }

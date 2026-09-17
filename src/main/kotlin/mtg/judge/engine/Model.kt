@@ -310,6 +310,8 @@ sealed interface Condition {
     data object NotYourTurn : Condition
     /** Threshold ("seven or more cards in your graveyard") and delirium ("four or more card types among them"). */
     data class GraveyardAtLeast(val amount: Int, val cardTypes: Boolean = false) : Condition
+    /** "if this spell was kicked" (702.33d). */
+    data object WasKicked : Condition
     data class Unknown(val text: String) : Condition
 }
 

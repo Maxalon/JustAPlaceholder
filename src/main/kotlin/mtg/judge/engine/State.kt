@@ -275,6 +275,7 @@ class GameState(
             (if (c.cardTypes) cards.flatMap { o -> o.def.types.filter { it in graveyardCardTypes } }.toSet().size
              else maxOf(cards.size, stated)) >= c.amount
         }
+        Condition.WasKicked -> src.wasKicked
         is Condition.Unknown -> false
     }
 
@@ -285,6 +286,7 @@ class GameState(
         Condition.NotYourTurn -> "it to be another player's turn"
         is Condition.ControlsMatching -> "its controller to control ${if (c.atLeast > 1) "${c.atLeast} or more " else "a "}${c.filter.raw ?: "matching permanent"}"
         is Condition.GraveyardAtLeast -> "${c.amount} or more ${if (c.cardTypes) "card types among cards in" else "cards in"} its controller's graveyard"
+        Condition.WasKicked -> "the spell to have been kicked"
         is Condition.Unknown -> c.text
     }
 

@@ -14,7 +14,7 @@ class Engine(val state: GameState) {
 
     // ---- events ----------------------------------------------------------------------------
 
-    fun cast(playerId: String, card: CardDef, targets: List<Ref>, objectId: String? = null, modes: List<Int> = emptyList(), overload: Boolean = false, x: Int? = null, kicked: Boolean = false, evoked: Boolean = false, flashback: Boolean = false, choice: String? = null): StackItem? {
+    fun cast(playerId: String, card: CardDef, targets: List<Ref>, objectId: String? = null, modes: List<Int> = emptyList(), overload: Boolean = false, x: Int? = null, kicked: Boolean = false, evoked: Boolean = false, flashback: Boolean = false, choice: String? = null, payLife: Int? = null): StackItem? {
         val player = state.player(playerId)
         val obj = objectId?.let { state.objects[it] } ?: state.add(GameObject(objectId ?: freshObjectId(card.name), card, Zone.HAND, playerId))
         state.stack.firstOrNull { it.kind == StackKind.SPELL && it.source.def.has("split second") }?.let { ss ->
@@ -205,13 +205,23 @@ class Engine(val state: GameState) {
         trace.step("${player.subject} ${player.v("casts", "cast")} ${card.name}${if (modes.isNotEmpty() && modal != null) " choosing " + modes.joinToString(" and ") { "\"${modal.modeTexts.getOrNull(it - 1)?.replace("~", card.name) ?: "?"}\"" } else ""}${describeTargets(targets)}. It goes on top of the stack.", "601.2a", "405.2", *(if (modal != null) arrayOf("601.2b", "700.2a") else emptyArray()))
         val playerTargetMode = targets.isNotEmpty() && targets.all { it is Ref.Player } && modes.any { modal?.modeTexts?.getOrNull(it - 1)?.lowercase()?.contains("target player") == true }
         if (modeEffect != null && modeEffect.targets().size != targets.size && !playerTargetMode) state.clarifications += Clarification("${card.name}'s target", "The chosen mode needs ${modeEffect.targets().size} target(s) (${modeEffect.targets().joinToString("; ") { it.raw }}) but ${targets.size} given.")
+        var lifeCostPaid = false
         card.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CostText>().forEach {
             val life = Regex("""(?i)\bpay (X|\d+) life\b""").find(it.text)?.groupValues?.get(1)?.let { n -> if (n.equals("X", true)) x else n.toIntOrNull() }
             if (life != null && life > 0) {
+                lifeCostPaid = true
                 player.life = player.life?.minus(life)
                 trace.step("${player.subject} ${player.v("pays", "pay")} $life life as an additional cost of ${card.name}${player.life?.let { l -> " ($l)" } ?: ""}. It's a cost, so it's paid as the spell is cast and can't be responded to.", "601.2b", "601.2h", "119.4")
                 state.outcomes += "${player.subject} ${player.v("pays", "pay")} $life life."
             } else trace.step("Cost note for ${card.name}: \"${it.text.replace("~", card.name)}\" (the total cost is determined and paid as part of casting).", "601.2b", "601.2f", "601.2h")
+        }
+        // "I cast it paying 3 life" on a card whose own cost doesn't take life: the life was still paid, so say so.
+        // When the card does have a "pay X life" cost the line above already paid it, and paying again halved the
+        // life total for no reason.
+        if (!lifeCostPaid && payLife != null && payLife > 0) {
+            player.life = player.life?.minus(payLife)
+            trace.step("${player.subject} ${player.v("pays", "pay")} $payLife life while casting ${card.name}${player.life?.let { l -> " ($l)" } ?: ""}.", "119.4")
+            state.outcomes += "${player.subject} ${player.v("pays", "pay")} $payLife life."
         }
         card.abilities.filterIsInstance<StaticAbility>().filter { it.keyword in castingKeywordRules }.forEach { k ->
             trace.step("${card.name} has ${k.text.trimEnd('.')}: ${castingKeywordNotes[k.keyword]}.", castingKeywordRules.getValue(k.keyword!!))

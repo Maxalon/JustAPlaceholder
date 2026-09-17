@@ -118,6 +118,8 @@ data class EventSpec(
     val source: String? = null,
     /** Chosen mode numbers (1-based) for modal spells (700.2). */
     val modes: List<Int> = emptyList(),
+    /** Life the caster said they paid ("cast it paying 3 life"); paid only if the card's own cost doesn't. */
+    val payLife: Int? = null,
 )
 
 @Serializable
