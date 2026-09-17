@@ -10170,5 +10170,29 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "mana-question-skips-the-basic-lands",
+    "text": "I control Cabal Coffers and four Swamps. How much mana does it make?",
+    "expect": [
+      "Cabal Coffers can make",
+      "{B}{B}{B}{B} right now"
+    ],
+    "notExpect": [
+      "Swamp can make",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "mana-question-counts-creatures",
+    "text": "I control Gaea's Cradle and three creatures. How much mana does it make?",
+    "expect": [
+      "{G}{G}{G} right now"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
