@@ -11194,5 +11194,27 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "no-untapped-lands",
+    "text": "I control Thalia, Guardian of Thraben. My opponent has no untapped lands and casts Lightning Bolt.",
+    "expect": [
+      "can't be cast (costs 2, only 0 mana available)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "aura-on-my-own-creature",
+    "text": "I put a Pacifism on my own creature by mistake. Can it attack?",
+    "expect": [
+      "a creature can't attack"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

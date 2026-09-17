@@ -1437,6 +1437,14 @@ class SituationParser(private val names: NameIndex) {
         if (isNoise(c)) { askQuestion(clause0, m, ctx); return true }
         if (Regex("""^(?:(?:doesn't|does not|don't|do not|didn't|won't|declines? to|chooses? not to) block\b.*|no blocks?|takes? (?:it|the damage|the hit|the other|the other one|the rest|the others)|lets? (?:it|the other|the others|the rest) through)$""").matches(c)) { ctx.lastActor = actor ?: ctx.lastActor; return true }
         // "has no creatures" / "have no blockers": nothing to add to the board.
+        // "my opponent has no untapped lands": nothing to add to the board, but it does say there is no mana,
+        // which is what a tax or a response is checked against.
+        Regex("""^(?:(?:has|have|got|controls?) )?no (untapped lands?|untapped permanents?|untapped mana sources?|mana(?: available| open| up)?|lands? untapped|mana sources? untapped)(?: on the battlefield| in play| out| at all| left)?$""").find(c)?.let {
+            val who = actor ?: ctx.lastActor ?: "me"
+            ctx.mana[who] = 0; ctx.note(who)
+            ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} no mana available; costs are checked against that."
+            if (actor != null) ctx.lastActor = actor; return true
+        }
         if (Regex("""^(?:(?:has|have|got|controls?) )?no (?:creatures?|blockers?|permanents?|other creatures?|untapped creatures?|flyers?|fliers?|lands?|artifacts?|enchantments?|planeswalkers?)(?: on the battlefield| in play| out| at all)?$""").matches(c)) { if (actor != null) ctx.lastActor = actor; return true }
         // "with a regeneration shield", "regenerated X", "X is regenerated": a regeneration shield on that permanent.
         Regex("""^(?:regenerates? |regenerated |gives? (?:a )?regeneration (?:shield )?to |activates? regeneration on )(?:an? |the |my |their )?(c\d+|it|that|that creature)$""").find(c)?.let { r ->
@@ -1515,11 +1523,13 @@ class SituationParser(private val names: NameIndex) {
         }
         // "I put Rancor on my Grizzly Bears" / "attach Bonesplitter to it": an Aura or Equipment on a permanent
         // that is already there. Without this the attachment was dropped and the creature answered its bare size.
-        Regex("""^(?:puts?|attach(?:es)?|attached|sticks?|stuck|enchants? with|hangs?) (?:an? |the |my |their )?(c\d+) (?:on|onto|to|on top of) (?:($possPrefix|an? ))?(c\d+|it|that)$""").find(c)?.let { r ->
+        Regex("""^(?:puts?|attach(?:es)?|attached|sticks?|stuck|enchants? with|hangs?) (?:an? |the |my |their )?(c\d+) (?:on|onto|to|on top of) (?:($possPrefix|an? ))?(?:own )?(c\d+|it|that|creature|guy|dude)(?: by mistake| by accident| accidentally| anyway)?$""").find(c)?.let { r ->
             val aura = m.cards[r.groupValues[1]] ?: return@let
             if (aura.typeLine.let { !it.contains("Aura", true) && !it.contains("Equipment", true) && !it.contains("Enchantment", true) }) return@let
             val hostWho = possessiveOwner(r.groupValues[2], ctx, m) ?: actor ?: ctx.lastOwner ?: "me"
-            val host = if (r.groupValues[3] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+            val host = if (r.groupValues[3] in setOf("creature", "guy", "dude")) (ctx.objects.values.lastOrNull { it.controller == hostWho && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id
+                           ?: describedCreatures("a ", "", "creature", hostWho, ctx).firstOrNull() ?: return@let)
+                       else if (r.groupValues[3] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
                        else m.cards[r.groupValues[3]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, hostWho, false, ctx) } ?: return@let
             val att = objectIdFor(aura, ctx) ?: addObject(aura, actor ?: ctx.lastOwner ?: "me", false, ctx)
             ctx.objects[att] = ctx.objects.getValue(att).copy(attachedTo = host)
