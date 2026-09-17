@@ -8724,5 +8724,28 @@
       "You draw 1 card"
     ],
     "cite": []
+  },
+  {
+    "id": "what-are-their-stats",
+    "text": "I control Goblin Chieftain and two other Goblins. What are their stats?",
+    "expect": [
+      "Goblin Chieftain is 2/2",
+      "+1/+1 from Goblin Chieftain"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "mana-question-about-the-card-named",
+    "text": "I control Elvish Archdruid and two other Elves. How much mana does it make?",
+    "expect": [
+      "Elvish Archdruid can make"
+    ],
+    "notExpect": [
+      "no mana ability"
+    ],
+    "cite": []
   }
 ]

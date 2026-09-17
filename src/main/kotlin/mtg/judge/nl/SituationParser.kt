@@ -2874,8 +2874,13 @@ class SituationParser(private val names: NameIndex) {
         // "what color mana can it make?" / "what does it tap for?": the permanent's mana abilities as they stand.
         Regex("""^(?:(?:what|how much|how many) (?:colou?r )?(?:of )?mana (?:can|does|do|will) (?:it|that|(?:my |their |the |@\w+'s )?(c\d+)) (?:make|produce|add|give|tap for)|what (?:does|do|can) (?:it|that|(?:my |their |the )?(c\d+)) tap for)(?: now| then| for me)?$""").find(clause0)?.let { q ->
             val ph = q.groupValues[1].ifEmpty { q.groupValues[2] }
+            // "I control Elvish Archdruid and two other Elves. How much mana does it make?" — "it" is the card
+            // that was named, not the last unnamed creature described after it.
             val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
-                     else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.card?.name?.let { slug(it) } ?: return@let
+                     else ctx.lastMentioned?.takeIf { it in ctx.objects && !Regex("""^an? """).containsMatchIn(ctx.objects.getValue(it).card.name ?: "") }
+                         ?: ctx.events.lastOrNull { (it.verb == "cast" || it.verb == "play") && it.card?.name != null }?.card?.name?.let { slug(it) }
+                         ?: ctx.objects.values.lastOrNull { it.zone == "battlefield" && !Regex("""^an? """).containsMatchIn(it.card.name ?: "") }?.id
+                         ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, to = "mana"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "which of my creatures can attack?": one answer per creature that player controls.
@@ -2973,6 +2978,23 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("resolveAll"); ctx.explicitResolve = true; ctx.note(active)
             ctx.asks += EventSpec("ask", obj = id, player = who, to = "control", targets = listOf(active)); ctx.note(who)
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by playing the turn out to its cleanup step; the outcome below says who controls ${ctx.objects.getValue(id).card.name} then."; return true
+        }
+        // "what are their stats?" / "how big are my creatures?": every creature that player has, one answer each.
+        Regex("""^(?:what (?:are|'s) (?:their|(?:my|our|his|her|the opponent's|my opponent's|@\w+'s) creatures'?) (?:stats|sizes|size|power and toughness|p/t)|how big are (?:they|(?:my|their|his|her|@\w+'s) creatures))(?: now| then| after that)?$""").find(clause0)?.let { q ->
+            val whose = Regex("""\b(my|our|his|her|their|the opponent's|my opponent's|@\w+'s)\b""").find(clause0)?.groupValues?.get(1)
+            val who = when (whose) {
+                "my", "our", null -> "me"
+                // "I control Goblin Chieftain and two other Goblins. What are their stats?" — "their" is the
+                // creatures', not a player's, so it means whoever controls the ones just described.
+                "their" -> ctx.lastMentioned?.takeIf { it in ctx.objects }?.let { ctx.objects.getValue(it).controller } ?: pronounPlayer(ctx, "their")
+                "his", "her" -> pronounPlayer(ctx, "their")
+                "the opponent's", "my opponent's" -> pronounPlayer(ctx, "opponent")
+                else -> whose.removePrefix("@").removeSuffix("'s")
+            }
+            val ids = ctx.objects.values.filter { it.zone == "battlefield" && it.controller == who && isCreatureName(it.card.name) }.map { it.id }
+            if (ids.isEmpty()) return@let
+            for (id in ids) ctx.asks += EventSpec("ask", obj = id, to = "pt")
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered for each of those creatures in the outcome below."; return true
         }
         // "what are its stats?" / "how big is Tarmogoyf?" / "what's Kird Ape's power and toughness?": the creature's size once everything is done.
         Regex("""^(?:what (?:are|is|'s|s) (?:its|(?:my |their |the |@\w+'s )?(c\d+)(?:'s)?) (?:stats|size|power and toughness|p/t|power|toughness|power/toughness)|how big is (?:it|(?:my |their |the |@\w+'s )?(c\d+))|what size is (?:it|(?:my |their |the )?(c\d+)))(?: now| right now| then| after that| at that point)?$""").find(clause0)?.let { q ->
