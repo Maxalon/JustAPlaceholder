@@ -8361,5 +8361,31 @@
       "Tarmogoyf is 1/2"
     ],
     "cite": []
+  },
+  {
+    "id": "a-named-players-devotion",
+    "text": "Alice's devotion to green is 4. Alice controls Nykthos, Shrine to Nyx and activates it for green. What happens?",
+    "expect": [
+      "{G}{G}{G}{G}"
+    ],
+    "notExpect": [
+      "devotion 0"
+    ],
+    "cite": [
+      "700.5"
+    ]
+  },
+  {
+    "id": "an-opponents-commander-damage",
+    "text": "My opponent's commander Atraxa, Praetors' Voice has dealt 18 damage to me and attacks me again. What happens?",
+    "expect": [
+      "You lose the game (commander damage)"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "903.10a"
+    ]
   }
 ]

@@ -1642,7 +1642,10 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} $n lands, read as $n mana available (assuming they're untapped); costs are checked against that."; return true
         }
         // "my devotion to blue is 4"
-        Regex("""^(?:my |their |his |her )?devotion to (white|blue|black|red|green) (?:is|=|of) (\d+)$""").find(c)?.let { r -> val who = actor ?: (if (c.startsWith("their")) pronounPlayer(ctx, "their") else "me"); ctx.devotion.getOrPut(who) { LinkedHashMap() }[r.groupValues[1]] = r.groupValues[2].toInt(); ctx.note(who); return true }
+        Regex("""^($possPrefix)?devotion to (white|blue|black|red|green) (?:is|=|of) (\d+)$""").find(c)?.let { r ->
+            val who = possessiveOwner(r.groupValues[1], ctx, m) ?: actor ?: (if (c.startsWith("their")) pronounPlayer(ctx, "their") else "me")
+            ctx.devotion.getOrPut(who) { LinkedHashMap() }[r.groupValues[2]] = r.groupValues[3].toInt(); ctx.note(who); return true
+        }
         // "it has been countered twice" / "Kaalia was countered once": the commander tax.
         Regex("""^(?:(?:it|that|(?:my )?(c\d+)|my commander) )?(?:has been|was|got|has already been|had been) (?:countered|killed|cast) (once|twice|three times|four times|\d+ times?)(?: (?:already|before|so far|this game))?$""").find(c)?.let { r ->
             val id = r.groupValues[1].takeIf { it.isNotEmpty() }?.let { m.cards.getValue(it) }?.let { objectIdFor(it, ctx) ?: addObject(it, actor ?: "me", false, ctx) } ?: ctx.objects.values.lastOrNull { it.commander } ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
@@ -1908,10 +1911,11 @@ class SituationParser(private val names: NameIndex) {
             emitCast(who, m.cards.getValue(r.groupValues[2]), " targeting ${r.groupValues[1]}", m, ctx); return true
         }
         // "my commander Atraxa has dealt 18 damage to my opponent already" / "Atraxa has already dealt them 18 commander damage"
-        Regex("""^(?:my |their )?(?:(\d+/\d+) )?(?:commander )?(c\d+|it|that|commander) (?:has |have )?(?:already )?(?:dealt|done|hit (?:them|me|@\w+|my opponent) for) (\d+)(?: commander| combat)? damage(?: to (me|them|my opponent|the opponent|@\w+))?(?: already| so far| this game)?$|^(?:my |their )?(?:(\d+/\d+) )?(?:commander )?(c\d+|it|that|commander) (?:has |have )?(?:already )?dealt (me|them|my opponent|the opponent|@\w+) (\d+)(?: commander| combat)? damage(?: already| so far| this game)?$""").find(c)?.let { r ->
+        Regex("""^(?:$possPrefix)?(?:(\d+/\d+) )?(?:commander )?(c\d+|it|that|commander) (?:has |have )?(?:already )?(?:dealt|done|hit (?:them|me|@\w+|my opponent) for) (\d+)(?: commander| combat)? damage(?: to (me|them|my opponent|the opponent|@\w+))?(?: already| so far| this game)?$|^(?:$possPrefix)?(?:(\d+/\d+) )?(?:commander )?(c\d+|it|that|commander) (?:has |have )?(?:already )?dealt (me|them|my opponent|the opponent|@\w+) (\d+)(?: commander| combat)? damage(?: already| so far| this game)?$""").find(c)?.let { r ->
             val ph = r.groupValues[2].ifEmpty { r.groupValues[6] }; val amount = (r.groupValues[3].ifEmpty { r.groupValues[8] }).toInt(); val victimWord = r.groupValues[4].ifEmpty { r.groupValues[7] }
             val pt = r.groupValues[1].ifEmpty { r.groupValues[5] }
-            val who = actor ?: ctx.lastActor ?: "me"
+            // "Alice's commander has dealt 18 damage to me": whose commander it is, said in the clause.
+            val who = Regex("""^($possPrefix)""").find(c)?.let { possessiveOwner(it.groupValues[1], ctx, m) } ?: actor ?: ctx.lastActor ?: "me"
             // "My commander is Atraxa and it has dealt 18 commander damage": "it" is the commander just named.
             val id = if (ph == "it" || ph == "that") ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
                      // "my commander has dealt 18 damage" with no name: an unnamed commander, sized if the asker said so.
@@ -2530,7 +2534,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
         // "attacks me (with it)" after a Threaten: the last-mentioned creature attacks; the engine knows who controls it now.
-        Regex("""^(?:attacks?|swings? at|swings? (?:it )?(?:at|into)|comes? at) (me|us|them|my opponent|the opponent|opponent|@\w+)(?: with (?:it|that|that creature))?$""").find(c)?.let { r ->
+        Regex("""^(?:attacks?|swings? at|swings? (?:it )?(?:at|into)|comes? at) (me|us|them|my opponent|the opponent|opponent|@\w+)(?: with (?:it|that|that creature))?(?: again| once more| a second time| this turn| now)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "opp"
             val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.lastOrNull { it.verb == "cast" || it.verb == "activate" }?.targets?.firstOrNull { it in ctx.objects } ?: return@let
             val defender = when (r.groupValues[1]) { "me", "us" -> "me"; "them", "my opponent", "the opponent", "opponent" -> ctx.other(who) ?: "opp"; else -> r.groupValues[1].removePrefix("@") }
