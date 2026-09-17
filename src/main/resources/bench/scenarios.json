@@ -8291,5 +8291,16 @@
     "cite": [
       "614.6"
     ]
+  },
+  {
+    "id": "blocked-by-with-the-subject-left-out",
+    "text": "I control Grizzly Bears. It attacks and is blocked by a 1/1. What happens?",
+    "expect": [
+      "1 damage"
+    ],
+    "notExpect": [
+      "unblocked"
+    ],
+    "cite": []
   }
 ]
