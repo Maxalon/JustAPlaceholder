@@ -16,6 +16,8 @@ class Player(val id: String, val name: String, var life: Int?) {
     var mana: Int? = null
     /** Cards in library, when the situation said so (empty-library draws, 704.5b). */
     var librarySize: Int? = null
+    /** Cards in graveyard, when the situation said so rather than naming them (threshold, delirium). */
+    var graveyardSize: Int? = null
     /** Tried to draw from an empty library since state-based actions were last checked (121.4). */
     var drewFromEmpty = false
     /** Combat damage taken from each commander (903.10a), by object id. */
@@ -264,7 +266,24 @@ class GameState(
         Condition.YourTurn -> activePlayer == src.controller
         Condition.NotYourTurn -> activePlayer != null && activePlayer != src.controller
         is Condition.ControlsMatching -> objects.values.count { it !== src && matches(c.filter, it, src.controller, src) || (it === src && matches(c.filter, it, src.controller, src)) } >= c.atLeast
+        is Condition.GraveyardAtLeast -> {
+            val cards = objects.values.filter { it.zone == Zone.GRAVEYARD && it.controller == src.controller && !it.token }
+            // A graveyard can be given as a count ("my graveyard has seven cards") or as named cards; take whichever says more.
+            val stated = players.firstOrNull { it.id == src.controller }?.graveyardSize ?: 0
+            (if (c.cardTypes) cards.flatMap { o -> o.def.types.filter { it in graveyardCardTypes } }.toSet().size
+             else maxOf(cards.size, stated)) >= c.amount
+        }
         is Condition.Unknown -> false
+    }
+
+    /** What a static ability's condition asks for, for traces and for saying why one doesn't apply. */
+    fun describeCondition(c: Condition): String = when (c) {
+        is Condition.LifeAtLeast -> "${if (c.opponent) "an opponent" else "you"} at ${c.amount} or more life"
+        Condition.YourTurn -> "its controller's turn"
+        Condition.NotYourTurn -> "another player's turn"
+        is Condition.ControlsMatching -> "${if (c.atLeast > 1) "${c.atLeast} or more " else "a "}${c.filter.raw ?: "matching permanent"} under its controller"
+        is Condition.GraveyardAtLeast -> "${c.amount} or more ${if (c.cardTypes) "card types among cards in" else "cards in"} its controller's graveyard"
+        is Condition.Unknown -> c.text
     }
 
     /** Layer 7a: a characteristic-defining ability's value, or null when it depends on something the situation doesn't say. */
@@ -278,7 +297,8 @@ class GameState(
         is CountExpr.Unknown -> null
     }
     /** The card types among cards in every graveyard (Tarmogoyf); tokens are not cards, and a Kindred card counts its type. */
-    fun cardTypesInGraveyards(): Set<String> = objects.values.filter { it.zone == Zone.GRAVEYARD && !it.token }.flatMap { o -> o.def.types.filter { it in setOf("Artifact", "Battle", "Creature", "Enchantment", "Instant", "Kindred", "Tribal", "Land", "Planeswalker", "Sorcery") }.map { if (it == "Tribal") "Kindred" else it } }.toSet()
+    fun cardTypesInGraveyards(): Set<String> = objects.values.filter { it.zone == Zone.GRAVEYARD && !it.token }.flatMap { o -> o.def.types.filter { it in graveyardCardTypes }.map { if (it == "Tribal") "Kindred" else it } }.toSet()
+    private val graveyardCardTypes = setOf("Artifact", "Battle", "Creature", "Enchantment", "Instant", "Kindred", "Tribal", "Land", "Planeswalker", "Sorcery")
     fun cdaOf(obj: GameObject): StaticEffect.PtCda? = obj.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.PtCda>().firstOrNull()
 
     /** A Humility-style effect applying to [obj] right now, with the permanent it comes from. */

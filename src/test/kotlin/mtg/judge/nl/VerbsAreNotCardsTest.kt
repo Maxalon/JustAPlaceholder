@@ -21,6 +21,8 @@ class VerbsAreNotCardsTest {
             "it fights their creature", "I proliferate", "they goad it", "I surveil 2", "I mill three cards",
             "they scry 2", "I shuffle my library", "they mulligan", "I search my library",
             "can they redirect it", "do they steal it", "can they deflect it", "do they swap it",
+            // A number word is a count: "seven" reached a card and the graveyard it counted went unread.
+            "my graveyard has seven cards", "I have five cards in hand", "they have nine cards in their library",
         )
         val wrong = mutableListOf<String>()
         for (p in phrases) {

@@ -135,6 +135,14 @@ class StaysParsedTest {
         check("Wolf Pack", "Creature — Wolf", "~ can't attack unless you control another Wolf.")
     }
 
+    /** An ability word before a static reads the same way (207.2c); "Threshold — ~ gets …" once read as a bare keyword. */
+    @Test
+    fun `an ability word does not stop a static being read`() {
+        check("Werebear", "Creature — Human Bear Druid", "{T}: Add {G}.\nThreshold — ~ gets +3/+3 as long as there are seven or more cards in your graveyard.", listOf("Threshold"))
+        check("Excavating Anurid", "Creature — Frog Beast", "Threshold — As long as there are seven or more cards in your graveyard, ~ gets +1/+1 and has vigilance.", listOf("Threshold"))
+        check("Nimble Mongoose", "Creature — Mongoose", "Threshold — ~ gets +2/+2 as long as there are seven or more cards in your graveyard.", listOf("Threshold"))
+    }
+
     @Test
     fun `gets-for-each wordings stay modelled`() {
         check("Nim Lasher", "Creature — Zombie", "~ gets +1/+0 for each artifact you control.")

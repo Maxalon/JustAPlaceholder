@@ -39,6 +39,7 @@ class SituationParser(private val names: NameIndex) {
         val handSize = LinkedHashMap<String, Int>()
         val mana = LinkedHashMap<String, Int>()
         val librarySize = LinkedHashMap<String, Int>()
+        val graveyardSize = LinkedHashMap<String, Int>()
         var turnNumber: Int? = null
         val devotion = LinkedHashMap<String, MutableMap<String, Int>>()
         /** "I have cast four spells this turn": a storm-style count the situation stated rather than played out. */
@@ -128,7 +129,7 @@ class SituationParser(private val names: NameIndex) {
         for (e in ctx.events) { e.player?.let { ctx.note(it) }; e.targets.forEach { if (it == "me" || it == "opp") ctx.note(it) } }
         for (o in ctx.objects.values) ctx.note(o.controller)
         val turnSpec = TurnSpec(ctx.activePlayer, null, null, ctx.turnNumber)
-        val players = ctx.playerIds().map { id -> PlayerSpec(id, when (id) { "me" -> "me"; "opp" -> "opponent"; else -> ctx.players[id] ?: id }, ctx.life[id], ctx.poison[id], ctx.handSize[id], ctx.librarySize[id], ctx.commanderDamage[id] ?: emptyMap(), ctx.mana[id], ctx.devotion[id] ?: emptyMap(), ctx.spellsThisTurn[id]) }
+        val players = ctx.playerIds().map { id -> PlayerSpec(id, when (id) { "me" -> "me"; "opp" -> "opponent"; else -> ctx.players[id] ?: id }, ctx.life[id], ctx.poison[id], ctx.handSize[id], ctx.librarySize[id], ctx.commanderDamage[id] ?: emptyMap(), ctx.mana[id], ctx.devotion[id] ?: emptyMap(), ctx.spellsThisTurn[id], ctx.graveyardSize[id]) }
         if (ctx.players.isNotEmpty() && ctx.usesOpp && ctx.players.size >= 2) ctx.notes += "\"opponent\"/\"they\" was read as a separate player from ${ctx.players.values.joinToString(" and ")}; name the player instead if that's wrong."
         return Parsed(Situation(players, turnSpec, ctx.objects.values.toList(), emptyList(), ctx.events), ctx.unread, ctx.notes)
     }
@@ -194,6 +195,9 @@ class SituationParser(private val names: NameIndex) {
     /** Creature-type words people shorten a name to ("the Angel", "the Giant"); only used with "the"/"my"/"their" in front. */
     /** Words that make the next word a description rather than a name: "a Goblin", "two Walls". */
     private val indefiniteWords = setOf("a", "an", "another", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "some", "any", "no", "each", "every", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10")
+    /** Number words are counts, never the card of that name; a card whose name starts with one is longer than a word. */
+    private val countWords = setOf("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+        "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty")
     private val typeShortNames = setOf("wall", "angel", "demon", "dragon", "giant", "wizard", "knight", "elf", "goblin", "sphinx", "beast", "bird", "cat", "wolf", "bear", "elemental", "spirit", "soldier", "warrior", "lord", "king", "queen", "rat", "dog", "zombie", "vampire", "hydra", "titan", "golem", "wurm", "drake", "djinn", "phoenix", "shaman", "druid", "cleric", "rogue", "archer")
 
     private val shortNameStop = setOf("the", "and", "with", "from", "into", "onto", "for", "that", "this", "your", "you", "all", "each", "any", "one", "two", "three", "of",
@@ -258,6 +262,9 @@ class SituationParser(private val names: NameIndex) {
         val found = (full + normWords.indices.filter { it !in covered }.mapNotNull { i -> shortAt(i)?.let { NameIndex.Found(i, i + 1, it) } })
             // "a Goblin", "two Walls": a bare creature type after an indefinite article or a count is a description, not the card of that name.
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in typeShortNames && normWords.getOrNull(f.start - 1) in indefiniteWords) }
+            // "my graveyard has seven cards": a number word on its own is a count. It once reached a card and the
+            // count went unread, so the graveyard the asker described wasn't there.
+            .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in countWords) }
             // "a Charge counter", "two Shield tokens": the word before "counter"/"token" names the kind, not a card.
             // Unless the word is the verb: "their Counterspell counters it" is a spell doing something, not a kind of counter.
             .filter { f -> !(f.end - f.start == 1 && normWords.getOrNull(f.end) in setOf("token", "tokens", "counter", "counters") && normWords[f.start] !in short &&
@@ -1622,6 +1629,14 @@ class SituationParser(private val names: NameIndex) {
             val who = whose ?: actor ?: subject ?: "me"
             val word = r.groupValues[1].ifEmpty { r.groupValues[4] }
             ctx.librarySize[who] = if (word.isEmpty() || word == "no") 0 else number(word) ?: 0; ctx.note(who); return true
+        }
+        // "my graveyard has seven cards" / "there are 7 cards in my graveyard": a graveyard given as a count
+        // rather than by naming the cards, which is what threshold and delirium are asked about.
+        Regex("""^(?:there (?:is|are) )?(?:(?:has|have|with|holds?) )?(\d+|\w+|no) cards? in ($possPrefix)?(?:graveyard|yard|bin)$|^($possPrefix)?(?:graveyard|yard|bin) (?:has|contains|holds) (\d+|\w+|no) cards?(?: in it)?$""").find(c)?.let { r ->
+            val who = possessiveOwner(r.groupValues[2].ifEmpty { r.groupValues[3] }, ctx) ?: actor ?: subject ?: "me"
+            val word = r.groupValues[1].ifEmpty { r.groupValues[4] }
+            val n = if (word == "no") 0 else number(word) ?: return@let
+            ctx.graveyardSize[who] = n; ctx.note(who); return true
         }
         // "… and 6 lands" / "3 untapped lands" as a fragment after a possession: mana available.
         Regex("""^(\d+|two|three|four|five|six|seven|eight|nine|ten) (?:untapped |open )?(?:lands?|mana|mana sources?)(?: untapped| open| available)?$""").find(c)?.let { r ->
@@ -3168,7 +3183,9 @@ class SituationParser(private val names: NameIndex) {
         return out
     }
 
-    private val numberWords = mapOf("two" to 2, "three" to 3, "four" to 4, "five" to 5)
+    private val numberWords = mapOf("zero" to 0, "two" to 2, "three" to 3, "four" to 4, "five" to 5, "six" to 6, "seven" to 7,
+        "eight" to 8, "nine" to 9, "ten" to 10, "eleven" to 11, "twelve" to 12, "thirteen" to 13, "fourteen" to 14,
+        "fifteen" to 15, "sixteen" to 16, "seventeen" to 17, "eighteen" to 18, "nineteen" to 19, "twenty" to 20)
 
     /** Verbs that are also card names ("Protect", "Bloodrush"); right after "to" they are verbs. */
     private val verbsAfterTo = setOf("protect", "save", "shield", "defend", "keep", "destroy", "kill", "draw", "search", "block", "attack",

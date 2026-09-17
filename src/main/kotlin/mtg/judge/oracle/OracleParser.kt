@@ -58,13 +58,15 @@ object OracleParser {
         val spellLines = mutableListOf<String>()
         for (line in lines) {
             val selfRef = selfReference(line, name)
-            val statics = parseStatic(selfRef)
+            // "Threshold — As long as …", "Landfall — ~ gets …": the ability word names the ability and says
+            // nothing by itself (207.2c). Without stripping it the line reads as a bare keyword and loses its effect.
+            val statics = parseStatic(selfRef.replace(abilityWordStatic, ""))
             when {
                 Regex("""^Activate only .+$""", RegexOption.IGNORE_CASE).matches(selfRef) -> {
                     val i = abilities.indexOfLast { it is ActivatedAbility }
                     if (i >= 0) abilities[i] = (abilities[i] as ActivatedAbility).copy(restriction = selfRef.trimEnd('.'), text = abilities[i].text + " " + selfRef) else abilities += UnparsedAbility(selfRef)
                 }
-                isKeywordLine(selfRef, keywords) -> selfRef.split(',', ';').map { it.trim() }.filter { it.isNotEmpty() }.forEach { part ->
+                isKeywordLine(selfRef, keywords) && statics.isEmpty() -> selfRef.split(',', ';').map { it.trim() }.filter { it.isNotEmpty() }.forEach { part ->
                     val kw = keywords.map { it.lowercase() }.filter { part.lowercase() == it || part.lowercase().startsWith("$it ") }.maxByOrNull { it.length } ?: part.substringBefore(' ').lowercase()
                     when (kw) {
                         "enchant" -> { val what = part.substring(7).trim().trimEnd('.'); enchant = if (what.equals("player", true)) ObjFilter(setOf(Kind.PLAYER), raw = what) else parseFilter(what, Kind.PERMANENT); abilities += StaticAbility(part, kw) }
@@ -142,6 +144,8 @@ object OracleParser {
      * Matched only when a trigger word follows, so a modal "Choose one —" is left alone.
      */
     private val abilityWord = Regex("""^[A-Z][A-Za-z'’]*(?: [A-Za-z'’]+){0,4}\s*[—–]\s*(?=Whenever\b|When\b|At\b)""")
+    /** The same for a static ability. A cost can follow an em-dash too ("Ward—Pay 3 life"), so only sentences count. */
+    private val abilityWordStatic = Regex("""^[A-Z][A-Za-z'’]*(?: [A-Za-z'’]+){0,4}\s*[—–]\s*(?=As long as\b|~|Creatures\b|Each\b|You\b|If\b)""")
 
     private fun parseTriggered(line: String): Ability {
         val m = triggerRe.matchEntire(line) ?: return UnparsedAbility(line)
@@ -602,6 +606,13 @@ object OracleParser {
         if (Regex("""^it's not your turn$""", RegexOption.IGNORE_CASE).matches(t)) return Condition.NotYourTurn
         Regex("""^you have (\d+) or more life$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m -> return Condition.LifeAtLeast(m.groupValues[1].toInt()) }
         Regex("""^an opponent has (\d+) or (?:more|less) life$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m -> return Condition.LifeAtLeast(m.groupValues[1].toInt(), opponent = true) }
+        // Threshold and delirium, and the same counts written as a plain sentence.
+        Regex("""^(?:there are |you have )?(one|two|three|four|five|six|seven|eight|nine|ten|\d+) or more cards? in your graveyard$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m ->
+            return number(m.groupValues[1])?.let { Condition.GraveyardAtLeast(it) }
+        }
+        Regex("""^(?:there are )?(one|two|three|four|five|six|seven|eight|nine|ten|\d+) or more card types among cards in your graveyard$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m ->
+            return number(m.groupValues[1])?.let { Condition.GraveyardAtLeast(it, cardTypes = true) }
+        }
         Regex("""^you control (?:a|an|another|(one|two|three|four|five|six|seven|\d+) or more) (.+?)$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m ->
             val n = m.groupValues[1].takeIf { it.isNotEmpty() }?.let { number(it) } ?: 1
             // "a Plains or an Island": either land type counts.

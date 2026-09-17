@@ -296,6 +296,8 @@ sealed interface Condition {
     data class LifeAtLeast(val amount: Int, val opponent: Boolean = false) : Condition
     data object YourTurn : Condition
     data object NotYourTurn : Condition
+    /** Threshold ("seven or more cards in your graveyard") and delirium ("four or more card types among them"). */
+    data class GraveyardAtLeast(val amount: Int, val cardTypes: Boolean = false) : Condition
     data class Unknown(val text: String) : Condition
 }
 

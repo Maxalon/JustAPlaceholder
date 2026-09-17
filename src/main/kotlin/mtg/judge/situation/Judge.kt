@@ -37,7 +37,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
     fun answer(sit: Situation): Answer {
         val understood = mutableListOf<String>()
-        val state = GameState(sit.players.map { ps -> Player(ps.id, ps.name, ps.life).also { it.poison = ps.poison ?: 0; it.handSize = ps.handSize; it.librarySize = ps.librarySize; it.commanderDamage.putAll(ps.commanderDamage); it.mana = ps.mana; ps.devotion.forEach { (c, n) -> colourChar(c)?.let { ch -> it.devotion[ch] = n } } } }, LinkedHashMap(), activePlayer = sit.turn.activePlayer, phase = sit.turn.phase, step = sit.turn.step).also { st ->
+        val state = GameState(sit.players.map { ps -> Player(ps.id, ps.name, ps.life).also { it.poison = ps.poison ?: 0; it.handSize = ps.handSize; it.librarySize = ps.librarySize; it.graveyardSize = ps.graveyardSize; it.commanderDamage.putAll(ps.commanderDamage); it.mana = ps.mana; ps.devotion.forEach { (c, n) -> colourChar(c)?.let { ch -> it.devotion[ch] = n } } } }, LinkedHashMap(), activePlayer = sit.turn.activePlayer, phase = sit.turn.phase, step = sit.turn.step).also { st ->
             st.turnNumber = sit.turn.number
             // "I have cast four spells this turn": storm-style counts start from what the situation said.
             sit.players.forEach { ps -> ps.spellsThisTurn?.let { n -> st.spellsThisTurn[ps.id] = n } }
@@ -69,7 +69,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
         understood += "Players: " + state.players.joinToString(", ") { p ->
             val notes = listOfNotNull(p.life?.let { "$it life" }, p.poison.takeIf { it > 0 }?.let { "$it poison" },
-                p.handSize?.let { "$it in hand" }, p.librarySize?.let { "$it in library" }, p.mana?.let { "$it mana" },
+                p.handSize?.let { "$it in hand" }, p.librarySize?.let { "$it in library" }, p.graveyardSize?.let { "$it in graveyard" }, p.mana?.let { "$it mana" },
                 state.spellsThisTurn[p.id]?.takeIf { it > 0 }?.let { "$it spell${if (it == 1) "" else "s"} cast this turn" })
             (if (p.you) "you" else p.name) + (if (notes.isEmpty()) "" else " (" + notes.joinToString(", ") + ")")
         } + (state.activePlayer?.let { "; it's ${state.player(it).possessive} turn" } ?: "; whose turn it is wasn't stated")

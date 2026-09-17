@@ -8194,5 +8194,43 @@
     "cite": [
       "302.6"
     ]
+  },
+  {
+    "id": "threshold-with-a-graveyard-count",
+    "text": "I control Werebear. My graveyard has seven cards. What are its stats?",
+    "expect": [
+      "Werebear is 4/4"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "threshold-not-active",
+    "text": "I control Werebear. My graveyard has three cards. What are its stats?",
+    "expect": [
+      "Werebear is 1/1"
+    ],
+    "notExpect": [
+      "4/4"
+    ],
+    "cite": []
+  },
+  {
+    "id": "threshold-grants-a-keyword",
+    "text": "I control Excavating Anurid. My graveyard has seven cards. What are its stats?",
+    "expect": [
+      "Excavating Anurid is 5/5"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "a-count-said-as-a-word",
+    "text": "I have seven cards in hand. It is my cleanup step. What happens?",
+    "expect": [
+      "discard"
+    ],
+    "notExpect": [],
+    "cite": []
   }
 ]
