@@ -2786,6 +2786,17 @@ class SituationParser(private val names: NameIndex) {
         // "who dies?" / "who wins?" / "who loses?": every player's fate, one answer each.
         Regex("""^who (dies|loses|wins|survives|is dead|is alive|comes out ahead)(?: here| then| the game| now)?$""").find(clause0)?.let { q ->
             val to = when (q.groupValues[1]) { "wins", "comes out ahead" -> "playerWin"; "survives", "is alive" -> "playerSurvive"; else -> "playerDie" }
+            // "Who dies?" after a block is about the creatures in that combat. Answered about the players it
+            // said "you are still in the game", which is true and is not what was asked.
+            val blocks = ctx.events.filter { it.verb == "block" }
+            if (to != "playerWin" && blocks.isNotEmpty()) {
+                val ids = (blocks.mapNotNull { it.obj } + blocks.mapNotNull { it.targets.firstOrNull() }).distinct().filter { it in ctx.objects }
+                if (ids.isNotEmpty()) {
+                    for (id in ids) ctx.asks += EventSpec("ask", obj = id, to = if (to == "playerDie") "die" else "survive")
+                    ctx.notes += "\"${restore(clause0, m)}?\" is answered for each creature in that combat in the outcome below."
+                    return true
+                }
+            }
             for (pid in ctx.playerIds()) ctx.asks += EventSpec("ask", player = pid, to = to)
             ctx.notes += "\"${restore(clause0, m)}?\" is answered for each player in the outcome below."; return true
         }

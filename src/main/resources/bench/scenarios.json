@@ -8504,5 +8504,16 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "who-dies-in-combat",
+    "text": "I attack with Grizzly Bears and my opponent blocks with Hill Giant. Who dies?",
+    "expect": [
+      "Yes: Grizzly Bears died"
+    ],
+    "notExpect": [
+      "You are still in the game"
+    ],
+    "cite": []
   }
 ]
