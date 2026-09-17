@@ -10997,5 +10997,63 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "opponent-concedes",
+    "text": "My opponent scoops. Do I win?",
+    "expect": [
+      "opponent concedes and loses the game",
+      "Yes: You have won the game."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "104.3a"
+    ]
+  },
+  {
+    "id": "mill-a-player",
+    "text": "I mill my opponent for 5. What happens?",
+    "expect": [
+      "opponent mills 5 cards"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "untap-and-upkeep",
+    "text": "I control a tapped Grizzly Bears. I untap my permanents. Is it untapped?",
+    "expect": [
+      "Grizzly Bears is untapped"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "goes-to-combat",
+    "text": "My opponent controls a 3/3. My opponent goes to combat and swings with everything.",
+    "expect": [
+      "You take 3 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "empty-board",
+    "text": "I have an empty board and my opponent attacks with a 5/5.",
+    "expect": [
+      "You take 5 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

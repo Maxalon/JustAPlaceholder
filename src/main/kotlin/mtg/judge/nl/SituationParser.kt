@@ -1333,7 +1333,9 @@ class SituationParser(private val names: NameIndex) {
         // sentence-level reading of "I go to N life" never saw it and the life change was dropped.
         Regex("""^(?:go(?:es)?|went|drops?|dropped|falls?|fell)(?: down)? to (-?\d+)(?: life)?$""").find(c)?.let { r -> val who = actor ?: ctx.lastActor ?: "me"; ctx.life[who] = r.groupValues[1].toInt(); ctx.note(who); ctx.lastStat = "life"; ctx.lastStatWho = who; return true }
         // "tries to Murder it", "attempts to cast Bolt on it": the attempt is the action.
-        Regex("""^(?:tries|tried|attempts|attempted|wants|goes) to (.+)$""").find(c)?.let { r ->
+        // "goes to combat" is a step, not an attempt to do something: without the guard "goes to" was stripped and
+        // the step word was left as a clause of its own.
+        Regex("""^(?:tries|tried|attempts|attempted|wants|goes) to (?!(?:my |their |his |her |the )?(?:combat|upkeep|draw step|end step|end of turn|main phase|combat phase|second main phase)\b)(.+)$""").find(c)?.let { r ->
             if (ctx.events.lastOrNull()?.verb in setOf("cast", "activate", "trigger")) ctx.events += EventSpec("resolveAll")   // the attempt comes after what was already happening
             return readClause((actor?.let { if (it == "me") "i " else if (it == "opp") "they " else "@$it " } ?: "") + r.groupValues[1], m, ctx)
         }
@@ -2863,6 +2865,16 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastActor = who; return true
         }
         // Step beginnings: "at the beginning of my upkeep", "on their end step", "my upkeep starts".
+        // "I go to my upkeep", "my opponent goes to combat", "moves to combat": the same statement as the step
+        // beginning, said as something the player does — and it went unread.
+        Regex("""^(?:(i|we|they|he|she|my opponent|the opponent|opponent|@\w+) )?(?:goes?|go|going|moves?|moving|passes? to|heads? to) (?:to |into )?(my|their|his|her|the)? ?(upkeep|draw step|end step|end of turn|precombat main phase|main phase|combat|beginning of combat|combat phase|second main phase)$""").find(c)?.let { r0 ->
+            val r = object { val groupValues = listOf(r0.groupValues[0], r0.groupValues[2], r0.groupValues[3]) }
+            val said = r0.groupValues[1].let { w -> when (w) { "" -> null; "i", "we" -> "me"; "my opponent", "the opponent", "opponent" -> pronounPlayer(ctx, "their"); else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w) } }
+            val who = said ?: when (r.groupValues[1]) { "my" -> "me"; "their", "his", "her" -> pronounPlayer(ctx, "their"); else -> actor ?: ctx.lastActor ?: ctx.activePlayer ?: "me" }
+            val step = when (r.groupValues[2]) { "upkeep" -> "upkeep"; "draw step" -> "draw"; "end step", "end of turn" -> "end"; "combat", "beginning of combat", "combat phase" -> "combat"; else -> "precombat_main" }
+            ctx.activePlayer = who
+            ctx.events += EventSpec("step", player = who, to = step); ctx.lastActor = who; ctx.note(who); return true
+        }
         Regex("""^(?:at the beginning of |at the start of |during |on |at )?(my|their|the opponent's|opponent's|my opponent's|each|the) (upkeep|draw step|end step|end of turn|precombat main phase|main phase|combat|beginning of combat)(?: begins| starts)?$""").find(c)?.let { r ->
             val who = when (r.groupValues[1]) { "my" -> "me"; "each", "the" -> ctx.activePlayer ?: "me"; else -> "opp" }
             val step = when (r.groupValues[2]) { "upkeep" -> "upkeep"; "draw step" -> "draw"; "end step", "end of turn" -> "end"; "combat", "beginning of combat" -> "combat"; else -> "precombat_main" }
@@ -3002,6 +3014,30 @@ class SituationParser(private val names: NameIndex) {
             ensureAttacker(ctx, who)
             for (b in blockers) ctx.events += EventSpec("block", player = who, obj = b, targets = listOf(attacker))
             ctx.lastActor = who; ctx.lastVerb = "block"; return true
+        }
+        // "I untap my lands": the untap step in other words, and it went unread.
+        Regex("""^untaps?(?: (?:my|their|his|her|all(?: my| their)?))? (?:lands?|permanents?|creatures?|everything|board|team)$|^untap(?: step)?$""").find(c)?.let {
+            val who = actor ?: ctx.lastActor ?: "me"
+            ctx.activePlayer = who; ctx.events += EventSpec("step", player = who, to = "untap"); ctx.note(who); return true
+        }
+        // "my opponent scoops" / "they concede": that player loses the game (104.3a).
+        Regex("""^(?:scoops?(?: up)?|concedes?|conceded|quits?|gives? up|packs? it in)$""").find(c)?.let {
+            val who = actor ?: ctx.lastActor ?: "opp"
+            ctx.events += EventSpec("concede", player = who); ctx.note(who); ctx.lastActor = who; return true
+        }
+        // "I have an empty board" / "they have nothing on board": nothing to add, but it is a statement, not noise.
+        Regex("""^(?:has|have|got|'ve got|control|controls) (?:an? )?(?:empty (?:board|battlefield)|nothing(?: on (?:the )?(?:board|battlefield))?|no (?:permanents|creatures|blockers))$""").find(c)?.let {
+            val who = actor ?: ctx.lastActor ?: "me"; ctx.note(who); ctx.lastOwner = who; ctx.lastActor = who; return true
+        }
+        // "I mill my opponent for 5" / "they mill me 3": cards from the top of a library into a graveyard.
+        Regex("""^mills?(?: (me|myself|them|him|her|my opponent|the opponent|@\w+))?(?: for)? (\d+|one|two|three|four|five|six|seven|eight|nine|ten)(?: cards?)?$""").find(c)?.let { r ->
+            val target = when (val w = r.groupValues[1]) {
+                "", "them", "him", "her", "my opponent", "the opponent" -> if (w.isEmpty()) ctx.other(actor ?: ctx.lastActor ?: "me") ?: "opp" else pronounPlayer(ctx, "their")
+                "me", "myself" -> "me"
+                else -> w.removePrefix("@")
+            }
+            val n = number(r.groupValues[2]) ?: return@let
+            ctx.events += EventSpec("mill", player = target, amount = n); ctx.note(target); return true
         }
         // "my opponent taps out": they spent their mana, so there is none left for a tax or a response.
         Regex("""^taps? out(?: for (?:it|that|everything))?$|^(?:is|are) tapped out$""").find(c)?.let {

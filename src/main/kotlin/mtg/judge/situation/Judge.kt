@@ -191,6 +191,15 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "tap" -> engine.tapObject(e.obj ?: throw JudgeException("tap needs an object"))
             "untap" -> engine.untapObject(e.obj ?: throw JudgeException("untap needs an object"))
             "mill" -> engine.millCards(e.player ?: throw JudgeException("mill needs a player"), e.amount ?: 1)
+            // "my opponent scoops": conceding is a special action that player may take any time they have priority.
+            "concede" -> {
+                val p = state.player(e.player ?: throw JudgeException("concede needs a player"))
+                if (!p.lost) {
+                    p.lost = true
+                    state.trace.step("${p.subject} ${p.v("concedes", "concede")} and leaves the game. A player who concedes loses the game immediately; it isn't a state-based action and can't be responded to.", "104.3a", "800.4a")
+                    state.outcomes += "${p.subject} ${p.v("concedes", "concede")} and ${p.v("loses", "lose")} the game."
+                }
+            }
             "discardcount" -> engine.discardCount(e.player ?: throw JudgeException("discard needs a player"), e.amount ?: 1)
             "poison" -> engine.addPoison(e.player ?: throw JudgeException("poison needs a player"), e.amount ?: 1)
             "gainlife" -> engine.gainLifeEvent(e.player ?: throw JudgeException("gainLife needs a player"), e.amount ?: 1)
@@ -414,6 +423,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "tap" -> "${state.objects[e.obj]?.name ?: e.obj} becomes tapped"
             "untap" -> "${state.objects[e.obj]?.name ?: e.obj} untaps"
             "mill" -> "${who ?: "the player"} ${if (who == "you") "mill" else "mills"} ${e.amount ?: 1} card${if ((e.amount ?: 1) == 1) "" else "s"}"
+            "concede" -> "${who ?: "the player"} ${if (who == "you") "concede" else "concedes"}"
             "discardcount" -> "${who ?: "the player"} ${if (who == "you") "discard" else "discards"} ${e.amount ?: 1} card${if ((e.amount ?: 1) == 1) "" else "s"}"
             "poison" -> "${who ?: "the player"} ${if (who == "you") "get" else "gets"} ${e.amount ?: 1} poison counter${if ((e.amount ?: 1) == 1) "" else "s"}"
             "trigger" -> "${state.objects[e.obj]?.name ?: e.obj}'s ability triggers$tg"
