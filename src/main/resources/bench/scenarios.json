@@ -8747,5 +8747,52 @@
       "no mana ability"
     ],
     "cite": []
+  },
+  {
+    "id": "essence-scatter-cant-hit-an-instant",
+    "text": "My opponent casts Lightning Bolt at me and I cast Essence Scatter on it. What happens?",
+    "expect": [
+      "can't target Lightning Bolt (it isn't a creature spell)",
+      "You take 3 damage"
+    ],
+    "notExpect": [
+      "Lightning Bolt is countered"
+    ],
+    "cite": [
+      "601.2c"
+    ]
+  },
+  {
+    "id": "negate-cant-hit-a-creature-spell",
+    "text": "My opponent casts Grizzly Bears and I cast Negate on it. What happens?",
+    "expect": [
+      "can't target Grizzly Bears (it isn't a noncreature spell)"
+    ],
+    "notExpect": [
+      "Grizzly Bears is countered"
+    ],
+    "cite": [
+      "601.2c"
+    ]
+  },
+  {
+    "id": "animar-triggers-on-a-creature-spell",
+    "text": "I control Animar, Soul of Elements and cast Grizzly Bears. What happens?",
+    "expect": [
+      "Animar, Soul of Elements has 1 +1/+1 counter"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "animar-does-not-trigger-on-an-instant",
+    "text": "I control Animar, Soul of Elements and cast Lightning Bolt at my opponent. What happens?",
+    "expect": [
+      "opponent takes 3 damage"
+    ],
+    "notExpect": [
+      "+1/+1 counter"
+    ],
+    "cite": []
   }
 ]

@@ -278,7 +278,10 @@ object OracleParser {
         spellCastRe.matchEntire(c)?.let { m ->
             val who = when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "an opponent" -> Who.OPPONENT; else -> Who.ANY_PLAYER }
             val what = m.groupValues[3].trim().lowercase()
-            val filter = if (what == "spell") null else parseFilter(what.removeSuffix(" spell"), Kind.SPELL)
+            // "a creature spell": the filter has to say it is a spell as well as a creature card, or the matcher
+            // rejects it outright and "whenever you cast a creature spell" never triggers. The regex eats the
+            // word "spell" before parseFilter sees it, so the kind is put back here.
+            val filter = if (what == "spell") null else parseFilter(what, Kind.SPELL).let { if (Kind.SPELL in it.kinds) it else it.copy(kinds = it.kinds + Kind.SPELL) }
             return Trigger.SpellCast(who, filter)
         }
         if (Regex("""^~ enters(?: the battlefield)?$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisEnters

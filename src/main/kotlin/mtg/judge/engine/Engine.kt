@@ -2562,6 +2562,13 @@ class Engine(val state: GameState) {
                 trace.step("${state.nameOf(ref)} is still a spell on the stack, and \"${spec.raw}\" names a permanent, so it isn't a legal target: a creature spell isn't a creature until it resolves. ${item.describe} will do nothing. If it was meant to answer the permanent, let the spell resolve first.", "109.2", "601.2c", "608.2b")
                 state.outcomes += "${item.describe} can't target ${state.nameOf(ref)} while it's still a spell on the stack."
             }
+            // A spell on the stack that isn't the kind the words name ("creature spell" aimed at a Lightning
+            // Bolt): an illegal target, said at the point the spell is cast rather than only when it fizzles.
+            else if (ref is Ref.Stack && Kind.SPELL in spec.filter.kinds && !filterMatches(spec.filter, ref, item.controller)) {
+                val what = if (Regex("""^(?:an?|the|target) """).containsMatchIn(spec.raw)) spec.raw else (if (spec.raw.first().lowercaseChar() in "aeiou") "an " else "a ") + spec.raw
+                trace.step("${state.nameOf(ref)} isn't $what, so it isn't a legal target for ${item.describe} (601.2c).", "601.2c", "115.1")
+                state.outcomes += "${item.describe} can't target ${state.nameOf(ref)} (it isn't $what)."
+            }
             else if (!filterMatches(spec.filter, ref, item.controller)) trace.step("Note: ${state.nameOf(ref)} doesn't look like a legal target for \"${spec.raw}\" (601.2c); proceeding as described.", "601.2c")
         }
     }
@@ -2572,13 +2579,18 @@ class Engine(val state: GameState) {
         val spec = specFor(item, ref) ?: return true
         return when (ref) {
             is Ref.Player -> !state.player(ref.id).lost
-            is Ref.Stack -> state.stackItem(ref.id) != null
+            // A spell or ability on the stack has to fit the words too: without this Essence Scatter countered a
+            // Lightning Bolt and Negate countered a Grizzly Bears, and the answer said it worked.
+            is Ref.Stack -> state.stackItem(ref.id) != null && (!spec.filter.verifiable || filterMatches(spec.filter, ref, item.controller))
             is Ref.Obj -> { val o = state.objects[ref.id] ?: return false; (item.targetZones[ref.id] ?: o.zone) == o.zone && (!spec.filter.verifiable || filterMatches(spec.filter, ref, item.controller)) && targetingProblem(item.source, item.controller, ref) == null }
         }
     }
 
     private fun whyIllegal(item: StackItem, ref: Ref): String = when (ref) {
-        is Ref.Stack -> "${state.nameOf(ref)} has left the stack"
+        // Still on the stack but not what the spell asked for: say that, not that it left.
+        is Ref.Stack -> if (state.stackItem(ref.id) == null) "${state.nameOf(ref)} has left the stack"
+                        else specFor(item, ref)?.raw?.let { raw -> "${state.nameOf(ref)} isn't " + (if (Regex("""^(?:an?|the|target) """).containsMatchIn(raw)) raw else (if (raw.first().lowercaseChar() in "aeiou") "an " else "a ") + raw) }
+                            ?: "${state.nameOf(ref)} isn't a legal target"
         is Ref.Obj -> { val o = state.objects[ref.id]; if (o == null || o.zone != item.targetZones[ref.id]) "${state.nameOf(ref)} left ${zoneName(item.targetZones[ref.id] ?: Zone.BATTLEFIELD, o)}" else targetingProblem(item.source, item.controller, ref)?.first ?: "${state.nameOf(ref)} no longer matches \"${specFor(item, ref)?.raw}\"" }
         is Ref.Player -> "${state.nameOf(ref)} has left the game"
     }
@@ -2613,7 +2625,21 @@ class Engine(val state: GameState) {
         if (Kind.SPELL !in f.kinds) return false
         val d = s.source.def
         val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> d.isCreature; Kind.ARTIFACT -> "Artifact" in d.types; Kind.ENCHANTMENT -> "Enchantment" in d.types; Kind.LAND -> "Land" in d.types; else -> false } }
-        val kindOk = Kind.SPELL in f.kinds || f.kinds.any { k -> when (k) { Kind.CREATURE -> d.isCreature; Kind.ARTIFACT -> "Artifact" in d.types; Kind.ENCHANTMENT -> "Enchantment" in d.types; else -> false } }
+        // "Creature spell" is both a spell and a creature card: saying it is a spell is not enough, or Essence
+        // Scatter countered a Lightning Bolt and Negate countered a Grizzly Bears.
+        // SPELL, ABILITY and PLAYER say what kind of thing may be chosen, not what card type it is.
+        val typeKinds = f.kinds - Kind.SPELL - Kind.ABILITY - Kind.PLAYER
+        val kindOk = typeKinds.isEmpty() || typeKinds.any { k -> when (k) {
+            Kind.CREATURE -> d.isCreature
+            Kind.ARTIFACT -> "Artifact" in d.types
+            Kind.ENCHANTMENT -> "Enchantment" in d.types
+            Kind.LAND -> "Land" in d.types
+            Kind.PLANESWALKER -> "Planeswalker" in d.types
+            Kind.BATTLE -> "Battle" in d.types
+            Kind.PERMANENT -> !d.isInstantOrSorcery
+            Kind.CARD -> true
+            else -> false
+        } }
         val spellTypes = f.subtypes.filter { it in setOf("instant", "sorcery") }
         val spellTypeOk = spellTypes.isEmpty() || spellTypes.any { t -> d.types.any { it.equals(t, true) } }
         // Subtypes on a spell filter were never checked, so "whenever you cast an Aura, Equipment, or Vehicle
