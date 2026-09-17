@@ -160,7 +160,9 @@ class SituationParser(private val names: NameIndex) {
 
     // ---- sentence handling -----------------------------------------------------------------
 
-    private val sentenceSplit = Regex("""(?<=[.!?;])\s+|\n+|\s+(?:and then|, then|then)\s+|,\s+and\s+(?=(?:i|my|the|they|he|she|opponent|opp)\b)""", RegexOption.IGNORE_CASE)
+    // "I cast Go Nuts! choosing mode 1": 73 cards have a name that ends in "!" or "?", and splitting there left
+    // the rest of the sentence orphaned. A real sentence break is followed by something that starts one.
+    private val sentenceSplit = Regex("""(?<=[.;])\s+|(?<=[!?])\s+(?=(?-i:[A-Z"'(])|$)|\n+|\s+(?:and then|, then|then)\s+|,\s+and\s+(?=(?:i|my|the|they|he|she|opponent|opp)\b)""", RegexOption.IGNORE_CASE)
 
     /**
      * "use her plus one", "activate its minus three": loyalty costs said out loud. Written as words they are read
@@ -1319,6 +1321,18 @@ class SituationParser(private val names: NameIndex) {
                          ?: ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" }?.id ?: return@let
             ctx.events += EventSpec("activate", player = who, obj = id, abilityIndex = which, targets = targetsIn(r.groupValues[3].ifEmpty { r.groupValues[6] }, m, ctx))
             ctx.lastActor = who; ctx.lastMentioned = id; return true
+        }
+        // "choosing mode 1" left on its own: a card name that ends in "!" splits the sentence there, so the modes
+        // arrive as a clause of their own and the spell was cast with no mode chosen at all.
+        Regex("""^(?:choosing|picking|selecting|taking)(?: the)? (?:mode|modes|option) ?(\d+(?:\s*(?:,|and|&)\s*\d+)*)(.*)$""").find(c)?.let { r ->
+            val i = ctx.events.indexOfLast { it.verb == "cast" && it.modes.isEmpty() }
+            if (i < 0) return@let
+            // "targeting it" here means a permanent, not the spell that was just cast and is what "it" last named.
+            val tg = targetsIn(r.groupValues[2].trim(), m, ctx).filter { it in ctx.objects }
+                .ifEmpty { if (Regex("""\b(?:it|that|them)\b""").containsMatchIn(r.groupValues[2])) listOfNotNull(ctx.objects.values.lastOrNull { o -> o.zone == "battlefield" }?.id) else emptyList() }
+            ctx.events[i] = ctx.events[i].copy(modes = Regex("""\d+""").findAll(r.groupValues[1]).map { it.value.toInt() }.toList(),
+                targets = if (tg.isEmpty()) ctx.events[i].targets else ctx.events[i].targets + tg)
+            return true
         }
         // "it triggers" / "its ability triggers" / "the Blood Artist trigger goes off": the permanent's triggered
         // ability, said out loud. When something has already happened the engine put the trigger on the stack
@@ -3595,6 +3609,9 @@ class SituationParser(private val names: NameIndex) {
         val seg = Regex("""^(?:targeting|targets?|aimed at|on|at|to|into)\s+(.*)$""").find(r)?.groupValues?.get(1)
             ?: Regex("""^(?:my own|their own)\s+(.*)$""").find(r)?.groupValues?.get(1)
             ?: r.takeIf { Regex("""^(it|that|them|me|the|my|their|c\d+|@\w+)\b""").containsMatchIn(it) }
+            // "cast Cryptic Command choosing mode 2 targeting it": the target is named after the mode, so it isn't
+            // at the front of what's left; without this the spell was cast with no target at all.
+            ?: Regex("""\b(?:targeting|aimed at)\s+(.+)$""").find(r)?.groupValues?.get(1)
             ?: return emptyList()
         val out = mutableListOf<String>()
         // "targeting Grizzly Bears & Hill Giant": a spell that divides its damage has more than one target.

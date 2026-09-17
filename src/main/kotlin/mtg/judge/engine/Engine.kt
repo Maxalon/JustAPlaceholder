@@ -153,7 +153,9 @@ class Engine(val state: GameState) {
         // Damage divided as you choose takes any number of targets within its cap, so one spec is not one target.
         val divided = effect as? Effect.DamageDivided ?: (effect as? Effect.Seq)?.effects?.filterIsInstance<Effect.DamageDivided>()?.firstOrNull()
         if (divided != null && targets.isNotEmpty() && (divided.maxTargets == null || targets.size <= divided.maxTargets)) Unit
-        else if (needed.size != targets.size && !unmodeledTarget && effect !is Effect.Modal && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && effect != null && targetsAPlayer(effect))) {
+        // A modal spell's targets belong to the mode, which isn't known here — and a rider sentence in front of the
+        // modes ("If you control a commander …, you may choose both instead") makes the spell a Seq, not a Modal.
+        else if (needed.size != targets.size && !unmodeledTarget && !isModal(effect) && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && effect != null && targetsAPlayer(effect))) {
             if (!asked) state.clarifications += Clarification("${card.name}'s target${if (needed.size == 1) "" else "s"}",
                 "${card.name} needs ${needed.size} target${if (needed.size == 1) "" else "s"} (${needed.joinToString("; ") { it.raw }}) but ${targets.size} ${if (targets.size == 1) "was" else "were"} given (601.2c).")
             if (needed.size > targets.size && (card.isInstantOrSorcery || obj.zone == Zone.HAND)) { targetsUnknown = true; trace.step("${card.name} needs a target that wasn't stated; it's put on the stack anyway so responses to it can be shown, but what it does to its target can't be.", "601.2c") }
@@ -190,7 +192,9 @@ class Engine(val state: GameState) {
             }
         }
         // A modal spell's targets belong to the chosen mode (700.2c): validate against that mode's needs.
-        val modal = effect as? Effect.Modal
+        // A rider sentence in front of the modes ("If you control a commander …, you may choose both instead")
+        // makes the spell a Seq around its Modal; the modes and their targets are still the Modal's.
+        val modal = effect as? Effect.Modal ?: (effect as? Effect.Seq)?.effects?.firstNotNullOfOrNull { it as? Effect.Modal }
         // A modal spell with a target but no mode named: the mode whose target the given target fits ("Red Elemental Blast on Counterspell").
         val modes = if (modal != null && modes.isEmpty() && targets.size == 1) {
             val fits = modal.modes.withIndex().filter { (_, m) -> m.targets().size == 1 && m.targets()[0].filter.let { f -> when (val t = targets[0]) { is Ref.Stack -> Kind.SPELL in f.kinds || Kind.ABILITY in f.kinds; is Ref.Obj -> Kind.SPELL !in f.kinds && (!f.verifiable || filterMatches(f, t, playerId)); is Ref.Player -> Kind.PLAYER in f.kinds } } }
@@ -617,6 +621,9 @@ class Engine(val state: GameState) {
     private fun isBeneficial(e: Effect?): Boolean = when (e) { is Effect.Pump, is Effect.GainKeywords, is Effect.CreateShield, is Effect.Regenerate, is Effect.Untap -> true; is Effect.PutCounters -> e.kind.let { it == "+1/+1" || it.startsWith("+") }; is Effect.Seq -> e.effects.isNotEmpty() && e.effects.all { isBeneficial(it) || it is Effect.Narrated }; is Effect.May -> isBeneficial(e.effect); else -> false }
     private fun isHarmful(e: Effect?): Boolean = when (e) { is Effect.Destroy, is Effect.Exile, is Effect.Damage, is Effect.Bounce, is Effect.Tap, is Effect.Counter, is Effect.ShuffleIntoLibrary, is Effect.GainControl -> true; is Effect.Seq -> e.effects.any { isHarmful(it) }; is Effect.May -> isHarmful(e.effect); is Effect.UnlessPays -> isHarmful(e.effect); else -> false }
     /** Effects phrased "target player …" whose player is carried by a [Who] rather than a TargetSpec. */
+    /** Whether the spell's targets are a mode's rather than its own — a Modal, possibly behind a rider sentence. */
+    private fun isModal(e: Effect?): Boolean = e is Effect.Modal || (e is Effect.Seq && e.effects.any { isModal(it) })
+
     private fun targetsAPlayer(e: Effect): Boolean = when (e) {
         is Effect.Draw -> e.who == Who.TARGET_PLAYER; is Effect.GainLife -> e.who == Who.TARGET_PLAYER; is Effect.LoseLife -> e.who == Who.TARGET_PLAYER; is Effect.DamagePlayer -> e.who == Who.TARGET_PLAYER; is Effect.NarratedTargeted -> e.text.startsWith("target opponent", ignoreCase = true) || Kind.PLAYER in e.target.filter.kinds
         is Effect.CreateToken -> e.who == Who.TARGET_PLAYER; is Effect.Discard -> e.who == Who.TARGET_PLAYER; is Effect.DiscardChosen -> e.who == Who.TARGET_PLAYER; is Effect.DiscardNamed -> e.who == Who.TARGET_PLAYER; is Effect.Mill -> e.who == Who.TARGET_PLAYER; is Effect.ExileGraveyard -> e.who == Who.TARGET_PLAYER; is Effect.SacrificeEach -> e.who == Who.TARGET_PLAYER; is Effect.LoseLifeThatMuch -> e.who == Who.TARGET_PLAYER
@@ -2849,7 +2856,13 @@ class Engine(val state: GameState) {
     }
 
     /** The item's effect with chosen modes substituted (700.2). */
-    private fun effectiveEffect(item: StackItem): Effect? = (item.effect as? Effect.Modal)?.let { m -> item.modes.mapNotNull { i -> m.modes.getOrNull(i - 1) }.let { if (it.isEmpty()) item.effect else Effect.Seq(it) } } ?: item.effect
+    private fun effectiveEffect(item: StackItem): Effect? = substituteModes(item.effect, item)
+    /** A Modal, possibly behind a rider sentence that makes the spell a Seq, with the chosen modes in its place. */
+    private fun substituteModes(e: Effect?, item: StackItem): Effect? = when {
+        e is Effect.Modal -> item.modes.mapNotNull { i -> e.modes.getOrNull(i - 1) }.let { if (it.isEmpty()) e else Effect.Seq(it) }
+        e is Effect.Seq && e.effects.any { it is Effect.Modal } -> Effect.Seq(e.effects.map { substituteModes(it, item) ?: it })
+        else -> e
+    }
     private fun specFor(item: StackItem, ref: Ref): TargetSpec? { val specs = effectiveEffect(item)?.targets() ?: return null; val i = item.targets.indexOf(ref); return specs.getOrNull(i) }
 
     private inline fun forEachLegalTarget(item: StackItem, spec: TargetSpec, block: (Ref) -> Unit) {

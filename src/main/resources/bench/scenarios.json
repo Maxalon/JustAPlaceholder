@@ -10551,5 +10551,49 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "modal-target-after-the-mode",
+    "text": "I control Grizzly Bears and cast Cryptic Command choosing mode 2 targeting it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your hand"
+    ],
+    "notExpect": [
+      "No target was given"
+    ],
+    "cite": []
+  },
+  {
+    "id": "modal-with-a-rider-sentence",
+    "text": "I control Grizzly Bears and cast Go Nuts! choosing mode 1 targeting it.",
+    "expect": [
+      "Grizzly Bears has 1 +1/+1 counter"
+    ],
+    "notExpect": [
+      "No target was given"
+    ],
+    "cite": []
+  },
+  {
+    "id": "card-name-ending-in-bang",
+    "text": "I control Grizzly Bears. What happens if I cast Shields Up! targeting it?",
+    "expect": [
+      "Grizzly Bears has hexproof and indestructible until end of turn"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "modes-said-after-the-spell",
+    "text": "I cast Cryptic Command. Choosing modes 1 and 4.",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

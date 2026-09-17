@@ -158,12 +158,19 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     ?: e.card?.let { c -> state.objects.values.firstOrNull { o -> o.zone == Zone.COMMAND && o.controller == player &&
                         (c.oracleId?.let { it == o.def.oracleId } ?: o.def.name.equals(c.name ?: "", true)) } }
                 val def = existing?.def ?: cardDef(e.card ?: throw JudgeException("cast needs a card"), state) ?: return
+                // A rider sentence in front of the modes makes the spell a Seq around its Modal.
+                val modalEffect = def.spellEffect as? Effect.Modal
+                    ?: (def.spellEffect as? Effect.Seq)?.effects?.firstNotNullOfOrNull { it as? Effect.Modal }
                 val modes = if (e.modes.isEmpty() && e.to?.startsWith("mode:") == true) {
                     val words = e.to.removePrefix("mode:").lowercase().split("|").filter { it.isNotEmpty() }
-                    val texts = (def.spellEffect as? Effect.Modal)?.modeTexts ?: emptyList()
+                    val texts = modalEffect?.modeTexts ?: emptyList()
                     words.mapNotNull { w -> matchMode(w, texts, def.name)?.plus(1) }
                 } else e.modes
-                engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", flashback = e.to == "flashback", choice = e.to?.takeIf { it.startsWith("copy:") } ?: e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it.startsWith("name:") }?.removePrefix("name:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" }, payLife = e.payLife)
+                // A modal spell's targets belong to the modes chosen (700.2c), so those are what a stated target
+                // has to fit; without this the target was dropped and the mode resolved with none.
+                val needed = modalEffect?.takeIf { modes.isNotEmpty() }?.let { mo -> modes.mapNotNull { i -> mo.modes.getOrNull(i - 1) }.flatMap { it.targets() } }
+                    ?: def.spellEffect?.targets() ?: emptyList()
+                engine.cast(player, def, disambiguate(e.targets, needed, player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", flashback = e.to == "flashback", choice = e.to?.takeIf { it.startsWith("copy:") } ?: e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it.startsWith("name:") }?.removePrefix("name:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" }, payLife = e.payLife)
             }
             "draw" -> engine.draw(e.player ?: throw JudgeException("draw needs a player"), e.amount ?: 1)
             // "Grizzly Bears fights Hill Giant": the fight itself, with no card making it happen (701.14a).

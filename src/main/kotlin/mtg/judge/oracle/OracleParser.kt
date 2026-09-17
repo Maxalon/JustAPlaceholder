@@ -38,15 +38,20 @@ object OracleParser {
         var i0 = 0
         while (i0 < rawLines.size) {
             val l = rawLines[i0]
-            if (Regex("""^(.*?)(Choose ($modeCount)(?: —|\.)?)(?: You may choose the same mode more than once\.)?\s*$""", RegexOption.IGNORE_CASE).matches(l) && rawLines.getOrNull(i0 + 1)?.startsWith("•") == true) {
+            if (Regex("""^(.*?)(Choose ($modeCount)(?: —|\.)?)(?: You may choose the same mode more than once\.)?(?:\s*(?:If |Each mode ).*)?\s*$""", RegexOption.IGNORE_CASE).matches(l) && rawLines.getOrNull(i0 + 1)?.startsWith("•") == true) {
                 val modes = mutableListOf<String>()
                 var j = i0 + 1
                 while (j < rawLines.size && rawLines[j].startsWith("•")) { modes += rawLines[j].removePrefix("•").trim(); j++ }
                 // "Choose three. You may choose the same mode more than once." (Mystic Confluence): the permission is a
                 // note, not an effect, and the full stop would split the header off its own modes. Normalise to the
                 // em-dash form the effect parser reads.
-                val header = l.trimEnd().replace(Regex(""" You may choose the same mode more than once\.$"""), "")
+                val l1 = l.trimEnd().replace(Regex(""" You may choose the same mode more than once\.$"""), "")
+                // "Choose one. If you control a commander as you cast this spell, you may choose both instead.":
+                // the rider is a sentence of its own, and gluing it to the header left the whole card unread.
+                val rider = Regex("""^.*?Choose (?:$modeCount)\.\s*((?:If |Each mode ).*)$""", RegexOption.IGNORE_CASE).matchEntire(l1)?.groupValues?.get(1)?.trim()
+                val header = (if (rider != null) l1.dropLast(rider.length).trimEnd() else l1)
                     .let { h -> Regex("""^(.*?Choose (?:$modeCount))[\s—.]*$""", RegexOption.IGNORE_CASE).matchEntire(h)?.groupValues?.get(1)?.plus(" \u2014") ?: h }
+                if (rider != null) lines += rider
                 lines += header + " " + modes.joinToString(" ") { "• $it" }
                 i0 = j
             } else { lines += l; i0++ }
@@ -1020,6 +1025,10 @@ object OracleParser {
         // "(You may) have ~ deal 3 damage to any target" says what "~ deals 3 damage to any target" says.
         Regex("""^have (?:~|it) deal (.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return parseSentence("~ deals " + it.groupValues[1]) }
         Regex("""^target (player|opponent) reveals their hand\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.NarratedTargeted(target(m.groupValues[1].lowercase()), "reveals their hand", listOf("701.20a")) }
+        // "If you control a commander as you cast this spell, you may choose both instead." / "Each mode must
+        // target a different player.": riders on a modal spell's mode count, said rather than played out.
+        Regex("""^if .+?, (?:you may )?choose (?:$modeCount|both) instead[.\u2014-]?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated(s.trim().trimEnd('.'), listOf("700.2d")) }
+        Regex("""^each mode must target a different (player|opponent|creature|permanent)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated(s.trim().trimEnd('.'), listOf("700.2c")) }
         modalRe.matchEntire(s)?.let { m ->
             val modeTexts = m.groupValues[3].split("•").map { it.trim().trimEnd('.') }.filter { it.isNotEmpty() }
             return Effect.Modal(m.groupValues[2].lowercase(), modeTexts.map { parseEffect(it) }, modeTexts)
