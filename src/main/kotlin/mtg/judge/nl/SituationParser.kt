@@ -734,7 +734,9 @@ class SituationParser(private val names: NameIndex) {
         // rest of the grammar already reads when it is said that way round.
         t2 = t2.replace(Regex("""^there (?:is|are|'s) (?:two|2|a pair of) (c\d+)(?: on the battlefield| in play| out)?,? (?:one )?(?:mine|yours) and (?:one )?theirs$"""), "both of us control $1")
         t2 = t2.replace(Regex("""^there (?:is|are|'s) (?:two|2|a pair of) (c\d+)(?: on the battlefield| in play| out)?,? (?:one )?theirs and (?:one )?(?:mine|yours)$"""), "both of us control $1")
-        t2 = t2.replace(Regex("""^(?:we|both of us) each (?:control|have) (?:an? |the )?(c\d+)$"""), "both of us control $1")
+        // "we both control X", "both of us each have an X": the same statement, and it can carry on into the rest
+        // of the sentence, which the anchored form left unread.
+        t2 = t2.replace(Regex("""\b(?:we|both of us)(?: both| each)? (?:control|controls|have|has) (?:an? |the )?(c\d+)"""), "both of us control $1")
         // "I flash back Faithless Looting": the same as casting it with flashback, which is read.
         t2 = t2.replace(Regex("""\b(?:flash(?:es)? back|flashing back|flashbacks?) ((?:$possPrefix|an? )?c\d+)"""), "casts $1 with flashback")
         // "there is a Bolt and a Bears in my graveyard" / "my graveyard has a Bolt and a Bears": the clause splitter

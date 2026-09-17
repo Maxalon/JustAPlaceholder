@@ -10830,5 +10830,17 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "we-both-control-one",
+    "text": "We both control a Grizzly Bears and I cast Wrath of God.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "Grizzly Bears: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]
