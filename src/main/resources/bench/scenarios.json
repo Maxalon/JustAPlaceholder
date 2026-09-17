@@ -8924,5 +8924,25 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "an-ordinal-spell-count",
+    "text": "I control Ledger Shredder and my opponent casts their second spell this turn. What happens?",
+    "expect": [
+      "connives"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "monk-second-spell-each-turn",
+    "text": "I control Monk of the Open Hand and I cast my second spell this turn. What happens?",
+    "expect": [
+      "Monk of the Open Hand has 1 +1/+1 counter"
+    ],
+    "notExpect": [],
+    "cite": []
   }
 ]
