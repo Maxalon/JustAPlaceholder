@@ -9353,5 +9353,39 @@
       "Not modeled"
     ],
     "cite": []
+  },
+  {
+    "id": "dockside-counts-both-kinds",
+    "text": "I control Dockside Extortionist and my opponent controls three artifacts and two enchantments. I cast Dockside Extortionist. What happens?",
+    "expect": [
+      "You get a Treasure token. (\u00d75)"
+    ],
+    "notExpect": [
+      "Not understood",
+      "(\u00d73)"
+    ],
+    "cite": []
+  },
+  {
+    "id": "commander-cast-from-the-command-zone",
+    "text": "I cast my commander Atraxa, Praetors' Voice from the command zone. What happens?",
+    "expect": [
+      "Atraxa, Praetors' Voice enters the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "commander-tax-after-two-counters",
+    "text": "My commander Atraxa, Praetors' Voice was countered twice. How much does Atraxa cost?",
+    "expect": [
+      "the commander tax adds {4}"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

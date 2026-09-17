@@ -205,6 +205,8 @@ class SituationParser(private val names: NameIndex) {
     /** Card-type words. A count or an article in front of one makes it a description, whatever card shares the name. */
     private val cardTypeWords = setOf("artifact", "artifacts", "creature", "creatures", "land", "lands", "enchantment", "enchantments",
         "planeswalker", "planeswalkers", "instant", "instants", "sorcery", "sorceries", "permanent", "permanents", "spell", "spells", "battle", "battles")
+    /** Phrases that name a zone or a part of the game, whatever card shares the words. */
+    private val zonePhrases = setOf("the command zone", "command zone", "the battlefield", "the stack", "the graveyard")
     private val typeShortNames = setOf("wall", "angel", "demon", "dragon", "giant", "wizard", "knight", "elf", "goblin", "sphinx", "beast", "bird", "cat", "wolf", "bear", "elemental", "spirit", "soldier", "warrior", "lord", "king", "queen", "rat", "dog", "zombie", "vampire", "hydra", "titan", "golem", "wurm", "drake", "djinn", "phoenix", "shaman", "druid", "cleric", "rogue", "archer")
 
     private val shortNameStop = setOf("the", "and", "with", "from", "into", "onto", "for", "that", "this", "your", "you", "all", "each", "any", "one", "two", "three", "of",
@@ -267,6 +269,8 @@ class SituationParser(private val names: NameIndex) {
         val full = kept + names.findAll(normWords).filter { f -> (f.start until f.end).none { it in keptCovered } }.map { f -> if (f.end - f.start == 1) shortAt(f.start)?.let { f.copy(entry = it) } ?: f else f }
         val covered = full.flatMap { it.start until it.end }.toSet()
         val found = (full + normWords.indices.filter { it !in covered }.mapNotNull { i -> shortAt(i)?.let { NameIndex.Found(i, i + 1, it) } })
+            // "cast my commander from the command zone": the zone, not the card called "The Command Zone".
+            .filter { f -> (f.start until f.end).joinToString(" ") { normWords[it] } !in zonePhrases }
             // "a Goblin", "two Walls": a bare creature type after an indefinite article or a count is a description, not the card of that name.
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in typeShortNames && normWords.getOrNull(f.start - 1) in indefiniteWords) }
             // "three artifacts", "two creatures": a bare card-type word after a count or an article describes what
@@ -593,6 +597,10 @@ class SituationParser(private val names: NameIndex) {
         // "I control Goblin Bushwhacker and cast it kicked": the card is being cast, not already on the
         // battlefield, so the control statement isn't one — it only says which card "it" is.
         t2 = t2.replace(Regex("""\b(?:controls?|have|has|got) ((?:an? |the |my |their )?c\d+) and (casts?|plays?|casting|playing) it\b"""), "$2 $1")
+        // "controls three artifacts and two enchantments": both counts belong to the one statement, so the "and"
+        // is not a clause break — split there and the second count went unread and the answer came out short.
+        val typeCount = """(?:an?|one|\d+|two|three|four|five|six|seven|eight|nine|ten) (?:artifacts?|enchantments?|lands?|creatures?|planeswalkers?|permanents?)"""
+        t2 = t2.replace(Regex("""\b(controls?|has|have|got) ($typeCount) and ($typeCount)\b"""), "$1 $2 and $1 $3")
         // "targeting Grizzly Bears and Hill Giant": both are targets of the one spell, so the "and" is not a
         // clause break — split there and the second card was read as a spell of its own being cast.
         t2 = t2.replace(Regex("""\b(targeting|aimed at) ((?:an? |the |my |their |my opponent's )?c\d+) and ((?:an? |the |my |their |my opponent's )?c\d+)\b"""), "$1 $2 & $3")
@@ -1761,8 +1769,25 @@ class SituationParser(private val names: NameIndex) {
             val who = possessiveOwner(r.groupValues[1], ctx, m) ?: actor ?: (if (c.startsWith("their")) pronounPlayer(ctx, "their") else "me")
             ctx.devotion.getOrPut(who) { LinkedHashMap() }[r.groupValues[2]] = r.groupValues[3].toInt(); ctx.note(who); return true
         }
+        // "I cast my commander Atraxa from the command zone" / "my commander Atraxa is in the command zone":
+        // the card is that player's commander and starts in the command zone, where the tax is counted from.
+        Regex("""^(?:($castVerbs)\s+)?(?:my |their |his |her )?commander (c\d+)((?:\s+.*)?)$|^(?:my |their |his |her )?(?:commander )?(c\d+) is (?:my |their |his |her )?(?:commander )?in the command zone$""").find(c)?.let { r ->
+            val ph = r.groupValues[2].ifEmpty { r.groupValues[4] }
+            if (ph.isEmpty()) return@let
+            val tail = r.groupValues[3].trim()
+            // Only a cast, or a bare "my commander X (is in the command zone)": anything else is another rule's.
+            if (r.groupValues[1].isEmpty() && !(tail.isEmpty() || tail == "is in the command zone") && r.groupValues[4].isEmpty()) return@let
+            val who = actor ?: subject ?: "me"
+            val card = m.cards.getValue(ph)
+            val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
+            ctx.objects[id] = ctx.objects.getValue(id).copy(commander = true, zone = "command", controller = who)
+            ctx.notes += "${card.display} is read as ${if (who == "me") "your" else "their"} commander, in the command zone."
+            ctx.lastMentioned = id; ctx.lastOwner = who; ctx.note(who)
+            if (r.groupValues[1].isEmpty()) return true
+            return readClause(r.groupValues[1] + " " + ph + " " + tail.replace(Regex("""^from the command zone\b"""), "").trim(), m, ctx)
+        }
         // "it has been countered twice" / "Kaalia was countered once": the commander tax.
-        Regex("""^(?:(?:it|that|(?:my )?(c\d+)|my commander) )?(?:has been|was|got|has already been|had been) (?:countered|killed|cast) (once|twice|three times|four times|\d+ times?)(?: (?:already|before|so far|this game))?$""").find(c)?.let { r ->
+        Regex("""^(?:(?:my |their |his |her )?commander )?(?:(?:my |their |his |her )?(c\d+)|it|that)? ?(?:has been|was|got|has already been|had been|have been) (?:countered|killed|cast) (once|twice|three times|four times|\d+ times?)(?: (?:already|before|so far|this game))?$""").find(c)?.let { r ->
             val id = r.groupValues[1].takeIf { it.isNotEmpty() }?.let { m.cards.getValue(it) }?.let { objectIdFor(it, ctx) ?: addObject(it, actor ?: "me", false, ctx) } ?: ctx.objects.values.lastOrNull { it.commander } ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
             val n = when (val w = r.groupValues[2]) { "once" -> 1; "twice" -> 2; "three times" -> 3; "four times" -> 4; else -> w.substringBefore(' ').toIntOrNull() ?: 1 }
             val idStr = if (id is String) id else (id as ObjectSpec).id
