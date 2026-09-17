@@ -10344,5 +10344,29 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "cost-question-trailing-if",
+    "text": "How much does Wrath of God cost me if my opponent controls Thalia, Guardian of Thraben?",
+    "expect": [
+      "5 mana in all"
+    ],
+    "notExpect": [
+      "couldn't find"
+    ],
+    "cite": [
+      "601.2f"
+    ]
+  },
+  {
+    "id": "cost-question-what-does-it-cost",
+    "text": "My opponent controls Thalia, Guardian of Thraben. What does my Lightning Bolt cost?",
+    "expect": [
+      "2 mana in all"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

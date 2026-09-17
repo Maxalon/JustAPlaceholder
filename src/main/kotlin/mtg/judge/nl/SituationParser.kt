@@ -556,6 +556,9 @@ class SituationParser(private val names: NameIndex) {
             // "What happens if I Doom Blade it?" / "if I block, do I die?": the "if" is the question, not a condition.
             .replace(Regex("""^what happens if """), "")
             .replace(Regex("""^if (?=(?:i|we|they|he|she|my opponent|the opponent|@\w+)\b)"""), "")
+            // "How much does Wrath of God cost if my opponent controls Thalia?": the trailing "if" is the board,
+            // not a hypothetical. Said last it stayed glued to the question and the whole sentence went unread.
+            .replace(Regex("""^((?:how much|how many|what|does|do|will|would|can|could|is|are)\b.*?) if ((?:i|we|they|he|she|my opponent|the opponent|@\w+)\s+(?:controls?|has|have|had|own|owns)\b.*)$"""), "$2, $1")
         // "they use Doom Blade on my Bears": a cast, but only for a card that is cast — "they use Maze on it"
         // names a land whose ability is activated, and reading that as a cast loses the ability entirely.
         t2 = Regex("""\b(?:uses?|used|plays?|played) ((?:an? |the |my |their )?)(c\d+) (?:at|on|against|targeting) """).replace(t2) { r ->
@@ -974,7 +977,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "how much does my Lightning Bolt cost?": the printed cost plus every tax on the battlefield.
-        Regex("""^how (?:much|many)(?: mana)? (?:does|do|would|will|did) ($possPrefix|an? )?(c\d+) cost(?: to cast| me| us| them| now| right now)?$""").find(clause0)?.let { q ->
+        Regex("""^(?:how (?:much|many)(?: mana)?|what) (?:does|do|would|will|did) ($possPrefix|an? )?(c\d+) cost(?: to cast)?(?: me| us| them| for me| for them)?(?: to cast)?(?: now| right now| at the moment)?$""").find(clause0)?.let { q ->
             val who = when { q.groupValues[1].startsWith("@") -> q.groupValues[1].removePrefix("@").removeSuffix("'s "); q.groupValues[1] == "their " -> pronounPlayer(ctx, "their"); else -> "me" }
             val card = m.cards.getValue(q.groupValues[2])
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx).also { ctx.objects[it] = ctx.objects.getValue(it).copy(zone = "hand") }
