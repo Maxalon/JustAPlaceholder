@@ -2655,7 +2655,11 @@ class Engine(val state: GameState) {
         if (moon != null && "Land" in o.def.types && "Basic" !in o.def.supertypes) return "${o.name} is a Mountain under ${moon.name}, so it taps for {R} and nothing else."
         val mana = o.def.abilities.filterIsInstance<ActivatedAbility>().filter { a -> isManaEffect(a.effect) }
         if (mana.isEmpty()) return "${o.name} has no mana ability the engine recognises."
-        return "${o.name} can make: " + mana.joinToString("; ") { it.text.replace("~", o.name) }
+        // "Add {B} for each Swamp you control" is more useful with the count worked out for the board described.
+        return "${o.name} can make: " + mana.joinToString("; ") { a ->
+            val now = manaMade(a.effect, o.controller)?.removePrefix("add ")?.takeIf { it.isNotBlank() && !it.startsWith("no mana") }
+            a.text.replace("~", o.name) + (if (now != null && now != a.text) " \u2014 $now right now" else "")
+        }
     }
 
     private fun move(obj: GameObject, to: Zone, text: String, vararg rules: String) {

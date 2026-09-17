@@ -3117,10 +3117,13 @@ class SituationParser(private val names: NameIndex) {
             val ph = q.groupValues[1].ifEmpty { q.groupValues[2] }
             // "I control Elvish Archdruid and two other Elves. How much mana does it make?" — "it" is the card
             // that was named, not the last unnamed creature described after it.
+            // "I control Cabal Coffers and four Swamps. How much mana does it make?" — the question is about the
+            // card that counts them, not about the last basic land named.
+            fun basic(id: String) = (ctx.objects[id]?.card?.name ?: "") in setOf("Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes")
             val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
-                     else ctx.lastMentioned?.takeIf { it in ctx.objects && !Regex("""^an? """).containsMatchIn(ctx.objects.getValue(it).card.name ?: "") }
+                     else ctx.lastMentioned?.takeIf { it in ctx.objects && !basic(it) && !Regex("""^an? """).containsMatchIn(ctx.objects.getValue(it).card.name ?: "") }
                          ?: ctx.events.lastOrNull { (it.verb == "cast" || it.verb == "play") && it.card?.name != null }?.card?.name?.let { slug(it) }
-                         ?: ctx.objects.values.lastOrNull { it.zone == "battlefield" && !Regex("""^an? """).containsMatchIn(it.card.name ?: "") }?.id
+                         ?: ctx.objects.values.lastOrNull { it.zone == "battlefield" && !basic(it.id) && !Regex("""^an? """).containsMatchIn(it.card.name ?: "") }?.id
                          ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, to = "mana"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
