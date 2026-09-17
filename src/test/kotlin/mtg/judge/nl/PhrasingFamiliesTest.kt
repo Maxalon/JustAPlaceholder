@@ -207,6 +207,15 @@ class PhrasingFamiliesTest {
             ),
         ),
         Family(
+            "a counter, with and without a subject on the clause", "My opponent casts Lightning Bolt at me ",
+            "countered",
+            listOf(
+                "and I counter it with Counterspell.", "and it is countered by my Counterspell.",
+                "and it gets countered by my Counterspell.", "and is countered by my Counterspell.",
+                "and is countered by Counterspell.",
+            ),
+        ),
+        Family(
             "a running total carried into \"2 more\"", "", "8",
             listOf(
                 "My opponent is at 5 life and gains 3 more. What happens?",

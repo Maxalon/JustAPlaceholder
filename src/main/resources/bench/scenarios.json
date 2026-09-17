@@ -8132,5 +8132,25 @@
     "cite": [
       "704.5c"
     ]
+  },
+  {
+    "id": "a-counter-with-the-subject-left-out",
+    "text": "My opponent casts Lightning Bolt at me and is countered by my Counterspell. What happens?",
+    "expect": [
+      "countered"
+    ],
+    "notExpect": [
+      "deals 3 damage to you"
+    ],
+    "cite": []
+  },
+  {
+    "id": "does-three-damage",
+    "text": "I control Grizzly Bears. It attacks and does 3 damage to my opponent. What happens?",
+    "expect": [
+      "3 damage"
+    ],
+    "notExpect": [],
+    "cite": []
   }
 ]

@@ -414,6 +414,9 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(me|they|them|my opponent|the opponent|@\w+) (?:takes?|took) \d+(?: damage)? from ((?:an? |the |my |their )?c\d+)"""), "casts $2 targeting $1")
             .replace(Regex("""\b(me|them|my opponent|the opponent|@\w+) (?:is|are|was|were|gets?|got) dealt \d+ damage by ((?:an? |the |my |their )?c\d+)"""), "casts $2 targeting $1")
             .replace(Regex("""\b(?:throws?|threw|chucks?|lobs?) ((?:an? |the |my |their )?c\d+) at """), "casts $1 targeting ")
+            // "it does 3 damage to them": the same as "deals", and on its own it opens with a question word,
+            // which the noise filter would drop.
+            .replace(Regex("""\b(?:does|do|did) (\d+) damage\b"""), "deals $1 damage")
             .replace(Regex("""^((?:an? |the |my |their )?c\d+) (?:hits?|burns?) (?=(?:me|them|my opponent|the opponent|@\w+|my face|their face)\b)"""), "casts $1 targeting ")
             // "I lose my Bears", "my Bears hits the bin", "my Bears is put into my graveyard": more ways to say
             // a permanent died, and "I sacrificed it" / "I throw it away" for the sacrifice.
@@ -2667,6 +2670,11 @@ class SituationParser(private val names: NameIndex) {
         if (actor != null && c.isEmpty()) { ctx.lastActor = actor; return true }
         // "… and doesn't" / "declines" right after a cast: the payment is declined.
         if (Regex("""^(?:doesn't|does not|don't|declines?|won't|refuses?)$""").matches(c) && ctx.events.lastOrNull()?.verb == "cast") { val who = actor ?: ctx.events.last().player ?: "opp"; ctx.events += EventSpec("pay", player = who, to = "no"); ctx.lastActor = who; return true }
+        // "… and is countered by my Counterspell": a clause whose subject was left out carries on from the last
+        // thing mentioned. Tried after every other rule, so it never takes a clause one of them reads; without it
+        // the Counterspell went unread and the answer had the spell resolving.
+        if (actor == null && !c.startsWith("it ") && ctx.lastMentioned != null &&
+            Regex("""^(?:is|are|was|were|gets?|got|has been|have been) (?!\d)\w+(?:ed|n|t)\b""").containsMatchIn(c) && readClause("it $c", m, ctx)) return true
         // "does Rancor come back", "is the Bears dead", "will Jace survive": a question about the outcome, which the answer covers.
         // "does my Blood Artist trigger?": a permanent named only in the question is on the battlefield under that player.
         Regex("""\b(my|their|his|her|@\w+'s) (c\d+)\b""").findAll(clause0).forEach { q -> val card = m.cards.getValue(q.groupValues[2]); if (objectIdFor(card, ctx) == null && !card.isSpellOnly && card.display !in ctx.castCards) addObject(card, when (val w = q.groupValues[1]) { "my" -> "me"; "their", "his", "her" -> pronounPlayer(ctx, w); else -> w.removePrefix("@").removeSuffix("'s") }, false, ctx) }
