@@ -1521,7 +1521,7 @@
     "text": "My opponent has Elesh Norn, Grand Cenobite. I cast Craterhoof Behemoth with two Llanowar Elves in play.",
     "expect": [
       "Llanowar Elves: the battlefield → your graveyard. (×2)",
-      "Craterhoof Behemoth is 4/4 until end of turn"
+      "Craterhoof Behemoth is 4/4 with trample until end of turn"
     ],
     "cite": [
       "704.5f"
@@ -2831,7 +2831,7 @@
     "id": "overrun-attack-with-both",
     "text": "I have two Grizzly Bears and cast Overrun. I attack with both. My opponent blocks one with a 1/1.",
     "expect": [
-      "Grizzly Bears is 5/5 until end of turn. (×2)",
+      "Grizzly Bears is 5/5 with trample until end of turn. (×2)",
       "opponent takes 4 damage",
       "opponent takes 5 damage"
     ],
@@ -9205,7 +9205,7 @@
     "id": "kicked-with-goblins-out",
     "text": "I control Goblin Bushwhacker and cast it kicked with three 1/1 Goblins out. What happens?",
     "expect": [
-      "a 1/1 goblin creature is 2/1 until end of turn. (×3)"
+      "a 1/1 goblin creature is 2/1 with haste until end of turn. (×3)"
     ],
     "notExpect": [
       "Not understood",
@@ -10593,6 +10593,30 @@
     ],
     "notExpect": [
       "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "x-tokens-created",
+    "text": "I cast Secure the Wastes for X=3. What happens?",
+    "expect": [
+      "You get a Warrior token. (×3)"
+    ],
+    "notExpect": [
+      "not tracked in detail"
+    ],
+    "cite": [
+      "107.3a"
+    ]
+  },
+  {
+    "id": "x-tokens-doubled",
+    "text": "I control Doubling Season and cast Secure the Wastes for X=3. What happens?",
+    "expect": [
+      "You get a Warrior token. (×6)"
+    ],
+    "notExpect": [
+      "not tracked in detail"
     ],
     "cite": []
   }

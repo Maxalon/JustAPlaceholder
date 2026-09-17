@@ -667,7 +667,7 @@ class Engine(val state: GameState) {
         val mvOk = (f.maxManaValue == null || card.manaValue.toInt() <= f.maxManaValue) && (f.minManaValue == null || card.manaValue.toInt() >= f.minManaValue)
         return typeOk && notOk && colourOk && mvOk
     }
-    private fun usesX(e: Effect): Boolean = when (e) { is Effect.Damage -> e.x; is Effect.Draw -> e.x; is Effect.LoseLife -> e.x; is Effect.Discard -> e.x; is Effect.PumpAll -> e.x; is Effect.SetBasePtAll -> e.x; is Effect.PutCounters -> e.x; is Effect.Repeat -> e.x || usesX(e.body); is Effect.Seq -> e.effects.any { usesX(it) }; is Effect.May -> usesX(e.effect); is Effect.Modal -> e.modes.any { usesX(it) }; else -> false }
+    private fun usesX(e: Effect): Boolean = when (e) { is Effect.Damage -> e.x; is Effect.Draw -> e.x; is Effect.LoseLife -> e.x; is Effect.Discard -> e.x; is Effect.PumpAll -> e.x; is Effect.SetBasePtAll -> e.x; is Effect.PutCounters -> e.x; is Effect.CreateToken -> e.x; is Effect.Repeat -> e.x || usesX(e.body); is Effect.Seq -> e.effects.any { usesX(it) }; is Effect.May -> usesX(e.effect); is Effect.Modal -> e.modes.any { usesX(it) }; else -> false }
 
     /** Steps and combat can't begin while something is on the stack: everything pending resolves first (500.2). */
     fun emptyStackFirst(what: String) {
@@ -1829,7 +1829,8 @@ class Engine(val state: GameState) {
             is Effect.CreateToken -> {
                 val who = resolveWho(effect.who, item) ?: run { state.unsupported += Unsupported(item.describe, "Couldn't work out who creates the token."); return }
                 val def = Generic.token(effect.token) ?: run { state.unsupported += Unsupported(item.describe, "Couldn't read the token \"${effect.token}\"."); return }
-                var n = effect.countBy?.let { c -> when (c) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }.also { trace.step("X is $it: the number of ${c.filter.raw}${if (c.filter.raw.endsWith("control", true)) "" else " ${who.subject.lowercase()} ${who.v("controls", "control")}"} as the ability resolves.", "608.2h") }; is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size; is CountExpr.YourLifeTotal -> (state.player(item.controller).life ?: 0); is CountExpr.Unknown -> { state.clarifications += Clarification("${item.describe}'s X", "X is \"${c.text}\", which isn't tracked; assuming 0."); 0 } } } ?: effect.count
+                if (effect.x) trace.step("X is ${item.x ?: 0}, so ${item.x ?: 0} token${if ((item.x ?: 0) == 1) "" else "s"} ${if ((item.x ?: 0) == 1) "is" else "are"} created.", "107.3a")
+                var n = (if (effect.x) (item.x ?: 0) else null) ?: effect.countBy?.let { c -> when (c) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }.also { trace.step("X is $it: the number of ${c.filter.raw}${if (c.filter.raw.endsWith("control", true)) "" else " ${who.subject.lowercase()} ${who.v("controls", "control")}"} as the ability resolves.", "608.2h") }; is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size; is CountExpr.YourLifeTotal -> (state.player(item.controller).life ?: 0); is CountExpr.Unknown -> { state.clarifications += Clarification("${item.describe}'s X", "X is \"${c.text}\", which isn't tracked; assuming 0."); 0 } } } ?: effect.count
                 state.objects.values.filter { it.isOnBattlefield() }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.TokenMultiplier }.filter { it.anyPlayer || o.controller == who.id }.map { o to it } }
                     .forEach { (o, m) -> trace.step("${o.name} replaces the token creation: ${n * m.factor} tokens instead of $n.", "614.1a", "614.6"); n *= m.factor }
                 repeat(n) {
@@ -2134,7 +2135,8 @@ class Engine(val state: GameState) {
                     return
                 }
                 trace.step("${if (affected.isEmpty()) "No permanents match \"${effect.filter.raw}\"" else affected.joinToString(", ") { "${it.name} (now ${it.power}/${it.toughness})" }} ${if (affected.size == 1) "gets" else "get"} ${signed(effect.power)}/${signed(effect.toughness)}${if (effect.keywords.isEmpty()) "" else " and ${if (affected.size == 1) "gains" else "gain"} ${effect.keywords.joinToString(" and ")}"} until end of turn. Only permanents present now are affected.", "611.2a", "611.2c")
-                affected.forEach { state.outcomes += "${it.name} is ${it.power}/${it.toughness} until end of turn." }
+                // Overrun gives trample as well as the size: saying only the size left the keyword out of the answer.
+                affected.forEach { state.outcomes += "${it.name} is ${it.power}/${it.toughness}${if (effect.keywords.isEmpty()) "" else " with ${effect.keywords.joinToString(" and ")}"} until end of turn." }
             }
             is Effect.SetBasePtAll -> {
                 val n = if (effect.x) (item.x ?: 0) else effect.power; val t = if (effect.x) (item.x ?: 0) else effect.toughness

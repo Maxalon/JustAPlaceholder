@@ -906,7 +906,7 @@ object OracleParser {
     private val bounceRe = Regex("""^return (~|target .+?) to its owner's hand\.?$""", RegexOption.IGNORE_CASE)
     // Kor Skyfisher, Whitemane Lion, Stonecloaker: a chosen permanent, not a targeted one.
     private val bounceChosenRe = Regex("""^return (?:a|an) (.+?) you control to (?:its owner's hand|your hand)\.?$""", RegexOption.IGNORE_CASE)
-    private val createTokenRe = Regex("""^(?:(you|its controller|that player|target player|each opponent|each player) )?creates? (a|an|\d+|two|three|four|five) ((?:\d+/\d+ )?(?:(?:white|blue|black|red|green|colorless)(?: and \w+)? )*(?:[A-Z][a-z]+ )*(?:artifact creature |creature |artifact |enchantment )?tokens?(?: with [a-z ,]+?)?)(?: named .+)?\.?$""", RegexOption.IGNORE_CASE)
+    private val createTokenRe = Regex("""^(?:(you|its controller|that player|target player|each opponent|each player) )?creates? (a|an|X|\d+|two|three|four|five) ((?:\d+/\d+ )?(?:(?:white|blue|black|red|green|colorless)(?: and \w+)? )*(?:[A-Z][a-z]+ )*(?:artifact creature |creature |artifact |enchantment )?tokens?(?: with [a-z ,]+?)?)(?: named .+)?\.?$""", RegexOption.IGNORE_CASE)
     private val exileRe = Regex("""^exile target (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val tapRe = Regex("""^tap target (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val untapRe = Regex("""^untap target (.+?)\.?$""", RegexOption.IGNORE_CASE)
@@ -1260,8 +1260,9 @@ object OracleParser {
         // "create two 2/2 black Zombie creature tokens": modeled, so it goes before the narrated table.
         createTokenRe.matchEntire(s)?.let { m ->
             val n0 = m.groupValues[2]; val desc0 = m.groupValues[3]
-            val n = if (n0 == "a" || n0 == "an") 1 else number(n0) ?: n0.toIntOrNull() ?: 1
-            if (Generic.token(desc0) != null) return Effect.CreateToken(who(m.groupValues[1].ifEmpty { "you" }), n, desc0)
+            val isX = n0.equals("x", true)
+            val n = if (n0 == "a" || n0 == "an" || isX) 1 else number(n0) ?: n0.toIntOrNull() ?: 1
+            if (Generic.token(desc0) != null) return Effect.CreateToken(who(m.groupValues[1].ifEmpty { "you" }), n, desc0, x = isX)
         }
         // "create a 3/3 … token with deathtouch and a 3/3 … token with lifelink": two tokens, told as one sentence.
         Regex("""^(?:(you|its controller|that player) )?creates? (a|an) (.+? tokens?(?: with [a-z ,]+?)?) and (?:a|an) (.+? tokens?(?: with [a-z ,]+?)?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->

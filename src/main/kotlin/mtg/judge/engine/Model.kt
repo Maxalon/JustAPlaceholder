@@ -131,7 +131,7 @@ sealed interface Effect {
     /** "~ deals N damage to that player / each opponent / each player / you". */
     data class DamagePlayer(val who: Who, val amount: Int) : Effect
     /** "Create a 3/3 green Beast creature token" / "Its controller creates …": [who] gets [count] tokens described by [token]. */
-    data class CreateToken(val who: Who, val count: Int, val token: String, val countBy: CountExpr? = null) : Effect
+    data class CreateToken(val who: Who, val count: Int, val token: String, val countBy: CountExpr? = null, val x: Boolean = false) : Effect
     /**
      * "Create a token that's a copy of target creature you control." (Kiki-Jiki, Cackling Counterpart, 707.2).
      * [target] is null when the card copies itself. [except] is the card's own rider, kept as text.
