@@ -522,6 +522,10 @@ object OracleParser {
         if (Regex("""^(You may choose not to untap ~ during your untap step|~ doesn't untap during your untap step|Enchanted (creature|permanent) doesn't untap during its controller's untap step)\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("502.3")))
         if (Regex("""^(LEVEL \d+.*|\d+/\d+|\{[^}]+\}(?:\{[^}]+\})* — \d+/\d+.*)$""").matches(line)) return listOf(StaticEffect.Note(line, listOf("702.87a")))
         if (Regex("""^If ~ is in your opening hand, you may begin the game with it on the battlefield\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("103.6")))
+        // "If you control a commander, you may cast this spell without paying its mana cost" (Fierce Guardianship
+        // and the rest of that cycle): permission to cast for an alternative cost, which is not an effect the
+        // spell has on resolution. Read as a static ability of the card, the way it works from hand.
+        if (Regex("""^(?:if [^,]+, )?you may cast (?:~|this spell) without paying its mana cost\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("118.9", "601.3")))
         if (Regex("""^(?:Combat )?damage that would be dealt by (?:creatures|sources) you control can't be prevented\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("615.12")))
         if (Regex("""^Each opponent can cast spells only any time they could cast a sorcery\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsSorcerySpeed)
         if (Regex("""^Players can cast spells only during their own turns\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OwnTurnOnly)

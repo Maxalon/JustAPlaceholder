@@ -8623,5 +8623,16 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "fierce-guardianship-counters",
+    "text": "My opponent casts Lightning Bolt at me and I cast Fierce Guardianship on it. What happens?",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
