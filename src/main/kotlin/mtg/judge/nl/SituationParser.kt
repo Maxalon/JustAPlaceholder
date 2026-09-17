@@ -2166,7 +2166,7 @@ class SituationParser(private val names: NameIndex) {
             else { ctx.events += EventSpec("cast", player = who, card = CardRef(name = "a counterspell"), targets = listOf(slug(targetName) + ":spell")); ctx.lastActor = who; ctx.lastVerb = "cast"; ctx.notes += "No counterspell was named; assuming a plain \"counter target spell\"." }
             return true
         }
-        Regex("""^counters? (my |their |the |my opponent's |@\w+'s )?(c\d+)(?: with (?:an? |the |my |their )?(c\d+))?$""").find(c)?.let { r ->
+        Regex("""^counters? ($possPrefix)?(c\d+)(?: with (?:an? |the |my |their )?(c\d+))?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "opp"
             val target = m.cards.getValue(r.groupValues[2])
             if (objectIdFor(target, ctx) != null && target.display !in ctx.castCards) return@let   // a permanent on the battlefield can't be countered; not this rule
@@ -2196,20 +2196,19 @@ class SituationParser(private val names: NameIndex) {
         }
         // "their Counterspell counters it": the counterspell itself is the subject. Only an instant or sorcery can
         // be the subject this way — a permanent named here is doing something else, and belongs to another rule.
-        Regex("""^(my |their |the |my opponent's |@\w+'s )?(c\d+) counters? (?:it|that|that spell|the spell|(?:my |their |the )?(c\d+))$""").find(c)?.let { r ->
+        Regex("""^($possPrefix)?(c\d+) counters? (?:it|that|that spell|the spell|($possPrefix)?(c\d+))$""").find(c)?.let { r ->
             val counterCard = m.cards.getValue(r.groupValues[2])
             if (!counterCard.isSpellOnly) return@let
-            val who = when (val w = r.groupValues[1].trim()) {
-                "my" -> "me"
-                "their", "my opponent's" -> pronounPlayer(ctx, "their")
-                // "Counterspell counters my Lightning Bolt" with nobody named: whoever didn't cast the spell being
-                // countered. Read as the speaker's, it countered its own side and cast a second copy of the target.
-                "" -> (r.groupValues[3].takeIf { it.isNotEmpty() }?.let { ph -> m.cards[ph]?.display }
+            // "Counterspell counters my Lightning Bolt" with nobody named: whoever didn't cast the spell being
+            // countered. Read as the speaker's, it countered its own side and cast a second copy of the target.
+            val who = possessiveOwner(r.groupValues[1], ctx, m)
+                // "Counterspell counters my Lightning Bolt": the countered spell's own possessive says whose it is,
+                // so the counterspell is the other player's.
+                ?: possessiveOwner(r.groupValues[3], ctx, m)?.let { ctx.other(it) }
+                ?: (r.groupValues[4].takeIf { it.isNotEmpty() }?.let { ph -> m.cards[ph]?.display }
                         ?.let { name -> ctx.events.lastOrNull { it.verb == "cast" && it.card?.name == name }?.player }?.let { ctx.other(it) }
                     ?: ctx.events.lastOrNull { it.verb == "cast" }?.player?.let { ctx.other(it) }) ?: actor ?: subject ?: "me"
-                else -> if (w.startsWith("@")) w.removePrefix("@").removeSuffix("'s").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else actor ?: subject ?: "me"
-            }
-            val targetCard = r.groupValues[3].takeIf { it.isNotEmpty() }?.let { m.cards.getValue(it) }
+            val targetCard = r.groupValues[4].takeIf { it.isNotEmpty() }?.let { m.cards.getValue(it) }
             val lastCast = ctx.events.lastOrNull { it.verb == "cast" && (targetCard == null || it.card?.name == targetCard.display) }
             val targetName = targetCard?.display ?: lastCast?.card?.name ?: ctx.objects[lastCast?.obj ?: ""]?.card?.name ?: return@let
             if (targetCard != null && targetCard.display !in ctx.castCards) emitCast(ctx.other(who) ?: "opp", targetCard, "", m, ctx)
@@ -2228,7 +2227,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastActor = who; ctx.lastMentioned = src; return true
         }
         // "copy my opponent's Lightning Bolt with Twincast": the copy spell targeting that spell.
-        Regex("""^cop(?:y|ies|ying) (my |their |the |my opponent's |@\w+'s )?(c\d+|it|that|that spell) with (?:an? |the |my )?(c\d+)((?: (?:targeting|aiming (?:it )?at|pointing (?:it )?at|retargeting (?:it )?to|choosing) .*)?)$""").find(c)?.let { r ->
+        Regex("""^cop(?:y|ies|ying) ($possPrefix)?(c\d+|it|that|that spell) with (?:an? |the |my )?(c\d+)((?: (?:targeting|aiming (?:it )?at|pointing (?:it )?at|retargeting (?:it )?to|choosing) .*)?)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val what = if (r.groupValues[2].startsWith("c")) "${r.groupValues[1]}${r.groupValues[2]}" else "it"
             emitCast(who, m.cards.getValue(r.groupValues[3]), " targeting $what", m, ctx)

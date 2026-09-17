@@ -9773,5 +9773,49 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "the-opponents-counterspell",
+    "text": "The opponent's Counterspell counters my Lightning Bolt. What happens?",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "counterspell-with-nobody-named",
+    "text": "Counterspell counters my Lightning Bolt. What happens?",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "counter-the-opponents-spell",
+    "text": "I counter the opponent's Grizzly Bears with Counterspell. What happens?",
+    "expect": [
+      "Grizzly Bears is countered"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "copy-the-opponents-creature",
+    "text": "I copy the opponent's Grizzly Bears with Clone. What happens?",
+    "expect": [
+      "Clone, a copy of Grizzly Bears, enters the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
