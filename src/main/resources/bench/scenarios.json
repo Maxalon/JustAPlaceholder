@@ -9518,5 +9518,53 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "modular-moves-its-counters",
+    "text": "I control Arcbound Ravager with 3 +1/+1 counters and Ornithopter. Arcbound Ravager dies. What happens?",
+    "expect": [
+      "Ornithopter has 3 +1/+1 counters"
+    ],
+    "notExpect": [
+      "Not modeled",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "modular-enters-with-its-counter",
+    "text": "I control Arcbound Worker and Steel Overseer. Arcbound Worker dies. What happens?",
+    "expect": [
+      "Steel Overseer has 1 +1/+1 counter"
+    ],
+    "notExpect": [
+      "toughness 0",
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "evolve-bigger-creature",
+    "text": "I control Experiment One and cast Grizzly Bears. What happens?",
+    "expect": [
+      "Experiment One has 1 +1/+1 counter"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "evolve-smaller-creature",
+    "text": "I control Experiment One and cast a 1/1. What happens?",
+    "expect": [
+      "isn't bigger than Experiment One in either direction"
+    ],
+    "notExpect": [
+      "Experiment One has 1 +1/+1 counter"
+    ],
+    "cite": [
+      "702.100a"
+    ]
   }
 ]

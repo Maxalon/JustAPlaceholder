@@ -17,6 +17,8 @@ import mtg.judge.engine.StackKind
 import mtg.judge.engine.TriggeredAbility
 import mtg.judge.engine.ActivatedAbility
 import mtg.judge.engine.TargetSpec
+import mtg.judge.engine.StaticAbility
+import mtg.judge.engine.StaticEffect
 import mtg.judge.engine.Zone
 import mtg.judge.oracle.OracleParser
 
@@ -51,6 +53,15 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 o.keywords.forEach { kw -> it.tempKeywords += kw.lowercase() }
                 o.pump?.let { pm -> Regex("""^([+-]?\d+)/([+-]?\d+)$""").matchEntire(pm)?.let { m -> it.pumps += m.groupValues[1].toInt() to m.groupValues[2].toInt() } }
                 if (def.isPlaneswalker && it.isOnBattlefield() && !it.counters.containsKey("loyalty") && def.loyalty != null) it.counters["loyalty"] = def.loyalty
+                // A permanent the situation says is already on the battlefield entered at some point, so a flat
+                // "enters with N counters" (modular, Hangarback) has already happened. Without this an Arcbound
+                // Worker described as controlled was a 0/0 and died to state-based actions on the spot.
+                if (it.isOnBattlefield() && o.counters.isEmpty()) def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }
+                    .filterIsInstance<StaticEffect.EntersWithCounters>().firstOrNull { e -> e.count != null && e.per == null && !e.onlyIfKicked }?.let { e ->
+                        val n = e.count!!
+                        it.counters[e.kind] = n
+                        state.assumptions += "${def.name} entered with $n ${e.kind} counter${if (n == 1) "" else "s"} on it, as its own text says; say the counters outright if it has a different number now."
+                    }
             }
         }
         for (s in sit.stack) {
