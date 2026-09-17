@@ -593,6 +593,9 @@ class SituationParser(private val names: NameIndex) {
         // "I control Goblin Bushwhacker and cast it kicked": the card is being cast, not already on the
         // battlefield, so the control statement isn't one — it only says which card "it" is.
         t2 = t2.replace(Regex("""\b(?:controls?|have|has|got) ((?:an? |the |my |their )?c\d+) and (casts?|plays?|casting|playing) it\b"""), "$2 $1")
+        // "targeting Grizzly Bears and Hill Giant": both are targets of the one spell, so the "and" is not a
+        // clause break — split there and the second card was read as a spell of its own being cast.
+        t2 = t2.replace(Regex("""\b(targeting|aimed at) ((?:an? |the |my |their |my opponent's )?c\d+) and ((?:an? |the |my |their |my opponent's )?c\d+)\b"""), "$1 $2 & $3")
         // "choosing modes 1 and 4": the mode numbers are a list, not an "and" between two clauses, which would
         // leave the bare "4" behind as a clause of its own and report it unread.
         t2 = Regex("""\bmodes? \d+(?:(?:,| and|, and) \d+)+""").replace(t2) { r -> r.value.replace(Regex("""(?:,| and|, and) """), " & ") }
@@ -3275,6 +3278,13 @@ class SituationParser(private val names: NameIndex) {
             ?: r.takeIf { Regex("""^(it|that|them|me|the|my|their|c\d+|@\w+)\b""").containsMatchIn(it) }
             ?: return emptyList()
         val out = mutableListOf<String>()
+        // "targeting Grizzly Bears & Hill Giant": a spell that divides its damage has more than one target.
+        Regex("""^(.+?)\s*(?:&|,)\s*(.+)$""").find(seg)?.let { r ->
+            if (!Regex("""c\d+""").containsMatchIn(r.groupValues[1]) || !Regex("""c\d+""").containsMatchIn(r.groupValues[2])) return@let
+            val a = targetsIn("targeting " + r.groupValues[1].trim(), m, ctx)
+            val b = targetsIn("targeting " + r.groupValues[2].trim(), m, ctx)
+            if (a.isNotEmpty() && b.isNotEmpty()) { out += a; out += b; return out }
+        }
         // "my opponent's token" / "their 2/2 token": a described token.
         Regex("""^(?:my opponent's |their |the opponent's |opponent's |my )?((?:\d+/\d+ )?(?:[a-z]+ )*?token)$""").find(seg)?.let { r ->
             val owner = if (seg.startsWith("my ") && !seg.startsWith("my opponent")) "me" else pronounPlayer(ctx, "their")

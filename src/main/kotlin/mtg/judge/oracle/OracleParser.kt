@@ -968,6 +968,18 @@ object OracleParser {
             return Effect.Modal(m.groupValues[2].lowercase(), modeTexts.map { parseEffect(it) }, modeTexts)
         }
         regenerateRe.matchEntire(s)?.let { m -> return Effect.Regenerate(if (m.groupValues[1] == "~") null else target(m.groupValues[1])) }
+        // "~ deals 2 damage divided as you choose among one or two targets" and its cousins. The count words only
+        // cap how many targets may be chosen; the filter is what they have to be.
+        Regex("""^(?:~|it) deals (\d+) damage divided as you choose among (one or two|one, two, or three|any number of|up to \w+|\w+) (targets?|target .+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            val max = when (val cw = m.groupValues[2].lowercase()) {
+                "one or two" -> 2; "one, two, or three" -> 3; "any number of" -> null
+                else -> number(cw.removePrefix("up to ").trim())
+            }
+            val what = m.groupValues[3].let { if (it.equals("targets", true) || it.equals("target", true)) "any target" else it }
+                .replace(" and/or ", " or ").removeSuffix("s").replace("creatures", "creature").replace("planeswalkers", "planeswalker")
+            val t = target(what, Kind.CREATURE)
+            if (t.filter.verifiable) return Effect.DamageDivided(m.groupValues[1].toInt(), t, max)
+        }
         preventNextRe.matchEntire(s)?.let { m ->
             val n = m.groupValues[1].toInt(); val to = m.groupValues[2].ifEmpty { m.groupValues[3] }.lowercase()
             if (to == "you") return Effect.CreateShield(Replacement.PreventDamage(n, null, Who.YOU, false, null), null)

@@ -9236,5 +9236,43 @@
       "opponent pays"
     ],
     "cite": []
+  },
+  {
+    "id": "damage-divided-two-targets",
+    "text": "My opponent controls Grizzly Bears and Hill Giant. I cast Forked Bolt targeting Grizzly Bears and Hill Giant. What happens?",
+    "expect": [
+      "Grizzly Bears has 1 damage marked",
+      "Hill Giant has 1 damage marked"
+    ],
+    "notExpect": [
+      "Not modeled",
+      "were given"
+    ],
+    "cite": []
+  },
+  {
+    "id": "damage-divided-one-target",
+    "text": "My opponent controls Grizzly Bears. I cast Forked Bolt targeting Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears has 2 damage marked",
+      "Grizzly Bears: the battlefield"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "damage-divided-from-an-ability",
+    "text": "I control Arc Mage. My opponent controls Grizzly Bears and Serra Angel. I activate Arc Mage targeting Grizzly Bears and Serra Angel. What happens?",
+    "expect": [
+      "Grizzly Bears has 1 damage marked",
+      "Serra Angel has 1 damage marked"
+    ],
+    "notExpect": [
+      "Not modeled",
+      "but 2 given"
+    ],
+    "cite": []
   }
 ]
