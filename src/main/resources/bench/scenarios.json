@@ -8172,5 +8172,27 @@
     ],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "two-cards-named-in-one-graveyard",
+    "text": "I control Tarmogoyf. There is a Lightning Bolt and a Grizzly Bears in my graveyard. What are its stats?",
+    "expect": [
+      "Tarmogoyf is 2/3"
+    ],
+    "notExpect": [
+      "Tarmogoyf is 1/2"
+    ],
+    "cite": []
+  },
+  {
+    "id": "a-creature-that-came-down-this-turn",
+    "text": "I control Grizzly Bears and it came down this turn. Can it attack?",
+    "expect": [
+      "summoning"
+    ],
+    "notExpect": [],
+    "cite": [
+      "302.6"
+    ]
   }
 ]

@@ -596,6 +596,14 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""^(?:we|both of us) each (?:control|have) (?:an? |the )?(c\d+)$"""), "both of us control $1")
         // "I flash back Faithless Looting": the same as casting it with flashback, which is read.
         t2 = t2.replace(Regex("""\b(?:flash(?:es)? back|flashing back|flashbacks?) ((?:an? |the |my |their )?c\d+)"""), "casts $1 with flashback")
+        // "there is a Bolt and a Bears in my graveyard" / "my graveyard has a Bolt and a Bears": the clause splitter
+        // cuts at the "and", leaving the second card with no zone, so each card is given the zone before it splits.
+        t2 = Regex("""\bthere(?:'s| is| are) ((?:an? |the )?c\d+(?:,? (?:and )?(?:an? |the )?c\d+)+) in ($possPrefix)?(graveyard|yard|bin)\b""").replace(t2) { r ->
+            Regex("""c\d+""").findAll(r.groupValues[1]).joinToString(" and ") { "there is a ${it.value} in ${r.groupValues[2]}${r.groupValues[3]}" }
+        }
+        t2 = Regex("""^($possPrefix)(graveyard|yard|bin) (?:has|contains|holds) ((?:an? |the )?c\d+(?:,? (?:and )?(?:an? |the )?c\d+)+)$""").replace(t2) { r ->
+            Regex("""c\d+""").findAll(r.groupValues[3]).joinToString(" and ") { "there is a ${it.value} in ${r.groupValues[1]}${r.groupValues[2]}" }
+        }
         // "There is a Lightning Bolt on the stack targeting my Bears" and "my Bears has a Bolt on the stack
         // targeting it" say the same thing as "they have a Bolt on the stack targeting my Bears", which is read.
         // Whose spell it is follows from whose permanent it points at.
@@ -1391,6 +1399,13 @@ class SituationParser(private val names: NameIndex) {
             ctx.objects[id] = spec.copy(counters = spec.counters + (kind to ((spec.counters[kind] ?: 0) + n)))
             ctx.lastMentioned = id; ctx.lastStat = "$kind counters"; ctx.lastStatWho = "obj:$id"; return true
         }
+        // "it came down this turn", "the Bears entered the battlefield this turn": summoning sickness, said as history.
+        Regex("""^($possPrefix)?(c\d+|it|that) (?:just )?(?:came down|came in|came into play|entered|entered the battlefield|hit the battlefield|was cast|was played|resolved) (?:this|the same|that) turn$""").find(c)?.let { r ->
+            val owner = possessiveOwner(r.groupValues[1], ctx) ?: actor ?: ctx.lastOwner
+            val id = if (r.groupValues[2] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, owner, false, ctx) } ?: return@let
+            ctx.objects[id] = ctx.objects.getValue(id).copy(summoningSick = true); ctx.lastMentioned = id; return true
+        }
         // "My Grizzly Bears has summoning sickness" / "it regenerates" / "it is shuffled into my library".
         Regex("""^(?:my |their |his |her |the |own )?(c\d+|it|that) (?:has|is) summoning ?sick(?:ness)?$""").find(c)?.let { r ->
             val id = if (r.groupValues[1] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
@@ -1566,11 +1581,11 @@ class SituationParser(private val names: NameIndex) {
             ctx.note(who); return true
         }
         // The owner-first form ("my graveyard has a Mountain") loses its "my" to the actor rule before it gets here.
-        Regex("""^(?:there (?:is|are)|i have|they have|there's) (?:an? |the )?(c\d+) in (my|their|his|her|my opponent's|the opponent's|opponent's) (?:graveyard|yard|bin)$|^(?:($possPrefix))?(?:graveyard|yard|bin) (?:has|contains|holds) (?:an? |the )?(c\d+)(?: in it)?$""").find(c)?.let { r ->
-            val who = if (r.groupValues[1].isNotEmpty()) (when (r.groupValues[2]) { "my" -> "me"; else -> pronounPlayer(ctx, "their") })
-                      else possessiveOwner(r.groupValues[3], ctx) ?: actor ?: "me"
+        Regex("""^(?:there (?:is|are)|i have|they have|there's) ((?:an? |the )?c\d+(?:(?:,| and|, and) (?:an? |the )?c\d+)*) in ($possPrefix)?(?:graveyard|yard|bin)$|^($possPrefix)?(?:graveyard|yard|bin) (?:has|contains|holds) ((?:an? |the )?c\d+(?:(?:,| and|, and) (?:an? |the )?c\d+)*)(?: in it)?$""").find(c)?.let { r ->
+            val who = possessiveOwner(r.groupValues[2].ifEmpty { r.groupValues[3] }, ctx) ?: actor ?: "me"
             val was = ctx.lastMentioned
-            addObject(m.cards.getValue(r.groupValues[1].ifEmpty { r.groupValues[4] }), who, false, ctx, zone = "graveyard", allowDuplicate = true)
+            for (ph in Regex("""c\d+""").findAll(r.groupValues[1].ifEmpty { r.groupValues[4] }).map { it.value })
+                addObject(m.cards.getValue(ph), who, false, ctx, zone = "graveyard", allowDuplicate = true)
             ctx.lastMentioned = was   // a card in a graveyard isn't what "it" means next
             ctx.note(who); return true
         }
