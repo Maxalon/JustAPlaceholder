@@ -140,6 +140,7 @@ What happens next, in order. The engine applies these to the described state.
 | `draw` | `player`, `amount` (a player draws outside any effect; draw triggers see it) |
 | `regenerate` | `object` (the permanent has a regeneration shield this turn) |
 | `sacrifice` | `player`, `object` |
+| `fight` | `object`, `targets`: [the other creature] (each deals damage equal to its power to the other, 701.14a) |
 
 `activate` also accepts `to: "mana"` (the object's mana ability) or a loyalty cost such as `"+1"`.
 An object's `card` may name a generic token: `"5/5 Zombie token"`, `"Treasure token"`, `"1/1 white Soldier creature token"`.
