@@ -9493,5 +9493,30 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "no-maximum-hand-size",
+    "text": "I control Reliquary Tower and have 10 cards in hand at my end step. What happens?",
+    "expect": [
+      "discard nothing to hand size (Reliquary Tower)"
+    ],
+    "notExpect": [
+      "discard 3",
+      "Not modeled"
+    ],
+    "cite": [
+      "402.2"
+    ]
+  },
+  {
+    "id": "maximum-hand-size-without-it",
+    "text": "I have 10 cards in hand at my end step. What happens?",
+    "expect": [
+      "discard 3 cards to hand size"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

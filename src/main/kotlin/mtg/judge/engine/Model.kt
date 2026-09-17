@@ -367,6 +367,13 @@ sealed interface StaticEffect {
     data object PlayerHexproof : StaticEffect
     /** "You can't lose the game and your opponents can't win the game" (Platinum Angel). */
     data object CantLose : StaticEffect
+    /** "You have no maximum hand size." (Reliquary Tower and the rest) — nothing is discarded at cleanup. */
+    data object NoMaximumHandSize : StaticEffect
+    /**
+     * A line that says something true about the card outside the game and nothing inside it ("~ can be your
+     * commander"). Counted as read, because there is nothing for a situation to turn on.
+     */
+    data class Narration(val text: String, val rules: List<String>) : StaticEffect
     /** "Nonbasic lands are Mountains" (Blood Moon): a type-changing effect, layer 4 (613.1d, 305.7). */
     data object NonbasicLandsAreMountains : StaticEffect
     /** Fog Bank: "Prevent all combat damage that would be dealt to and dealt by ~." as a static ability of the creature itself. */

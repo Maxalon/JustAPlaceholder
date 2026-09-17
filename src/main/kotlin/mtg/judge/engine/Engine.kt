@@ -668,8 +668,11 @@ class Engine(val state: GameState) {
         }
         if (step == "cleanup") {
             state.activePlayer = activePlayer; state.step = step; state.phase = "ending"
+            val noMax = state.objects.values.firstOrNull { o -> o.isOnBattlefield() && o.controller == activePlayer &&
+                o.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { e -> e is StaticEffect.NoMaximumHandSize } }
             state.player(activePlayer).let { ap -> ap.handSize?.let { hand ->
-                if (hand > 7) { trace.step("${ap.subject} ${ap.v("has", "have")} $hand cards in hand and a maximum hand size of seven, so ${ap.subject.lowercase()} ${ap.v("discards", "discard")} ${hand - 7} card${if (hand - 7 == 1) "" else "s"} of ${ap.possessive} choice first.", "514.1", "402.2"); ap.handSize = 7; state.outcomes += "${ap.subject} ${ap.v("discards", "discard")} ${hand - 7} card${if (hand - 7 == 1) "" else "s"} to hand size." }
+                if (noMax != null) trace.step("${noMax.name} gives ${ap.subject.lowercase()} no maximum hand size, so ${ap.subject.lowercase()} ${ap.v("keeps", "keep")} all $hand card${if (hand == 1) "" else "s"}.", "514.1", "402.2")
+                else if (hand > 7) { trace.step("${ap.subject} ${ap.v("has", "have")} $hand cards in hand and a maximum hand size of seven, so ${ap.subject.lowercase()} ${ap.v("discards", "discard")} ${hand - 7} card${if (hand - 7 == 1) "" else "s"} of ${ap.possessive} choice first.", "514.1", "402.2"); ap.handSize = 7; state.outcomes += "${ap.subject} ${ap.v("discards", "discard")} ${hand - 7} card${if (hand - 7 == 1) "" else "s"} to hand size." }
                 else trace.step("${ap.subject} ${ap.v("has", "have")} $hand card${if (hand == 1) "" else "s"} in hand, no more than the maximum hand size of seven, so nothing is discarded.", "514.1", "402.2")
             } }
             val affected = state.objects.values.filter { it.isOnBattlefield() && (it.pumps.isNotEmpty() || it.tempKeywords.isNotEmpty() || it.damage > 0 || it.basePt != null) }
@@ -697,7 +700,12 @@ class Engine(val state: GameState) {
         // "I have nine cards in hand at end of turn, what happens?" the answer was "nothing changes", which is
         // true of the end step and not of what was asked.
         if (step == "end") state.player(activePlayer).let { p -> p.handSize?.let { hand ->
-            if (hand > 7) {
+            val noMax = state.objects.values.firstOrNull { o -> o.isOnBattlefield() && o.controller == activePlayer &&
+                o.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { e -> e is StaticEffect.NoMaximumHandSize } }
+            if (noMax != null && hand > 7) {
+                trace.step("${p.subject} ${p.v("has", "have")} $hand cards in hand, but ${noMax.name} gives ${p.subject.lowercase()} no maximum hand size, so nothing is discarded in the cleanup step either.", "402.2", "514.1")
+                state.outcomes += "${p.subject} ${p.v("discards", "discard")} nothing to hand size (${noMax.name})."
+            } else if (hand > 7) {
                 val n = hand - 7
                 trace.step("${p.subject} ${p.v("has", "have")} $hand cards in hand, over the maximum hand size of seven, but nothing is discarded during the end step: the discard is a turn-based action of the cleanup step that follows.", "513.1", "514.1", "402.2")
                 state.outcomes += "${p.subject} ${p.v("discards", "discard")} $n card${if (n == 1) "" else "s"} to hand size in the cleanup step that follows, not during the end step."
