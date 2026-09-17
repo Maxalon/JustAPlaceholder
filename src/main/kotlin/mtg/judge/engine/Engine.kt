@@ -259,6 +259,18 @@ class Engine(val state: GameState) {
         trace.step("${player.subject} ${player.v("receives", "receive")} priority again after casting.", "117.3c")
     }
 
+    /** Proliferate: one more of each kind of counter already there, on whatever its controller would pick (701.34a). */
+    fun proliferate(playerId: String) {
+        val you = state.player(playerId)
+        val objs = state.objects.values.filter { it.isOnBattlefield() && it.counters.values.any { n -> n > 0 } && it.controller == playerId }
+        val players = state.players.filter { it.poison > 0 && it.id != playerId }
+        if (objs.isEmpty() && players.isEmpty()) { trace.step("Nothing ${you.subject.lowercase()} would want to proliferate has a counter.", "701.34a"); state.outcomes += "Proliferate does nothing: nothing ${you.subject.lowercase()} would choose has a counter on it." }
+        for (o in objs) { o.counters.keys.toList().forEach { k -> o.counters[k] = o.counters.getValue(k) + 1 }; trace.step("${you.subject} ${you.v("proliferates", "proliferate")} ${o.name}: one more of each kind of counter it has (${o.counters.entries.joinToString(", ") { "${it.value} ${it.key}" }}).", "701.34a"); state.outcomes += "${o.name} has ${o.counters.entries.joinToString(", ") { "${it.value} ${it.key}" }} counters." }
+        for (p in players) { p.poison += 1; trace.step("${p.subject} ${p.v("gets", "get")} another poison counter (${p.poison}).", "701.34a"); state.outcomes += "${p.subject} ${p.v("has", "have")} ${p.poison} poison counters." }
+        if (objs.isNotEmpty() || players.isNotEmpty()) state.assumptions += "Proliferate: ${you.subject.lowercase()} ${you.v("chooses", "choose")} all ${you.possessive} own permanents with counters${if (players.isNotEmpty()) " and each opponent with poison counters" else ""} (701.34a lets ${you.subject.lowercase()} choose any number)."
+        stateBasedActions()
+    }
+
     /** Two creatures fight: each deals damage equal to its power to the other, at the same time (701.14a). */
     fun fight(a: GameObject?, b: GameObject?) {
         if (a == null || b == null || !a.isOnBattlefield() || !b.isOnBattlefield()) {
@@ -1562,16 +1574,7 @@ class Engine(val state: GameState) {
                 trace.step("\"That much\" is $n \u2014 the damage the trigger was about.", "608.2h")
                 forEachLegalTarget(item, effect.target) { applyDamage(item.source.name, it, n) }
             }
-            is Effect.Proliferate -> {
-                val you = state.player(item.controller)
-                val objs = state.objects.values.filter { it.isOnBattlefield() && it.counters.values.any { n -> n > 0 } && it.controller == item.controller }
-                val players = state.players.filter { it.poison > 0 && it.id != item.controller }
-                if (objs.isEmpty() && players.isEmpty()) trace.step("Nothing ${you.subject.lowercase()} would want to proliferate has a counter.", "701.34a")
-                for (o in objs) { o.counters.keys.toList().forEach { k -> o.counters[k] = o.counters.getValue(k) + 1 }; trace.step("${you.subject} ${you.v("proliferates", "proliferate")} ${o.name}: one more of each kind of counter it has (${o.counters.entries.joinToString(", ") { "${it.value} ${it.key}" }}).", "701.34a"); state.outcomes += "${o.name} has ${o.counters.entries.joinToString(", ") { "${it.value} ${it.key}" }} counters." }
-                for (p in players) { p.poison += 1; trace.step("${p.subject} ${p.v("gets", "get")} another poison counter (${p.poison}).", "701.34a"); state.outcomes += "${p.subject} ${p.v("has", "have")} ${p.poison} poison counters." }
-                if (objs.isNotEmpty() || players.isNotEmpty()) state.assumptions += "Proliferate: ${you.subject.lowercase()} ${you.v("chooses", "choose")} all ${you.possessive} own permanents with counters${if (players.isNotEmpty()) " and each opponent with poison counters" else ""} (701.34a lets ${you.subject.lowercase()} choose any number)."
-                stateBasedActions()
-            }
+            is Effect.Proliferate -> proliferate(item.controller)
             is Effect.ForAllTargeted -> forEachLegalTarget(item, effect.target) { ref ->
                 val pid = (ref as? Ref.Player)?.id ?: return@forEachLegalTarget
                 val affected = state.objects.values.filter { it.controller == pid && state.matches(effect.filter, it, pid) }

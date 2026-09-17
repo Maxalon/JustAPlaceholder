@@ -11055,5 +11055,53 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "becomes-a-size",
+    "text": "My Grizzly Bears has two +1/+1 counters and becomes a 1/1 until end of turn. What are its stats?",
+    "expect": [
+      "Grizzly Bears is 3/3 (1/1 base, 2 +1/+1 counters)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "613.4b"
+    ]
+  },
+  {
+    "id": "proliferate-said-outright",
+    "text": "I control a Walking Ballista with two +1/+1 counters and I proliferate. What are its stats?",
+    "expect": [
+      "Walking Ballista is 3/3"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "701.34a"
+    ]
+  },
+  {
+    "id": "proliferate-poison",
+    "text": "My opponent has 4 poison counters and I proliferate. What happens?",
+    "expect": [
+      "opponent has 5 poison counters"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "discard-my-hand",
+    "text": "I have 3 cards in hand and I discard my hand. What happens?",
+    "expect": [
+      "You discard 3 cards"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

@@ -3020,6 +3020,25 @@ class SituationParser(private val names: NameIndex) {
             val who = actor ?: ctx.lastActor ?: "me"
             ctx.activePlayer = who; ctx.events += EventSpec("step", player = who, to = "untap"); ctx.note(who); return true
         }
+        // "I proliferate": one more of each kind of counter already on the table (701.34a).
+        Regex("""^proliferates?(?: once| again)?$""").find(c)?.let {
+            val who = actor ?: ctx.lastActor ?: "me"
+            ctx.events += EventSpec("proliferate", player = who); ctx.note(who); return true
+        }
+        // "I discard my hand": every card in it, which needs the hand size to have been said.
+        Regex("""^discards? (?:my|their|his|her) (?:whole |entire )?hand$""").find(c)?.let {
+            val who = actor ?: ctx.lastActor ?: "me"
+            val n = ctx.handSize[who]
+            if (n == null) { ctx.notes += "How many cards ${if (who == "me") "you have" else "they have"} in hand wasn't said, so discarding the hand isn't counted; say the hand size for a precise answer."; ctx.note(who); return true }
+            ctx.events += EventSpec("discardCount", player = who, amount = n); ctx.note(who); return true
+        }
+        // "my Grizzly Bears becomes a 4/4 until end of turn": a size given outright rather than as a bonus.
+        Regex("""^(?:($possPrefix)?(c\d+|it|that) )?becomes? (?:an? )?(\d+)/(\d+)(?: creature)?(?: until end of turn| this turn)?$""").find(c)?.let { r ->
+            val id = if (r.groupValues[2].isEmpty() || r.groupValues[2] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, possessiveOwner(r.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
+            ctx.events += EventSpec("setPt", obj = id, to = "${r.groupValues[3]}/${r.groupValues[4]}")
+            ctx.lastMentioned = id; return true
+        }
         // "my opponent scoops" / "they concede": that player loses the game (104.3a).
         Regex("""^(?:scoops?(?: up)?|concedes?|conceded|quits?|gives? up|packs? it in)$""").find(c)?.let {
             val who = actor ?: ctx.lastActor ?: "opp"

@@ -191,6 +191,16 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "tap" -> engine.tapObject(e.obj ?: throw JudgeException("tap needs an object"))
             "untap" -> engine.untapObject(e.obj ?: throw JudgeException("untap needs an object"))
             "mill" -> engine.millCards(e.player ?: throw JudgeException("mill needs a player"), e.amount ?: 1)
+            "proliferate" -> engine.proliferate(e.player ?: state.players.first().id)
+            // "my Grizzly Bears becomes a 4/4 until end of turn": a base size set outright (layer 7b), so counters
+            // and +N/+N effects still apply on top of it.
+            "setpt" -> {
+                val o = state.obj(e.obj ?: throw JudgeException("setPt needs an object"))
+                val pt = Regex("""^(\d+)/(\d+)$""").find(e.to ?: "") ?: throw JudgeException("setPt needs a size like \"4/4\"")
+                o.basePt = pt.groupValues[1].toInt() to pt.groupValues[2].toInt()
+                state.trace.step("${o.name} has base power and toughness ${pt.groupValues[1]}/${pt.groupValues[2]}. That's a layer 7b effect, so counters and +N/+N effects still apply on top of it; it is now ${o.power}/${o.toughness}.", "613.4b")
+                state.outcomes += "${o.name} is ${o.power}/${o.toughness}."
+            }
             // "my opponent scoops": conceding is a special action that player may take any time they have priority.
             "concede" -> {
                 val p = state.player(e.player ?: throw JudgeException("concede needs a player"))
@@ -423,6 +433,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "tap" -> "${state.objects[e.obj]?.name ?: e.obj} becomes tapped"
             "untap" -> "${state.objects[e.obj]?.name ?: e.obj} untaps"
             "mill" -> "${who ?: "the player"} ${if (who == "you") "mill" else "mills"} ${e.amount ?: 1} card${if ((e.amount ?: 1) == 1) "" else "s"}"
+            "proliferate" -> "${who ?: "the player"} ${if (who == "you") "proliferate" else "proliferates"}"
+            "setpt" -> "${state.objects[e.obj]?.name ?: e.obj} becomes ${e.to ?: "?"}"
             "concede" -> "${who ?: "the player"} ${if (who == "you") "concede" else "concedes"}"
             "discardcount" -> "${who ?: "the player"} ${if (who == "you") "discard" else "discards"} ${e.amount ?: 1} card${if ((e.amount ?: 1) == 1) "" else "s"}"
             "poison" -> "${who ?: "the player"} ${if (who == "you") "get" else "gets"} ${e.amount ?: 1} poison counter${if ((e.amount ?: 1) == 1) "" else "s"}"
