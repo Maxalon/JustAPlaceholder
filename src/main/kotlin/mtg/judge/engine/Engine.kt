@@ -665,6 +665,16 @@ class Engine(val state: GameState) {
             trace.step("\"Until end of turn\" effects don't end in the end step: \"at the beginning of the end step\" abilities trigger now, and the effects last until the cleanup step that follows.", "513.1", "514.2")
             state.outcomes += "Until-end-of-turn effects still apply during the end step; they end in the cleanup step."
         }
+        // The discard to hand size is a turn-based action of the cleanup step (514.1), not the end step. Asked
+        // "I have nine cards in hand at end of turn, what happens?" the answer was "nothing changes", which is
+        // true of the end step and not of what was asked.
+        if (step == "end") state.player(activePlayer).let { p -> p.handSize?.let { hand ->
+            if (hand > 7) {
+                val n = hand - 7
+                trace.step("${p.subject} ${p.v("has", "have")} $hand cards in hand, over the maximum hand size of seven, but nothing is discarded during the end step: the discard is a turn-based action of the cleanup step that follows.", "513.1", "514.1", "402.2")
+                state.outcomes += "${p.subject} ${p.v("discards", "discard")} $n card${if (n == 1) "" else "s"} to hand size in the cleanup step that follows, not during the end step."
+            }
+        } }
         onEvent(GameEvent.StepBegins(step, activePlayer))
         // 725.2: the monarch's end-step draw is an inherent ability with no source, so it isn't on any permanent.
         if (step == "end") state.monarch?.let { mid ->

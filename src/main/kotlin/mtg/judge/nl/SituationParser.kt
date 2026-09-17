@@ -357,7 +357,11 @@ class SituationParser(private val names: NameIndex) {
     }
 
     private fun readSentence(m: Marked, ctx: Ctx): Boolean {
-        val t0 = m.text.replace(Regex("""\s+"""), " ").trim()
+        // Counts written as words become digits here, after card names have been replaced by placeholders, so a
+        // card called "Seven Dwarves" is never touched. Every count rule already reads digits; without this
+        // "my opponent is at seven life" and "I control six Grizzly Bears" went unread. "One" is left alone: it
+        // is a word in its own right ("blocks one of them", "choose one").
+        val t0 = wordCounts.replace(m.text.replace(Regex("""\s+"""), " ").trim()) { r -> numberWords.getValue(r.value.lowercase()).toString() }
         if (t0.isEmpty()) return true
         var any = false
 
@@ -3183,6 +3187,8 @@ class SituationParser(private val names: NameIndex) {
         return out
     }
 
+    /** Counts written as words, as whole words and case-insensitively; "one" is deliberately not among them. */
+    private val wordCounts = Regex("""\b(?:zero|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)\b""", RegexOption.IGNORE_CASE)
     private val numberWords = mapOf("zero" to 0, "two" to 2, "three" to 3, "four" to 4, "five" to 5, "six" to 6, "seven" to 7,
         "eight" to 8, "nine" to 9, "ten" to 10, "eleven" to 11, "twelve" to 12, "thirteen" to 13, "fourteen" to 14,
         "fifteen" to 15, "sixteen" to 16, "seventeen" to 17, "eighteen" to 18, "nineteen" to 19, "twenty" to 20)

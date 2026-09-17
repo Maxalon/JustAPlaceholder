@@ -8232,5 +8232,38 @@
     ],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "six-creatures-said-as-a-word",
+    "text": "I control six Grizzly Bears and my opponent casts Wrath of God. What happens?",
+    "expect": [
+      "(\u00d76)"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "a-life-total-said-as-a-word",
+    "text": "My opponent is at seven life and I attack with a 7/7. What happens?",
+    "expect": [
+      "loses the game"
+    ],
+    "notExpect": [],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "over-hand-size-at-end-of-turn",
+    "text": "I have 9 cards in hand at end of turn. What happens?",
+    "expect": [
+      "cleanup step that follows"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "514.1"
+    ]
   }
 ]
