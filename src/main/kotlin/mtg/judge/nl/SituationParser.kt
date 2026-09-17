@@ -3003,12 +3003,41 @@ class SituationParser(private val names: NameIndex) {
             for (b in blockers) ctx.events += EventSpec("block", player = who, obj = b, targets = listOf(attacker))
             ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
+        // "my opponent taps out": they spent their mana, so there is none left for a tax or a response.
+        Regex("""^taps? out(?: for (?:it|that|everything))?$|^(?:is|are) tapped out$""").find(c)?.let {
+            val who = actor ?: ctx.lastActor ?: "opp"
+            ctx.mana[who] = 0; ctx.note(who)
+            ctx.notes += "\"${restore(clause0, m)}\" is read as ${if (who == "me") "you having" else (ctx.players[who] ?: "your opponent") + " having"} no mana available."
+            return true
+        }
+        // "my opponent flashes in a blocker": a creature nobody named arrives and blocks what is attacking.
+        Regex("""^(?:flash(?:es)?|flashes in|flash in|drops?|plays?) (?:in )?(?:an? |the )?(blocker|chump blocker|creature|surprise blocker)$""").find(c)?.let {
+            val who = actor ?: ctx.lastActor ?: "opp"
+            val id = describedCreatures("a ", "", "creature", who, ctx).firstOrNull() ?: return@let
+            ctx.events += EventSpec("enter", obj = id)
+            ctx.notes += "Nothing was said about what ${if (who == "me") "you flash" else (ctx.players[who] ?: "your opponent") + " flashes"} in, so it is read as an unnamed creature that then blocks; name it for a precise answer."
+            val atk = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" } ?: ensureAttacker(ctx, who)
+            if (atk?.obj != null) ctx.events += EventSpec("block", player = who, obj = id, targets = listOf(atk.obj!!))
+            ctx.lastActor = who; ctx.lastVerb = "block"; ctx.lastMentioned = id; return true
+        }
         // Bare "block" / "blocks (it)" / "block with it": the creature just mentioned blocks the last attacker.
         // Said the other way round ("it is blocked", "it gets chump blocked") it's the same statement, and the
         // blocker is whatever the defending player has — or, if nobody said, a creature nobody named.
-        Regex("""^(?:chump[- ]?)?blocks?(?: it| that| the attacker| with it)?$|^(?:(?:it|that|they|the attacker|my attacker|their attacker|the creature) )?(?:is|are|was|were|gets?|got) (?:chump[- ]?)?blocked$""").find(c)?.let {
+        // "They block my 5/5": the attacker is named but the blocker isn't, which is still a block.
+        Regex("""^(?:chump[- ]?)?blocks?(?: it| that| the attacker| with it| ($possPrefix|an? )?(c\d+|\d+/\d+))?$|^(?:(?:it|that|they|the attacker|my attacker|their attacker|the creature) )?(?:is|are|was|were|gets?|got) (?:chump[- ]?)?blocked$""").find(c)?.let { r ->
             // A block with no attack described says there was one: "I control a 3/3 and my opponent blocks with a 1/1".
-            val attackerEvent = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" }
+            val named = r.groupValues.getOrNull(2)?.takeIf { it.isNotEmpty() }?.let { ph ->
+                val owner = possessiveOwner(r.groupValues[1], ctx, m) ?: ctx.other(actor ?: ctx.lastActor ?: "me") ?: "opp"
+                val aid = if (cardRef.matches(ph)) m.cards[ph]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, owner, false, ctx) }
+                          else describedCreatures("the ", ph, "creature", owner, ctx).firstOrNull() ?: describedCreatures("a ", ph, "creature", owner, ctx).firstOrNull()
+                aid?.let { a ->
+                    ctx.events.lastOrNull { it.verb == "attack" && it.obj == a } ?: run {
+                        val atkWho = ctx.objects[a]?.controller ?: owner
+                        EventSpec("attack", player = atkWho, obj = a, targets = listOf(ctx.other(atkWho) ?: "me")).also { ctx.events += it }
+                    }
+                }
+            }
+            val attackerEvent = named ?: ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" }
                 ?: ensureAttacker(ctx, actor ?: ctx.lastActor ?: "me") ?: return false
             val defender = actor ?: ctx.other(attackerEvent.player) ?: "me"
             // A creature just cast has no object yet; the judge gives it the id the engine will use (its slug). Otherwise the defender's last creature.

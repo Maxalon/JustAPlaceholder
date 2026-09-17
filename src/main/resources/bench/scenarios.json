@@ -10964,5 +10964,38 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "they-block-my-attacker",
+    "text": "They block my 5/5. What happens?",
+    "expect": [
+      "a creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "flash-in-a-blocker",
+    "text": "I attack with a 3/3. My opponent flashes in a blocker. What happens?",
+    "expect": [
+      "a creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "taps-out-then-a-spell",
+    "text": "My opponent taps out. I cast Cryptic Command choosing mode 1 and 4.",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
