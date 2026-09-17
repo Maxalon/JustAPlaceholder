@@ -200,6 +200,9 @@ class SituationParser(private val names: NameIndex) {
     /** Number words are counts, never the card of that name; a card whose name starts with one is longer than a word. */
     private val countWords = setOf("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
         "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty")
+    /** Card-type words. A count or an article in front of one makes it a description, whatever card shares the name. */
+    private val cardTypeWords = setOf("artifact", "artifacts", "creature", "creatures", "land", "lands", "enchantment", "enchantments",
+        "planeswalker", "planeswalkers", "instant", "instants", "sorcery", "sorceries", "permanent", "permanents", "spell", "spells", "battle", "battles")
     private val typeShortNames = setOf("wall", "angel", "demon", "dragon", "giant", "wizard", "knight", "elf", "goblin", "sphinx", "beast", "bird", "cat", "wolf", "bear", "elemental", "spirit", "soldier", "warrior", "lord", "king", "queen", "rat", "dog", "zombie", "vampire", "hydra", "titan", "golem", "wurm", "drake", "djinn", "phoenix", "shaman", "druid", "cleric", "rogue", "archer")
 
     private val shortNameStop = setOf("the", "and", "with", "from", "into", "onto", "for", "that", "this", "your", "you", "all", "each", "any", "one", "two", "three", "of",
@@ -264,6 +267,11 @@ class SituationParser(private val names: NameIndex) {
         val found = (full + normWords.indices.filter { it !in covered }.mapNotNull { i -> shortAt(i)?.let { NameIndex.Found(i, i + 1, it) } })
             // "a Goblin", "two Walls": a bare creature type after an indefinite article or a count is a description, not the card of that name.
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in typeShortNames && normWords.getOrNull(f.start - 1) in indefiniteWords) }
+            // "three artifacts", "two creatures": a bare card-type word after a count or an article describes what
+            // it is, not the card of that name — there is a card called "Artifacts", and it was taking the count
+            // Dispatch's metalcraft check needed with it.
+            .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in cardTypeWords &&
+                (normWords.getOrNull(f.start - 1) in indefiniteWords || normWords.getOrNull(f.start - 1) in countWords || normWords.getOrNull(f.start - 1) in setOf("more", "other", "fewer") || Regex("""^\d+$""").matches(normWords.getOrNull(f.start - 1) ?: ""))) }
             // "my graveyard has seven cards": a number word on its own is a count. It once reached a card and the
             // count went unread, so the graveyard the asker described wasn't there.
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in countWords) }
@@ -727,6 +735,8 @@ class SituationParser(private val names: NameIndex) {
     private fun readClause(clauseIn0: String, m: Marked, ctx: Ctx): Boolean {
         // "I try to activate it" / "they attempt to block": the attempt is the action, and the answer says how it goes.
         val clauseIn = clauseIn0.replace(Regex("""\b(?:tr(?:y|ies|ied)|attempts?|attempted|want(?:s|ed)?|would like) to (?=(?:activate|use|tap|untap|block|attack|cast|play|sacrifice|equip|counter|draw|search|target|crack|pop|fire|give|put|destroy|exile|bounce|kill|return|regenerate)\b)"""), "")
+            // "I control Valakut and five other Mountains": "other" only says they aren't the card just named.
+            .replace(Regex("""^(\d+) other (?=c\d+\b|[a-z])"""), "$1 ")
         return readClause0(clauseIn, m, ctx)
     }
 
@@ -1239,6 +1249,19 @@ class SituationParser(private val names: NameIndex) {
             // "sacrifice Hexmage targeting my Bears": the target belongs to the "Sacrifice this:" ability the sacrifice pays for.
             ctx.events += EventSpec("sacrifice", player = who, obj = id, targets = targetsIn(r.groupValues[3], m, ctx))
             ctx.lastActor = who; return true
+        }
+        // "I control three artifacts", "they have two enchantments": permanents nobody named, counted. Cards that
+        // count a type ("metalcraft") need the count to be there; without this the clause went unread.
+        Regex("""^(controls?|controlling|have|has|got|there (?:is|are))\s+(an?|\d+|two|three|four|five|six|seven|eight|nine|ten)(?: (?:more|other))? (artifacts?|enchantments?|planeswalkers?|permanents?|lands?)(?: on the battlefield| in play| out)?$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: ctx.lastOwner ?: "me"
+            val n = number(r.groupValues[2]) ?: 1
+            val kind = r.groupValues[3].removeSuffix("s")
+            // "I have four lands" is the mana idiom and is read as mana further down; "I control four lands" is a board.
+            if (kind == "land" && !r.groupValues[1].startsWith("control")) return@let
+            val name = (if (kind.first() in "aeiou") "an " else "a ") + kind
+            val ids = (1..n).map { var id = slug(kind); var k = 2; while (ctx.objects.containsKey(id)) id = slug(kind) + "_" + (k++); ctx.objects[id] = ObjectSpec(id, CardRef(name = name), controller = who); id }
+            ctx.notes += "$n unnamed ${kind}${if (n > 1) "s" else ""} on the battlefield; only being ${if (kind.first() in "aeiou") "an" else "a"} $kind matters to the answer."
+            ctx.lastMentioned = ids.last(); ctx.lastOwner = who; ctx.lastActor = who; ctx.note(who); return true
         }
         // "a creature enchanted with Pacifism", "a 2/2 equipped with Bonesplitter": a creature nobody named,
         // carrying something that is named.

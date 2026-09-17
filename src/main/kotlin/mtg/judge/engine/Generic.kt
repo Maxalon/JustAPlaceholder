@@ -40,7 +40,8 @@ object Generic {
             "planeswalker", "planeswalker card" -> "Planeswalker"
             "battle", "battle card" -> "Battle"
             "instant card" -> "Instant"; "sorcery card" -> "Sorcery"; "creature card" -> "Creature"; "artifact card" -> "Artifact"; "enchantment card" -> "Enchantment"; "land card" -> "Land"
-            else -> return null
+            // "three artifacts", "two creatures": a plural stands for the same thing the singular does.
+            else -> return if (n.endsWith("s") && n.length > 2) spell(n.dropLast(1)) else null
         }
         val article = if (n.first() in "aeiou") "an" else "a"
         return OracleParser.parse("generic-$n", "$article $n", typeLine, "{1}", 1.0, "", if (typeLine == "Creature") "1" else null, if (typeLine == "Creature") "1" else null, emptyList(), "")

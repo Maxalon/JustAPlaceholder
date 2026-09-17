@@ -1208,7 +1208,7 @@ class Engine(val state: GameState) {
     private fun hasReturnSelf(e: Effect): Boolean = when (e) {
         is Effect.ReturnSelfFromGraveyard -> true
         is Effect.May -> hasReturnSelf(e.effect); is Effect.Seq -> e.effects.any { hasReturnSelf(it) }
-        is Effect.IfYouDo -> hasReturnSelf(e.choice) || hasReturnSelf(e.then); is Effect.Modal -> e.modes.any { hasReturnSelf(it) }
+        is Effect.IfYouDo -> hasReturnSelf(e.choice) || hasReturnSelf(e.then); is Effect.IfCondition -> hasReturnSelf(e.then); is Effect.Modal -> e.modes.any { hasReturnSelf(it) }
         else -> false
     }
 
@@ -1969,6 +1969,15 @@ class Engine(val state: GameState) {
                 trace.step("${you.subject} may ${describe(effect.choice, item)}. If ${you.v("they do", "you do")}: ${describe(effect.then, item)}.", "608.2d")
                 state.assumptions += "${you.subject} ${you.v("chooses", "choose")} to ${describe(effect.choice, item)} for ${item.describe}."
                 applyEffect(effect.choice, item); applyEffect(effect.then, item)
+            }
+            is Effect.IfCondition -> {
+                if (state.conditionHolds(effect.condition, item.source)) {
+                    trace.step("${item.describe} checks \"if ${effect.raw}\" as it resolves, and it holds, so the rest happens.", "608.2")
+                    applyEffect(effect.then, item)
+                } else {
+                    trace.step("${item.describe} checks \"if ${effect.raw}\" as it resolves. It needs ${state.describeCondition(effect.condition)}, which isn't so, so nothing happens.", "608.2")
+                    state.outcomes += "Nothing happens from ${item.describe}: it needs ${state.describeCondition(effect.condition)}."
+                }
             }
             is Effect.GainControl -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o ->
                 val was = state.player(o.controller); if (effect.untilEndOfTurn && o.controlRevertsTo == null) o.controlRevertsTo = o.controller; o.controller = item.controller
@@ -2737,6 +2746,7 @@ class Engine(val state: GameState) {
         is Effect.AddMana -> "add ${effect.text}"; is Effect.AddManaPer -> "add ${effect.symbol} for each ${effect.filter.raw}"; is Effect.AddManaDevotion -> "choose a colour and add that much mana of it as your devotion to it"; is Effect.AddManaInstead -> "add ${effect.text} instead if you control ${effect.required.joinToString(" and ") { "an $it" }}"; is Effect.Narrated -> effect.text.replace("~", item.source.name).replaceFirstChar { it.lowercase() }
         is Effect.ForAll -> "${effect.action} ${if (effect.action == "damage") "${effect.amount} to " else ""}each ${effect.filter.raw}"
         is Effect.IfYouDo -> "${describe(effect.choice, item)}, and if so ${describe(effect.then, item)}"
+        is Effect.IfCondition -> "if ${effect.raw}, ${describe(effect.then, item)}"
         is Effect.Attach -> "attach ${item.source.name} to ${effect.target.raw}"
         is Effect.GainKeywordsSelf -> "${item.source.name} gains ${effect.keywords.joinToString(" and ")}"
         is Effect.Modal -> "choose ${effect.count}: " + effect.modeTexts.joinToString(" / ")

@@ -9040,5 +9040,55 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "valakut-condition-met",
+    "text": "I control Valakut, the Molten Pinnacle and five other Mountains. I play a Mountain. What happens?",
+    "expect": [
+      "opponent takes 3 damage"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "valakut-condition-not-met",
+    "text": "I control Valakut, the Molten Pinnacle and two other Mountains. I play a Mountain. What happens?",
+    "expect": [
+      "Nothing happens from Valakut"
+    ],
+    "notExpect": [
+      "takes 3 damage",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "metalcraft-on",
+    "text": "I control three artifacts and cast Dispatch on my opponent's attacking Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears is tapped",
+      "Grizzly Bears: the battlefield \u2192 exile"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "metalcraft-off",
+    "text": "I control two artifacts and cast Dispatch on my opponent's attacking Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears is tapped",
+      "it needs its controller to control 3 or more artifacts"
+    ],
+    "notExpect": [
+      "\u2192 exile",
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

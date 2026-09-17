@@ -677,7 +677,7 @@ object OracleParser {
         Regex("""^(?:there are )?(one|two|three|four|five|six|seven|eight|nine|ten|\d+) or more card types among cards in your graveyard$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m ->
             return number(m.groupValues[1])?.let { Condition.GraveyardAtLeast(it, cardTypes = true) }
         }
-        Regex("""^you control (?:a|an|another|(one|two|three|four|five|six|seven|\d+) or more) (.+?)$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m ->
+        Regex("""^you control (?:a|an|another|(?:at least )?(one|two|three|four|five|six|seven|\d+)(?: or more)?) (.+?)$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m ->
             val n = m.groupValues[1].takeIf { it.isNotEmpty() }?.let { number(it) } ?: 1
             // "a Plains or an Island": either land type counts.
             val what = m.groupValues[2].replace(Regex("""\s+or\s+an?\s+""", RegexOption.IGNORE_CASE), " or ")
@@ -755,10 +755,14 @@ object OracleParser {
             while (i < sentences.size) {
                 val cur0 = sentences[i]; val next = sentences.getOrNull(i + 1)
                 // Pronoun continuations: "It gets +1/+1 until end of turn." / "Put a +1/+1 counter on it." refer to the previous target.
-                val cur = if (lastTarget != null) cur0.replace(Regex("""^Prevent all combat damage that would be dealt to and dealt by (?:it|that creature) this turn"""), "Prevent all combat damage that would be dealt to and dealt by target ${lastTarget.raw} this turn").replace(Regex("""^(?:It|That (?:creature|permanent|artifact|enchantment|land)) (gets|gains) """), "Target ${lastTarget.raw} $1 ").replace(Regex("""(?i) on (?:it|that (?:creature|permanent))\.?$"""), " on target ${lastTarget.raw}.")
-                    .replace(Regex("""^(Untap|Tap|Destroy|Exile|Sacrifice) (?:it|that (?:creature|permanent|artifact|enchantment|land))\.?$"""), "$1 target ${lastTarget.raw}.")
+                val lt = lastTarget
+                fun deref(x: String): String = if (lt == null) x else x.replace(Regex("""(?i)^Prevent all combat damage that would be dealt to and dealt by (?:it|that creature) this turn"""), "Prevent all combat damage that would be dealt to and dealt by target ${lt.raw} this turn").replace(Regex("""(?i)^(?:It|That (?:creature|permanent|artifact|enchantment|land)) (gets|gains) """), "Target ${lt.raw} $1 ").replace(Regex("""(?i) on (?:it|that (?:creature|permanent))\.?$"""), " on target ${lt.raw}.")
+                    .replace(Regex("""(?i)^(Untap|Tap|Destroy|Exile|Sacrifice) (?:it|that (?:creature|permanent|artifact|enchantment|land))\.?$"""), "$1 target ${lt.raw}.")
                     // "Then that creature deals damage equal to its power to target creature an opponent controls."
-                    .replace(Regex("""^(?:Then )?(?:It|That creature) deals damage equal to its power to """), "Target ${lastTarget.raw} deals damage equal to its power to ") else cur0
+                    .replace(Regex("""(?i)^(?:Then )?(?:It|That creature) deals damage equal to its power to """), "Target ${lt.raw} deals damage equal to its power to ")
+                // The same continuation can sit behind an intervening "if" ("Metalcraft — If you control three or
+                // more artifacts, exile that creature"), where the sentence no longer starts with the verb.
+                val cur = deref(cur0).let { c -> Regex("""(?i)^((?:[A-Z][A-Za-z'’]*(?: [A-Za-z'’]+){0,4}\s*[—–]\s*)?if [^,]+, )(.+)$""").matchEntire(c)?.let { r -> r.groupValues[1] + deref(r.groupValues[2]) } ?: c }
                 // "That player may pay {2}. If they don't, you create a Treasure token." is an "unless they pay" effect.
                 val mayPay = Regex("""^(That player|Its controller|Target player|Each opponent|You) may pay (\{[^}]+\}(?:\{[^}]+\})*|\d+ life)\.?$""", RegexOption.IGNORE_CASE).matchEntire(cur)
                 val ifNot = Regex("""^If (?:they|that player|the player|you) (?:don't|doesn't|do not|does not), (.+)$""", RegexOption.IGNORE_CASE)
@@ -931,8 +935,13 @@ object OracleParser {
     private val preventAllTurnRe = Regex("""^prevent all (combat )?damage that would be dealt(?: to (?!and\b)([a-z][a-z' ]*?))?(?: this turn)?(?: by ([a-z][a-z' ]*?))?(?: this turn)?\.?$""", RegexOption.IGNORE_CASE)
     private val regenerateRe = Regex("""^regenerate (~|target .+?)\.?$""", RegexOption.IGNORE_CASE)
 
-    private fun parseSentence(s: String): Effect {
+    private fun parseSentence(s0: String): Effect {
+        // "Metalcraft — If you control three or more artifacts, …": the ability word names the ability and says
+        // nothing (207.2c). Abilities have it stripped as they are read; a spell's own sentences need it too.
+        val s = s0.replace(abilityWordStatic, "")
         manaRe.matchEntire(s.trimEnd('.'))?.let { return Effect.AddMana(it.groupValues[1]) }
+        // "(You may) have ~ deal 3 damage to any target" says what "~ deals 3 damage to any target" says.
+        Regex("""^have (?:~|it) deal (.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return parseSentence("~ deals " + it.groupValues[1]) }
         Regex("""^target (player|opponent) reveals their hand\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.NarratedTargeted(target(m.groupValues[1].lowercase()), "reveals their hand", listOf("701.20a")) }
         modalRe.matchEntire(s)?.let { m ->
             val modeTexts = m.groupValues[3].split("•").map { it.trim().trimEnd('.') }.filter { it.isNotEmpty() }
@@ -1244,6 +1253,13 @@ object OracleParser {
         Regex("""^(target [a-z' ]*?you control) deals damage equal to its power to (target [a-z' ]+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.DealsPowerTo(target(m.groupValues[1], Kind.CREATURE), target(m.groupValues[2], Kind.CREATURE)) }
         Regex("""^put (target .+?) on the bottom of its owner's library\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.PutOnBottom(target(m.groupValues[1])) }
         if (Regex("""^its controller gains life equal to its toughness\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.GainLifeEqualToToughness(Who.CONTROLLER_OF_TARGET)
+        // An intervening "if" on the effect itself (Valakut): the condition is checked as the effect happens, and
+        // the rest of the sentence is an ordinary effect. Last of all, so a template that reads the whole sentence wins.
+        Regex("""^if ([^,]+), (.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            val cond = parseCondition(m.groupValues[1]) ?: return@let
+            val then = parseEffect(m.groupValues[2].replaceFirstChar { c -> c.uppercase() })
+            if (!then.hasUnparsed()) return Effect.IfCondition(cond, then, m.groupValues[1].lowercase())
+        }
         return Effect.Unparsed(s)
     }
 
