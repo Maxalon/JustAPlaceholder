@@ -121,7 +121,7 @@ object OracleParser {
         return cost.contains('{') || cost.contains("Sacrifice", true) || cost.contains("Discard", true) || cost.contains("Pay", true) || cost.contains("Tap ", true) || cost.contains("Remove", true) || cost.contains("Exile", true)
     }
 
-    private val manaRe = Regex("""^Add (\{[^}]+\}(?:\{[^}]+\})*(?:(?:, or |, | or | and )\{[^}]+\}(?:\{[^}]+\})*)*|(?:one|two|three|four|five|N|X) mana (?:of any (?:one )?color|in any combination of colors|of any color(?: or type)?)|an amount of mana .+)\.?$""", RegexOption.IGNORE_CASE)
+    private val manaRe = Regex("""^Add (\{[^}]+\}(?:\{[^}]+\})*(?:(?:, or |, | or | and )\{[^}]+\}(?:\{[^}]+\})*)*|(?:one|two|three|four|five|N|X) mana (?:of any (?:one )?color(?: in your commander's color identity)?|in any combination of colors|of any color(?: or type)?)|an amount of mana .+)\.?$""", RegexOption.IGNORE_CASE)
 
     private fun parseActivated(line: String): Ability {
         val colon = line.indexOf(':')
@@ -752,7 +752,7 @@ object OracleParser {
     private val gainRe = Regex("""^(another )?target (.+?) gains (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val gainSelfRe = Regex("""^~ gains (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val payRe = Regex("""^(?:you may )?pay (\{[^}]+\}(?:\{[^}]+\})*|\d+ life)\.?$""", RegexOption.IGNORE_CASE)
-    private val gainLifeRe = Regex("""^(you|target player|that player|each player|each opponent) gains? (\d+) life\.?$""", RegexOption.IGNORE_CASE)
+    private val gainLifeRe = Regex("""^(you|target player|that player|each player|each opponent|its controller) gains? (\d+) life\.?$""", RegexOption.IGNORE_CASE)
     private val loseLifeRe = Regex("""^(you|target player|that player|they|each opponent|each player|its controller|that creature's controller) loses? (\d+|X) life\.?$""", RegexOption.IGNORE_CASE)
 
     private val selfPumpRe = Regex("""^~ gets ([+-]\d+)/([+-]\d+) until end of turn\.?$""", RegexOption.IGNORE_CASE)

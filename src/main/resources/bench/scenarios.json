@@ -8601,5 +8601,27 @@
       "replaced by Kalitas"
     ],
     "cite": []
+  },
+  {
+    "id": "natures-claim-gives-life-to-its-controller",
+    "text": "My opponent controls Sol Ring and I cast Nature's Claim on it. What happens?",
+    "expect": [
+      "opponent gains 4 life"
+    ],
+    "notExpect": [],
+    "cite": [
+      "119.3"
+    ]
+  },
+  {
+    "id": "commander-identity-mana",
+    "text": "I control Command Tower. What mana can it make?",
+    "expect": [
+      "any color in your commander's color identity"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]
