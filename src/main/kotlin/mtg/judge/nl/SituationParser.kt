@@ -511,12 +511,16 @@ class SituationParser(private val names: NameIndex) {
         }
         // "my Bears is exiled by Swords to Plowshares", "my Bears gets bounced by Unsummon": the passive voice with
         // the spell named. Only for a spell — "destroyed by their Giant" is combat, not a cast.
-        t2 = Regex("""((?:my |their |the |his |her )?c\d+) (?:is|are|was|were|gets?|got) (?:bounced|exiled|destroyed|killed|removed) by ((?:an? |the |my |their )?)(c\d+)""").replace(t2) { r ->
-            if (m.cards[r.groupValues[3]]?.isSpellOnly == true) "casts ${r.groupValues[2]}${r.groupValues[3]} targeting ${r.groupValues[1]}" else r.value
+        t2 = Regex("""((?:$possPrefix)?c\d+) (?:is|are|was|were|gets?|got) (?:bounced|exiled|destroyed|killed|removed) by ((?:an? |the |my |their )?)(c\d+)""").replace(t2) { r ->
+            // "by my Vandalblast" says who cast it; without that the cast fell to the other player.
+            val by = when (r.groupValues[2].trim()) { "my" -> "i "; "their" -> "they "; else -> "" }
+            if (m.cards[r.groupValues[3]]?.isSpellOnly == true) "$by" + "casts ${r.groupValues[2]}${r.groupValues[3]} targeting ${r.groupValues[1]}" else r.value
         }
         // "my Bears gets +3/+3 from Giant Growth": the spell said as the source of the bonus rather than as a cast.
-        t2 = Regex("""((?:my |their |the |his |her )?c\d+|it|that) gets? [+-]\d+/[+-]\d+ from ((?:an? |the |my |their )?)(c\d+)""").replace(t2) { r ->
-            if (m.cards[r.groupValues[3]]?.isSpellOnly == true) "casts ${r.groupValues[2]}${r.groupValues[3]} targeting ${r.groupValues[1]}" else r.value
+        t2 = Regex("""((?:$possPrefix)?c\d+|it|that) gets? [+-]\d+/[+-]\d+ from ((?:an? |the |my |their )?)(c\d+)""").replace(t2) { r ->
+            // "by my Vandalblast" says who cast it; without that the cast fell to the other player.
+            val by = when (r.groupValues[2].trim()) { "my" -> "i "; "their" -> "they "; else -> "" }
+            if (m.cards[r.groupValues[3]]?.isSpellOnly == true) "$by" + "casts ${r.groupValues[2]}${r.groupValues[3]} targeting ${r.groupValues[1]}" else r.value
         }
         // "it's turn 3" / "on turn 2": the game's turn number.
         Regex("""\b(?:it's|it is|this is|on|during|in) turn (\d+)\b|\bturn (\d+) of the game\b""").find(t2)?.let { r -> ctx.turnNumber = (r.groupValues[1].ifEmpty { r.groupValues[2] }).toInt(); any = true; t2 = t2.removeRange(r.range) }
@@ -2925,9 +2929,11 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastActor = who; ctx.lastMentioned = cardId; return true
         }
         // "my commander Kaalia attacks (Bob)", "the Bears attack me": the creature is the subject.
-        Regex("""^(commander |my commander |the |an? |their )?(c\d+) (?:attacks?|swings?)(?: alone| by itself)?(?: (?:at |into )?(.*))?$""").find(c)?.let { r ->
+        Regex("""^(commander |my commander |(?:$possPrefix)?commander |$possPrefix|an? )?(c\d+) (?:attacks?|swings?)(?: alone| by itself)?(?: (?:at |into )?(.*))?$""").find(c)?.let { r ->
             val card = m.cards.getValue(r.groupValues[2])
-            val who = actor ?: ctx.objects.values.firstOrNull { it.card.oracleId == card.oracleId }?.controller ?: subject ?: "me"
+            // "my opponent's Grizzly Bears attacks me": the possessive says whose creature is attacking.
+            val said = possessiveOwner(r.groupValues[1].replace("commander", "").trim().let { if (it.isEmpty()) "" else "$it " }, ctx, m)
+            val who = said ?: actor ?: ctx.objects.values.firstOrNull { it.card.oracleId == card.oracleId }?.controller ?: subject ?: "me"
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
             if (r.groupValues[1].contains("commander")) ctx.objects[id] = ctx.objects.getValue(id).copy(commander = true)
             val r = object { val groupValues = listOf(r.groupValues[0], r.groupValues[2], r.groupValues[3]) }

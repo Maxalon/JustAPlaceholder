@@ -9739,5 +9739,39 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "opponents-creature-attacks",
+    "text": "My opponent's Grizzly Bears attacks me and I block with Serra Angel. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "destroyed-by-my-spell",
+    "text": "My opponent's Sol Ring is destroyed by my Vandalblast. What happens?",
+    "expect": [
+      "Sol Ring: the battlefield \u2192 opponent's graveyard"
+    ],
+    "notExpect": [
+      "can't target",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "pumped-by-a-named-spell",
+    "text": "My opponent's Grizzly Bears gets +3/+3 from Giant Growth. What are its stats?",
+    "expect": [
+      "Grizzly Bears is 5/5"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
