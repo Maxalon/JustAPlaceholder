@@ -8656,5 +8656,17 @@
     "cite": [
       "701.6a"
     ]
+  },
+  {
+    "id": "remand-returns-the-spell",
+    "text": "My opponent casts Wrath of God and I cast Remand on it. What happens?",
+    "expect": [
+      "owner's hand instead of their graveyard",
+      "You draw 1 card"
+    ],
+    "notExpect": [],
+    "cite": [
+      "701.6a"
+    ]
   }
 ]

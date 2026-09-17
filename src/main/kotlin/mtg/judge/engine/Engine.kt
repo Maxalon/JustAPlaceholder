@@ -1532,10 +1532,11 @@ class Engine(val state: GameState) {
                 if (target == null) { trace.step("${state.nameOf(ref)} is no longer on the stack, so it can't be countered.", "701.6a"); return@forEachLegalTarget }
                 if (target.kind == StackKind.SPELL && cant(target.source, "be countered")) { trace.step("${target.describe} can't be countered, so ${item.describe} has no effect on it.", "701.6a"); state.outcomes += "${target.describe} isn't countered (it can't be)."; return@forEachLegalTarget }
                 state.stack.remove(target); state.lastCountered = target.source
-                val exiled = effect.exileInstead && target.kind == StackKind.SPELL
-                if (target.kind == StackKind.SPELL) target.source.zone = if (exiled) Zone.EXILE else Zone.GRAVEYARD
+                val instead = effect.insteadZone?.takeIf { target.kind == StackKind.SPELL }
+                if (target.kind == StackKind.SPELL) target.source.zone = when (instead) { "exile" -> Zone.EXILE; "hand" -> Zone.HAND; "library" -> Zone.LIBRARY; else -> Zone.GRAVEYARD }
+                val where = when (instead) { "exile" -> "the card is exiled instead of going to its owner's graveyard"; "hand" -> "the card goes to its owner's hand instead of their graveyard"; "library" -> "the card goes to its owner's library instead of their graveyard"; else -> "the card goes to its owner's graveyard" }
                 trace.step("${target.describe} is countered: it's removed from the stack and none of its effects happen" +
-                    (if (target.kind == StackKind.SPELL) (if (exiled) "; the card is exiled instead of going to its owner's graveyard" else "; the card goes to its owner's graveyard") else "") + ".", "701.6a")
+                    (if (target.kind == StackKind.SPELL) "; $where" else "") + ".", "701.6a")
                 state.outcomes += "${target.describe} is countered."
             }
             is Effect.Destroy -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { destroy(it, "${it.name} is destroyed and put into its owner's graveyard.", "701.8a", canRegenerate = !effect.noRegen) } }

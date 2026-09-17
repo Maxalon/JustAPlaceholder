@@ -155,6 +155,8 @@ class StaysParsedTest {
     fun `counter-and-exile stays one effect`() {
         check("Force of Negation", "Instant", "Counter target noncreature spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.")
         check("Dissipate", "Instant", "Counter target spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.")
+        // Remand keeps a sentence of its own after the rider, and the rider is worded without "putting".
+        check("Remand", "Instant", "Counter target spell. If that spell is countered this way, put it into its owner's hand instead of into that player's graveyard.\nDraw a card.")
     }
 
     @Test

@@ -669,9 +669,22 @@ object OracleParser {
             Regex("""(?i)^(copy target [^.]+?)\. you may choose new targets for the copy\.$""").matchEntire(s)?.let { r -> return Effect.CopySpell(target(r.groupValues[1].removePrefix("copy target ").removePrefix("Copy target "), Kind.SPELL), true) } ?: s
         }
         // "Counter target spell. If that spell is countered this way, exile it instead of putting it into its
-        // owner's graveyard." — the second sentence says where the countered card goes, not a second effect.
-        Regex("""(?i)^(counter target [^.]+?)\. if that spell is countered this way, exile it instead of putting it into its owner's graveyard\.?$""").matchEntire(t)?.let { r ->
-            return Effect.Counter(target(r.groupValues[1].removePrefix("counter target ").removePrefix("Counter target "), Kind.SPELL), exileInstead = true)
+        // owner's graveyard." — that sentence says where the countered card goes, not a second effect. It is
+        // taken out here so the rest of the card (Remand's "Draw a card.") still reads as its own sentences.
+        val riderRe = Regex("""(?i)\s*if that spell is countered this way, (exile it|put it into its owner's hand|put it on top of its owner's library|put it on the bottom of its owner's library) instead of (?:putting it )?into (?:its owner's|that player's) graveyard\.""")
+        riderRe.find(t)?.let { r ->
+            val zone = when {
+                r.groupValues[1].startsWith("exile", true) -> "exile"
+                r.groupValues[1].contains("hand", true) -> "hand"
+                else -> "library"
+            }
+            val inner = parseEffect(t.removeRange(r.range).trim())
+            fun withZone(e: Effect): Effect = when (e) {
+                is Effect.Counter -> e.copy(insteadZone = zone)
+                is Effect.Seq -> Effect.Seq(e.effects.map { withZone(it) })
+                else -> e
+            }
+            return withZone(inner)
         }
         val sentences = t.split(sentenceSplit).map { it.trim() }.filter { it.isNotEmpty() }
         if (sentences.size > 1) {
