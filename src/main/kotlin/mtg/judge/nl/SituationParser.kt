@@ -504,6 +504,12 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(casts?|plays?) ((?:$possPrefix|an? )?c\d+) with ((?:haste|flying|trample|lifelink|deathtouch|vigilance|first strike|double strike|menace|hexproof|indestructible|reach))\b"""), "$1 $2, $2 has $3")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
+            // "Does Doom Blade kill Serra Angel?" / "will my Bears die to Lightning Bolt?": a card against a card,
+            // with nothing else said. The spell is cast at the creature and the question is whether it dies.
+            .replace(Regex("""^(?:does|do|will|would|can|could) ((?:$possPrefix)?c\d+) (?:kill|destroy|finish off) ((?:$possPrefix)?c\d+)\??$"""), "i cast $1 targeting their $2, does their $2 die")
+            .replace(Regex("""^(?:will|would|does|do|is|are|can|could) ((?:$possPrefix)?c\d+) (?:die|be killed|be destroyed) to ((?:$possPrefix|an? )?c\d+)\??$"""), "they cast $2 targeting $1, does $1 die")
+            // "Is Serra Angel able to block?" is "can Serra Angel block?"
+            .replace(Regex("""\b(?:is|are) ((?:$possPrefix)?c\d+) able to """), "can $1 ")
             // "What happens if I Doom Blade it?" / "if I block, do I die?": the "if" is the question, not a condition.
             .replace(Regex("""^what happens if """), "")
             .replace(Regex("""^if (?=(?:i|we|they|he|she|my opponent|the opponent|@\w+)\b)"""), "")

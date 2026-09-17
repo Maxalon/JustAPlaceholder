@@ -9971,5 +9971,40 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "does-a-spell-kill-a-creature",
+    "text": "Does Doom Blade kill Serra Angel?",
+    "expect": [
+      "Yes: Serra Angel died"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "does-a-spell-kill-a-protected-creature",
+    "text": "Does Doom Blade kill Black Knight?",
+    "expect": [
+      "Doom Blade can't target Black Knight",
+      "No: Black Knight is still on the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "will-my-creature-die-to",
+    "text": "Will my Grizzly Bears die to Lightning Bolt?",
+    "expect": [
+      "Yes: Grizzly Bears died"
+    ],
+    "notExpect": [
+      "No: Grizzly Bears is still on the battlefield",
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
