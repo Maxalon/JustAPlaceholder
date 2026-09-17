@@ -259,6 +259,10 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         o.def.isCreature || o.animatedAs != null -> "${o.name} is ${state.describePt(o)}."
                         else -> "${o.name} isn't a creature."
                     }
+                    "counters" -> state.outcomes += o.counters.filterValues { it > 0 }.let { cs ->
+                        if (cs.isEmpty()) "${o.name} has no counters on it."
+                        else "${o.name} has " + cs.entries.joinToString(" and ") { (k, n) -> "$n $k counter${if (n == 1) "" else "s"}" } + "."
+                    }
                     "isCreature" -> state.outcomes += state.notACreatureBecause(o)?.let { why -> "No: ${o.name} isn't a creature — ${state.player(o.controller).possessive} $why. It's still an enchantment on the battlefield, it keeps its other abilities, and it can't attack, block, or be targeted by anything that needs a creature." }
                         ?: if (!o.isOnBattlefield()) "${o.name} isn't on the battlefield." else if (o.def.isCreature || o.animatedAs != null) "Yes: ${o.name} is a creature (${state.describePt(o)})${if (o.animatedAs != null) " until end of turn" else ""}." else "No: ${o.name} isn't a creature; it's ${o.def.types.joinToString(" ").lowercase()}."
                     "control" -> {

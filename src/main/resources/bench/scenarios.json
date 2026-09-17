@@ -8515,5 +8515,29 @@
       "You are still in the game"
     ],
     "cite": []
+  },
+  {
+    "id": "a-counter-goes-on-the-creature",
+    "text": "I control Grizzly Bears and Doubling Season. I put a +1/+1 counter on it. How many counters does it have?",
+    "expect": [
+      "Grizzly Bears has 2 +1/+1 counters"
+    ],
+    "notExpect": [
+      "Doubling Season has 2"
+    ],
+    "cite": [
+      "614.6"
+    ]
+  },
+  {
+    "id": "how-many-counters",
+    "text": "I control Walking Ballista with 3 +1/+1 counters. How many counters does it have?",
+    "expect": [
+      "Walking Ballista has 3 +1/+1 counters"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]

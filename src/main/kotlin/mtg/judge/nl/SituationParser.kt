@@ -850,7 +850,9 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "where does Rancor go?" / "what happens to the Bears?" / "how much does it cost?": the outcome answers it.
-        if (Regex("""^how (?:much|many)(?: (?:combat )?(?:damage|life|cards?|mana|counters?))? (?:does|do|did|will|would|is|are)\b.*\b(?:cost|costs|pay|gain|lose|deal|draw|get|have|left)\b.*$""").matches(clause0) && !Regex("""\bdamage (?:do|does|will|would) .*\b(?:take|receive|suffer)\b""").containsMatchIn(clause0)) {
+        // "how many counters does it have?" has its own answer further down; this catch-all would take it first.
+        if (Regex("""^how (?:much|many)(?: (?:combat )?(?:damage|life|cards?|mana|counters?))? (?:does|do|did|will|would|is|are)\b.*\b(?:cost|costs|pay|gain|lose|deal|draw|get|have|left)\b.*$""").matches(clause0)
+            && !Regex("""^how many (?:[+-]\d+/[+-]\d+ |[a-z]+ )?counters?\b""").containsMatchIn(clause0) && !Regex("""\bdamage (?:do|does|will|would) .*\b(?:take|receive|suffer)\b""").containsMatchIn(clause0)) {
             // "… if I attack with everything": the attack is made so the answer can be shown.
             Regex("""\bif (i|they|my opponent|the opponent|@\w+) attacks? with (?:everything|all|both|my team|all my creatures|the team)\b""").find(clause0)?.let { a ->
                 val who = when (val w = a.groupValues[1]) { "i" -> "me"; else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w.substringAfterLast(' ')) }
@@ -1490,9 +1492,16 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:puts?|put|adds?|added|places?|placed) (an?|one|two|three|four|five|\d+) ([+-]\d+/[+-]\d+|[a-z]+) counters? (?:on|onto|to) (?:(?:my |their |the |his |her )?(c\d+)|it|that|itself)$""").find(c)?.let { r ->
             // "I cast Grizzly Bears and put a +1/+1 counter on it": the Bears has to resolve before a counter can
             // go on it, and until it does there is no object for "it" to mean.
-            val id = if (r.groupValues[3].isEmpty()) castPermanentObject(ctx) ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
-                     else m.cards[r.groupValues[3]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
-            ctx.events += EventSpec("counters", obj = id, amount = number(r.groupValues[1]) ?: 1, to = r.groupValues[2])
+            val kind = r.groupValues[2]
+            val id = if (r.groupValues[3].isEmpty()) {
+                val ref = castPermanentObject(ctx) ?: ctx.lastMentioned?.takeIf { it in ctx.objects }
+                // A +1/+1 or -1/-1 counter goes on a creature. "I control Grizzly Bears and Doubling Season and
+                // put a +1/+1 counter on it" put the counter on Doubling Season, and nothing said so.
+                if (Regex("""^[+-]\d+/[+-]\d+$""").matches(kind) && (ref == null || !isCreatureName(ctx.objects[ref]?.card?.name)))
+                    ctx.objects.values.lastOrNull { it.zone == "battlefield" && (actor == null || it.controller == actor) && isCreatureName(it.card.name) }?.id ?: ref ?: return@let
+                else ref ?: return@let
+            } else m.cards[r.groupValues[3]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
+            ctx.events += EventSpec("counters", obj = id, amount = number(r.groupValues[1]) ?: 1, to = kind)
             ctx.lastMentioned = id; return true
         }
         // "and search for two basic lands", "I dig for a creature": what a tutor finds isn't tracked in detail, so
@@ -2902,6 +2911,13 @@ class SituationParser(private val names: NameIndex) {
                      else ctx.lastMentioned?.takeIf { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) }
                          ?: ctx.events.lastOrNull { it.verb == "cast" || it.verb == "activate" }?.targets?.firstOrNull { it in ctx.objects } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, to = "pt"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
+        // "how many counters does it have?" / "how many +1/+1 counters are on my Ballista?"
+        Regex("""^how many (?:([+-]\d+/[+-]\d+|[a-z]+) )?counters? (?:does|do|is|are) (?:it|that|they|(?:my |their |his |her |the |@\w+'s )?(c\d+))(?:'s)? (?:have|has|on it|got)(?: now| in total| altogether)?$|^how many (?:([+-]\d+/[+-]\d+|[a-z]+) )?counters? (?:is|are) (?:on|there on) (?:it|that|(?:my |their |his |her |the |@\w+'s )?(c\d+))$""").find(clause0)?.let { q ->
+            val ph = q.groupValues[2].ifEmpty { q.groupValues[4] }
+            val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
+                     else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+            ctx.asks += EventSpec("ask", obj = id, to = "counters"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "is it summoning sick?" / "does my Elves have summoning sickness?": whether it came down this turn.
         Regex("""^(?:is|are|does|do|did|was|were) (?:it|that|they|(?:my |their |his |her |the |@\w+'s )?(c\d+))(?:'s)? (?:still |even |actually )*(?:summoning[- ]sick|have summoning sickness|has summoning sickness)(?: still| now| right now)?$""").find(clause0)?.let { q ->
