@@ -122,7 +122,7 @@ What happens next, in order. The engine applies these to the described state.
 
 | verb | fields |
 |---|---|
-| `cast` | `player`, `card` (or `object` for a card already in the situation), `targets`, `amount` (the value of X), `modes` |
+| `cast` | `player`, `card` (or `object` for a card already in the situation), `targets`, `amount` (the value of X), `modes`, `payLife` (life the caster said they paid; paid only if the card's own cost doesn't already take it) |
 | `activate` | `player`, `object`, `abilityIndex`, `targets`, `amount` (the value of X) |
 | `trigger` | `object`, `abilityIndex`, `targets` (used when the user asserts a trigger happened) |
 | `resolve` | (resolves the top of the stack) |
