@@ -11126,5 +11126,16 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "exile-their-graveyard-with",
+    "text": "My opponent has a Grizzly Bears in their graveyard and I exile their graveyard with Tormod's Crypt.",
+    "expect": [
+      "Opponent's graveyard is exiled (Grizzly Bears)"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]

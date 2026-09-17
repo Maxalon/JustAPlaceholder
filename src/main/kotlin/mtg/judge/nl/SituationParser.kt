@@ -2171,6 +2171,14 @@ class SituationParser(private val names: NameIndex) {
             else ctx.events += EventSpec("leave", obj = id, to = "graveyard")
             ctx.lastMentioned = id; ctx.lastOwner = who; ctx.note(who); return true
         }
+        // "I exile their graveyard with Tormod's Crypt": the named permanent's ability, aimed at that player.
+        Regex("""^(?:exiles?|exiled|wipes?|hoses?|hits?) ($possPrefix)?graveyards?(?: with| using| via) (?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->
+            val who = actor ?: ctx.lastActor ?: "me"
+            val whose = possessiveOwner(r.groupValues[1], ctx, m) ?: ctx.other(who) ?: "opp"
+            val src = m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) } ?: return@let
+            ctx.events += EventSpec("activate", player = who, obj = src, targets = listOf(whose))
+            ctx.note(whose); ctx.lastActor = who; return true
+        }
         // "I return my Grizzly Bears to my hand" / "return it to its owner's hand": the long way of saying bounce,
         // and it went unread, so the permanent stayed on the battlefield.
         Regex("""^returns?(?: back)? ($possPrefix|an? )?(c\d+|it|that|them)(?: back)? to (?:its owner's|their owner's|my|their|his|her|the owner's|your) (hand|library|graveyard)(?: from the battlefield)?$""").find(c)?.let { r ->
