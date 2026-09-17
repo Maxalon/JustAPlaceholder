@@ -346,7 +346,9 @@ class SituationParser(private val names: NameIndex) {
         return t.removeSuffix("'s").removeSuffix("’s")
     }
 
-    private val actorMe = Regex("""^(i|me|my|i've|i'm|we)\b(?!'s)""")
+    // "my opponent's Bears": the clause opens with "my" but the player it names is the opponent, and taking the
+    // "my" off left a possessive ("opponent's …") that the rules' own owner lists didn't have.
+    private val actorMe = Regex("""^(i|me|my|i've|i'm|we)\b(?!'s)(?! opponent)""")
     private val actorOpp = Regex("""^(my opponent|the opponent|opponent|opp|they|their|he|she|his|her|them)\b(?!'s)""")
 
     private fun actorOfClause(c: String): String? = when { actorOpp.containsMatchIn(c) -> "opp"; actorMe.containsMatchIn(c) -> "me"; Regex("""^@(\w+)""").containsMatchIn(c) -> Regex("""^@(\w+)""").find(c)!!.groupValues[1]; else -> null }
@@ -356,7 +358,8 @@ class SituationParser(private val names: NameIndex) {
      * is the last named player who acted, and "opponent" is the single named player other than me, if there is one.
      */
     /** The possessives a card name can be introduced by: "my Bears", "my opponent's Bears", "Alice's Bears". */
-    private val possPrefix = """(?:my |their |his |her |the |own |my opponent's |the opponent's |opponent's |an opponent's |@\w+'s )"""
+    // Longest first: "my " would otherwise win against "my opponent's " and give the wrong player.
+    private val possPrefix = """(?:my opponent's |the opponent's |an opponent's |opponent's |@\w+'s |my |their |his |her |the |own )"""
     /** Who such a possessive points at, or null when it names nobody ("the Bears"). */
     private fun possessiveOwner(prefix: String, ctx: Ctx, m: Marked? = null): String? {
         val raw = prefix.trim()

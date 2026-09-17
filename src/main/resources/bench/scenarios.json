@@ -9728,5 +9728,16 @@
       "enters the battlefield"
     ],
     "cite": []
+  },
+  {
+    "id": "opponents-counterspell-in-the-active",
+    "text": "My opponent's Counterspell counters my Lightning Bolt. What happens?",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
