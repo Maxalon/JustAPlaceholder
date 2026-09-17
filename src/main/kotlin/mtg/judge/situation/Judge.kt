@@ -185,6 +185,9 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 }
                 // "+1" / "-3" names a loyalty ability by its cost.
                 val idx = e.abilityIndex
+                    // "activate Nykthos for green": a colour was chosen, so the ability that uses one is the one
+                    // meant — not Nykthos's plain "{T}: Add {C}", which was picked first and ignored the devotion.
+                    ?: e.to?.takeIf { it.startsWith("color:") }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> a.effect is Effect.AddManaDevotion || (a.effect as? Effect.Seq)?.effects?.any { it is Effect.AddManaDevotion } == true }.takeIf { it >= 0 } }
                     ?: e.to?.takeIf { it == "mana" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> a.effect is Effect.AddMana || a.effect is Effect.AddManaPer || (a.effect as? Effect.Seq)?.effects?.any { it is Effect.AddMana || it is Effect.AddManaPer } == true }.takeIf { it >= 0 } }
                     ?: e.to?.takeIf { it == "ultimate" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().withIndex().filter { (_, a) -> Regex("""^[\u2212-]\d+$""").matches(a.cost) }.minByOrNull { (_, a) -> a.cost.replace('\u2212', '-').toInt() }?.index }
                     ?: e.to?.let { cost -> obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { it.cost.replace('\u2212', '-') == cost.replace('\u2212', '-') }.takeIf { it >= 0 } }

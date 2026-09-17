@@ -1049,7 +1049,8 @@ class SituationParser(private val names: NameIndex) {
         }
         // "activate it (targeting X)": the last-mentioned permanent's ability.
         // "use her +1" is a loyalty ability, read further down; this rule must not take it first.
-        Regex("""^(?:$activateVerbs)\s+(?:it|that|him|her|them|its ability|his ability|her ability|it's ability)\b(?!\s*[+\u2212-]?\d)(.*)$""").find(c)?.let { r ->
+        // "activate it for green" names a colour the ability asks for: that rule is further down and needs the whole clause.
+        Regex("""^(?:$activateVerbs)\s+(?:it|that|him|her|them|its ability|his ability|her ability|it's ability)\b(?!\s*[+\u2212-]?\d)(?!\s+(?:choosing|naming|picking|for|on) (?:white|blue|black|red|green|colou?rless)\b)(.*)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return false
             ctx.events += EventSpec("activate", player = who, obj = id, targets = targetsIn(r.groupValues[1], m, ctx)); ctx.lastActor = who; return true
@@ -1534,9 +1535,13 @@ class SituationParser(private val names: NameIndex) {
             ctx.objects[idStr] = ctx.objects.getValue(idStr).copy(commander = true, commanderCasts = n, zone = if (r.groupValues[0].contains(" cast ")) ctx.objects.getValue(idStr).zone else "command"); ctx.notes += "${ctx.objects.getValue(idStr).card.name} has been cast from the command zone $n time${if (n == 1) "" else "s"} already, so the commander tax applies (903.8)."; return true
         }
         // "have 0 cards in library", "with no cards left in my library", "my library is empty", "library has 2 cards"
-        Regex("""^(?:(?:has|have|with|am at|is at|at) )?(\d+|\w+|no) cards? (?:left )?in (?:their |my |his |her |the )?library$|^(?:their |my |his |her |the )?library (?:is empty|has (\d+|\w+|no) cards?(?: left)?|is out of cards)$|^(?:has|have) (?:an )?empty library$|^(?:has|have) no library(?: left)?$|^(?:am|is|are) out of cards$""").find(c)?.let { r ->
-            val who = actor ?: subject ?: "me"
-            val word = r.groupValues[1].ifEmpty { r.groupValues[2] }
+        Regex("""^(?:there (?:is|are) )?(?:(?:has|have|with|am at|is at|at) )?(\d+|\w+|no) cards? (?:left )?in (?:(their|my|his|her|the|my opponent's|the opponent's|opponent's) )?library$|^(?:(their|my|his|her|the|my opponent's|the opponent's|opponent's) )?library (?:is empty|has (\d+|\w+|no) cards?(?: left)?|is out of cards)$|^(?:has|have) (?:an )?empty library$|^(?:has|have) no library(?: left)?$|^(?:am|is|are) out of cards$""").find(c)?.let { r ->
+            // "there are 2 cards in my opponent's library": whose library it is, said in the clause. Without it the
+            // count landed on the asker and the answer drew from the wrong library.
+            val whose = (r.groupValues[2].ifEmpty { r.groupValues[3] }).takeIf { it.isNotEmpty() && it != "the" }
+                ?.let { w -> if (w == "my") "me" else pronounPlayer(ctx, w.substringAfterLast(' ').removeSuffix("'s")) }
+            val who = whose ?: actor ?: subject ?: "me"
+            val word = r.groupValues[1].ifEmpty { r.groupValues[4] }
             ctx.librarySize[who] = if (word.isEmpty() || word == "no") 0 else number(word) ?: 0; ctx.note(who); return true
         }
         // "… and 6 lands" / "3 untapped lands" as a fragment after a possession: mana available.
