@@ -9863,5 +9863,27 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "blocks-attacker-first-named",
+    "text": "My opponent blocks my Hill Giant with their Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "blocks-attacker-first-mine",
+    "text": "I block their Hill Giant with my Serra Angel. What happens?",
+    "expect": [
+      "Hill Giant: the battlefield \u2192 opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

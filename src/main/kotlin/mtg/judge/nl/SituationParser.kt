@@ -2808,6 +2808,23 @@ class SituationParser(private val names: NameIndex) {
             val ids = if (r.groupValues[5].isNotEmpty()) describedTokens(r.groupValues[1], r.groupValues[2], r.groupValues[4], who, ctx, kw) else describedCreatures(r.groupValues[1], r.groupValues[2], r.groupValues[4], who, ctx, kw)
             ids.forEach { ctx.events += EventSpec("block", player = who, obj = it, targets = listOf(attacker)) }; ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
+        // "My opponent blocks my Serra Angel with their Grizzly Bears": the attacker comes first and the blocker
+        // after "with", both named. The attacker is read as attacking, since something blocked it.
+        Regex("""^(?:chump[- ]?)?blocks?(?:ing)? ($possPrefix|an? )?(c\d+) with ($possPrefix|an? )?(c\d+)$""").find(c)?.let { r ->
+            val who = possessiveOwner(r.groupValues[3], ctx, m) ?: actor ?: subject ?: "me"
+            val foe = possessiveOwner(r.groupValues[1], ctx, m) ?: ctx.other(who) ?: "opp"
+            if (foe == who) return@let
+            val atkCard = m.cards.getValue(r.groupValues[2]); val blkCard = m.cards.getValue(r.groupValues[4])
+            val attacker = objectIdFor(atkCard, ctx) ?: addObject(atkCard, foe, false, ctx)
+            val blocker = objectIdFor(blkCard, ctx) ?: addObject(blkCard, who, false, ctx)
+            if (attacker == blocker) return@let
+            if (ctx.events.none { it.verb == "attack" && it.obj == attacker }) {
+                ctx.events += EventSpec("attack", player = foe, obj = attacker, targets = listOf(who))
+                ctx.notes += "${atkCard.display} is read as attacking ${if (who == "me") "you" else ctx.players[who] ?: who}, since something blocked it."
+            }
+            ctx.events += EventSpec("block", player = who, obj = blocker, targets = listOf(attacker))
+            ctx.lastActor = who; ctx.lastVerb = "block"; ctx.lastMentioned = blocker; return true
+        }
         // "I block their 5/5 trampler with a 2/2": neither creature is named, both are described. The attacker is
         // read as attacking, since something blocked it.
         Regex("""^(?:chump[- ]?)?blocks?(?:ing)? (?:their |the |an? |my |his |her |my opponent's )?(\d+/\d+)((?: (?!with\b)[a-z]+)*) with (an? |\d+ |two |three )?(\d+/\d+)((?: (?!plus\b)[a-z]+)*)((?: plus .*)?)$""").find(c)?.let { r ->
