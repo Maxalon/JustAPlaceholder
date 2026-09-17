@@ -1036,7 +1036,7 @@ object OracleParser {
             return Effect.SacrificeThatMany(Who.THAT_PLAYER, parseFilter(m.groupValues[1].removeSuffix("s"), Kind.PERMANENT))
         }
         Regex("""^~ deals damage equal to the sacrificed (?:creature|permanent)'s power to (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.Damage(0, target(m.groupValues[1]), sacrificedPower = true) }
-        Regex("""^put (?:a|an) ((?:[A-Z][a-z]+, )*(?:[A-Z][a-z]+,? or [A-Z][a-z]+ )?(?:creature|land|artifact|permanent|enchantment)) card(?: with mana value equal to the number of (charge|\w+) counters on ~)? from your hand onto the battlefield( tapped)?( and attacking(?: that opponent| that player)?)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+        Regex("""^put (?:a|an) ((?:[A-Z][a-z]+, )*(?:[A-Z][a-z]+,? or [A-Z][a-z]+ )?(?:creature|land|artifact|permanent|enchantment|Equipment|Aura|Vehicle|Fortification)) card(?: with mana value equal to the number of (charge|\w+) counters on ~)? from your hand onto the battlefield( tapped)?( and attacking(?: that opponent| that player)?)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             return Effect.PutFromHand(parseFilter(m.groupValues[1], Kind.PERMANENT), m.groupValues[2].ifEmpty { null }, tapped = m.groupValues[3].isNotEmpty(), attacking = m.groupValues[4].isNotEmpty())
         }
         zurRe.matchEntire(s)?.let { m -> zurEffect(m)?.let { return it } }
@@ -1190,6 +1190,9 @@ object OracleParser {
     }
 
     private val landTypes = setOf("plains", "island", "swamp", "mountain", "forest", "desert", "gate", "lair", "locus", "mine", "power-plant", "tower", "urza's", "sphere", "cave", "town", "cloud")
+    /** Subtypes that say the card type without naming it (205.3g, 205.3h). */
+    private val artifactSubtypes = setOf("equipment", "vehicle", "fortification", "clue", "food", "treasure", "blood", "powerstone", "map", "incubator", "junk", "contraption", "attraction", "gold")
+    private val enchantmentSubtypes = setOf("aura", "saga", "shrine", "cartouche", "curse", "rune", "background", "class", "case", "role")
 
     /** "elves" -> "elf", "goblins" -> "goblin", "merfolk" -> "merfolk". */
     fun singular(w: String): String = when {
@@ -1270,7 +1273,15 @@ object OracleParser {
             }
         }
         // A subtype word alone implies creature ("Elves you control"), or land for land types ("Islands you control").
-        if (kinds.isEmpty() && subtypes.isNotEmpty()) kinds += if (subtypes.all { it in landTypes }) Kind.LAND else if (subtypes.all { it in setOf("instant", "sorcery") }) Kind.SPELL else Kind.CREATURE
+        // A bare subtype says which card type it belongs to: "Equipment" is an artifact, "Aura" an enchantment,
+        // "Island" a land. Read as a creature type, "put an Equipment card onto the battlefield" found nothing.
+        if (kinds.isEmpty() && subtypes.isNotEmpty()) kinds += when {
+            subtypes.all { it in landTypes } -> Kind.LAND
+            subtypes.all { it in setOf("instant", "sorcery") } -> Kind.SPELL
+            subtypes.all { it in artifactSubtypes } -> Kind.ARTIFACT
+            subtypes.all { it in enchantmentSubtypes } -> Kind.ENCHANTMENT
+            else -> Kind.CREATURE
+        }
         if (kinds.isEmpty() && notKinds.isNotEmpty()) kinds += defaultKind ?: Kind.PERMANENT
         if (kinds.isEmpty() && defaultKind != null) kinds += defaultKind
         if (kinds.isEmpty() && notSubtypes.isNotEmpty()) kinds += defaultKind ?: Kind.CREATURE

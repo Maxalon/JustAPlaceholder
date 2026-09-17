@@ -1742,7 +1742,9 @@ class Engine(val state: GameState) {
                         val host = chosen.attachedTo?.let { state.objects[it] }
                         if (chosen.def.isAura && host != null) trace.step("${chosen.name} is an Aura entering without being cast: ${you.subject.lowercase()} ${you.v("chooses", "choose")} what it enchants as it enters (it doesn't target, so hexproof and shroud don't stop it): ${host.name}.", "303.4f")
                         else if (chosen.def.isAura) { chosen.attachedTo = null; state.clarifications += Clarification("${chosen.name}'s host", "${chosen.name} enters the battlefield without being cast; what does it enchant? (303.4f)") }
-                        enter(chosen.id); if (chosen.def.isAura && host != null) applyControlEnchanted(chosen); state.outcomes += "${chosen.name} enters the battlefield${host?.let { " attached to ${it.name}" } ?: ""}."
+                        // enter() already says it entered; only the attachment needs adding, or the line is doubled.
+                        enter(chosen.id); if (chosen.def.isAura && host != null) applyControlEnchanted(chosen)
+                        host?.let { state.outcomes += "${chosen.name} enters the battlefield attached to ${it.name}." }
                         if (effect.fromLibrary) trace.step("${you.possessive.replaceFirstChar { c -> c.uppercase() }} library is shuffled.", "701.24a")
                         if (effect.tapped) { chosen.tapped = true; trace.step("${chosen.name} enters tapped, as the effect says.", "614.1c") }
                         if (effect.attacking) {

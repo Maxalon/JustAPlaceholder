@@ -8690,5 +8690,19 @@
     "cite": [
       "508.1c"
     ]
+  },
+  {
+    "id": "stoneforge-puts-an-equipment-out",
+    "text": "I control Stoneforge Mystic and have Batterskull in hand. I activate Stoneforge Mystic. What happens?",
+    "expect": [
+      "Batterskull enters the battlefield",
+      "Phyrexian Germ token"
+    ],
+    "notExpect": [
+      "(\u00d72)"
+    ],
+    "cite": [
+      "702.92a"
+    ]
   }
 ]
