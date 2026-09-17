@@ -8002,5 +8002,16 @@
     "cite": [
       "109.2"
     ]
+  },
+  {
+    "id": "graveyard-contents-said-a-few-ways",
+    "text": "I control Tarmogoyf and there is a land in my opponent's graveyard. What are its stats?",
+    "expect": [
+      "Tarmogoyf is 1/2"
+    ],
+    "notExpect": [
+      "Tarmogoyf is 0/1"
+    ],
+    "cite": []
   }
 ]
