@@ -72,6 +72,11 @@ object OracleParser {
                         "enchant" -> { val what = part.substring(7).trim().trimEnd('.'); enchant = if (what.equals("player", true)) ObjFilter(setOf(Kind.PLAYER), raw = what) else parseFilter(what, Kind.PERMANENT); abilities += StaticAbility(part, kw) }
                         "equip" -> abilities += ActivatedAbility(part.trimEnd('.'), Effect.Attach(TargetSpec(ObjFilter(setOf(Kind.CREATURE), controller = Who.YOU, raw = "creature you control"), "creature you control")), part, "Activate only as a sorcery")
                         "cycling" -> abilities += ActivatedAbility(part.trimEnd('.') + " (discard this card from your hand)", Effect.Draw(Who.YOU, 1), part, "Activate only while this card is in your hand")
+                        // "Basic landcycling {1}{B}", "Plainscycling {2}": cycling that fetches a land (702.29b).
+                        in setOf("landcycling", "basic landcycling", "typecycling", "plainscycling", "islandcycling", "swampcycling", "mountaincycling", "forestcycling", "wastescycling", "slivercycling") -> {
+                            val what = when (val k = kw.removeSuffix("cycling")) { "", "type" -> "a card of the named type"; "basic land" -> "a basic land card"; "land" -> "a land card of the named type"; "sliver" -> "a Sliver card"; else -> "a ${k.replaceFirstChar { it.uppercase() }} card" }
+                            abilities += ActivatedAbility(part.trimEnd('.') + " (discard this card from your hand)", Effect.Narrated("search your library for $what, reveal it, put it into your hand, then shuffle", listOf("702.29b")), part, "Activate only while this card is in your hand")
+                        }
                         "prowess" -> abilities += TriggeredAbility(Trigger.SpellCast(Who.YOU, ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE), raw = "noncreature spell")), Effect.PumpSelf(1, 1), "Prowess (Whenever you cast a noncreature spell, ~ gets +1/+1 until end of turn.)")
                         "unearth" -> abilities += ActivatedAbility(part.trimEnd('.') + " (from your graveyard)", Effect.Narrated("return ~ from your graveyard to the battlefield; it gains haste; exile it at the beginning of the next end step or if it would leave the battlefield", listOf("702.84a")), part, "Activate only as a sorcery")
                         "level up" -> abilities += ActivatedAbility(part.trimEnd('.'), Effect.PutCounters(null, "level", 1), part, "Activate only as a sorcery")
@@ -92,6 +97,17 @@ object OracleParser {
                         }
                         "evolve" -> abilities += TriggeredAbility(Trigger.PermanentEnters(ObjFilter(setOf(Kind.CREATURE), controller = Who.YOU, raw = "creature you control"), other = true), Effect.Evolve,
                             "Evolve (Whenever a creature you control enters, if that creature has greater power or toughness than this creature, put a +1/+1 counter on this creature.)")
+                        // Soulshift N (When this creature dies, you may return target Spirit card with mana value N
+                        // or less from your graveyard to your hand.) — narrated, as the plain wording of it already is.
+                        "soulshift" -> {
+                            val n = part.substringAfter(' ').trim().trimEnd('.')
+                            abilities += TriggeredAbility(Trigger.ThisDies, Effect.May(Effect.Narrated("return target Spirit card with mana value $n or less from your graveyard to your hand", listOf("702.46a"))),
+                                "Soulshift $n (When this creature dies, you may return target Spirit card with mana value $n or less from your graveyard to your hand.)")
+                        }
+                        // Ascend: once you control ten or more permanents you have the city's blessing for the rest
+                        // of the game (702.131a). Nothing else happens by itself, so the card says so and stops there.
+                        "ascend" -> abilities += StaticAbility("Ascend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)", null,
+                            listOf(StaticEffect.Narration("if you control ten or more permanents, you get the city's blessing for the rest of the game", listOf("702.131a"))))
                         "flanking" -> abilities += TriggeredAbility(Trigger.ThisBecomesBlockedByCreature, Effect.PumpCausing(-1, -1, unlessCausingHas = "flanking"),
                             "Flanking (Whenever this creature becomes blocked by a creature without flanking, that creature gets -1/-1 until end of turn.)")
                         "storm" -> abilities += TriggeredAbility(Trigger.ThisCast, Effect.StormCopy, "Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for the copies.)")

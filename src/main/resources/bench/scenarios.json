@@ -10540,5 +10540,16 @@
       "Sidar Jabari is 1/2 until end of turn"
     ],
     "cite": []
+  },
+  {
+    "id": "soulshift-on-death",
+    "text": "I control Hundred-Talon Kami and my opponent casts Doom Blade on it. What happens?",
+    "expect": [
+      "Return target Spirit card with mana value 4 or less from your graveyard to your hand"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

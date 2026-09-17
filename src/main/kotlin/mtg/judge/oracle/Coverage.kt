@@ -24,7 +24,8 @@ object Coverage {
         "cascade", "bestow", "disguise", "escape", "mutate", "companion", "split second", "buyback", "overload", "surge", "emerge", "spectacle", "jump-start", "retrace", "delve", "prototype", "casualty", "offspring", "gift", "impending", "harmonize", "level up", "cycling", "equip", "prowess", "unearth", "crew",
         "toxic", "exalted", "landwalk", "swampwalk", "islandwalk", "forestwalk", "mountainwalk", "plainswalk",
         // Triggered keywords the engine plays out in full.
-        "undying", "persist", "living weapon", "bushido", "storm", "flanking",
+        "undying", "persist", "living weapon", "bushido", "storm", "flanking", "soulshift", "ascend",
+        "landcycling", "basic landcycling", "typecycling", "plainscycling", "islandcycling", "swampcycling", "mountaincycling", "forestcycling", "wastescycling", "slivercycling",
         // Deck-building keywords: they say who may share a deck, and do nothing at all during a game.
         "choose a background", "doctor's companion", "friends forever")
 
