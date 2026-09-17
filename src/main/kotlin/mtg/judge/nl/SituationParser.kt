@@ -2171,17 +2171,13 @@ class SituationParser(private val names: NameIndex) {
         }
         // The same thing said in the passive: "my Lightning Bolt gets countered (by Counterspell)", "it was countered".
         // Whoever owns the spell isn't the one countering it, so the counterspell belongs to the other player.
-        Regex("""^(?:(my |their |the |my opponent's |@\w+'s )?(c\d+)|(it|that|that spell|the spell)) (?:gets?|got|is|was|are|were) countered(?: by (?:an? |the |my |their )?(c\d+))?$""").find(c)?.let { r ->
+        Regex("""^(?:($possPrefix)?(c\d+)|(it|that|that spell|the spell)) (?:gets?|got|is|was|are|were) countered(?: by (?:an? |the |my |their )?(c\d+))?$""").find(c)?.let { r ->
             val named = r.groupValues[2].takeIf { it.isNotEmpty() }
             val target = named?.let { m.cards.getValue(it) }
             if (target != null && objectIdFor(target, ctx) != null && target.display !in ctx.castCards) return@let   // a permanent already out isn't a spell
             val lastCast = ctx.events.lastOrNull { it.verb == "cast" && (target == null || it.card?.name == target.display) }
-            val owner = when (val w = r.groupValues[1].trim()) {
-                "my" -> "me"
-                "their", "my opponent's" -> pronounPlayer(ctx, "their")
-                "" -> lastCast?.player ?: actor ?: subject ?: "me"
-                else -> if (w.startsWith("@")) w.removePrefix("@").removeSuffix("'s").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else lastCast?.player ?: "me"
-            }
+            // The clause may have had its leading "my" taken off as the actor, leaving "opponent's c1 …".
+            val owner = possessiveOwner(r.groupValues[1], ctx, m) ?: lastCast?.player ?: actor ?: subject ?: "me"
             val targetName = target?.display ?: lastCast?.card?.name ?: ctx.objects[lastCast?.obj ?: ""]?.card?.name ?: return@let
             val who = ctx.other(owner) ?: "opp"
             if (target != null && target.display !in ctx.castCards) emitCast(owner, target, "", m, ctx)

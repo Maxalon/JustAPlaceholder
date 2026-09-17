@@ -9716,5 +9716,17 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "countered-in-the-passive-with-a-possessive",
+    "text": "My opponent's Grizzly Bears is countered by my Counterspell. What happens?",
+    "expect": [
+      "Grizzly Bears is countered"
+    ],
+    "notExpect": [
+      "Not understood",
+      "enters the battlefield"
+    ],
+    "cite": []
   }
 ]
