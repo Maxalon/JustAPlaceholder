@@ -526,6 +526,9 @@ object OracleParser {
         // and the rest of that cycle): permission to cast for an alternative cost, which is not an effect the
         // spell has on resolution. Read as a static ability of the card, the way it works from hand.
         if (Regex("""^(?:if [^,]+, )?you may cast (?:~|this spell) without paying its mana cost\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("118.9", "601.3")))
+        // "If it's not your turn, you may exile a blue card from your hand rather than pay this spell's mana cost"
+        // (the Force cycle, Daze, Misdirection): the same thing said as an alternative cost rather than as none.
+        if (Regex("""^(?:if [^,]+, )?you may .+? rather than pay (?:~'s|this spell's) mana cost\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("118.9", "601.3")))
         if (Regex("""^(?:Combat )?damage that would be dealt by (?:creatures|sources) you control can't be prevented\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("615.12")))
         if (Regex("""^Each opponent can cast spells only any time they could cast a sorcery\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsSorcerySpeed)
         if (Regex("""^Players can cast spells only during their own turns\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OwnTurnOnly)
@@ -783,6 +786,9 @@ object OracleParser {
         Regex("""^surveil (\d+)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.25a"),
         Regex("""^(?:you |target player |each player )?mills? (\w+|\d+) cards?\.?$""", RegexOption.IGNORE_CASE) to listOf("701.17a"),
         Regex("""^look at the top (?:(\w+|\d+) )?cards? of your library.*$""", RegexOption.IGNORE_CASE) to listOf("701.22a"),
+        // Looking at a hidden zone: the engine doesn't track what is in one, so the answer says it happened and why nothing turns on it.
+        Regex("""^look at (?:target player's|that player's|each opponent's|an opponent's) hand\.?$""", RegexOption.IGNORE_CASE) to listOf("400.2"),
+        Regex("""^look at the top (?:(\w+|\d+) )?cards? of (?:target player's|that player's|an opponent's) library\.?$""", RegexOption.IGNORE_CASE) to listOf("400.2"),
         Regex("""^search your library for (?:a|an|up to \w+) .+?(?:, then shuffle|\. Then shuffle|then shuffle)?\.?$""", RegexOption.IGNORE_CASE) to listOf("701.23a", "701.24a"),
         Regex("""^shuffle\.?$""", RegexOption.IGNORE_CASE) to listOf("701.24a"),
         Regex("""^(?:you |target player |each player )?discards? (a|an|\w+|\d+) cards?(?: at random)?\.?$""", RegexOption.IGNORE_CASE) to listOf("701.9a"),

@@ -8634,5 +8634,16 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "force-of-will-alternative-cost",
+    "text": "My opponent casts Lightning Bolt at me and I cast Force of Will on it. What happens?",
+    "expect": [
+      "Lightning Bolt is countered"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
