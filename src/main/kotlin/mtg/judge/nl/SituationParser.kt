@@ -1404,7 +1404,10 @@ class SituationParser(private val names: NameIndex) {
         // "with a regeneration shield", "regenerated X", "X is regenerated": a regeneration shield on that permanent.
         Regex("""^(?:regenerates? |regenerated |gives? (?:a )?regeneration (?:shield )?to |activates? regeneration on )(?:an? |the |my |their )?(c\d+|it|that|that creature)$""").find(c)?.let { r ->
             val id = if (r.groupValues[1].startsWith("c")) m.cards.getValue(r.groupValues[1]).let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner, false, ctx) }
-                     else ctx.lastMentioned?.takeIf { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) } ?: ctx.objects.values.lastOrNull { (actor == null || it.controller == actor) && isCreatureName(it.card.name) }?.id ?: return@let
+                     // "it blocks a 3/3. I regenerate it": "it" is the one being regenerated, which is the actor's,
+                     // not the attacker they happened to name last — the shield went on the wrong creature.
+                     else ctx.lastMentioned?.takeIf { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) && (actor == null || ctx.objects.getValue(it).controller == actor) }
+                        ?: ctx.objects.values.lastOrNull { (actor == null || it.controller == actor) && isCreatureName(it.card.name) }?.id ?: return@let
             ctx.events += EventSpec("regenerate", obj = id); return true
         }
         // "sacrifice a Bears (to Viscera Seer)": the sacrifice, then the ability it paid for.
@@ -1735,19 +1738,22 @@ class SituationParser(private val names: NameIndex) {
             ctx.objects[id] = ctx.objects.getValue(id).copy(summoningSick = true); ctx.lastMentioned = id; return true
         }
         // "My Grizzly Bears has summoning sickness" / "it regenerates" / "it is shuffled into my library".
-        Regex("""^(?:my |their |his |her |the |own )?(c\d+|it|that) (?:has|is) summoning ?sick(?:ness)?$""").find(c)?.let { r ->
+        Regex("""^($possPrefix)?(c\d+|it|that) (?:has|is) summoning ?sick(?:ness)?$""").find(c)?.let { r0 ->
+            val r = object { val groupValues = listOf(r0.groupValues[0], r0.groupValues[2]) }
             val id = if (r.groupValues[1] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
-                     else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
+                     else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, possessiveOwner(r0.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
             ctx.objects[id] = ctx.objects.getValue(id).copy(summoningSick = true); ctx.lastMentioned = id; return true
         }
-        Regex("""^(?:my |their |his |her |the |own )?(c\d+|it|that) (?:regenerates|is regenerated|gets regenerated|has a regeneration shield)$""").find(c)?.let { r ->
+        Regex("""^($possPrefix)?(c\d+|it|that) (?:regenerates|is regenerated|gets regenerated|has a regeneration shield)$""").find(c)?.let { r0 ->
+            val r = object { val groupValues = listOf(r0.groupValues[0], r0.groupValues[2]) }
             val id = if (r.groupValues[1] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
-                     else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
+                     else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, possessiveOwner(r0.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
             ctx.events += EventSpec("regenerate", obj = id); ctx.lastMentioned = id; return true
         }
-        Regex("""^(?:my |their |his |her |the |own )?(c\d+|it|that) (?:is|gets?|got|was) shuffled into (?:its owner's|my|their|his|her|the owner's) (?:library|deck)$""").find(c)?.let { r ->
+        Regex("""^($possPrefix)?(c\d+|it|that) (?:is|gets?|got|was) shuffled into (?:its owner's|my|their|his|her|the owner's) (?:library|deck)$""").find(c)?.let { r0 ->
+            val r = object { val groupValues = listOf(r0.groupValues[0], r0.groupValues[2]) }
             val id = if (r.groupValues[1] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
-                     else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
+                     else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, possessiveOwner(r0.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
             ctx.events += EventSpec("leave", obj = id, to = "library"); ctx.lastMentioned = id; return true
         }
         // "I put a +1/+1 counter on my Bears", "add two charge counters to it": counters placed now, which is not

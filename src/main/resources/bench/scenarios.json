@@ -10709,5 +10709,38 @@
       "Thalia, Guardian of Thraben costs"
     ],
     "cite": []
+  },
+  {
+    "id": "regenerate-it-is-yours",
+    "text": "I control Drudge Skeletons and it blocks a 3/3. I regenerate it. What happens?",
+    "expect": [
+      "Drudge Skeletons regenerates"
+    ],
+    "notExpect": [
+      "Drudge Skeletons: the battlefield → your graveyard"
+    ],
+    "cite": []
+  },
+  {
+    "id": "regeneration-shield-on-their-creature",
+    "text": "My opponent's Grizzly Bears has a regeneration shield and I cast Doom Blade on it.",
+    "expect": [
+      "Grizzly Bears regenerates"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "their-creature-is-summoning-sick",
+    "text": "My opponent's Llanowar Elves has summoning sickness. Can they tap it for mana?",
+    "expect": [
+      "can't be activated (summoning sickness)"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]
