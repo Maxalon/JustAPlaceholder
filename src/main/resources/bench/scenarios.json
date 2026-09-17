@@ -8339,5 +8339,27 @@
     "cite": [
       "704.5b"
     ]
+  },
+  {
+    "id": "a-named-players-graveyard-by-type",
+    "text": "Alice controls Tarmogoyf and Alice's graveyard has an instant and a creature. What are its stats?",
+    "expect": [
+      "Tarmogoyf is 2/3"
+    ],
+    "notExpect": [
+      "Tarmogoyf is 0/1"
+    ],
+    "cite": []
+  },
+  {
+    "id": "two-named-cards-in-a-named-players-graveyard",
+    "text": "I control Tarmogoyf and Alice's graveyard has a Mountain and a Lightning Bolt. What are its stats?",
+    "expect": [
+      "Tarmogoyf is 2/3"
+    ],
+    "notExpect": [
+      "Tarmogoyf is 1/2"
+    ],
+    "cite": []
   }
 ]

@@ -195,6 +195,8 @@ class SituationParser(private val names: NameIndex) {
     /** Creature-type words people shorten a name to ("the Angel", "the Giant"); only used with "the"/"my"/"their" in front. */
     /** Words that make the next word a description rather than a name: "a Goblin", "two Walls". */
     private val indefiniteWords = setOf("a", "an", "another", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "some", "any", "no", "each", "every", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10")
+    /** The card types a graveyard can be described by, when nobody names the cards. */
+    private val cardTypeWord = """(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)"""
     /** Number words are counts, never the card of that name; a card whose name starts with one is longer than a word. */
     private val countWords = setOf("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
         "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty")
@@ -623,8 +625,15 @@ class SituationParser(private val names: NameIndex) {
         t2 = Regex("""\bthere(?:'s| is| are) ((?:an? |the )?c\d+(?:,? (?:and )?(?:an? |the )?c\d+)+) in ($possPrefix)?(graveyard|yard|bin)\b""").replace(t2) { r ->
             Regex("""c\d+""").findAll(r.groupValues[1]).joinToString(" and ") { "there is a ${it.value} in ${r.groupValues[2]}${r.groupValues[3]}" }
         }
-        t2 = Regex("""^($possPrefix)(graveyard|yard|bin) (?:has|contains|holds) ((?:an? |the )?c\d+(?:,? (?:and )?(?:an? |the )?c\d+)+)$""").replace(t2) { r ->
+        t2 = Regex("""(?:^|(?<=\s))($possPrefix)(graveyard|yard|bin) (?:has|contains|holds) ((?:an? |the )?c\d+(?:,? (?:and )?(?:an? |the )?c\d+)+)""").replace(t2) { r ->
             Regex("""c\d+""").findAll(r.groupValues[3]).joinToString(" and ") { "there is a ${it.value} in ${r.groupValues[1]}${r.groupValues[2]}" }
+        }
+        // The same for a graveyard given by card type ("my graveyard has an instant and a creature").
+        t2 = Regex("""\b(?:there(?:'s| is| are) )?((?:an? |\d+ )?$cardTypeWord(?: cards?)?(?:,? (?:and )?(?:an? |\d+ )?$cardTypeWord(?: cards?)?)+) (?:is |are )?in ($possPrefix)?(graveyard|yard|bin)s?\b""").replace(t2) { r ->
+            Regex("""(?:an? |\d+ )?$cardTypeWord(?: cards?)?""").findAll(r.groupValues[1]).joinToString(" and ") { "there is ${it.value.trim()} in ${r.groupValues[2]}${r.groupValues[3]}" }
+        }
+        t2 = Regex("""(?:^|(?<=\s))($possPrefix)(graveyard|yard|bin) (?:has|contains|holds) ((?:an? |\d+ )?$cardTypeWord(?: cards?)?(?:,? (?:and )?(?:an? |\d+ )?$cardTypeWord(?: cards?)?)+)""").replace(t2) { r ->
+            Regex("""(?:an? |\d+ )?$cardTypeWord(?: cards?)?""").findAll(r.groupValues[3]).joinToString(" and ") { "there is ${it.value.trim()} in ${r.groupValues[1]}${r.groupValues[2]}" }
         }
         // "There is a Lightning Bolt on the stack targeting my Bears" and "my Bears has a Bolt on the stack
         // targeting it" say the same thing as "they have a Bolt on the stack targeting my Bears", which is read.
@@ -1579,9 +1588,10 @@ class SituationParser(private val names: NameIndex) {
             ctx.mana[who] = n; ctx.note(who); ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} $n mana available; costs are checked against that."; return true
         }
         // "have an instant and a creature in their graveyard" / "my graveyard has a land and a sorcery": card types in a graveyard (Tarmogoyf).
-        Regex("""^(?:(?:there (?:is|are)|there's )?(?:has|have|with|got)? ?((?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?(?:,? (?:and )?(?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?)*) (?:is |are )?in (?:their|my|his|her|the|my opponent's|the opponent's|opponent's) graveyards?|(?:my|their|his|her|my opponent's|the opponent's|opponent's) graveyard (?:has|contains|is) ((?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?(?:,? (?:and )?(?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?)*))(?: in it| in there)?$""").find(c)?.let { r ->
-            val who = actor ?: (if (clauseIn.trim().startsWith("my")) "me" else if (Regex("""^(?:their|his|her)""").containsMatchIn(clauseIn.trim())) pronounPlayer(ctx, "their") else subject) ?: "me"
-            val list = r.groupValues[1].ifEmpty { r.groupValues[2] }
+        Regex("""^(?:(?:there (?:is|are)|there's )?(?:has|have|with|got)? ?((?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?(?:,? (?:and )?(?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?)*) (?:is |are )?in ($possPrefix)?graveyards?|($possPrefix)?graveyard (?:has|contains|is) ((?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?(?:,? (?:and )?(?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?)*))(?: in it| in there)?$""").find(c)?.let { r ->
+            val who = possessiveOwner(r.groupValues[2].ifEmpty { r.groupValues[3] }, ctx, m)
+                ?: actor ?: (if (clauseIn.trim().startsWith("my")) "me" else if (Regex("""^(?:their|his|her)""").containsMatchIn(clauseIn.trim())) pronounPlayer(ctx, "their") else subject) ?: "me"
+            val list = r.groupValues[1].ifEmpty { r.groupValues[4] }
             for (part in list.split(Regex(""",\s*(?:and\s+)?|\s+and\s+"""))) {
                 val pm = Regex("""^(?:(an?|two|three|\d+) )?(\w+)(?: cards?)?$""").find(part.trim()) ?: continue
                 val n = pm.groupValues[1].let { if (it.isEmpty() || it == "a" || it == "an") 1 else number(it) ?: 1 }
@@ -1600,8 +1610,8 @@ class SituationParser(private val names: NameIndex) {
             ctx.note(who); return true
         }
         // "Stinkweed Imp is in my graveyard" / "Snapcaster Mage sits in their graveyard": the card named first.
-        Regex("""^(?:an? |the |my |their )?(c\d+)(?: card)? (?:is|are|sits|sit|was|were|went|goes)(?: put)?(?: in| into|) (my|their|his|her|my opponent's|the opponent's|opponent's|the) (?:graveyard|yard|bin)$""").find(c)?.let { r ->
-            val who = when (r.groupValues[2]) { "my", "the" -> "me"; else -> pronounPlayer(ctx, "their") }
+        Regex("""^(?:an? |the |my |their )?(c\d+)(?: card)? (?:is|are|sits|sit|was|were|went|goes)(?: put)?(?: in| into|) ($possPrefix)?(?:graveyard|yard|bin)$""").find(c)?.let { r ->
+            val who = possessiveOwner(r.groupValues[2], ctx, m) ?: actor ?: "me"
             val was = ctx.lastMentioned
             addObject(m.cards.getValue(r.groupValues[1]), who, false, ctx, zone = "graveyard", allowDuplicate = true)
             ctx.lastMentioned = was
