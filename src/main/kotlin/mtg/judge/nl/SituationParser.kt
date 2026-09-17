@@ -580,6 +580,9 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "${if (who == "me") "Your" else (ctx.players[who] ?: "Your opponent") + "'s"} graveyard is read as holding: ${r.groupValues[1]} (only the card types matter to the engine)."; ctx.note(who); any = true
             t2 = (before.trim().replace(Regex("""(?:^|\s)(?:i|they|he|she|my opponent|the opponent|opponent|@\w+|there is|there are|there's)$"""), "").trim() + t2.substring(r.range.last + 1)).trim()
         }
+        // "choosing modes 1 and 4": the mode numbers are a list, not an "and" between two clauses, which would
+        // leave the bare "4" behind as a clause of its own and report it unread.
+        t2 = Regex("""\bmodes? \d+(?:(?:,| and|, and) \d+)+""").replace(t2) { r -> r.value.replace(Regex("""(?:,| and|, and) """), " & ") }
         // "choosing the counter mode and the draw mode": both modes stay in one clause.
         t2 = t2.replace(Regex("""\b(choosing|picking|selecting) (the )?(\w+)( mode)?,? and (the )?(\w+)( mode)?\b"""), "$1 $2$3$4 & $5$6$7")
         // "choosing counter target spell and draw a card": the modes are spelled out. Joining them keeps "draw a card"
@@ -3123,7 +3126,7 @@ class SituationParser(private val names: NameIndex) {
         // "with flashback", "from my graveyard", "flashing it back": cast from the graveyard, so it is exiled afterwards.
         val flashedBack = Regex("""\b(?:with flashback|for (?:its|the) flashback cost|via flashback|flashing it back|using flashback|from (?:my|their|his|her|the) graveyard)\b""").containsMatchIn(rest)
         // "choosing the second mode", "mode 2", "choosing modes 1 and 3"
-        val modes = Regex("""(?:choosing |with |picking )?(?:the )?(?:mode|modes) (\d+(?:(?:,| and) \d+)*)|(?:choosing |picking )(?:the )?(first|second|third|fourth) (?:mode|option)""").find(rest)?.let { mm ->
+        val modes = Regex("""(?:choosing |with |picking )?(?:the )?(?:mode|modes) (\d+(?:\s*(?:,|and|&)\s*\d+)*)|(?:choosing |picking )(?:the )?(first|second|third|fourth) (?:mode|option)""").find(rest)?.let { mm ->
             if (mm.groupValues[1].isNotEmpty()) Regex("""\d+""").findAll(mm.groupValues[1]).map { it.value.toInt() }.toList()
             else listOf(mapOf("first" to 1, "second" to 2, "third" to 3, "fourth" to 4).getValue(mm.groupValues[2]))
         // "choosing both modes", "choosing both": a "choose one or both" spell with every mode taken.

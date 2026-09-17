@@ -9027,5 +9027,18 @@
       "Not modeled"
     ],
     "cite": []
+  },
+  {
+    "id": "mana-value-or-greater",
+    "text": "I cast Austere Command choosing modes 1 and 4. My opponent controls Grizzly Bears, Wurmcoil Engine and Sol Ring. What happens?",
+    "expect": [
+      "Wurmcoil Engine: the battlefield",
+      "Sol Ring: the battlefield"
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield",
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

@@ -1291,8 +1291,9 @@ object OracleParser {
         val subtypes = mutableSetOf<String>(); val keywords = mutableSetOf<String>(); val notKeywords = mutableSetOf<String>(); val notSubtypes = mutableListOf<String>()
         var attacking: Boolean? = null; var tapped: Boolean? = null; var token: Boolean? = null; var legendary: Boolean? = null; var attachedToSource = false
         // "with flying" / "with reach or flying" -> keyword requirements
-        var minPower: Int? = null; var maxPower: Int? = null; var maxManaValue: Int? = null
+        var minPower: Int? = null; var maxPower: Int? = null; var maxManaValue: Int? = null; var minManaValue: Int? = null
         Regex("""\s+(?:if it has|with) mana value (\d+) or less$""").find(core)?.let { m -> maxManaValue = m.groupValues[1].toInt(); core = core.removeRange(m.range) }
+        Regex("""\s+(?:if it has|with) mana value (\d+) or (?:greater|more)$""").find(core)?.let { m -> minManaValue = m.groupValues[1].toInt(); core = core.removeRange(m.range) }
         val colors = mutableSetOf<Char>(); val notColors = mutableSetOf<Char>()
         Regex("""\s+with power (\d+) or (greater|less)$""").find(core)?.let { m ->
             if (m.groupValues[2] == "greater") minPower = m.groupValues[1].toInt() else maxPower = m.groupValues[1].toInt()
@@ -1353,6 +1354,6 @@ object OracleParser {
         if (kinds.isEmpty() && notKinds.isNotEmpty()) kinds += defaultKind ?: Kind.PERMANENT
         if (kinds.isEmpty() && defaultKind != null) kinds += defaultKind
         if (kinds.isEmpty() && notSubtypes.isNotEmpty()) kinds += defaultKind ?: Kind.CREATURE
-        return ObjFilter(kinds, notKinds, notSubtypes, controller, attacking, tapped, unknown, desc, subtypes, keywords, notKeywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1, colors = colors, notColors = notColors, maxManaValue = maxManaValue)
+        return ObjFilter(kinds, notKinds, notSubtypes, controller, attacking, tapped, unknown, desc, subtypes, keywords, notKeywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1, colors = colors, notColors = notColors, maxManaValue = maxManaValue, minManaValue = minManaValue)
     }
 }

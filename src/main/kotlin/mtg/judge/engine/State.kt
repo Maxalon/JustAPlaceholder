@@ -418,7 +418,7 @@ class GameState(
         val tokenOk = f.token == null || f.token == o.token
         val legOk = f.legendary == null || f.legendary == ("Legendary" in o.def.supertypes)
         val stateOk = (f.tapped == null || o.tapped == f.tapped) && (f.attacking == null || (o.attacking != null) == f.attacking)
-        val powerOk = (f.minPower == null || (o.power ?: 0) >= f.minPower) && (f.maxPower == null || (o.power ?: 0) <= f.maxPower) && (f.maxManaValue == null || o.def.manaValue.toInt() <= f.maxManaValue)
+        val powerOk = (f.minPower == null || (o.power ?: 0) >= f.minPower) && (f.maxPower == null || (o.power ?: 0) <= f.maxPower) && (f.maxManaValue == null || o.def.manaValue.toInt() <= f.maxManaValue) && (f.minManaValue == null || o.def.manaValue.toInt() >= f.minManaValue)
         val cols = colorsOf(o)
         val colorOk = f.colors.all { it in cols } && f.notColors.none { it in cols }
         return typeOk && notOk && notSubOk && ctrlOk && subOk && kwOk && tokenOk && legOk && stateOk && powerOk && colorOk

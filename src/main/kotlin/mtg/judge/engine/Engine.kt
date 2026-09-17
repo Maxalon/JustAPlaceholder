@@ -616,7 +616,8 @@ class Engine(val state: GameState) {
         val typeOk = f.kinds.any { k -> when (k) { Kind.SPELL -> true; Kind.CREATURE -> card.isCreature; Kind.ARTIFACT -> "Artifact" in card.types; Kind.ENCHANTMENT -> "Enchantment" in card.types; Kind.PLANESWALKER -> card.isPlaneswalker; else -> false } }
         val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> card.isCreature; Kind.ARTIFACT -> "Artifact" in card.types; Kind.ENCHANTMENT -> "Enchantment" in card.types; Kind.PLANESWALKER -> card.isPlaneswalker; Kind.LAND -> "Land" in card.types; else -> false } }
         val colourOk = f.colors.all { it in card.colors } && f.notColors.none { it in card.colors }
-        return typeOk && notOk && colourOk
+        val mvOk = (f.maxManaValue == null || card.manaValue.toInt() <= f.maxManaValue) && (f.minManaValue == null || card.manaValue.toInt() >= f.minManaValue)
+        return typeOk && notOk && colourOk && mvOk
     }
     private fun usesX(e: Effect): Boolean = when (e) { is Effect.Damage -> e.x; is Effect.Draw -> e.x; is Effect.LoseLife -> e.x; is Effect.Discard -> e.x; is Effect.PumpAll -> e.x; is Effect.SetBasePtAll -> e.x; is Effect.PutCounters -> e.x; is Effect.Repeat -> e.x || usesX(e.body); is Effect.Seq -> e.effects.any { usesX(it) }; is Effect.May -> usesX(e.effect); is Effect.Modal -> e.modes.any { usesX(it) }; else -> false }
 

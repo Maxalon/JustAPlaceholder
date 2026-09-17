@@ -43,6 +43,7 @@ data class ObjFilter(
     val notColors: Set<Char> = emptySet(),
     /** "creature with mana value 2 or less" / "if it has mana value 2 or less". */
     val maxManaValue: Int? = null,
+    val minManaValue: Int? = null,
 ) {
     val verifiable get() = unknownWords.isEmpty()
 }
