@@ -8068,5 +8068,69 @@
     "cite": [
       "700.5"
     ]
+  },
+  {
+    "id": "an-aura-said-with-there-is",
+    "text": "There is a Pacifism on my Grizzly Bears. Can it attack?",
+    "expect": [
+      "can't attack"
+    ],
+    "notExpect": [
+      "takes 2 damage"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "an-opponents-creature-enchanted",
+    "text": "My opponent's Grizzly Bears is enchanted with Pacifism. Can it attack?",
+    "expect": [
+      "can't attack"
+    ],
+    "notExpect": [],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "counters-counted-before-the-permanent",
+    "text": "There are 3 +1/+1 counters on my Walking Ballista. What are its stats?",
+    "expect": [
+      "3/3"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "counters-on-an-opponents-permanent",
+    "text": "My opponent's Walking Ballista has 3 +1/+1 counters on it. What are its stats?",
+    "expect": [
+      "3/3"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "poison-dealt-rather-than-gained",
+    "text": "My opponent has 8 poison counters. My opponent is dealt 2 poison counters. What happens?",
+    "expect": [
+      "loses the game"
+    ],
+    "notExpect": [],
+    "cite": [
+      "704.5c"
+    ]
+  },
+  {
+    "id": "a-running-total-and-two-more",
+    "text": "My opponent has 8 poison counters and gets 2 more. What happens?",
+    "expect": [
+      "loses the game"
+    ],
+    "notExpect": [],
+    "cite": [
+      "704.5c"
+    ]
   }
 ]

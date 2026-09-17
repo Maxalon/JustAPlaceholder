@@ -174,6 +174,46 @@ class PhrasingFamiliesTest {
                 "They board wipe with Damnation.", "I turn Grizzly Bears sideways.",
             ),
         ),
+        Family(
+            "an Aura on a creature, owner said first, last or not at all", "", "can't attack",
+            listOf(
+                "A Pacifism is on my Grizzly Bears. Can it attack?",
+                "There is a Pacifism on my Grizzly Bears. Can it attack?",
+                "There's a Pacifism on my Grizzly Bears. Can it attack?",
+                "Pacifism is attached to my Grizzly Bears. Can it attack?",
+                "My Grizzly Bears is enchanted with Pacifism. Can it attack?",
+                "My Grizzly Bears has a Pacifism on it. Can it attack?",
+                "I control Grizzly Bears enchanted with Pacifism. Can it attack?",
+            ),
+        ),
+        Family(
+            "counters on a permanent, counted before or after it", "", "3/3",
+            listOf(
+                "My Walking Ballista has 3 +1/+1 counters on it. What are its stats?",
+                "Walking Ballista has 3 +1/+1 counters on it. What are its stats?",
+                "There are 3 +1/+1 counters on my Walking Ballista. What are its stats?",
+                "My Walking Ballista has three +1/+1 counters. What are its stats?",
+            ),
+        ),
+        Family(
+            "a poison total said every way", "", "loses the game",
+            listOf(
+                "My opponent has 8 poison counters. My opponent gets 2 poison counters. What happens?",
+                "My opponent has 8 poison counters. My opponent is dealt 2 poison counters. What happens?",
+                "My opponent has 8 poison counters. My opponent receives 2 more poison counters. What happens?",
+                "There are 8 poison counters on my opponent. My opponent gets 2 more poison counters. What happens?",
+                "My opponent has 8 poison counters and gets 2 more. What happens?",
+                "My opponent has 8 poison counters and is dealt 2 more. What happens?",
+            ),
+        ),
+        Family(
+            "a running total carried into \"2 more\"", "", "8",
+            listOf(
+                "My opponent is at 5 life and gains 3 more. What happens?",
+                "My opponent is at 5 life and gets 3 more. What happens?",
+                "My opponent is at 5 life and receives 3 more. What happens?",
+            ),
+        ),
     )
 
     @Test
