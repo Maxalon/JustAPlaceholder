@@ -9885,5 +9885,29 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "meekstone-holds-a-big-creature",
+    "text": "I control Meekstone and a tapped 4/4. It is my untap step. What happens?",
+    "expect": [
+      "a 4/4 creature doesn't untap (Meekstone)"
+    ],
+    "notExpect": [
+      "Not modeled",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "meekstone-lets-a-small-one-go",
+    "text": "I control Meekstone and a tapped 2/2. It is my untap step. What happens?",
+    "expect": [
+      "a 2/2 creature untaps"
+    ],
+    "notExpect": [
+      "doesn't untap",
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

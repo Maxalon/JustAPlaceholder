@@ -553,6 +553,10 @@ object OracleParser {
         Regex("""^players can't cast spells from graveyards or libraries\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.CantCastFromZone(setOf("graveyard", "library"), opponentsOnly = false)) }
         // Deck construction, not the game: nothing in a situation turns on it, but it shouldn't read as unmodeled.
         Regex("""^~ can be your commander\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.Narration("can be your commander \u2014 a deck-construction permission (903.3); nothing happens in the game because of it", listOf("903.3"))) }
+        Regex("""^(.+?) don't untap during their controllers?'? untap steps?\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val f = parseFilter(m.groupValues[1], Kind.PERMANENT)
+            return if (f.verifiable) listOf(StaticEffect.DontUntap(f)) else emptyList()
+        }
         Regex("""^you have no maximum hand size\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.NoMaximumHandSize) }
         Regex("""^you have hexproof\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.PlayerHexproof) }
         Regex("""^you can't lose the game and your opponents can't win the game\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.CantLose) }

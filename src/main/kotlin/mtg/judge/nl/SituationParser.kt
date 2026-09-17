@@ -864,9 +864,9 @@ class SituationParser(private val names: NameIndex) {
             return readClause((actorOfClause(r.groupValues[1].trim())?.let { if (it == "me") "i " else if (it == "opp") "they " else "@$it " } ?: "") + "doesn't pay", m, ctx) || first
         }
         // Step beginnings keep their possessive: "my upkeep begins", "at the beginning of their end step".
-        Regex("""^(?:at the beginning of |at the start of |during |on |at |it's |it is |we are in |we're in |in )?(my|their|the opponent's|opponent's|my opponent's|each|the|@\w+'s) (upkeep|draw step|end step|end of turn|precombat main phase|main phase|combat|beginning of combat|cleanup step|cleanup)(?: begins| starts| now)?$""").find(clauseIn)?.let { r ->
+        Regex("""^(?:at the beginning of |at the start of |during |on |at |it's |it is |we are in |we're in |in )?(my|their|the opponent's|opponent's|my opponent's|each|the|@\w+'s) (untap step|untap|upkeep|draw step|end step|end of turn|precombat main phase|main phase|combat|beginning of combat|cleanup step|cleanup)(?: begins| starts| now)?$""").find(clauseIn)?.let { r ->
             val who = when (r.groupValues[1]) { "my" -> "me"; "each", "the" -> ctx.activePlayer ?: "me"; else -> if (r.groupValues[1].startsWith("@")) r.groupValues[1].removePrefix("@").removeSuffix("'s") else "opp" }
-            val step = when (r.groupValues[2]) { "upkeep" -> "upkeep"; "draw step" -> "draw"; "end step", "end of turn" -> "end"; "combat", "beginning of combat" -> "combat"; "cleanup step", "cleanup" -> "cleanup"; else -> "precombat_main" }
+            val step = when (r.groupValues[2]) { "upkeep" -> "upkeep"; "draw step" -> "draw"; "end step", "end of turn" -> "end"; "combat", "beginning of combat" -> "combat"; "cleanup step", "cleanup" -> "cleanup"; "untap step", "untap" -> "untap"; else -> "precombat_main" }
             ctx.activePlayer = who
             if (ctx.events.lastOrNull()?.let { it.verb == "step" && it.to == step && it.player == who } != true) ctx.events += EventSpec("step", player = who, to = step)
             return true
@@ -1425,11 +1425,11 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastMentioned = ids.last(); return true
         }
         // Unnamed creatures: "I have three creatures", "control two other creatures" (stats unknown; assumed 1/1 and said so).
-        Regex("""^(?:(?:have|has|got|control|controls|controlling|'ve got)\s+)?(an? |one |\d+ |two |three |four |five )?(?:other |more |untapped )?(?:(\d+/\d+)s?\s*)?((?:first strike |double strike |[a-z]+ )*)($creatureKinds|blockers?|attackers?|guys?|dudes?|beaters?|bodies|body)?(?: with ([a-z ,&]+?|(?:an? |one |two |three |four |five |\d+ )?[+-]\d+/[+-]\d+ counters?(?: on it)?))?(?: plus .*)?(?: on the battlefield| in play| out)?((?: that (?:i|they|he|she) just (?:played|cast)(?: this turn)?| that just came down| i just played| with summoning sickness| that has been out| from last turn)?)$""").find(c)?.let { r ->
+        Regex("""^(?:(?:have|has|got|control|controls|controlling|'ve got)\s+)?(an? |one |\d+ |two |three |four |five )?(?:other |more )?(tapped |untapped )?(?:(\d+/\d+)s?\s*)?((?:first strike |double strike |[a-z]+ )*)($creatureKinds|blockers?|attackers?|guys?|dudes?|beaters?|bodies|body)?(?: with ([a-z ,&]+?|(?:an? |one |two |three |four |five |\d+ )?[+-]\d+/[+-]\d+ counters?(?: on it)?))?(?: plus .*)?(?: on the battlefield| in play| out)?((?: that (?:i|they|he|she) just (?:played|cast)(?: this turn)?| that just came down| i just played| with summoning sickness| that has been out| from last turn)?)$""").find(c)?.let { r ->
             val hasVerb = Regex("""^(?:have|has|got|control|controls|controlling|'ve got)\b""").containsMatchIn(c)
-            val pt = r.groupValues[2]; val adj = r.groupValues[3].trim()
+            val pt = r.groupValues[3]; val adj = r.groupValues[4].trim()
             // "one blocker", "two beaters": words for a creature that aren't creature types.
-            val kind = r.groupValues[4].let { if (Regex("""^(?:blockers?|attackers?|guys?|dudes?|beaters?|bodies|body)$""").matches(it)) "creature" else it }
+            val kind = r.groupValues[5].let { if (Regex("""^(?:blockers?|attackers?|guys?|dudes?|beaters?|bodies|body)$""").matches(it)) "creature" else it }
             // Needs a verb or a state context, and something creature-like: "a 3/3", "two goblins", "3 other goblins"; not "the", "it", or a lone number.
             if (kind.isEmpty() && pt.isEmpty()) return@let
             if (!hasVerb && ctx.lastVerb != "have" && ctx.lastOwner == null) return@let
@@ -1442,20 +1442,22 @@ class SituationParser(private val names: NameIndex) {
             if (plainAdj.any { it !in setOf("vanilla", "big", "small", "random", "chump", "spare", "extra", "red", "green", "white", "blue", "black") }) return@let
             val who = actor ?: (if (hasVerb) subject else ctx.lastOwner ?: subject) ?: "me"
             // "a 1/1 with a +1/+1 counter on it": that's a counter, not a keyword, and it goes on every creature described.
-            val withTail = r.groupValues[5]
+            val withTail = r.groupValues[6]
             val counterTail = withTail.takeIf { Regex("""[+-]\d+/[+-]\d+ counters?""").containsMatchIn(it) }
             val kw = (listOfNotNull(withTail.takeIf { it.isNotEmpty() && counterTail == null }) + adjKw).joinToString(", ")
             val colour = plainAdj.firstOrNull { it in setOf("red", "green", "white", "blue", "black") }
             val made = describedCreatures(r.groupValues[1], pt, if (colour != null) "$colour ${kind.ifEmpty { "creature" }}" else kind, who, ctx, kw)
+            // "a tapped 4/4": the word in front of the size says how it is on the battlefield.
+            if (r.groupValues[2].trim() == "tapped") made.forEach { ctx.objects[it] = ctx.objects.getValue(it).copy(tapped = true) }
             if (counterTail != null) made.forEach { applyStateWords(it, "with $counterTail", ctx) }
             // "a 2/2 that I just played this turn": summoning sickness, said as part of the description.
-            r.groupValues[6].takeIf { it.isNotBlank() }?.let { tail -> made.forEach { applyStateWords(it, tail.trim(), ctx) } }
+            r.groupValues[7].takeIf { it.isNotBlank() }?.let { tail -> made.forEach { applyStateWords(it, tail.trim(), ctx) } }
             Regex(""" plus (an? |\d+ |two |three |four |five )?(\d+/\d+)s?(?: ($kwNouns))?(?: ($creatureKinds))?""").findAll(c).forEach { x ->
                 describedCreatures(x.groupValues[1], x.groupValues[2], x.groupValues[4], who, ctx, x.groupValues[3].let { k -> if (k.isEmpty()) "" else k.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") })
             }
             // "I have a blocker", "I have two blockers": the word says what they are for. If something is already
             // attacking that player, they block it — otherwise the answer is about an attack nobody blocked.
-            if (Regex("""^blockers?$""").matches(r.groupValues[4])) {
+            if (Regex("""^blockers?$""").matches(r.groupValues[5])) {
                 val attacks = ctx.events.filter { it.verb == "attack" && (it.targets.contains(who) || it.targets.isEmpty()) }
                 if (attacks.isNotEmpty()) {
                     made.forEachIndexed { i, id -> attacks.getOrNull(i)?.obj?.let { atk -> ctx.events += EventSpec("block", player = who, obj = id, targets = listOf(atk)) } }

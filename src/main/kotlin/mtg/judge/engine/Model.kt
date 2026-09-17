@@ -375,6 +375,8 @@ sealed interface StaticEffect {
     data object CantLose : StaticEffect
     /** "You have no maximum hand size." (Reliquary Tower and the rest) — nothing is discarded at cleanup. */
     data object NoMaximumHandSize : StaticEffect
+    /** Meekstone: "Creatures with power 3 or greater don't untap during their controllers' untap steps." */
+    data class DontUntap(val filter: ObjFilter) : StaticEffect
     /**
      * A line that says something true about the card outside the game and nothing inside it ("~ can be your
      * commander"). Counted as read, because there is nothing for a situation to turn on.

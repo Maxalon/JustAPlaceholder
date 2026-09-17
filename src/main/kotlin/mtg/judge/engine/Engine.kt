@@ -662,7 +662,20 @@ class Engine(val state: GameState) {
             state.activePlayer = activePlayer; state.step = step; state.phase = "beginning"
             val p = state.player(activePlayer)
             val mine = state.objects.values.filter { it.isOnBattlefield() && it.controller == activePlayer }
-            mine.forEach { it.tapped = false; it.summoningSick = false; it.attacking = null; it.blocking = null }
+            // Meekstone and its cousins: some permanents don't untap at all (302.6 doesn't apply to them).
+            val held = mine.filter { o -> state.objects.values.any { src -> src.isOnBattlefield() &&
+                src.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.filterIsInstance<StaticEffect.DontUntap>()
+                    .any { e -> state.matches(e.filter, o, src.controller, src) } } }
+            for (o in held) state.objects.values.firstOrNull { src -> src.isOnBattlefield() &&
+                src.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.filterIsInstance<StaticEffect.DontUntap>()
+                    .any { e -> state.matches(e.filter, o, src.controller, src) } }?.let { src ->
+                trace.step("${o.name} doesn't untap during its controller's untap step (${src.name}).", "502.3", "614.1")
+                state.outcomes += "${o.name} doesn't untap (${src.name})."
+            }
+            val wereTapped = (mine - held.toSet()).filter { it.tapped == true }
+            (mine - held.toSet()).forEach { it.tapped = false; it.summoningSick = false; it.attacking = null; it.blocking = null }
+            for (o in wereTapped) state.outcomes += "${o.name} untaps."
+            held.forEach { it.summoningSick = false; it.attacking = null; it.blocking = null }
             trace.step("${p.possessive.replaceFirstChar { it.uppercase() }} turn begins: ${p.subject.lowercase()} ${p.v("untaps", "untap")} all ${p.possessive} permanents, and everything ${p.subject.lowercase()} ${p.v("has", "have")} controlled since the turn began can attack and use {T} abilities.", "502.3", "302.6")
             return
         }
