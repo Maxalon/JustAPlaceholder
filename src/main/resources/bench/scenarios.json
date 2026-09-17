@@ -8989,5 +8989,43 @@
       "Not modeled"
     ],
     "cite": []
+  },
+  {
+    "id": "storm-grapeshot",
+    "text": "I have cast three spells this turn and I cast Grapeshot targeting my opponent. What happens?",
+    "expect": [
+      "Storm puts 3 copies of Grapeshot on the stack",
+      "opponent takes 1 damage. (\u00d74)"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": [
+      "702.40a"
+    ]
+  },
+  {
+    "id": "storm-counts-both-players",
+    "text": "I have cast two spells this turn and my opponent has cast one spell this turn. I cast Empty the Warrens. What happens?",
+    "expect": [
+      "Storm puts 3 copies of Empty the Warrens",
+      "Goblin token. (\u00d78)"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "storm-with-no-prior-spells",
+    "text": "I cast Grapeshot at my opponent. What happens?",
+    "expect": [
+      "Storm makes no copies",
+      "opponent takes 1 damage"
+    ],
+    "notExpect": [
+      "Not modeled"
+    ],
+    "cite": []
   }
 ]
