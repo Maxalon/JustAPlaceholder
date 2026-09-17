@@ -8462,5 +8462,23 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "a-size-condition-that-isnt-met",
+    "text": "I control Kird Ape and no lands. What are its stats?",
+    "expect": [
+      "which needs its controller to control a Forest"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "threshold-says-what-it-needs",
+    "text": "I control Werebear. My graveyard has three cards. What are its stats?",
+    "expect": [
+      "7 or more cards in its controller's graveyard"
+    ],
+    "notExpect": [],
+    "cite": []
   }
 ]

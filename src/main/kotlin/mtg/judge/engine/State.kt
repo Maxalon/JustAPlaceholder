@@ -278,10 +278,10 @@ class GameState(
 
     /** What a static ability's condition asks for, for traces and for saying why one doesn't apply. */
     fun describeCondition(c: Condition): String = when (c) {
-        is Condition.LifeAtLeast -> "${if (c.opponent) "an opponent" else "you"} at ${c.amount} or more life"
-        Condition.YourTurn -> "its controller's turn"
-        Condition.NotYourTurn -> "another player's turn"
-        is Condition.ControlsMatching -> "${if (c.atLeast > 1) "${c.atLeast} or more " else "a "}${c.filter.raw ?: "matching permanent"} under its controller"
+        is Condition.LifeAtLeast -> "${if (c.opponent) "an opponent" else "its controller"} at ${c.amount} or more life"
+        Condition.YourTurn -> "it to be its controller's turn"
+        Condition.NotYourTurn -> "it to be another player's turn"
+        is Condition.ControlsMatching -> "its controller to control ${if (c.atLeast > 1) "${c.atLeast} or more " else "a "}${c.filter.raw ?: "matching permanent"}"
         is Condition.GraveyardAtLeast -> "${c.amount} or more ${if (c.cardTypes) "card types among cards in" else "cards in"} its controller's graveyard"
         is Condition.Unknown -> c.text
     }
@@ -384,6 +384,11 @@ class GameState(
         if (lost == null) cdaOf(obj)?.let { c -> parts += "base set by its own ability (layer 7a${if (c.power is CountExpr.CardTypesInGraveyards || c.toughness is CountExpr.CardTypesInGraveyards) ": ${cardTypesInGraveyards().size} card type${if (cardTypesInGraveyards().size == 1) "" else "s"} in graveyards${cardTypesInGraveyards().takeIf { it.isNotEmpty() }?.let { t -> " (" + t.sorted().joinToString(", ") + ")" } ?: ""}" else ""})" }
         val statics = staticEffectsOn(obj).filter { it.second is StaticEffect.PtModify && !((it.second as StaticEffect.PtModify).power == 0 && (it.second as StaticEffect.PtModify).toughness == 0) }
         for ((src, e) in statics) { e as StaticEffect.PtModify; parts += "${sign(e.power)}/${sign(e.toughness)} from ${if (src === obj) "its own ability" + (e.condition?.let { " (condition met)" } ?: "") else src.name}" }
+        // A size-changing ability of its own whose condition isn't met: saying so is the difference between "it is
+        // 1/1" and "it is 1/1 because the graveyard you described has three cards in it, not seven".
+        if (lost == null) for (e in obj.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.PtModify>())
+            if (e.self && e.condition != null && !(e.power == 0 && e.toughness == 0) && !conditionHolds(e.condition, obj))
+                parts += "not ${sign(e.power)}/${sign(e.toughness)} from its own ability, which needs ${describeCondition(e.condition)}"
         if (obj.pumps.isNotEmpty()) parts += "${sign(obj.pumps.sumOf { it.first })}/${sign(obj.pumps.sumOf { it.second })} until end of turn"
         (obj.counters["+1/+1"] ?: 0).let { if (it > 0) parts += "$it +1/+1 counter${if (it > 1) "s" else ""}" }
         (obj.counters["-1/-1"] ?: 0).let { if (it > 0) parts += "$it -1/-1 counter${if (it > 1) "s" else ""}" }
