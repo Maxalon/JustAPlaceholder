@@ -2171,6 +2171,13 @@ class SituationParser(private val names: NameIndex) {
             else ctx.events += EventSpec("leave", obj = id, to = "graveyard")
             ctx.lastMentioned = id; ctx.lastOwner = who; ctx.note(who); return true
         }
+        // "I return my Grizzly Bears to my hand" / "return it to its owner's hand": the long way of saying bounce,
+        // and it went unread, so the permanent stayed on the battlefield.
+        Regex("""^returns?(?: back)? ($possPrefix|an? )?(c\d+|it|that|them)(?: back)? to (?:its owner's|their owner's|my|their|his|her|the owner's|your) (hand|library|graveyard)(?: from the battlefield)?$""").find(c)?.let { r ->
+            val id = if (r.groupValues[2] in setOf("it", "that", "them")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, possessiveOwner(r.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
+            ctx.events += EventSpec("leave", obj = id, to = r.groupValues[3]); ctx.lastMentioned = id; return true
+        }
         // "I exile it" / "they bounce it": removal aimed at whatever was named last, said the active way.
         Regex("""^(?:kills?|killed|destroys?|destroyed|exiles?|exiled|bounces?|bounced|removes?|removed|nukes?|nuked) (?:it|that|them|him|her)$""").find(c)?.let {
             // A card the actor said they hold is how they would do it, and the rule above casts it; this one is

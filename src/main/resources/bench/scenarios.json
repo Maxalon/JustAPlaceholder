@@ -11103,5 +11103,28 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "return-to-hand-long-form",
+    "text": "I return my Grizzly Bears to my hand and recast it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your hand",
+      "Grizzly Bears enters the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "return-with-an-aura-on-it",
+    "text": "I control Rancor on my Grizzly Bears and return it to its owner's hand. Where does Rancor go?",
+    "expect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
