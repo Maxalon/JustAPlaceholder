@@ -9457,5 +9457,17 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "mana-from-the-ability-just-used",
+    "text": "I control Nykthos, Shrine to Nyx and my devotion to green is 5. I activate Nykthos for green. How much mana do I get?",
+    "expect": [
+      "add {G}{G}{G}{G}{G}"
+    ],
+    "notExpect": [
+      "no untapped permanent",
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

@@ -203,7 +203,13 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "resolveall" -> engine.resolveAll()
             "ask" -> {
                 if (e.to == "playerDamage") { val p = state.player(e.player ?: throw JudgeException("ask needs a player")); val name = if (p.you) "you" else p.name; val total = state.trace.steps.sumOf { st -> Regex("""deals (\d+) (?:combat )?damage to ${Regex.escape(name)}\b""").findAll(st.text).sumOf { it.groupValues[1].toInt() } }; val prevented = state.trace.steps.any { it.text.contains("to $name") && it.text.contains("prevented") }; state.outcomes += if (total > 0) "Yes: $name ${p.v("takes", "take")} $total damage in all." else "No: $name ${p.v("takes", "take")} no damage${if (prevented) " (it's prevented)" else ""}."; return }
-                if (e.to == "manaAvailable") { state.outcomes += engine.manaAvailable(e.player ?: throw JudgeException("ask needs a player")); return }
+                if (e.to == "manaAvailable") {
+                    // "I activate Nykthos for green. How much mana do I get?" — the question is about the ability
+                    // just used, not about what is left untapped afterwards, which is usually nothing.
+                    val made = state.outcomes.lastOrNull { it.contains("mana ability: add ") }
+                    if (made != null) return
+                    state.outcomes += engine.manaAvailable(e.player ?: throw JudgeException("ask needs a player")); return
+                }
                 if (e.to == "spellCost") { state.outcomes += engine.spellCost(e.obj ?: throw JudgeException("ask needs an object")); return }
                 if (e.to == "playerSurvive" || e.to == "playerDie" || e.to == "playerWin") { state.outcomes += playerAnswer(e.to, state.player(e.player ?: throw JudgeException("ask needs a player")), state); return }
                 val o = generateSequence(state.obj(e.obj ?: throw JudgeException("ask needs an object"))) { it.successor?.let { id -> state.objects[id] } }.last()
