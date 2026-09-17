@@ -9175,5 +9175,30 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "prevent-next-on-artifact-creature",
+    "text": "My opponent casts Shock at my Ornithopter and in response I activate Argivian Blacksmith targeting Ornithopter. What happens?",
+    "expect": [
+      "Ornithopter has a prevention shield (2) this turn",
+      "Damage to Ornithopter from Shock is prevented"
+    ],
+    "notExpect": [
+      "Not modeled",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "prevent-next-partial",
+    "text": "I control Samite Healer and Grizzly Bears. My opponent casts Shock at my Grizzly Bears and in response I activate Samite Healer targeting Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears has 1 damage marked"
+    ],
+    "notExpect": [
+      "the battlefield \u2192 your graveyard",
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

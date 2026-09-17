@@ -944,7 +944,9 @@ object OracleParser {
     // Longest first: "one or more" and "one or both" must beat the bare "one", or the count is read as "one".
     private val modeCount = """one or more|one or both|any number|up to \w+|one|two|three|four|five"""
     private val modalRe = Regex("""^(.*?)Choose ($modeCount)(?: —|\.)?(?: You may choose the same mode more than once\.)?\s*((?:• .+?)+)$""", RegexOption.IGNORE_CASE)
-    private val preventNextRe = Regex("""^prevent the next (\d+) damage that would be dealt to (any target|target creature or player|target creature|target player|you|target creature or planeswalker|target permanent or player) this turn\.?$""", RegexOption.IGNORE_CASE)
+    // "…dealt to target creature this turn" and "…dealt this turn to target creature you control" say the same
+    // thing; the target phrase is read as a filter, so "target artifact creature" and the rest need no entry.
+    private val preventNextRe = Regex("""^prevent the next (\d+) damage that would be dealt (?:to (.+?) this turn|this turn to (.+?))\.?$""", RegexOption.IGNORE_CASE)
     // The "to" part is read as a filter rather than matched against a fixed list, so "creatures and planeswalkers
     // you control" and "creature tokens you control" work without their own entries. Anything parseFilter can't
     // verify is still reported unparsed.
@@ -966,9 +968,12 @@ object OracleParser {
         }
         regenerateRe.matchEntire(s)?.let { m -> return Effect.Regenerate(if (m.groupValues[1] == "~") null else target(m.groupValues[1])) }
         preventNextRe.matchEntire(s)?.let { m ->
-            val n = m.groupValues[1].toInt(); val to = m.groupValues[2].lowercase()
-            return if (to == "you") Effect.CreateShield(Replacement.PreventDamage(n, null, Who.YOU, false, null), null)
-            else Effect.CreateShield(Replacement.PreventDamage(n, null, null, false, null), target(to))
+            val n = m.groupValues[1].toInt(); val to = m.groupValues[2].ifEmpty { m.groupValues[3] }.lowercase()
+            if (to == "you") return Effect.CreateShield(Replacement.PreventDamage(n, null, Who.YOU, false, null), null)
+            if (to == "any target") return Effect.CreateShield(Replacement.PreventDamage(n, null, null, false, null), target(to))
+            if (!to.startsWith("target ")) return@let
+            val t = target(to)
+            if (t.filter.verifiable) return Effect.CreateShield(Replacement.PreventDamage(n, null, null, false, null), t)
         }
         // The Circles of Protection: "The next time a red source of your choice would deal damage to you this
         // turn, prevent that damage." One damage event from one source, then the shield is spent (615.8).
