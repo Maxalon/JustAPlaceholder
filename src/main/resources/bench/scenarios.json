@@ -10641,5 +10641,28 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "who-wins-the-combat",
+    "text": "I attack with a 3/3 and they block with a 2/2. Who wins?",
+    "expect": [
+      "Yes: a 3/3 creature is still on the battlefield",
+      "No: a 2/2 creature is in the graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "who-wins-the-game",
+    "text": "My opponent is at 2 and I attack with a 5/5. Who wins?",
+    "expect": [
+      "Yes: You have won the game."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

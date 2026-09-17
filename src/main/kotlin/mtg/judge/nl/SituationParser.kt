@@ -764,7 +764,9 @@ class SituationParser(private val names: NameIndex) {
         val t = t2.trim()
 
         // Pure questions carry no state; the engine answers "what happens" by default.
-        if (m.cards.isEmpty() && Regex("""^(what happens|what now|who wins|so what|what's the result|does (it|that|this) (resolve|work|happen)|can (i|they|my opponent) respond)\b.*$""").matches(t)) return true
+        // "Who wins?" with nobody named is still a question the outcome can answer; ask it before giving up on the
+        // sentence, or it was skipped as small talk.
+        if (m.cards.isEmpty() && Regex("""^(what happens|what now|who wins|who dies|who loses|so what|what's the result|does (it|that|this) (resolve|work|happen)|can (i|they|my opponent) respond)\b.*$""").matches(t)) { askQuestion(t.trim().trimEnd('?'), m, ctx); return true }
 
         // Resolution statements.
         if (Regex("""\b(everything resolves|let (it|them|everything|that) resolve|(it|they|both|all) resolves?|resolves? (it|everything|the stack)|nobody responds|no (one|body) responds|no responses?|no further responses?)\b""").containsMatchIn(t)) {
@@ -3184,7 +3186,8 @@ class SituationParser(private val names: NameIndex) {
             // "Who dies?" after a block is about the creatures in that combat. Answered about the players it
             // said "you are still in the game", which is true and is not what was asked.
             val blocks = ctx.events.filter { it.verb == "block" }
-            if (to != "playerWin" && blocks.isNotEmpty()) {
+            // "Who wins?" after a block is about the two creatures too, not about who is still in the game.
+            if (blocks.isNotEmpty()) {
                 val ids = (blocks.mapNotNull { it.obj } + blocks.mapNotNull { it.targets.firstOrNull() }).distinct().filter { it in ctx.objects }
                 if (ids.isNotEmpty()) {
                     for (id in ids) ctx.asks += EventSpec("ask", obj = id, to = if (to == "playerDie") "die" else "survive")
