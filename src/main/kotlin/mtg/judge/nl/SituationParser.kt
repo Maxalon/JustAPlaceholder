@@ -686,7 +686,7 @@ class SituationParser(private val names: NameIndex) {
             t2 = t2.replace(Regex("""\b(with $kw(?:(?:,| &) $kw)*) and ($kw)\b"""), "$1 & $2")
         }
         // "attack with a 3/3 and a 2/2" / "blocks with two 2/2s and a 1/1": described creatures joined by "and" stay in one clause.
-        if (Regex("""\b(?:attacks?|attacking|swings?|swinging|blocks?|blocking|chumps?)\b""").containsMatchIn(t2)) t2 = t2.replace(Regex("""\b((?:an? |\d+ |two |three |four |five )?\d+/\d+s?(?: (?!and\b)[a-z]+){0,3}) and ((?:an? |\d+ |two |three |four |five )?\d+/\d+s?)(?!\s+(?:chump[- ]?)?blocks?\b)"""), "$1 plus $2")
+        if (Regex("""\b(?:attacks?|attacking|swings?|swinging|blocks?|blocked|blocking|chumps?)\b""").containsMatchIn(t2)) t2 = t2.replace(Regex("""\b((?:an? |\d+ |two |three |four |five )?\d+/\d+s?(?: (?!and\b)[a-z]+){0,3}) and ((?:an? |\d+ |two |three |four |five )?\d+/\d+s?)(?!\s+(?:chump[- ]?)?blocks?\b)"""), "$1 plus $2")
         // "… with Grizzly Bears and Hill Giant on the battlefield (under my control)": one "with X out" per card, before the clause split takes the "and".
         Regex("""(?:^|\s+)with ((?:(?:$possPrefix|an? )?c\d+)(?:,? (?:and )?(?:$possPrefix|an? )?c\d+)*) (?:out|on the battlefield|in play|on board|on the field)(?: under (my|their|@\w+'s) control)?$""").find(t2)?.let { r ->
             val cards = Regex("""c\d+""").findAll(r.groupValues[1]).map { it.value }.toList()
@@ -2763,14 +2763,34 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("attack", player = who, obj = id, targets = targetsIn(r.groupValues[2], m, ctx).ifEmpty { listOf(ctx.other(who) ?: "opp") }); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
         }
         // "their Grizzly Bears is blocked by my Hill Giant": the same declaration, said from the attacker's side.
-        Regex("""^(?:(?:my|their|the|his|her) )?(c\d+|it|that) (?:is|are|was|were|gets?|got) (?:chump[- ]?)?blocked by (?:(?:my|their|the|his|her|an?|one) )?(c\d+|\d+/\d+(?: [a-z]+)*)$""").find(c)?.let { r ->
-            val attacker = if (r.groupValues[1] in setOf("it", "that")) ctx.events.lastOrNull { it.verb == "attack" }?.obj ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
-                           else m.cards[r.groupValues[1]]?.let { objectIdFor(it, ctx) } ?: return@let
+        // "My Grizzly Bears is blocked by two 1/1s" says the attack too: being blocked is only possible in combat,
+        // so the creature is put on the battlefield and made to attack rather than the whole clause going unread.
+        Regex("""^($possPrefix)?(c\d+|it|that|\d+/\d+) (?:is|are|was|were|gets?|got) (?:chump[- ]?)?blocked by (.+)$""").find(c)?.let { r ->
+            val atkWho = when (val w = r.groupValues[1].trim()) {
+                "my", "own" -> "me"
+                "their", "his", "her" -> pronounPlayer(ctx, w)
+                "my opponent's", "the opponent's", "an opponent's", "opponent's" -> pronounPlayer(ctx)
+                "" , "the" -> null
+                else -> w.removePrefix("@").removeSuffix("'s")
+            }
+            val attacker = when {
+                r.groupValues[2] in setOf("it", "that") -> ctx.events.lastOrNull { it.verb == "attack" }?.obj ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                cardRef.matches(r.groupValues[2]) -> m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, atkWho ?: ctx.lastOwner, false, ctx) } ?: return@let
+                else -> describedFrom(if (atkWho == null) "the " else "my ", r.groupValues[2], "", atkWho ?: ctx.lastOwner, ctx).firstOrNull() ?: return@let
+            }
             val who = ctx.other(ctx.objects[attacker]?.controller ?: "opp") ?: "me"
-            val blocker = if (cardRef.matches(r.groupValues[2])) m.cards[r.groupValues[2]]?.let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) } ?: return@let
-                          else describedFrom("a ", Regex("""\d+/\d+""").find(r.groupValues[2])?.value ?: "", r.groupValues[2], who, ctx).firstOrNull() ?: return@let
+            // "blocked by a 2/2 and a 3/3" — the sentence reader joins them with "plus", so the block is multiple.
+            val blockers = r.groupValues[3].split(" plus ", " & ").mapNotNull { part0 ->
+                val part = part0.trim().removePrefix("a ").removePrefix("an ").removePrefix("the ")
+                    .removePrefix("my ").removePrefix("their ").removePrefix("his ").removePrefix("her ").trim()
+                val cnt = Regex("""^(one|two|three|four|five|\d+) """).find(part)?.groupValues?.get(1)
+                val rest = if (cnt != null) part.substring(part.indexOf(' ') + 1) else part
+                if (cardRef.matches(rest)) m.cards[rest]?.let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) }?.let { listOf(it) }
+                else Regex("""\d+/\d+""").find(rest)?.value?.let { pt -> describedFrom("${cnt ?: "a"} ", pt, rest, who, ctx) }
+            }.flatten()
+            if (blockers.isEmpty()) return@let
             ensureAttacker(ctx, who)
-            ctx.events += EventSpec("block", player = who, obj = blocker, targets = listOf(attacker))
+            for (b in blockers) ctx.events += EventSpec("block", player = who, obj = b, targets = listOf(attacker))
             ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
         // Bare "block" / "blocks (it)" / "block with it": the creature just mentioned blocks the last attacker.

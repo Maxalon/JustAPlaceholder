@@ -10239,5 +10239,40 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "blocked-by-implies-attack",
+    "text": "My Grizzly Bears is blocked by two 1/1s. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard",
+      "a 1/1 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "blocked-by-two-described-blockers",
+    "text": "My 5/5 is blocked by a 2/2 and a 3/3. What happens?",
+    "expect": [
+      "a 2/2 creature: the battlefield → opponent's graveyard",
+      "a 3/3 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "blocked-by-flyer-is-illegal",
+    "text": "My Serra Angel is blocked by Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears can't block Serra Angel (flying)"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]
