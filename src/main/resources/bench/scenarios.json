@@ -9646,5 +9646,41 @@
       "Not modeled"
     ],
     "cite": []
+  },
+  {
+    "id": "two-keywords-after-the-size",
+    "text": "I attack with a 3/3 deathtouch trampler and my opponent blocks with a 5/5. How much damage goes through?",
+    "expect": [
+      "opponent takes 2 damage",
+      "a 5/5 creature: the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "damage-to-a-permanent-from-nobody",
+    "text": "I control Grizzly Bears and my opponent deals 3 damage to it. What happens?",
+    "expect": [
+      "Grizzly Bears has 3 damage marked",
+      "Grizzly Bears: the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "dealt-damage-trigger-fires",
+    "text": "I control Boros Reckoner and it is dealt 3 damage. What happens?",
+    "expect": [
+      "Boros Reckoner has 3 damage marked"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Not modeled"
+    ],
+    "cite": []
   }
 ]

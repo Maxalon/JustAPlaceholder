@@ -1106,6 +1106,8 @@ object OracleParser {
         Regex("""^it's still an? (?:land|artifact|enchantment)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.Seq(emptyList()) }
         // Bloodghast: "return ~ from your graveyard to the battlefield."
         Regex("""^return ~ from your graveyard to the battlefield( tapped)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.ReturnSelfFromGraveyard(m.groupValues[1].isNotEmpty()) }
+        // Boros Reckoner: "it deals that much damage to any target."
+        Regex("""^(?:~|it) deals that much damage to any target\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.DamageThatMuch(target("any target")) }
         // Questing Beast: "it deals that much damage to target planeswalker that player controls."
         Regex("""^(?:~|it) deals that much damage to target (.+?)(?: that player controls| that opponent controls)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             val raw = m.groupValues[1].trim()

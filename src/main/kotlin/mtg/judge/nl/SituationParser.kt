@@ -755,6 +755,15 @@ class SituationParser(private val names: NameIndex) {
         val clauseIn = clauseIn0.replace(Regex("""\b(?:tr(?:y|ies|ied)|attempts?|attempted|want(?:s|ed)?|would like) to (?=(?:activate|use|tap|untap|block|attack|cast|play|sacrifice|equip|counter|draw|search|target|crack|pop|fire|give|put|destroy|exile|bounce|kill|return|regenerate)\b)"""), "")
             // "I control Valakut and five other Mountains": "other" only says they aren't the card just named.
             .replace(Regex("""^(\d+) other (?=c\d+\b|[a-z])"""), "$1 ")
+            // "a 3/3 deathtouch trampler": a run of keyword words after the size describes the creature the same
+            // way "a 3/3 with deathtouch and trample" does. The noun forms ("trampler") mean the keyword.
+            .let { t0 -> Regex("""\b(\d+/\d+) ((?:$kwNouns)(?: (?:$kwNouns))+)(?=$|[.,;?]| (?:and|or|plus|blocks?|attacks?)\b)""").replace(t0) { r ->
+                val kws = r.groupValues[2].split(' ').filter { it.isNotEmpty() }.map { w ->
+                    w.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample")
+                        .replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink").replace("striker", "strike")
+                }
+                r.groupValues[1] + " creature with " + kws.joinToString(", ")
+            } }
             // "I control a 2/2 vigilance": a keyword straight after the size, with no noun after it, describes the
             // creature the same way "a 2/2 with vigilance" does.
             .replace(Regex("""\b(\d+/\d+) ($kwPhrase)(?=$|[.,;?]| (?:and|or|plus)\b)"""), "$1 creature with $2")
@@ -1027,18 +1036,31 @@ class SituationParser(private val names: NameIndex) {
         }
         // "They deal 3 damage to me", "I take 3 damage": damage from a source nobody named, so the answer can still
         // show what prevention and replacement effects do to it.
-        Regex("""^(?:(i|they|he|she|we|my opponent|the opponent|@\w+) )?(?:deals?|dealt) (\d+) damage to (me|you|them|him|her|my opponent|the opponent|@\w+)$|^(?:(i|they|he|she|we|my opponent|the opponent|@\w+) )?(?:takes?|took) (\d+) damage$""").find(c)?.let { r ->
+        Regex("""^(?:(i|they|he|she|we|my opponent|the opponent|@\w+) )?(?:deals?|dealt) (\d+) damage to (me|you|them|him|her|my opponent|the opponent|@\w+|it|that|(?:my |their |his |her |the )?c\d+|(?:my |their |the )?\d+/\d+)$|^(?:(i|they|he|she|we|my opponent|the opponent|@\w+) )?(?:takes?|took) (\d+) damage$|^(?:(?:my |their |his |her |the )?(c\d+|it|that) )?(?:is|are|was|were) dealt (\d+) damage$""").find(c)?.let { r ->
             val dealt = r.groupValues[2].isNotEmpty()
-            val amount = (if (dealt) r.groupValues[2] else r.groupValues[5]).toIntOrNull() ?: return@let
-            val victimWord = if (dealt) r.groupValues[3] else r.groupValues[4].ifEmpty { "me" }
-            val victim = when (victimWord) {
+            val passive = r.groupValues[7].isNotEmpty()
+            val amount = (if (dealt) r.groupValues[2] else if (passive) r.groupValues[7] else r.groupValues[5]).toIntOrNull() ?: return@let
+            val victimWord = if (dealt) r.groupValues[3] else if (passive) r.groupValues[6].ifEmpty { "it" } else r.groupValues[4].ifEmpty { "me" }
+            // "deals 3 damage to my Grizzly Bears" / "it is dealt 3 damage": a permanent can be the one damaged.
+            val objWord = victimWord.replace(Regex("""^(?:my |their |his |her |the )"""), "")
+            val victimObj = when {
+                objWord == "it" || objWord == "that" -> ctx.lastMentioned?.takeIf { it in ctx.objects }
+                Regex("""^c\d+$""").matches(objWord) -> m.cards[objWord]?.let { card ->
+                    val owner: String = ctx.lastOwner ?: "me"
+                    objectIdFor(card, ctx) ?: addObject(card, owner, false, ctx)
+                }
+                Regex("""^\d+/\d+$""").matches(objWord) -> ctx.objects.values.lastOrNull { (it.card.name ?: "").startsWith("a $objWord") }?.id
+                else -> null
+            }
+            val victim = victimObj ?: when (victimWord) {
                 "me", "you", "i" -> "me"
                 "them", "him", "her", "my opponent", "the opponent", "they", "he", "she" -> pronounPlayer(ctx, "their")
-                else -> if (victimWord.startsWith("@")) victimWord.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else "me"
+                else -> if (victimWord.startsWith("@")) victimWord.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else return@let
             }
             ctx.events += EventSpec("damage", source = "a source", targets = listOf(victim), amount = amount)
             ctx.notes += "No source was named for the $amount damage; it is read as coming from a source nobody named, which is enough to show what prevention and replacement effects do to it."
-            ctx.note(victim); return true
+            if (victimObj == null) ctx.note(victim) else ctx.lastMentioned = victimObj
+            return true
         }
         // "I sacrifice two creatures", "three creatures die": several creatures nobody named, described only by
         // how many there are. The engine needs objects to move, so it gets that many unnamed ones.

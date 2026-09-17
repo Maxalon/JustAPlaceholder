@@ -1511,7 +1511,7 @@ class Engine(val state: GameState) {
             }
             is Effect.DamageThatMuch -> {
                 val n = item.causedAmount ?: run { state.unsupported += Unsupported(item.describe, "\"That much\" refers to an amount the engine didn't record."); return }
-                trace.step("\"That much\" is $n — the damage ${item.source.name} just dealt.", "608.2h")
+                trace.step("\"That much\" is $n \u2014 the damage the trigger was about.", "608.2h")
                 forEachLegalTarget(item, effect.target) { applyDamage(item.source.name, it, n) }
             }
             is Effect.Proliferate -> {

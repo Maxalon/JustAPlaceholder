@@ -351,7 +351,13 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "pass" -> engine.resolveTop()
             "enter" -> engine.enter(e.obj ?: throw JudgeException("enter needs an object"), e.to)
             "leave" -> engine.leave(e.obj ?: throw JudgeException("leave needs an object"), zone(e.to ?: "graveyard"))
-            "damage" -> engine.dealDamage(e.source?.let { state.objects[it]?.name } ?: e.source ?: "A source", targets.firstOrNull() ?: throw JudgeException("damage needs a target"), e.amount ?: throw JudgeException("damage needs an amount"))
+            "damage" -> {
+                val srcName = e.source?.let { state.objects[it]?.name } ?: e.source ?: "A source"
+                // Damage from a source nobody named still has a source, and "whenever ~ is dealt damage" triggers
+                // watch for one; without a stand-in object the event was never raised and Boros Reckoner sat quiet.
+                if (state.objects.values.none { it.name == srcName }) state.add(GameObject(freshId(state, srcName), OracleParser.parse("generic-damage-source", srcName, "Instant", null, 0.0, "", null, null, emptyList(), ""), Zone.EXILE, e.player ?: state.players.first().id))
+                engine.dealDamage(srcName, targets.firstOrNull() ?: throw JudgeException("damage needs a target"), e.amount ?: throw JudgeException("damage needs an amount"))
+            }
             "statecheck" -> engine.stateBasedActions()
             "attack" -> { val objId = e.obj ?: throw JudgeException("attack needs an object"); engine.declareAttacker(e.player ?: state.obj(objId).controller, objId, targets.firstOrNull() ?: Ref.Player(state.opponentsOf(state.obj(objId).controller).firstOrNull()?.id ?: throw JudgeException("no defending player"))) }
             "block" -> { val objId = e.obj ?: throw JudgeException("block needs an object"); val att = (targets.firstOrNull() as? Ref.Obj)?.id ?: state.objects.values.lastOrNull { it.attacking != null }?.id ?: throw JudgeException("block needs the attacker"); engine.declareBlocker(e.player ?: state.obj(objId).controller, objId, att) }
