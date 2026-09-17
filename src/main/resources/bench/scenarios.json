@@ -8265,5 +8265,31 @@
     "cite": [
       "514.1"
     ]
+  },
+  {
+    "id": "a-block-with-no-attack-stated",
+    "text": "I control a 3/3 with trample and my opponent blocks with a 1/1. How much damage goes through?",
+    "expect": [
+      "takes 2 damage"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "702.19b"
+    ]
+  },
+  {
+    "id": "a-relative-clause-about-a-death",
+    "text": "My opponent controls Leyline of the Void. I control Grizzly Bears which dies. Where does it go?",
+    "expect": [
+      "exile"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "614.6"
+    ]
   }
 ]

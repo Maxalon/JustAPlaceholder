@@ -428,6 +428,10 @@ class SituationParser(private val names: NameIndex) {
             // "it does 3 damage to them": the same as "deals", and on its own it opens with a question word,
             // which the noise filter would drop.
             .replace(Regex("""\b(?:does|do|did) (\d+) damage\b"""), "deals $1 damage")
+            // "Grizzly Bears which dies", "the Bolt that gets countered": a relative clause about something that
+            // happens to the thing is a second statement about it. Only event verbs, so "a creature that has
+            // flying" stays a description.
+            .replace(Regex("""\s*,?\s*\b(?:which|that)\s+(?=(?:dies|died|is destroyed|is exiled|is countered|is sacrificed|gets destroyed|gets exiled|gets countered|is killed)\b)"""), " and it ")
             .replace(Regex("""^((?:an? |the |my |their )?c\d+) (?:hits?|burns?) (?=(?:me|them|my opponent|the opponent|@\w+|my face|their face)\b)"""), "casts $1 targeting ")
             // "I lose my Bears", "my Bears hits the bin", "my Bears is put into my graveyard": more ways to say
             // a permanent died, and "I sacrificed it" / "I throw it away" for the sacrifice.
@@ -2478,7 +2482,9 @@ class SituationParser(private val names: NameIndex) {
         // Said the other way round ("it is blocked", "it gets chump blocked") it's the same statement, and the
         // blocker is whatever the defending player has — or, if nobody said, a creature nobody named.
         Regex("""^(?:chump[- ]?)?blocks?(?: it| that| the attacker| with it)?$|^(?:(?:it|that|they|the attacker|my attacker|their attacker|the creature) )?(?:is|are|was|were|gets?|got) (?:chump[- ]?)?blocked$""").find(c)?.let {
-            val attackerEvent = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" } ?: return false
+            // A block with no attack described says there was one: "I control a 3/3 and my opponent blocks with a 1/1".
+            val attackerEvent = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" }
+                ?: ensureAttacker(ctx, actor ?: ctx.lastActor ?: "me") ?: return false
             val defender = actor ?: ctx.other(attackerEvent.player) ?: "me"
             // A creature just cast has no object yet; the judge gives it the id the engine will use (its slug). Otherwise the defender's last creature.
             val id = ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller == defender } ?: ctx.events.lastOrNull { it.verb == "cast" && it.player == defender }?.card?.name?.let { n -> ctx.objects.values.firstOrNull { it.card.name == n }?.id ?: slug(n) }
@@ -2495,7 +2501,8 @@ class SituationParser(private val names: NameIndex) {
             val kwNoun = r0.groupValues[4].let { if (it.isEmpty()) "" else it.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink").replace("striker", "strike") }
             val r = object { val groupValues = listOf(r0.groupValues[0], r0.groupValues[1], r0.groupValues[2], (r0.groupValues[3] + " " + r0.groupValues[5].ifEmpty { if (r0.groupValues[3].isEmpty() && kwNoun.isEmpty()) "" else "creature" }).trim(), r0.groupValues[6], listOf(r0.groupValues[7], kwNoun).filter { it.isNotEmpty() }.joinToString(", ")) }
             if (r.groupValues[2].isEmpty() && r.groupValues[3].isEmpty()) return@let
-            val attackerEvent = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" } ?: return@let
+            val attackerEvent = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" }
+                ?: ensureAttacker(ctx, actor ?: subject ?: "opp") ?: return@let
             val who = actor ?: ctx.other(attackerEvent.player) ?: subject ?: "opp"
             val ids = (if (r.groupValues[4].isNotEmpty()) describedTokens(r.groupValues[1], r.groupValues[2], r.groupValues[3], who, ctx, r.groupValues[5]) else describedCreatures(r.groupValues[1], r.groupValues[2], r.groupValues[3], who, ctx, r.groupValues[5])) +
                 Regex(""" plus (an? |\d+ |two |three |four |five )?(\d+/\d+)s?(?: ($kwNouns))?(?: ($creatureKinds))?""").findAll(c).flatMap { x -> describedCreatures(x.groupValues[1], x.groupValues[2], x.groupValues[4], who, ctx, x.groupValues[3].let { k -> if (k.isEmpty()) "" else k.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") }) }.toList()
@@ -2607,7 +2614,8 @@ class SituationParser(private val names: NameIndex) {
         // (The leading possessive is taken as the actor before any rule sees the clause, so "c2 blocks" is what
         // arrives here.)
         Regex("""^(?:my |the |their )?(c\d+|it|that) (?:chump[- ]?)?blocks?$""").find(c)?.let { r ->
-            val attackerEvent = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" } ?: return@let
+            val attackerEvent = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" }
+                ?: ensureAttacker(ctx, actor ?: ctx.lastActor ?: "me") ?: return@let
             val who = actor ?: ctx.other(attackerEvent.player) ?: "me"
             val id = if (r.groupValues[1] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
                      else m.cards[r.groupValues[1]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) } ?: return@let
