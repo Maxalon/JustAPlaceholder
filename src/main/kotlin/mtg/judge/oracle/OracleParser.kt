@@ -958,7 +958,9 @@ object OracleParser {
     private fun parseSentence(s0: String): Effect {
         // "Metalcraft — If you control three or more artifacts, …": the ability word names the ability and says
         // nothing (207.2c). Abilities have it stripped as they are read; a spell's own sentences need it too.
-        val s = s0.replace(abilityWordStatic, "")
+        // A leading "Then" only orders the sentence after the one before it ("Then amass Orcs 1"); the pronoun
+        // rewrites that care about it have already run by now.
+        val s = s0.replace(abilityWordStatic, "").replace(Regex("""^[Tt]hen ,?\s*"""), "")
         manaRe.matchEntire(s.trimEnd('.'))?.let { return Effect.AddMana(it.groupValues[1]) }
         // "(You may) have ~ deal 3 damage to any target" says what "~ deals 3 damage to any target" says.
         Regex("""^have (?:~|it) deal (.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return parseSentence("~ deals " + it.groupValues[1]) }
