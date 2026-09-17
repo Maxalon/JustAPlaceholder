@@ -10098,5 +10098,30 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "my-creature-dies",
+    "text": "I control Blood Artist. What happens when my creature dies?",
+    "expect": [
+      "opponent loses 1 life",
+      "You gain 1 life"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "a-described-creature-dies",
+    "text": "I control Blood Artist and a 2/2 dies. What happens?",
+    "expect": [
+      "a 2/2 creature: the battlefield \u2192 your graveyard",
+      "opponent loses 1 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

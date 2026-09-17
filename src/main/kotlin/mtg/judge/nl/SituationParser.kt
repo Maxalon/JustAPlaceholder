@@ -1993,6 +1993,19 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "\"${restore(c, m)}\" is read as ${ids.size} creature${if (ids.size == 1) "" else "s"} of ${if (who == "me") "yours" else "theirs"} going to the graveyard as one event."
             return true
         }
+        // "my creature dies", "a 2/2 dies", "their 3/3 is destroyed": a creature nobody named, by owner or by size.
+        Regex("""^($possPrefix|an? |one )?(?:(\d+/\d+)|(\d+/\d+) ($creatureKinds)|($creatureKinds)) (dies|died|is destroyed|gets destroyed|goes to the graveyard|is sacrificed|gets sacrificed)$""").find(c)?.let { r ->
+            val who = possessiveOwner(r.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me"
+            val pt = r.groupValues[2].ifEmpty { r.groupValues[3] }
+            val kind = r.groupValues[4].ifEmpty { r.groupValues[5] }
+            if (pt.isEmpty() && kind.isEmpty()) return@let
+            val id = ctx.objects.values.lastOrNull { o -> o.controller == who && o.zone == "battlefield" && (o.card.name ?: "").startsWith("a ") &&
+                (pt.isEmpty() || (o.card.name ?: "").startsWith("a $pt")) }?.id
+                ?: describedCreatures("a ", pt, if (kind == "creature") "" else kind, who, ctx, "").firstOrNull() ?: return@let
+            if (r.groupValues[6].contains("sacrific")) ctx.events += EventSpec("sacrifice", player = who, obj = id)
+            else ctx.events += EventSpec("leave", obj = id, to = "graveyard")
+            ctx.lastMentioned = id; ctx.lastOwner = who; ctx.note(who); return true
+        }
         Regex("""^(?:it|that|this|he|she|they) (dies|died|is destroyed|gets destroyed|goes to the graveyard|leaves the battlefield|is exiled|gets exiled|is bounced|is sacrificed|gets sacrificed)$""").find(c)?.let { r ->
             val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.objects.values.lastOrNull()?.id ?: return@let
             val to = when { r.groupValues[1].contains("exiled") -> "exile"; r.groupValues[1].contains("bounced") -> "hand"; else -> "graveyard" }
