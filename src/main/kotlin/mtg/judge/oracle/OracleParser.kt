@@ -110,7 +110,8 @@ object OracleParser {
     private fun isKeywordLine(line: String, keywords: Collection<String>): Boolean {
         val parts = line.trimEnd('.').split(',', ';').map { it.trim().lowercase() }
         val kws = keywords.map { it.lowercase() }.toSet()
-        return parts.isNotEmpty() && parts.all { p -> kws.any { k -> p == k || p.startsWith("$k ") } }
+        // "Evoke—Exile a black card from your hand": a keyword whose cost follows an em-dash with no space.
+        return parts.isNotEmpty() && parts.all { p -> kws.any { k -> p == k || p.startsWith("$k ") || p.startsWith("$k—") || p.startsWith("$k–") } }
     }
 
     private fun isActivated(line: String): Boolean {
@@ -527,11 +528,15 @@ object OracleParser {
         }
         if (Regex("""^~ attacks each combat if able\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.MustAttack)
         // "As long as you have 30 or more life, ~ gets +5/+5 and has flying." — the same thing said the other way round.
-        Regex("""^as long as (.+?), ~ gets ([+-]\d+)/([+-]\d+)(?: and has (.+?))?\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+        // "…, ~ gets +2/+2, has flying, and attacks each combat if able" (Dragon's Rage Channeler): a list of
+        // things the condition grants, not just one.
+        Regex("""^as long as (.+?), ~ gets ([+-]\d+)/([+-]\d+)(?:,? and has (.+?)|, has (.+?)(?:,? and attacks each combat if able)?)?(?:,? and attacks each combat if able)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val cond = parseCondition(m.groupValues[1]) ?: return emptyList()
             val self = ObjFilter(setOf(Kind.PERMANENT), raw = "~")
             val out = mutableListOf<StaticEffect>(StaticEffect.PtModify(self, m.groupValues[2].toInt(), m.groupValues[3].toInt(), self = true, condition = cond))
-            if (m.groupValues[4].isNotEmpty()) keywordsIn(m.groupValues[4])?.let { out += StaticEffect.KeywordGrant(self, it) } ?: return emptyList()
+            val kws = m.groupValues[4].ifEmpty { m.groupValues[5] }
+            if (kws.isNotEmpty()) keywordsIn(kws)?.let { out += StaticEffect.KeywordGrant(self, it) } ?: return emptyList()
+            if (line.contains("attacks each combat if able", true)) out += StaticEffect.MustAttack
             return out
         }
         Regex("""^~ gets ([+-]\d+)/([+-]\d+)(?: and has (.+?))? as long as (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->

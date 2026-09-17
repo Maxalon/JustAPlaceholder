@@ -8882,5 +8882,25 @@
       "more"
     ],
     "cite": []
+  },
+  {
+    "id": "delirium-turned-on",
+    "text": "I control Dragon's Rage Channeler. My graveyard has an instant, a creature, a land and an artifact. What are its stats?",
+    "expect": [
+      "Dragon's Rage Channeler is 3/3"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "delirium-not-on",
+    "text": "I control Dragon's Rage Channeler. My graveyard has an instant and a creature. What are its stats?",
+    "expect": [
+      "4 or more card types among cards in its controller's graveyard"
+    ],
+    "notExpect": [
+      "is 3/3"
+    ],
+    "cite": []
   }
 ]

@@ -141,6 +141,7 @@ class StaysParsedTest {
         check("Werebear", "Creature — Human Bear Druid", "{T}: Add {G}.\nThreshold — ~ gets +3/+3 as long as there are seven or more cards in your graveyard.", listOf("Threshold"))
         check("Excavating Anurid", "Creature — Frog Beast", "Threshold — As long as there are seven or more cards in your graveyard, ~ gets +1/+1 and has vigilance.", listOf("Threshold"))
         check("Nimble Mongoose", "Creature — Mongoose", "Threshold — ~ gets +2/+2 as long as there are seven or more cards in your graveyard.", listOf("Threshold"))
+        check("Dragon's Rage Channeler", "Creature — Human Shaman", "Delirium — As long as there are four or more card types among cards in your graveyard, ~ gets +2/+2, has flying, and attacks each combat if able.", listOf("Delirium"))
     }
 
     /** The Circles of Protection and their kin: one damage event from one source, then the shield is spent. */
