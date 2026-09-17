@@ -11262,5 +11262,16 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "named-players-attack-with-nothing-said",
+    "text": "Alice controls Hill Giant. Alice attacks Bob and Bob blocks with Wall of Omens.",
+    "expect": [
+      "Wall of Omens has 3 damage marked"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

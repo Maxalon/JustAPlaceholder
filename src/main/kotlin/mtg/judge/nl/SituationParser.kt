@@ -3010,8 +3010,18 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:attacks?|attacking|swings?|swinging)(?: (@\w+|me|them|him|her|my opponent|the opponent|opponent|(?:$possPrefix)?c\d+|it|that))?(?: with)?\s+(an? |the |my |their |\d+ |two |three |four |five )?(?:(\d+/\d+)s?\s*)?(?:(red|green|white|blue|black|colorless|flying) )?(?:($kwNouns)\b ?)?($creatureKinds)?( tokens?)?(?: with ([a-z ,&]+?))?(?: plus .*)?(?: but .*| and .*)?$""").find(c)?.let { r0 ->
             val kwNoun = r0.groupValues[5].let { if (it.isEmpty()) "" else it.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink").replace("striker", "strike") }
             val r = object { val groupValues = listOf(r0.groupValues[0], r0.groupValues[1], r0.groupValues[2], r0.groupValues[3], (r0.groupValues[4] + " " + r0.groupValues[6].ifEmpty { if (r0.groupValues[4].isEmpty() && kwNoun.isEmpty()) "" else "creature" }).trim(), r0.groupValues[7], listOf(r0.groupValues[8], kwNoun).filter { it.isNotEmpty() }.joinToString(", ")) }
-            if (r.groupValues[3].isEmpty() && r.groupValues[4].isEmpty()) return@let
             val who = actor ?: subject ?: "opp"
+            // "Alice attacks Bob": a defender was named but no creature. Whatever that player has attacks, and if
+            // nothing was described one is read as being there — the clause went unread otherwise.
+            if (r.groupValues[3].isEmpty() && r.groupValues[4].isEmpty()) {
+                if (r.groupValues[1].isEmpty()) return@let
+                val mine = ctx.objects.values.filter { it.controller == who && it.zone == "battlefield" && isCreatureName(it.card.name) }
+                if (mine.isEmpty()) return@let
+                val def0 = r.groupValues[1].let { d -> when { d.startsWith("@") -> d.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) }; d == "me" -> "me"; else -> pronounPlayer(ctx, d.substringAfterLast(' ')) } }
+                for (o in mine) ctx.events += EventSpec("attack", player = who, obj = o.id, targets = listOf(def0))
+                ctx.notes += "Nothing was said about what ${ctx.players[who] ?: who} attacks with, so ${if (mine.size == 1) "the creature they have" else "every creature they have"} attacks."
+                ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.note(def0); return true
+            }
             // "they attack my Jace Beleren with a 3/3": the thing attacked is a planeswalker or battle, not a player.
             // "they attack it with a 3/3" right after one was described means that planeswalker.
             fun planeswalkerOf(): String? = ctx.objects.values.lastOrNull { o ->
