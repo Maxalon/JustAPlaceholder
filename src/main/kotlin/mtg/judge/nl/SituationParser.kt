@@ -419,7 +419,7 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(?:is|are|'s|'re) drawing\b"""), "draws")
             .replace(Regex("""\b(?:takes?|took) (an?|one|two|three|\d+) cards? off the top\b"""), "draws $1 card")
             .replace(Regex("""\b(draws?|drew) one\b(?!\s+card)"""), "$1 a card")
-            .replace(Regex("""\breturns? ((?:my |their |the |his |her )?c\d+) to (?:my|their|its owner's|the owner's|his|her) hand with ((?:an? |the |my |their )?c\d+)"""), "bounces $1 with $2")
+            .replace(Regex("""\breturns? ((?:$possPrefix)?c\d+) to (?:my|their|its owner's|the owner's|his|her) hand with ((?:an? |the |my |their )?c\d+)"""), "bounces $1 with $2")
             // "they point Doom Blade at my Bears", "they use Doom Blade on it", "Doom Blade targets my Bears",
             // "Doom Blade is cast on my Bears": more ways to say a spell was cast at something.
             .replace(Regex("""\b(?:points?|pointed|aims?|aimed) ((?:an? |the |my |their )?c\d+) (?:at|on|against|targeting) """), "casts $1 targeting ")
@@ -432,20 +432,20 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(?:fizzles?|fizzled) (?=(?:it|that|them|the|an?|my|their|his|her|c\d+)\b)"""), "counters ")
             .replace(Regex("""\b(?:i am|i'm|we are|we're) attacking\b"""), "i attack")
             .replace(Regex("""\b(?:they are|they're|he is|he's|she is|she's) attacking\b"""), "they attack")
-            .replace(Regex("""\bdeclares? ((?:my |their |the |an? )?c\d+) as an attacker\b"""), "attacks with $1")
-            .replace(Regex("""\bturns? ((?:my |their |the |an? )?c\d+) sideways\b"""), "attacks with $1")
-            .replace(Regex("""\bsends? ((?:my |their |the |an? )?c\d+) (?:at|into|after) """), "attacks $1 at ")
+            .replace(Regex("""\bdeclares? ((?:$possPrefix|an? )?c\d+) as an attacker\b"""), "attacks with $1")
+            .replace(Regex("""\bturns? ((?:$possPrefix|an? )?c\d+) sideways\b"""), "attacks with $1")
+            .replace(Regex("""\bsends? ((?:$possPrefix|an? )?c\d+) (?:at|into|after) """), "attacks $1 at ")
             // "I blocked", "I declared Hill Giant as a blocker", "I throw Hill Giant in front of their Bears":
             // more ways to say a block that only the plain present tense was read from.
             .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+|c\d+) blocked (?=(?:it|that|them|the|an?|my|their|his|her|with|c\d+)\b)"""), "$1 blocks ")
-            .replace(Regex("""\bdeclares? ((?:my |their |the |an? )?c\d+) as a blocker(?: on| against| for)? """), "$1 blocks ")
-            .replace(Regex("""\b(?:throws?|threw|puts?|drops?|chumps?) ((?:my |their |the |an? )?c\d+) in (?:front of|the way of) """), "$1 blocks ")
+            .replace(Regex("""\bdeclares? ((?:$possPrefix|an? )?c\d+) as a blocker(?: on| against| for)? """), "$1 blocks ")
+            .replace(Regex("""\b(?:throws?|threw|puts?|drops?|chumps?) ((?:$possPrefix|an? )?c\d+) in (?:front of|the way of) """), "$1 blocks ")
             // "I activated it", "I turn on my Elves", "I fire off its ability", "Llanowar Elves taps for mana":
             // more ways to say the same activation.
             .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+) activated (?=(?:it|that|them|the|an?|my|their|his|her|c\d+)\b)"""), "$1 activates ")
             .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+) tapped (?=(?:it|that|them|the|an?|my|their|his|her|c\d+)\b)"""), "$1 taps ")
-            .replace(Regex("""\b(?:turns? on|fires? off|sets? off) (?=(?:my |their |the )?c\d+)"""), "activates ")
-            .replace(Regex("""^((?:my |their |the )?c\d+) taps for (mana|\{)"""), "taps $1 for $2")
+            .replace(Regex("""\b(?:turns? on|fires? off|sets? off) (?=(?:$possPrefix)?c\d+)"""), "activates ")
+            .replace(Regex("""^((?:$possPrefix)?c\d+) taps for (mana|\{)"""), "taps $1 for $2")
             // "I hit my opponent for 3 with Bolt", "my opponent takes 3 from Bolt", "Bolt hits my opponent":
             // more ways to say a spell was aimed at somebody.
             .replace(Regex("""\b(?:deals?|dealt|hits?|hit|burns?|burned|pings?|zaps?) (me|them|my opponent|the opponent|@\w+|(?:my |their )?face)(?: for)? \d+(?: damage)? with ((?:an? |the |my |their )?c\d+)"""), "casts $2 targeting $1")
@@ -463,11 +463,11 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""^((?:an? |the |my |their )?c\d+) (?:hits?|burns?) (?=(?:me|them|my opponent|the opponent|@\w+|my face|their face)\b)"""), "casts $1 targeting ")
             // "I lose my Bears", "my Bears hits the bin", "my Bears is put into my graveyard": more ways to say
             // a permanent died, and "I sacrificed it" / "I throw it away" for the sacrifice.
-            .replace(Regex("""\b(?:i|we|they|he|she|my opponent|the opponent|@\w+) loses? ((?:my |their |the |his |her )?c\d+)(?!\w)"""), "$1 dies")
-            .replace(Regex("""((?:my |their |the |his |her )?c\d+) (?:hits the bin|hits the yard|bites it|bites the dust|eats it)"""), "$1 dies")
-            .replace(Regex("""((?:my |their |the |his |her )?c\d+) (?:is|are|was|were|gets?|got) put into (?:my |their |its owner's |the )?graveyard"""), "$1 dies")
+            .replace(Regex("""\b(?:i|we|they|he|she|my opponent|the opponent|@\w+) loses? ((?:$possPrefix)?c\d+)(?!\w)"""), "$1 dies")
+            .replace(Regex("""((?:$possPrefix)?c\d+) (?:hits the bin|hits the yard|bites it|bites the dust|eats it)"""), "$1 dies")
+            .replace(Regex("""((?:$possPrefix)?c\d+) (?:is|are|was|were|gets?|got) put into (?:my |their |its owner's |the )?graveyard"""), "$1 dies")
             .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+) sacrificed (?=(?:it|that|them|the|an?|my|their|his|her|c\d+)\b)"""), "$1 sacrifices ")
-            .replace(Regex("""\b(?:throws?|threw|chucks?) ((?:my |their |the |his |her )?c\d+) away"""), "sacrifices $1")
+            .replace(Regex("""\b(?:throws?|threw|chucks?) ((?:$possPrefix)?c\d+) away"""), "sacrifices $1")
             // "my life total goes up by 3", "I go up 3": a life change said as a total rather than a gain.
             .replace(Regex("""\bmy life total (?:goes up|rises|increases)(?: by)? (\d+)(?: life)?"""), "i gain $1 life")
             .replace(Regex("""\bmy life total (?:goes down|drops|falls|decreases)(?: by)? (\d+)(?: life)?"""), "i lose $1 life")
@@ -476,7 +476,7 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\bi go up (\d+)(?: life)?"""), "i gain $1 life").replace(Regex("""\bi go down (\d+)(?: life)?"""), "i lose $1 life")
             // "Grizzly Bears hits the battlefield", "I drop it", "I put it onto the battlefield": more ways to say
             // a permanent arrived, and more ways to say something happens while a spell is still on the stack.
-            .replace(Regex("""((?:my |their |the )?c\d+) hits the (?:battlefield|table|board)"""), "$1 enters the battlefield")
+            .replace(Regex("""((?:$possPrefix)?c\d+) hits the (?:battlefield|table|board)"""), "$1 enters the battlefield")
             .replace(Regex("""\bdrops? ((?:an? |the |my |their )?c\d+)(?!\w)"""), "casts $1")
             // Not after "to", and not when a trigger or an ability is the subject putting it there: those name
             // the effect doing the work, and rewriting them away loses it.
@@ -622,7 +622,7 @@ class SituationParser(private val names: NameIndex) {
         // from being read as a draw of its own, which would have the card drawn before the spell resolved.
         t2 = t2.replace(Regex("""\b(choosing|picking|selecting) ((?:the )?[a-z][a-z0-9' ]{2,60}?),? and ((?:the )?[a-z][a-z0-9' ]{2,60}?)(?=[.,;?]|\s*$)"""), "$1 $2 & $3")
         // "What happens when it enters?": "it" is the permanent the asker described, not the last card named.
-        Regex("""^(?:what happens )?when (it|that|(?:my |their |the )?c\d+) (?:enters|enter|comes in|etbs)(?: the battlefield)?\??$""").find(t2)?.let { r ->
+        Regex("""^(?:what happens )?when (it|that|(?:$possPrefix)?c\d+) (?:enters|enter|comes in|etbs)(?: the battlefield)?\??$""").find(t2)?.let { r ->
             val named = Regex("""c\d+""").find(r.groupValues[1])?.value ?: Regex("""c\d+""").find(t2)?.value
             if (named != null) { t2 = t2.substring(0, r.range.first) + "$named enters" }
             else {

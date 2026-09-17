@@ -9841,5 +9841,27 @@
       "your graveyard"
     ],
     "cite": []
+  },
+  {
+    "id": "table-talk-with-a-possessive",
+    "text": "My opponent's Grizzly Bears hits the bin. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield \u2192 opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "when-the-opponents-creature-enters",
+    "text": "I control Elesh Norn, Mother of Machines. What happens when my opponent's Grizzly Bears enters?",
+    "expect": [
+      "Grizzly Bears enters the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
