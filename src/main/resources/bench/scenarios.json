@@ -8302,5 +8302,31 @@
       "unblocked"
     ],
     "cite": []
+  },
+  {
+    "id": "a-life-total-said-about-the-target",
+    "text": "Alice casts Lightning Bolt at Bob who is at 2 life. What happens?",
+    "expect": [
+      "Bob loses the game"
+    ],
+    "notExpect": [
+      "Alice loses the game"
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "a-pronoun-target-is-not-the-caster",
+    "text": "Alice is at 3 life and Bob casts Lightning Bolt at her. What happens?",
+    "expect": [
+      "Alice loses the game"
+    ],
+    "notExpect": [
+      "Bob loses the game"
+    ],
+    "cite": [
+      "704.5a"
+    ]
   }
 ]

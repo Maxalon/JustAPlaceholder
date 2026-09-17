@@ -511,7 +511,9 @@ class SituationParser(private val names: NameIndex) {
         Regex("""\b(opponent|they|they're|opp|my opponent|he|he's|she|she's)(?: who)? (?:(?:is at|are at|at|is on|are on|'re at|'s at) (\d+)(?: life)?|(?:has|have) (\d+) life)\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = (it.groupValues[2].ifEmpty { it.groupValues[3] }).toInt(); any = true; t2 = t2.replaceRange(it.range, it.groupValues[1]) }
         // "@alice has 3 cards in hand" is not a life total: without the lookahead it set Alice to 3 life and left
         // "cards in hand" unread, so the answer quietly had her life wrong.
-        Regex("""@(\w+) (?:is at|is on|has|at|sits at|is) (\d+)(?: life)?\b(?!\s*(?:cards?|counters?|permanents?|creatures?|lands?|poison|mana|damage))""").findAll(t2).toList().asReversed().forEach { ctx.life[it.groupValues[1]] = it.groupValues[2].toInt(); ctx.players.putIfAbsent(it.groupValues[1], m.players[it.groupValues[1]] ?: it.groupValues[1]); any = true; t2 = t2.removeRange(it.range) }
+        Regex("""@(\w+),? (?:who |that )?(?:is at|is on|has|at|sits at|is) (\d+)(?: life)?\b(?!\s*(?:cards?|counters?|permanents?|creatures?|lands?|poison|mana|damage))""").findAll(t2).toList().asReversed().forEach { ctx.life[it.groupValues[1]] = it.groupValues[2].toInt(); ctx.players.putIfAbsent(it.groupValues[1], m.players[it.groupValues[1]] ?: it.groupValues[1]); any = true
+            // The player stays in the sentence: "Alice casts Bolt at Bob who is at 2 life" still says who it targets.
+            t2 = t2.replaceRange(it.range, "@" + it.groupValues[1]) }
         // A life total stated here is the running total a later "and gains 3 more" adds to.
         if (ctx.life.isNotEmpty()) { ctx.lastStat = "life"; ctx.lastStatWho = ctx.life.keys.last() }
         // "I cast Brainstorm with 1 card in my library" / "with no cards left in their library": library sizes, wherever they sit.
@@ -2958,8 +2960,19 @@ class SituationParser(private val names: NameIndex) {
             val n = number(r.groupValues[1]) ?: return@let null
             ctx.mana[who] = n; ctx.note(who); ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} $n mana available; costs are checked against that."; rest0000r.removeRange(r.range)
         } ?: rest0000r
-        // "… at 5 life" / "while at 5 life": the caster's life total.
-        val rest000 = Regex("""\s*\b(?:while |when |sitting )?at (\d+) life\b""").find(rest00000)?.let { r -> ctx.life[who] = r.groupValues[1].toInt(); ctx.note(who); rest00000.removeRange(r.range) } ?: rest00000
+        // "casts Bolt at Bob who is at 2 life": the life total belongs to the player it was said about. Read as the
+        // caster's it went to the wrong player and the answer had the wrong player losing the game.
+        val aboutLife = Regex("""\s*\b(me|them|him|her|my opponent|the opponent|@\w+)\s*,?\s+(?:who(?:'s| is| was)?|that(?:'s| is| was)?|is|was)\s+(?:sitting |currently |already )?at (\d+) life\b,?""").find(rest00000)
+        // "… at 5 life" / "while at 5 life" with nobody named: the caster's life total.
+        val rest000 = if (aboutLife != null) {
+            val whose = when (val w = aboutLife.groupValues[1]) {
+                "me" -> "me"
+                "them", "him", "her", "my opponent", "the opponent" -> ctx.other(who) ?: "opp"
+                else -> w.removePrefix("@")
+            }
+            ctx.life[whose] = aboutLife.groupValues[2].toInt(); ctx.note(whose)
+            rest00000.replaceRange(aboutLife.range, " " + aboutLife.groupValues[1])   // the player is still the target
+        } else Regex("""\s*\b(?:while |when |sitting )?at (\d+) life\b""").find(rest00000)?.let { r -> ctx.life[who] = r.groupValues[1].toInt(); ctx.note(who); rest00000.removeRange(r.range) } ?: rest00000
         // "flashes in Ambush Viper to block it": the creature blocks once it has resolved.
         val blockAfter = Regex("""\s*\b(?:to|and) (?:chump[- ]?)?blocks? (?:it|that|the attacker|(?:the |my |their )?c\d+)$""").find(rest000)
         val rest00 = blockAfter?.let { rest000.removeRange(it.range) } ?: rest000
@@ -3122,7 +3135,15 @@ class SituationParser(private val names: NameIndex) {
         }
         // "me", "my face", "them" leading the phrase win over a card named later ("at my face with Guttersnipe out").
         if (Regex("""^(me|my face|myself)\b""").containsMatchIn(seg)) { out += "me"; ctx.usesMe = true; return out }
-        if (Regex("""^(them|their face|my opponent|the opponent|opponent|opp|him|her)\b""").containsMatchIn(seg) && !Regex("""^(?:my opponent's|the opponent's|opponent's|their)\b""").containsMatchIn(seg)) { out += pronounPlayer(ctx, Regex("""^(\w+)""").find(seg)!!.groupValues[1]); return out }
+        if (Regex("""^(them|their face|my opponent|the opponent|opponent|opp|him|her)\b""").containsMatchIn(seg) && !Regex("""^(?:my opponent's|the opponent's|opponent's|their)\b""").containsMatchIn(seg)) {
+            val p0 = pronounPlayer(ctx, Regex("""^(\w+)""").find(seg)!!.groupValues[1])
+            // "Bob casts Lightning Bolt at her": with players named, the pronoun is somebody other than the one
+            // acting. Read as the last player who acted it was Bob aiming at himself.
+            val named = ctx.players.keys.filter { it != "me" && it != "opp" }
+            val acting = ctx.clauseActor ?: ctx.lastActor
+            out += if (named.isNotEmpty() && p0 == acting) (named.lastOrNull { it != acting } ?: p0) else p0
+            return out
+        }
         // Triggers/abilities of a card: "the C2 trigger", "C2's trigger(ed ability)", "C2's ability".
         Regex("""(?:the |my |their )?(c\d+)(?:'s)? (?:trigger(?:ed ability)?|triggered ability)""").find(seg)?.let { t ->
             val card = m.cards.getValue(t.groupValues[1])
