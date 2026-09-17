@@ -8152,5 +8152,25 @@
     ],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "a-graveyard-card-named-owner-first",
+    "text": "I control Tarmogoyf. My graveyard has a Mountain. What are its stats?",
+    "expect": [
+      "Tarmogoyf is 1/2"
+    ],
+    "notExpect": [
+      "Tarmogoyf is 0/1"
+    ],
+    "cite": []
+  },
+  {
+    "id": "controls-no-lands",
+    "text": "I control Kird Ape and no lands. What are its stats?",
+    "expect": [
+      "Kird Ape is 1/1"
+    ],
+    "notExpect": [],
+    "cite": []
   }
 ]

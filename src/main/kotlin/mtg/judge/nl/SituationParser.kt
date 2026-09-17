@@ -1100,7 +1100,7 @@ class SituationParser(private val names: NameIndex) {
         if (isNoise(c)) { askQuestion(clause0, m, ctx); return true }
         if (Regex("""^(?:(?:doesn't|does not|don't|do not|didn't|won't|declines? to|chooses? not to) block\b.*|no blocks?|takes? (?:it|the damage|the hit|the other|the other one|the rest|the others)|lets? (?:it|the other|the others|the rest) through)$""").matches(c)) { ctx.lastActor = actor ?: ctx.lastActor; return true }
         // "has no creatures" / "have no blockers": nothing to add to the board.
-        if (Regex("""^(?:has|have|got|controls?) no (?:creatures?|blockers?|permanents?|other creatures?|untapped creatures?|flyers?|fliers?)(?: on the battlefield| in play| out| at all)?$""").matches(c)) { if (actor != null) ctx.lastActor = actor; return true }
+        if (Regex("""^(?:(?:has|have|got|controls?) )?no (?:creatures?|blockers?|permanents?|other creatures?|untapped creatures?|flyers?|fliers?|lands?|artifacts?|enchantments?|planeswalkers?)(?: on the battlefield| in play| out| at all)?$""").matches(c)) { if (actor != null) ctx.lastActor = actor; return true }
         // "with a regeneration shield", "regenerated X", "X is regenerated": a regeneration shield on that permanent.
         Regex("""^(?:regenerates? |regenerated |gives? (?:a )?regeneration (?:shield )?to |activates? regeneration on )(?:an? |the |my |their )?(c\d+|it|that|that creature)$""").find(c)?.let { r ->
             val id = if (r.groupValues[1].startsWith("c")) m.cards.getValue(r.groupValues[1]).let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner, false, ctx) }
@@ -1565,10 +1565,12 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastMentioned = was
             ctx.note(who); return true
         }
-        Regex("""^(?:there (?:is|are)|i have|they have|there's) (?:an? |the )?(c\d+) in (my|their|his|her|my opponent's|the opponent's|opponent's) (?:graveyard|yard|bin)$""").find(c)?.let { r ->
-            val who = when (r.groupValues[2]) { "my" -> "me"; else -> pronounPlayer(ctx, "their") }
+        // The owner-first form ("my graveyard has a Mountain") loses its "my" to the actor rule before it gets here.
+        Regex("""^(?:there (?:is|are)|i have|they have|there's) (?:an? |the )?(c\d+) in (my|their|his|her|my opponent's|the opponent's|opponent's) (?:graveyard|yard|bin)$|^(?:($possPrefix))?(?:graveyard|yard|bin) (?:has|contains|holds) (?:an? |the )?(c\d+)(?: in it)?$""").find(c)?.let { r ->
+            val who = if (r.groupValues[1].isNotEmpty()) (when (r.groupValues[2]) { "my" -> "me"; else -> pronounPlayer(ctx, "their") })
+                      else possessiveOwner(r.groupValues[3], ctx) ?: actor ?: "me"
             val was = ctx.lastMentioned
-            addObject(m.cards.getValue(r.groupValues[1]), who, false, ctx, zone = "graveyard", allowDuplicate = true)
+            addObject(m.cards.getValue(r.groupValues[1].ifEmpty { r.groupValues[4] }), who, false, ctx, zone = "graveyard", allowDuplicate = true)
             ctx.lastMentioned = was   // a card in a graveyard isn't what "it" means next
             ctx.note(who); return true
         }
