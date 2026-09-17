@@ -8387,5 +8387,29 @@
     "cite": [
       "903.10a"
     ]
+  },
+  {
+    "id": "mana-said-before-the-cast",
+    "text": "I control Thalia, Guardian of Thraben. My opponent has 1 mana available and casts Lightning Bolt. What happens?",
+    "expect": [
+      "can't be cast"
+    ],
+    "notExpect": [
+      "You cast Lightning Bolt"
+    ],
+    "cite": [
+      "601.2f"
+    ]
+  },
+  {
+    "id": "named-players-mana-before-the-cast",
+    "text": "Alice controls Thalia, Guardian of Thraben. Bob has 1 mana available and casts Lightning Bolt. What happens?",
+    "expect": [
+      "can't be cast"
+    ],
+    "notExpect": [],
+    "cite": [
+      "601.2f"
+    ]
   }
 ]

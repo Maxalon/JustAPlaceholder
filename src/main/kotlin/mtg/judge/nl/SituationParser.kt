@@ -1585,7 +1585,7 @@ class SituationParser(private val names: NameIndex) {
         // "only has one Mountain untapped", "has 2 untapped lands", "with 3 mana open/available/up"
         Regex("""^(?:only )?(?:has|have|with|got)(?: only)? (\d+|\w+) (?:(?:untapped |open )(?:lands?|c\d+s?|mana sources?)|(?:lands?|c\d+s?|mana sources?) (?:untapped|open|available|up|left)|mana(?: (?:open|available|up|left|untapped))?)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"; val n = number(r.groupValues[1]) ?: return@let
-            ctx.mana[who] = n; ctx.note(who); ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} $n mana available; costs are checked against that."; return true
+            ctx.mana[who] = n; ctx.note(who); if (actor != null) ctx.lastActor = actor; ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} $n mana available; costs are checked against that."; return true
         }
         // "have an instant and a creature in their graveyard" / "my graveyard has a land and a sorcery": card types in a graveyard (Tarmogoyf).
         Regex("""^(?:(?:there (?:is|are)|there's )?(?:has|have|with|got)? ?((?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?(?:,? (?:and )?(?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?)*) (?:is |are )?in ($possPrefix)?graveyards?|($possPrefix)?graveyard (?:has|contains|is) ((?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?(?:,? (?:and )?(?:an? |two |three |\d+ )?(?:instant|sorcery|creature|land|artifact|enchantment|planeswalker|battle)(?: cards?)?)*))(?: in it| in there)?$""").find(c)?.let { r ->
@@ -1670,10 +1670,10 @@ class SituationParser(private val names: NameIndex) {
             ctx.graveyardSize[who] = n; ctx.note(who); return true
         }
         // "… and 6 lands" / "3 untapped lands" as a fragment after a possession: mana available.
-        Regex("""^(\d+|two|three|four|five|six|seven|eight|nine|ten) (?:untapped |open )?(?:lands?|mana|mana sources?)(?: untapped| open| available)?$""").find(c)?.let { r ->
-            if (ctx.lastVerb != "have" && actor == null) return@let
+        Regex("""^(?:(?:has|have|with|got|holds?) )?(\d+|two|three|four|five|six|seven|eight|nine|ten) (?:untapped |open )?(?:lands?|mana|mana sources?)(?: untapped| open| available| left| to spend)?$""").find(c)?.let { r ->
+            if (ctx.lastVerb != "have" && actor == null && !Regex("""^(?:has|have|with|got|holds?) """).containsMatchIn(c)) return@let
             val who = actor ?: ctx.lastOwner ?: subject ?: "me"; val n = number(r.groupValues[1]) ?: return@let
-            ctx.mana[who] = n; ctx.note(who); ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} $n mana available; costs are checked against that."; return true
+            ctx.mana[who] = n; ctx.note(who); if (actor != null) ctx.lastActor = actor; ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} $n mana available; costs are checked against that."; return true
         }
         // "… and 4 untapped Plains" / "two Forests" as a fragment after a possession: more permanents of the last owner.
         Regex("""^(\d+|two|three|four|five|six|seven|eight) (untapped |tapped )?(c\d+)$""").find(c)?.let { r ->
