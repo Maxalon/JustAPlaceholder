@@ -1244,7 +1244,7 @@ class Engine(val state: GameState) {
                 is GameEvent.CreaturesDealtCombatDamageToPlayer -> event.playerId; is GameEvent.DamageDealt -> if (ability.trigger == Trigger.ThisIsDealtDamage) event.source.controller else (event.target as? Ref.Player)?.id ?: event.source.controller; else -> null
             }
             val causedAmount = when (event) { is GameEvent.LifeGained -> event.amount; is GameEvent.DamageDealt -> event.amount; else -> null }
-            val causedObject = when (event) { is GameEvent.AttacksAlone -> event.obj.id; is GameEvent.Attacks -> event.obj.id; is GameEvent.EntersBattlefield -> event.obj.id; is GameEvent.Dies -> event.obj.id; is GameEvent.BecomesTarget -> event.sourceId; is GameEvent.SpellCast -> event.item.id; else -> null }
+            val causedObject = when (event) { is GameEvent.AttacksAlone -> event.obj.id; is GameEvent.Attacks -> event.obj.id; is GameEvent.EntersBattlefield -> event.obj.id; is GameEvent.Dies -> event.obj.id; is GameEvent.BecomesTarget -> event.sourceId; is GameEvent.SpellCast -> event.item.id; is GameEvent.BecomesBlockedBy -> event.blocker.id; else -> null }
             putTriggerOnStack(obj, ability, emptyList(), causedBy, causedAmount, causedObject)
         }
         if (ordered.size > 1) trace.step("Multiple abilities triggered at once; they are put on the stack in APNAP order, each player choosing the order among their own.", "603.3b")
@@ -1800,7 +1800,9 @@ class Engine(val state: GameState) {
             is Effect.DamagePlayer -> for (p in resolvePlayers(effect.who, item)) applyDamage(item.source.name, Ref.Player(p.id), effect.amount, item.source)
             is Effect.PumpCausing -> {
                 val o = item.causedObject?.let { state.objects[it] }
-                if (o == null || !o.isOnBattlefield()) trace.step("The creature that caused the trigger isn't on the battlefield, so nothing gets the bonus.", "611.2c")
+                if (o != null && effect.unlessCausingHas != null && state.hasKeyword(o, effect.unlessCausingHas)) {
+                    trace.step("${o.name} has ${effect.unlessCausingHas} too, so ${item.source.name}'s ${effect.unlessCausingHas} does nothing to it.", "702.25a")
+                } else if (o == null || !o.isOnBattlefield()) trace.step("The creature that caused the trigger isn't on the battlefield, so nothing gets the bonus.", "611.2c")
                 else {
                     if (effect.power != 0 || effect.toughness != 0) { o.pumps += effect.power to effect.toughness; trace.step("${o.name} gets ${signed(effect.power)}/${signed(effect.toughness)} until end of turn; it's now ${o.power}/${o.toughness}.", "611.2a"); state.outcomes += "${o.name} is ${o.power}/${o.toughness} until end of turn." }
                     if (effect.keywords.isNotEmpty()) { o.tempKeywords += effect.keywords; trace.step("${o.name} gains ${effect.keywords.joinToString(" and ")} until end of turn.", "611.2a"); state.outcomes += "${o.name} has ${effect.keywords.joinToString(" and ")} until end of turn." }

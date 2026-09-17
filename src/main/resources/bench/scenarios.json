@@ -10517,5 +10517,28 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "flanking-shrinks-the-blocker",
+    "text": "I attack with Burning Shield Askari and my opponent blocks with Kird Ape. What happens?",
+    "expect": [
+      "Kird Ape is 0/0 until end of turn",
+      "Kird Ape: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "flanking-does-nothing-to-flanking",
+    "text": "I attack with Burning Shield Askari and my opponent blocks with Sidar Jabari. What happens?",
+    "expect": [
+      "Burning Shield Askari: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Sidar Jabari is 1/2 until end of turn"
+    ],
+    "cite": []
   }
 ]

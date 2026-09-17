@@ -215,7 +215,8 @@ sealed interface Effect {
     data class Untap(val target: TargetSpec) : Effect
     data class Pump(val target: TargetSpec, val power: Int, val toughness: Int) : Effect
     /** Exalted's "that creature gets +1/+1": the attacking creature that caused the trigger. */
-    data class PumpCausing(val power: Int, val toughness: Int, val keywords: List<String> = emptyList()) : Effect
+    /** [unlessCausingHas]: flanking skips a blocker that has flanking itself (702.25a). */
+    data class PumpCausing(val power: Int, val toughness: Int, val keywords: List<String> = emptyList(), val unlessCausingHas: String? = null) : Effect
     /** "target creature gains flying until end of turn" (layer 6, 611.2a). */
     data class GainKeywords(val target: TargetSpec, val keywords: Set<String>) : Effect
     data class GainLife(val who: Who, val amount: Int) : Effect

@@ -92,6 +92,8 @@ object OracleParser {
                         }
                         "evolve" -> abilities += TriggeredAbility(Trigger.PermanentEnters(ObjFilter(setOf(Kind.CREATURE), controller = Who.YOU, raw = "creature you control"), other = true), Effect.Evolve,
                             "Evolve (Whenever a creature you control enters, if that creature has greater power or toughness than this creature, put a +1/+1 counter on this creature.)")
+                        "flanking" -> abilities += TriggeredAbility(Trigger.ThisBecomesBlockedByCreature, Effect.PumpCausing(-1, -1, unlessCausingHas = "flanking"),
+                            "Flanking (Whenever this creature becomes blocked by a creature without flanking, that creature gets -1/-1 until end of turn.)")
                         "storm" -> abilities += TriggeredAbility(Trigger.ThisCast, Effect.StormCopy, "Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for the copies.)")
                         "exalted" -> abilities += TriggeredAbility(Trigger.CreatureAttacksAlone, Effect.PumpCausing(1, 1), "Exalted (Whenever a creature you control attacks alone, that creature gets +1/+1 until end of turn.)")
                         "living weapon" -> abilities += TriggeredAbility(Trigger.ThisEnters, Effect.LivingWeapon, "Living weapon (When this Equipment enters, create a 0/0 black Phyrexian Germ creature token, then attach this to it.)")
