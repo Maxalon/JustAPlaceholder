@@ -510,6 +510,10 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(casts?|plays?) ((?:$possPrefix|an? )?c\d+) with ((?:haste|flying|trample|lifelink|deathtouch|vigilance|first strike|double strike|menace|hexproof|indestructible|reach))\b"""), "$1 $2, $2 has $3")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
+            // "Who wins the fight between Grizzly Bears and Hill Giant?": a fight with no card making it happen.
+            // The "and" would otherwise break the sentence and leave the second creature as a clause of its own.
+            .replace(Regex("""^(?:who|which(?: creature| one)?) (?:wins|survives|comes out on top|lives)(?: the fight| a fight| in a fight| the combat)?(?: (?:between|with)) ((?:$possPrefix|an? )?c\d+) (?:and|vs\.?|versus) ((?:$possPrefix|an? )?c\d+)\??$"""), "$1 fights $2, does $1 die, does $2 die")
+            .replace(Regex("""^(?:what happens )?(?:if|when) ((?:$possPrefix|an? )?c\d+) fights ((?:$possPrefix|an? )?c\d+)\??$"""), "$1 fights $2, does $1 die, does $2 die")
             // "Does Doom Blade kill Serra Angel?" / "will my Bears die to Lightning Bolt?": a card against a card,
             // with nothing else said. The spell is cast at the creature and the question is whether it dies.
             // "Is Lightning Bolt enough to kill a Serra Angel?" asks the same thing the long way round.
@@ -2781,6 +2785,25 @@ class SituationParser(private val names: NameIndex) {
             if (r.groupValues[1].isNotEmpty()) ctx.objects[id] = ctx.objects.getValue(id).copy(commander = true)
             val r = object { val groupValues = listOf(r.groupValues[0], r.groupValues[2], r.groupValues[3]) }
             ctx.events += EventSpec("attack", player = who, obj = id, targets = targetsIn(r.groupValues[2], m, ctx).ifEmpty { listOf(ctx.other(who) ?: "opp") }); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
+        }
+        // "Grizzly Bears fights Hill Giant": the fight itself, with no card named as what caused it. Each creature
+        // goes on the battlefield, on opposite sides of the table unless the asker said whose they are (701.14a).
+        Regex("""^($possPrefix|an? )?(c\d+|it|that) (?:fights?|fought) ($possPrefix|an? )?(c\d+)$""").find(c)?.let { r ->
+            fun side(word: String, fallback: String) = when (val w = word.trim()) {
+                "my", "own" -> "me"
+                "their", "his", "her" -> pronounPlayer(ctx, w)
+                "my opponent's", "the opponent's", "an opponent's", "opponent's" -> pronounPlayer(ctx)
+                "", "the", "a", "an" -> fallback
+                else -> w.removePrefix("@").removeSuffix("'s")
+            }
+            val whoA = side(r.groupValues[1], "me")
+            val aId = if (r.groupValues[2] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                      else m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, whoA, false, ctx) } ?: return@let
+            val whoB = side(r.groupValues[3], ctx.other(ctx.objects[aId]?.controller ?: whoA) ?: "opp")
+            val bId = m.cards[r.groupValues[4]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, whoB, false, ctx) } ?: return@let
+            if (aId == bId) return@let
+            ctx.events += EventSpec("fight", obj = aId, targets = listOf(bId))
+            ctx.lastVerb = "fight"; ctx.lastMentioned = bId; return true
         }
         // "their Grizzly Bears is blocked by my Hill Giant": the same declaration, said from the attacker's side.
         // "My Grizzly Bears is blocked by two 1/1s" says the attack too: being blocked is only possible in combat,

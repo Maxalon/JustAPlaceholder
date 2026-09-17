@@ -255,6 +255,18 @@ class Engine(val state: GameState) {
         trace.step("${player.subject} ${player.v("receives", "receive")} priority again after casting.", "117.3c")
     }
 
+    /** Two creatures fight: each deals damage equal to its power to the other, at the same time (701.14a). */
+    fun fight(a: GameObject?, b: GameObject?) {
+        if (a == null || b == null || !a.isOnBattlefield() || !b.isOnBattlefield()) {
+            trace.step("${listOfNotNull(a?.takeIf { !it.isOnBattlefield() }?.name, b?.takeIf { !it.isOnBattlefield() }?.name).joinToString(" and ").ifEmpty { "One of the creatures" }} is no longer on the battlefield, so neither creature fights and neither deals damage.", "701.14b")
+            return
+        }
+        trace.step("${a.name} (${state.describePt(a)}) and ${b.name} (${state.describePt(b)}) fight: each deals damage equal to its power to the other, at the same time.", "701.14a")
+        val pa = a.power ?: 0; val pb = b.power ?: 0
+        applyDamage(a.name, Ref.Obj(b.id), pa, a); applyDamage(b.name, Ref.Obj(a.id), pb, b)
+        stateBasedActions()
+    }
+
     /** "I sacrifice X": its controller moves it from the battlefield to its owner's graveyard (701.21a). */
     fun sacrifice(playerId: String, objectId: String) {
         val o = state.obj(objectId); val p = state.player(playerId)
@@ -1723,17 +1735,7 @@ class Engine(val state: GameState) {
                     }
                 }
             }
-            is Effect.Fight -> {
-                val a = item.targets.getOrNull(0)?.let { objOf(it) }; val b = item.targets.getOrNull(1)?.let { objOf(it) }
-                if (a == null || b == null || !a.isOnBattlefield() || !b.isOnBattlefield()) {
-                    trace.step("${listOfNotNull(a?.takeIf { !it.isOnBattlefield() }?.name, b?.takeIf { !it.isOnBattlefield() }?.name).joinToString(" and ").ifEmpty { "One of the creatures" }} is no longer on the battlefield, so neither creature fights and neither deals damage.", "701.14b")
-                } else {
-                    trace.step("${a.name} (${state.describePt(a)}) and ${b.name} (${state.describePt(b)}) fight: each deals damage equal to its power to the other, at the same time.", "701.14a")
-                    val pa = a.power ?: 0; val pb = b.power ?: 0
-                    applyDamage(a.name, Ref.Obj(b.id), pa, a); applyDamage(b.name, Ref.Obj(a.id), pb, b)
-                    stateBasedActions()
-                }
-            }
+            is Effect.Fight -> fight(item.targets.getOrNull(0)?.let { objOf(it) }, item.targets.getOrNull(1)?.let { objOf(it) })
             is Effect.DealsPowerTo -> {
                 val a = item.targets.getOrNull(0)?.let { objOf(it) }; val b = item.targets.getOrNull(1)?.let { objOf(it) }
                 if (a == null || b == null || !a.isOnBattlefield() || !b.isOnBattlefield()) trace.step("One of the creatures is no longer on the battlefield, so no damage is dealt.", "608.2b")
@@ -2476,6 +2478,9 @@ class Engine(val state: GameState) {
                 if (source?.commander == true && inCombatDamage) { val total = (p.commanderDamage[source.id] ?: 0) + amount; p.commanderDamage[source.id] = total; trace.step("${source.name} is a commander: ${if (p.you) "you have" else p.name + " has"} now been dealt $total combat damage by it this game (21 or more loses the game).", "903.10a"); state.outcomes += "${p.subject} ${p.v("has", "have")} taken $total commander damage from ${source.name}." }
                 if (toxic > 0) { p.poison += toxic; trace.step("$sourceName has toxic $toxic, so ${if (p.you) "you also get" else p.name + " also gets"} $toxic poison counter${if (toxic > 1) "s" else ""} (${p.poison} total).", "702.164c", "120.3g"); state.outcomes += "${p.subject} ${p.v("has", "have")} ${p.poison} poison counter${if (p.poison > 1) "s" else ""}." } }
             is Ref.Obj -> { val o = state.obj(target.id)
+                // 702.2b is about damage, not only combat damage: a fight or a ping from a deathtouch source is
+                // just as lethal. Without this a deathtouch creature won a fight it should have traded.
+                if (amount > 0 && !o.def.isPlaneswalker && source?.has("deathtouch") == true) o.dealtDeathtouchDamage = true
                 if (o.def.isPlaneswalker) { val before = o.counters["loyalty"] ?: 0; o.counters["loyalty"] = maxOf(0, before - amount); trace.step("$sourceName deals $amount damage to ${o.name}, so $amount loyalty counters are removed from it (${o.counters["loyalty"]} left).", "306.8", "120.3c"); state.outcomes += "${o.name} has ${o.counters["loyalty"]} loyalty." }
                 else if (infect || wither) { o.counters["-1/-1"] = (o.counters["-1/-1"] ?: 0) + amount; trace.step("$sourceName has ${if (infect) "infect" else "wither"}, so the $amount damage to ${o.name} is dealt as $amount -1/-1 counter${if (amount > 1) "s" else ""}; it's now ${o.power}/${o.toughness}.", if (infect) "702.90c" else "702.80a", "120.3d"); state.outcomes += "${o.name} has ${o.counters["-1/-1"]} -1/-1 counter(s)." }
                 else {

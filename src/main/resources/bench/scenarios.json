@@ -10307,5 +10307,42 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "fight-who-wins",
+    "text": "Who wins the fight between Grizzly Bears and Hill Giant?",
+    "expect": [
+      "Yes: Grizzly Bears died",
+      "No: Hill Giant is still on the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "701.14a"
+    ]
+  },
+  {
+    "id": "fight-deathtouch-trades",
+    "text": "Who wins the fight between Thornweald Archer and Colossal Dreadmaw?",
+    "expect": [
+      "Yes: Thornweald Archer died",
+      "Yes: Colossal Dreadmaw died"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "deathtouch-ping-kills",
+    "text": "I control Basilisk Collar on Cunning Sparkmage. I activate Cunning Sparkmage targeting Colossal Dreadmaw. What happens?",
+    "expect": [
+      "Colossal Dreadmaw: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

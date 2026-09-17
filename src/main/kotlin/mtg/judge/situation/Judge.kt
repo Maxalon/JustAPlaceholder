@@ -166,6 +166,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 engine.cast(player, def, disambiguate(e.targets, def.spellEffect?.targets() ?: emptyList(), player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", flashback = e.to == "flashback", choice = e.to?.takeIf { it.startsWith("copy:") } ?: e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it.startsWith("name:") }?.removePrefix("name:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" }, payLife = e.payLife)
             }
             "draw" -> engine.draw(e.player ?: throw JudgeException("draw needs a player"), e.amount ?: 1)
+            // "Grizzly Bears fights Hill Giant": the fight itself, with no card making it happen (701.14a).
+            "fight" -> engine.fight(state.objects[e.obj ?: throw JudgeException("fight needs an object")], state.objects[e.targets.firstOrNull() ?: throw JudgeException("fight needs something to fight")])
             "sacrifice" -> {
                 val objId = e.obj ?: throw JudgeException("sacrifice needs an object"); val o = state.obj(objId)
                 // "I sacrifice Sakura-Tribe Elder": sacrificing a permanent that has a "Sacrifice this: …" ability means activating it.
@@ -397,6 +399,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "choose" -> "${who ?: "controller"} ${if (who == "you") "choose" else "chooses"} ${e.to?.substringAfter(':')?.let { state.objects[it]?.name ?: it } ?: "?"} for ${state.objects[e.obj]?.name ?: e.obj}'s ability"
             "regenerate" -> "${state.objects[e.obj]?.name ?: e.obj} has a regeneration shield"
             "sacrifice" -> "${who ?: "controller"} ${if (who == "you") "sacrifice" else "sacrifices"} ${state.objects[e.obj]?.name ?: e.obj}"
+            "fight" -> "${state.objects[e.obj]?.name ?: e.obj} fights ${e.targets.firstOrNull()?.let { state.objects[it]?.name ?: it } ?: "?"}"
             "gainlife" -> "${who ?: "the player"} ${if (who == "you") "gain" else "gains"} ${e.amount ?: 1} life"
             "loselife" -> "${who ?: "the player"} ${if (who == "you") "lose" else "loses"} ${e.amount ?: 1} life"
             "draw" -> "${who ?: "the player"} ${if (who == "you") "draw" else "draws"} ${e.amount ?: 1} card${if ((e.amount ?: 1) > 1) "s" else ""}"
