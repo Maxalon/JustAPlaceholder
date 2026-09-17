@@ -126,6 +126,22 @@ class SituationParser(private val names: NameIndex) {
         // An explicit "it resolves" mid-situation settles what was on the stack then; anything cast after it still needs to resolve.
         val tail = ctx.events.lastOrNull()?.verb
         if (ctx.events.isNotEmpty() && (!ctx.explicitResolve || tail in setOf("cast", "activate", "trigger", "attack", "attackAll", "block"))) ctx.events += EventSpec("resolveAll")
+        // "I draw during my draw step": the step draws the card itself (504.1), so a draw said right after it is
+        // the same draw said twice, and the answer had the player drawing two cards.
+        for (i in ctx.events.indices.reversed()) {
+            val e = ctx.events[i]
+            if (e.verb != "draw" || (e.amount ?: 1) != 1) continue
+            val prev = ctx.events.getOrNull(i - 1) ?: continue
+            if (prev.verb == "step" && prev.to == "draw" && prev.player == e.player) ctx.events.removeAt(i)
+        }
+        // "I draw during my draw step": the step draws the card itself (504.1), so a draw said right after it is
+        // the same draw said twice, and the answer had the player drawing two cards.
+        for (i in ctx.events.indices.reversed()) {
+            val e = ctx.events[i]
+            if (e.verb != "draw" || (e.amount ?: 1) != 1) continue
+            val prev = ctx.events.getOrNull(i - 1) ?: continue
+            if (prev.verb == "step" && prev.to == "draw" && prev.player == e.player) ctx.events.removeAt(i)
+        }
         // "I activate Grim Monolith. How much mana do I get?" — the question says which of its abilities is meant.
         for (ask in ctx.asks.filter { it.verb == "ask" && (it.to == "mana" || it.to == "manaAvailable") }) {
             // "how much mana do I get?" names no card, so the activation it is about is the last one.
@@ -1591,9 +1607,11 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("activate", player = who, obj = id, to = "mana"); ctx.lastActor = who; ctx.lastMentioned = id; return true
         }
         // "they draw", "I draw": one card, said without saying so.
-        if (Regex("""^(?:draws?|drew|drawing)(?: a card)?(?: (?:during|in|for|at) (?:their|my|the|his|her) draw step)?$""").matches(c)) {
+        // "draw my card for turn" is the draw step's own draw: the step draws it, so adding a draw as well drew twice.
+        if (Regex("""^(?:draws?|drew|drawing)(?: (?:a|my|their|his|her|the) card)?(?: for (?:the |my |their |his |her )?turn)?(?: (?:during|in|for|at) (?:their|my|the|his|her) draw step)?$""").matches(c)) {
             val who = actor ?: subject ?: "me"
-            if (c.contains("draw step")) { ctx.activePlayer = who; ctx.events += EventSpec("step", player = who, to = "draw") }
+            val stepDraw = c.contains("draw step") || Regex("""for (?:the |my |their |his |her )?turn""").containsMatchIn(c)
+            if (stepDraw) { ctx.activePlayer = who; ctx.events += EventSpec("step", player = who, to = "draw"); ctx.lastActor = who; ctx.note(who); return true }
             ctx.events += EventSpec("draw", player = who, amount = 1); ctx.lastActor = who; ctx.note(who); return true
         }
         // "draws a card", "draws two cards (during their draw step)"
@@ -1832,6 +1850,9 @@ class SituationParser(private val names: NameIndex) {
             ctx.handSize[who] = if (r.groupValues[1] == "no") 0 else number(r.groupValues[1]) ?: 0; ctx.note(who); if (actor != null) ctx.lastActor = actor; return true }
         // "only has one Mountain untapped", "has 2 untapped lands", "with 3 mana open/available/up"
         Regex("""^(?:only )?(?:has|have|with|got)(?: only)? (\d+|\w+) (?:(?:untapped |open )(?:lands?|c\d+s?|mana sources?)|(?:lands?|c\d+s?|mana sources?) (?:untapped|open|available|up|left)|mana(?: (?:open|available|up|left|untapped))?)$""").find(c)?.let { r ->
+            // "I have an untapped Forest" names a permanent; "an" is an article, not a count, and reading it as
+            // one mana available left the land off the battlefield entirely.
+            if (r.groupValues[1] in setOf("a", "an") && Regex("""c\d+""").containsMatchIn(r.groupValues[0])) return@let
             val who = actor ?: subject ?: "me"; val n = number(r.groupValues[1]) ?: return@let
             ctx.mana[who] = n; ctx.note(who); if (actor != null) ctx.lastActor = actor; ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} $n mana available; costs are checked against that."; return true
         }
@@ -2090,10 +2111,11 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastMentioned = id; return true
         }
         // Bare continuation: "… and Smothering Tithe" after a possession, "… and Counterspell" after a cast.
-        Regex("""^(?:an? |the |my |their |another |also |(\d+|two|three|four|five) )?(?:(tapped|untapped) )?(c\d+)(?:'s)?(?: out| in play| on the battlefield| on board| on the field)?((?: (?:i|they|he|she|we) (?:just )?(?:played|cast|dropped|resolved)(?: this turn| earlier this turn| earlier| last turn| a turn ago)?)?)$""").find(c)?.let { r ->
+        // "… and a Forest untapped": the state word can come after the card as well as before it.
+        Regex("""^(?:an? |the |my |their |another |also |(\d+|two|three|four|five) )?(?:(tapped|untapped) )?(c\d+)(?:'s)?(?: (?:is |are )?(?:tapped|untapped))?(?: out| in play| on the battlefield| on board| on the field)?((?: (?:i|they|he|she|we) (?:just )?(?:played|cast|dropped|resolved)(?: this turn| earlier this turn| earlier| last turn| a turn ago)?)?)$""").find(c)?.let { r ->
             val card = m.cards.getValue(r.groupValues[3])
             val count = r.groupValues[1].let { numberWords[it] ?: it.toIntOrNull() ?: 1 }
-            val isTapped = r.groupValues[2] == "tapped"
+            val isTapped = (r.groupValues[2] == "tapped") || (Regex("""\btapped\b""").containsMatchIn(c) && !Regex("""\buntapped\b""").containsMatchIn(c))
             // "a Birds of Paradise I just played this turn" / "a Bears they cast last turn": whether it is summoning sick.
             val played = r.groupValues[4].trim()
             val sick = if (played.isEmpty()) null else !Regex("""last turn|a turn ago""").containsMatchIn(played)

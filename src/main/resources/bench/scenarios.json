@@ -10460,5 +10460,40 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "untapped-land-is-a-permanent",
+    "text": "I have a Mountain and a Forest untapped. How much mana do I have?",
+    "expect": [
+      "Mountain → {R}",
+      "Forest → {G}"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "draw-for-turn-is-the-step-draw",
+    "text": "I control Sylvan Library and draw my card for turn. What happens?",
+    "expect": [
+      "You draw 1 card",
+      "You draw 2 cards"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "draw-during-draw-step-once",
+    "text": "I control Howling Mine and I draw during my draw step. What happens?",
+    "expect": [
+      "You draw 1 card. (×2)"
+    ],
+    "notExpect": [
+      "(×3)"
+    ],
+    "cite": []
   }
 ]
