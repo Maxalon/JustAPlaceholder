@@ -2928,7 +2928,9 @@ class Engine(val state: GameState) {
         Who.THAT_PLAYER -> item.targets.filterIsInstance<Ref.Player>().firstOrNull()?.let { state.player(it.id) } ?: causingPlayer(item)
         Who.TARGET_PLAYER -> item.targets.filterIsInstance<Ref.Player>().firstOrNull()?.let { state.player(it.id) } ?: run {
             // "Target player draws three cards" with no target named: you'd aim that at yourself.
-            if (helpsThePlayer(item.effect)) { val you = state.player(item.controller); state.assumptions += "${item.describe} targets ${if (you.you) "you" else you.name} (\"target player\" wasn't specified; assuming its controller, since it helps that player)."; return@run you }
+            // A modal spell's "target player" belongs to the mode chosen, so the whole Modal never looked helpful
+            // and "Target player gains 7 life" was aimed at the opponent.
+            if (helpsThePlayer(effectiveEffect(item))) { val you = state.player(item.controller); state.assumptions += "${item.describe} targets ${if (you.you) "you" else you.name} (\"target player\" wasn't specified; assuming its controller, since it helps that player)."; return@run you }
             // "Target player loses 1 life" with no target named: assume the one opponent (the sensible choice), and say so.
             val opp = state.opponentsOf(item.controller).singleOrNull()
             if (opp != null) state.assumptions += "${item.describe} targets ${if (opp.you) "you" else opp.name} (\"target player\" wasn't specified; assuming the opponent)."

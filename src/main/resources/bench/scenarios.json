@@ -10664,5 +10664,16 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "modal-beneficial-mode-targets-you",
+    "text": "I cast Primal Command choosing mode 1.",
+    "expect": [
+      "You gain 7 life"
+    ],
+    "notExpect": [
+      "opponent gains 7 life"
+    ],
+    "cite": []
   }
 ]
