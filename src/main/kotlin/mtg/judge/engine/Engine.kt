@@ -64,6 +64,17 @@ class Engine(val state: GameState) {
             trace.step("It's ${state.player(ab.controller).possessive} turn and ${ab.name} says ${state.player(ab.controller).possessive} opponents can't cast spells during it. ${card.name} can't be cast now; it could be cast on ${state.player(playerId).possessive} own turn (or another opponent's).", "101.2")
             state.outcomes += "${card.name} can't be cast (${ab.name}: not during ${state.player(ab.controller).possessive} turn)."; return null
         }
+        // Drannith Magistrate: a spell cast from anywhere but its controller's hand. Only a zone the situation
+        // actually gave is checked; a card nobody placed is taken to be in hand, as it usually is.
+        val fromZone = if (flashback) Zone.GRAVEYARD else obj.zone
+        if (fromZone in setOf(Zone.GRAVEYARD, Zone.EXILE, Zone.COMMAND, Zone.LIBRARY)) {
+            state.objects.values.firstOrNull { it.isOnBattlefield() && it.controller != playerId &&
+                it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { e -> e is StaticEffect.OpponentsCastFromHandOnly } }?.let { magistrate ->
+                trace.step("${magistrate.name} says ${state.player(magistrate.controller).possessive} opponents can't cast spells from anywhere other than their hands, and ${card.name} would be cast from ${zoneName(fromZone, obj)}, so it can't be cast at all.", "601.2", "113.6c")
+                state.outcomes += "${card.name} can't be cast from ${zoneName(fromZone, obj)} (${magistrate.name})."
+                return null
+            }
+        }
         // Cost taxes (Thalia, the commander tax) against the mana the situation said is available.
         run {
             val taxes = state.objects.values.filter { it.isOnBattlefield() }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CostTax>().filter { t -> (t.whose == null || (t.whose == Who.YOU) == (o.controller == playerId)) && spellMatches(t.filter, card) }.map { o to it } }

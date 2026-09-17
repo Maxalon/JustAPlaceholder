@@ -141,7 +141,11 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         when (e.verb.lowercase()) {
             "cast" -> {
                 val player = e.player ?: state.players.first().id
+                // A commander cast without saying which object it is: the card sitting in the command zone is it,
+                // which is what carries the commander tax and what Drannith Magistrate is looking at.
                 val existing = e.obj?.let { state.objects[it] }
+                    ?: e.card?.let { c -> state.objects.values.firstOrNull { o -> o.zone == Zone.COMMAND && o.controller == player &&
+                        (c.oracleId?.let { it == o.def.oracleId } ?: o.def.name.equals(c.name ?: "", true)) } }
                 val def = existing?.def ?: cardDef(e.card ?: throw JudgeException("cast needs a card"), state) ?: return
                 val modes = if (e.modes.isEmpty() && e.to?.startsWith("mode:") == true) {
                     val words = e.to.removePrefix("mode:").lowercase().split("|").filter { it.isNotEmpty() }

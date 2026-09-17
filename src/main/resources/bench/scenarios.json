@@ -9387,5 +9387,52 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "drannith-stops-a-commander",
+    "text": "My opponent controls Drannith Magistrate and I cast my commander Atraxa, Praetors' Voice from the command zone. What happens?",
+    "expect": [
+      "can't be cast from the command zone (Drannith Magistrate)"
+    ],
+    "notExpect": [
+      "enters the battlefield",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "drannith-stops-flashback",
+    "text": "My opponent controls Drannith Magistrate. Faithless Looting is in my graveyard and I cast it with flashback. What happens?",
+    "expect": [
+      "can't be cast from your graveyard (Drannith Magistrate)"
+    ],
+    "notExpect": [
+      "You draw",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "drannith-allows-a-cast-from-hand",
+    "text": "My opponent controls Drannith Magistrate and I cast Lightning Bolt at them. What happens?",
+    "expect": [
+      "opponent takes 3 damage"
+    ],
+    "notExpect": [
+      "can't be cast",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "commander-tax-on-the-cast",
+    "text": "My commander Atraxa, Praetors' Voice is in the command zone and was countered twice. I cast Atraxa with 6 mana. What happens?",
+    "expect": [
+      "can't be cast (costs 8, only 6 mana available)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

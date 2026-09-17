@@ -1782,7 +1782,7 @@ class SituationParser(private val names: NameIndex) {
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
             ctx.objects[id] = ctx.objects.getValue(id).copy(commander = true, zone = "command", controller = who)
             ctx.notes += "${card.display} is read as ${if (who == "me") "your" else "their"} commander, in the command zone."
-            ctx.lastMentioned = id; ctx.lastOwner = who; ctx.note(who)
+            ctx.lastMentioned = id; ctx.lastOwner = who; ctx.lastActor = who; ctx.note(who)
             if (r.groupValues[1].isEmpty()) return true
             return readClause(r.groupValues[1] + " " + ph + " " + tail.replace(Regex("""^from the command zone\b"""), "").trim(), m, ctx)
         }
