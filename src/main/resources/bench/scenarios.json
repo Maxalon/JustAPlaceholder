@@ -10147,5 +10147,28 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "does-a-land-die-to-a-wrath",
+    "text": "I control Mutavault and my opponent casts Wrath of God. Does it die?",
+    "expect": [
+      "No: Mutavault is still on the battlefield"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "does-an-artifact-die",
+    "text": "I control Sol Ring and my opponent casts Vandalblast. Does it die?",
+    "expect": [
+      "Yes: Sol Ring died"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

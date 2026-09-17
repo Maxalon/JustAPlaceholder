@@ -3272,6 +3272,9 @@ class SituationParser(private val names: NameIndex) {
                 // Only for a plain "it": "theirs" and "mine" are resolved against the other side below, and need
                 // the referent left alone.
                 ?: ctx.objects.values.lastOrNull { q0.groupValues[1] !in setOf("theirs", "mine", "yours", "the other one", "the other") && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id
+                // "I control Mutavault and they Wrath. Does it die?": a land or another permanent can be the one
+                // asked about, and asking whether it dies is a fair question about anything on the battlefield.
+                ?: ctx.objects.values.lastOrNull { q0.groupValues[1] !in setOf("theirs", "mine", "yours", "the other one", "the other") && it.zone == "battlefield" }?.id
             // "theirs" / "mine": the same-named creature on the other side of the table.
             val id = when (q0.groupValues[1]) {
                 "theirs", "the other one", "the other" -> last?.let { l -> ctx.objects[l] }?.let { o -> ctx.objects.values.lastOrNull { it.card.name == o.card.name && it.controller != o.controller }?.id } ?: ctx.objects.values.lastOrNull { it.controller == pronounPlayer(ctx, "their") }?.id ?: return@let
