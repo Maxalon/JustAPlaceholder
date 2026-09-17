@@ -10742,5 +10742,38 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "sacrifice-it-is-yours",
+    "text": "I control Grizzly Bears and my opponent controls Serra Angel. I sacrifice it.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "can't be sacrificed"
+    ],
+    "cite": []
+  },
+  {
+    "id": "activate-it-is-yours",
+    "text": "I control Mutavault and my opponent controls Serra Angel. I activate it.",
+    "expect": [
+      "Mutavault is a 2/2 creature until end of turn"
+    ],
+    "notExpect": [
+      "Serra Angel is tapped"
+    ],
+    "cite": []
+  },
+  {
+    "id": "attack-with-it-is-yours",
+    "text": "I control Grizzly Bears and my opponent controls Serra Angel. I attack with it.",
+    "expect": [
+      "opponent takes 2 damage"
+    ],
+    "notExpect": [
+      "you don't control it"
+    ],
+    "cite": []
   }
 ]

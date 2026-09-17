@@ -1376,7 +1376,11 @@ class SituationParser(private val names: NameIndex) {
         // "activate it for green" names a colour the ability asks for: that rule is further down and needs the whole clause.
         Regex("""^(?:$activateVerbs)\s+(?:it|that|him|her|them|its ability|his ability|her ability|it's ability)\b(?!\s*[+\u2212-]?\d)(?!\s+(?:choosing|naming|picking|for|on) (?:white|blue|black|red|green|colou?rless)\b)(.*)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
-            val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return false
+            // "I control Mutavault and they control Serra Angel. I activate it": you can only activate your own,
+            // so "it" is the actor's permanent, not whichever one was named last.
+            val id = ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller == who }
+                ?: ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" }?.id
+                ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return false
             val timesRe = Regex("""\b(twice|two times|three times|four times|five times|(\d+) times)\b""")
             val times = timesRe.find(r.groupValues[1])?.let { t -> if (t.groupValues[1].startsWith("twice")) 2 else number(t.groupValues[2].ifEmpty { t.groupValues[1].substringBefore(' ') }) ?: 1 } ?: 1
             val targets = targetsIn(r.groupValues[1].replace(timesRe, "").trim(), m, ctx)
@@ -1435,7 +1439,8 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:sacrifices?|sacs?|sacrificing|saccing) (?:an? |the |my |one |another )?(c\d+|it|itself|(?:\d+/\d+)(?: (?!to\b|into\b|targeting\b|at\b|on\b)[a-z]+)*)(?: (?:to|into) (?:an? |the |my )?(c\d+|it|that)(?:'s ability)?)?(.*)$""").find(c.replace(Regex("""\s+(?:in response(?: to (?:it|that|the spell))?|for mana|for value|instead|first|before it resolves|with (?:the )?(?:trigger|spell) on the stack)(?=\s|$)"""), ""))?.let { r ->
             val who = actor ?: subject ?: "me"
             val what = r.groupValues[1]
-            val id = if (what == "it" || what == "itself") (ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.lastOrNull { it.verb == "cast" && it.player == who }?.card?.name?.let { slug(it) } ?: ctx.events.lastOrNull { it.verb == "cast" || it.verb == "activate" }?.targets?.firstOrNull { it in ctx.objects && ctx.objects.getValue(it).controller == who } ?: ctx.objects.values.lastOrNull { it.controller == who }?.id ?: return@let)
+            // Only your own permanents can be sacrificed, so "it" is the actor's rather than the last one named.
+            val id = if (what == "it" || what == "itself") (ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller == who } ?: ctx.events.lastOrNull { it.verb == "cast" && it.player == who }?.card?.name?.let { slug(it) } ?: ctx.events.lastOrNull { it.verb == "cast" || it.verb == "activate" }?.targets?.firstOrNull { it in ctx.objects && ctx.objects.getValue(it).controller == who } ?: ctx.objects.values.lastOrNull { it.controller == who }?.id ?: return@let)
                      else if (Regex("""^\d+/\d+""").containsMatchIn(what)) {
                          // "sacrifice a 2/2": a creature nobody named, already on the battlefield or described now.
                          val pt = Regex("""^(\d+/\d+)""").find(what)!!.groupValues[1]
@@ -2804,7 +2809,13 @@ class SituationParser(private val names: NameIndex) {
             val who = actor ?: subject ?: "me"
             // "it" after a spell means what that spell targeted ("I cast Act of Treason on their Giant and attack with it"); an Aura's "it" is what it enchants.
             // Nothing was targeted, so "it" is the creature just cast: it has to resolve first, and then it's summoning sick.
-            val id = ctx.lastMentioned?.takeIf { !it.startsWith("cast:") }?.let { lm -> ctx.objects[lm]?.attachedTo ?: lm } ?: ctx.events.lastOrNull { it.verb == "cast" }?.targets?.firstOrNull { it in ctx.objects } ?: castPermanentObject(ctx) ?: return false
+            val lm = ctx.lastMentioned?.takeIf { !it.startsWith("cast:") }?.let { l -> ctx.objects[l]?.attachedTo ?: l }
+            // You attack with your own, so "it" is the actor's creature — unless a spell of theirs took it
+            // (Act of Treason), which is exactly when the last-named creature is someone else's and still right.
+            val stolen = lm != null && ctx.events.any { (it.verb == "cast" || it.verb == "activate") && lm in it.targets }
+            val id = lm?.takeIf { stolen || ctx.objects[it]?.controller == who }
+                ?: ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id
+                ?: lm ?: ctx.events.lastOrNull { it.verb == "cast" }?.targets?.firstOrNull { it in ctx.objects } ?: castPermanentObject(ctx) ?: return false
             ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(ctx.other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
         }
         // "attack Jace with Hill Giant", "attacks their planeswalker with c2": the defender comes first.
