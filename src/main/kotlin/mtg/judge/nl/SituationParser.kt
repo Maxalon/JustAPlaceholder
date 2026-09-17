@@ -2685,6 +2685,18 @@ class SituationParser(private val names: NameIndex) {
             val who = actor ?: ctx.objects[id]?.controller ?: ctx.events.lastOrNull { it.verb == "cast" }?.player ?: ctx.other(attackerEvent.player) ?: "me"
             ctx.events += EventSpec("block", player = who, obj = id, targets = listOfNotNull(attackerEvent.obj)); ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
+        // "I block the 3/3 with a 4/4": the attacker is named by its size, so it is that attack that is blocked
+        // and not whichever one was declared last.
+        Regex("""^(?:chump[- ]?)?(?:blocks?|blocking)\s+(?:the |a |an |their |his |her |my opponent's |the opponent's )?(\d+/\d+)(?: ($kwNouns))?(?: ($creatureKinds))?\s+with\s+(an? |the |my |their )?(\d+/\d+)(?: ($kwNouns))?(?: ($creatureKinds))?$""").find(c)?.let { r ->
+            val atkPt = r.groupValues[1]
+            val atk = ctx.events.lastOrNull { e -> e.verb == "attack" && e.obj?.let { o -> (ctx.objects[o]?.card?.name ?: "").startsWith("a $atkPt") } == true } ?: return@let
+            val who = actor ?: ctx.other(atk.player) ?: "me"
+            val kw = r.groupValues[6].let { k -> if (k.isEmpty()) "" else k.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink") }
+            val ids = describedCreatures(r.groupValues[4].ifEmpty { "a " }, r.groupValues[5], r.groupValues[7], who, ctx, kw)
+            if (ids.isEmpty()) return@let
+            ids.forEach { ctx.events += EventSpec("block", player = who, obj = it, targets = listOfNotNull(atk.obj)) }
+            ctx.lastActor = who; ctx.lastVerb = "block"; ctx.lastMentioned = ids.last(); return true
+        }
         // "blocks with two 2/2s", "chump blocks with a 1/1 goblin": described creatures block the last attacker (all of them the same one).
         Regex("""^(?:(?:chump[- ]?)?(?:blocks?|blocking)|chumps?)(?: it| that| the attacker)?(?: with)?\s+(an? |the |my |their |\d+ |two |three |four |five )?(?:(\d+/\d+)s?\s*)?(?:(red|green|white|blue|black|colorless|flying) )?(?:($kwNouns)\b ?)?($creatureKinds)?( tokens?)?(?: with ([a-z ,&]+?))?(?: plus .*)?$""").find(c)?.let { r0 ->
             val kwNoun = r0.groupValues[4].let { if (it.isEmpty()) "" else it.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink").replace("striker", "strike") }

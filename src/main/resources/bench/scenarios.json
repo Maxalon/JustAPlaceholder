@@ -9605,5 +9605,46 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "block-the-attacker-named-by-size",
+    "text": "My opponent attacks me with a 3/3 and a 2/2. I block the 3/3 with a 4/4. What happens?",
+    "expect": [
+      "a 3/3 creature: the battlefield \u2192 opponent's graveyard",
+      "You take 2 damage"
+    ],
+    "notExpect": [
+      "Not understood",
+      "can't block"
+    ],
+    "cite": []
+  },
+  {
+    "id": "two-attack-taxes-are-one-cost",
+    "text": "I control Propaganda and Ghostly Prison. My opponent has 3 mana and attacks with two creatures. What happens?",
+    "expect": [
+      "attacking costs {4} in all"
+    ],
+    "notExpect": [
+      "pays {2} for Propaganda",
+      "Not understood"
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "two-attack-taxes-both-paid",
+    "text": "I control Propaganda and Ghostly Prison. My opponent has 5 mana and attacks with a 2/2. What happens?",
+    "expect": [
+      "pays {2} for Propaganda",
+      "pays {2} for Ghostly Prison",
+      "You take 2 damage"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Not modeled"
+    ],
+    "cite": []
   }
 ]

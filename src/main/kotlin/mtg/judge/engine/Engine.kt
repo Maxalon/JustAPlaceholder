@@ -872,6 +872,17 @@ class Engine(val state: GameState) {
         (defender as? Ref.Obj)?.let { d -> val o = state.objects[d.id]; if (o == null || !o.isOnBattlefield() || !(o.def.isPlaneswalker || "Battle" in o.def.types)) { trace.step("${state.nameOf(defender)} isn't a player, planeswalker or battle, so it can't be attacked.", "506.3"); return } else if (o.controller == playerId) { trace.step("${o.name} is ${p.possessive} own permanent; only an opponent's planeswalker or a battle can be attacked.", "506.2", "508.1b"); return } }
         // Propaganda / Ghostly Prison: attacking that player costs mana per attacker.
         val defendingPlayer = when (defender) { is Ref.Player -> defender.id; is Ref.Obj -> state.objects[defender.id]?.controller; else -> null }
+        // Two taxes are one cost to pay: paying the first and then failing the second spent mana for nothing.
+        run {
+            val all = state.objects.values.filter { it.isOnBattlefield() && it.controller == defendingPlayer }
+                .flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.AttackTax>().map { o to it } }
+            val total = all.sumOf { (_, t) -> Regex("""\{(\d+)\}""").find(t.cost)?.groupValues?.get(1)?.toIntOrNull() ?: 0 }
+            if (all.size > 1 && p.mana != null && p.mana!! < total) {
+                trace.step("${all.joinToString(" and ") { (o, _) -> o.name }} each say creatures can't attack ${state.nameOf(Ref.Player(defendingPlayer!!))} unless their controller pays, so attacking with ${a.name} costs {$total} in all; ${p.subject.lowercase()} ${p.v("has", "have")} only ${p.mana}, so it can't attack.", "508.1c")
+                state.outcomes += "${a.name} can't attack (attacking costs {$total} in all: ${all.joinToString(" and ") { (o, t) -> "${t.cost} for ${o.name}" }})."
+                return
+            }
+        }
         state.objects.values.filter { it.isOnBattlefield() && it.controller == defendingPlayer }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.AttackTax>().map { o to it } }.forEach { (src, tax) ->
             when {
                 state.wontPay.remove(playerId) -> { trace.step("${src.name} says creatures can't attack ${state.nameOf(Ref.Player(defendingPlayer!!))} unless their controller pays ${tax.cost} for each; ${p.subject.lowercase()} ${p.v("doesn't", "don't")} pay, so ${a.name} can't attack.", "508.1c"); state.outcomes += "${a.name} can't attack (${src.name}'s cost not paid)."; return }
