@@ -235,6 +235,10 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         e.to == "attack" && o.tapped == true && o.attacking == null -> "No: ${o.name} is tapped, so it can't be declared as an attacker (508.1a)."
                         e.to == "block" && o.tapped == true && o.blocking == null -> "No: ${o.name} is tapped, and a tapped creature can't be declared as a blocker (509.1a)."
                         e.to == "block" && o.attacking != null -> "No: ${o.name} is attacking, so it isn't there to block (509.1a)."
+                        // "which of my creatures can block it?": the attacker's evasion decides it, and answering
+                        // yes for a ground creature against a flyer is the wrong answer, not a missing one.
+                        e.to == "block" && attackerFacing(o, state) != null ->
+                            attackerFacing(o, state)!!.let { att -> engine.cantBlockWhy(att, o)?.let { (_, _, out) -> "No: $out" } ?: "Yes: ${o.name} can block ${att.name}." }
                         else -> engine.cantWhy(o.id, e.to)?.let { why -> "No: ${o.name} can't ${e.to} (${if (why == o.name) "its own ability" else why} says so)." }
                             ?: if (o.isOnBattlefield()) "Yes: ${o.name} can ${e.to}${if (e.to == "attack" && o.summoningSick == true && !o.has("haste")) ", but not this turn: it's summoning sick (302.6)" else ""}." else "No: ${o.name} isn't on the battlefield."
                     }
@@ -329,6 +333,14 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             else -> throw JudgeException("Unknown event verb '${e.verb}'")
         }
     }
+
+    /** The attacker a creature would be blocking: one attacking its controller, or a planeswalker they control. */
+    private fun attackerFacing(o: mtg.judge.engine.GameObject, state: GameState): mtg.judge.engine.GameObject? =
+        state.objects.values.lastOrNull { a -> a.isOnBattlefield() && a.attacking != null && when (val d = a.attacking) {
+            is mtg.judge.engine.Ref.Player -> d.id == o.controller
+            is mtg.judge.engine.Ref.Obj -> state.objects[d.id]?.controller == o.controller
+            else -> false
+        } }
 
     private fun describeEvent(e: EventSpec, state: GameState): String {
         val who = e.player?.let { state.players.firstOrNull { p -> p.id == it }?.let { p -> if (p.you) "you" else p.name } ?: it }

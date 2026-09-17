@@ -2838,14 +2838,14 @@ class SituationParser(private val names: NameIndex) {
             ctx.asks += EventSpec("ask", obj = id, to = "activate"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "what color mana can it make?" / "what does it tap for?": the permanent's mana abilities as they stand.
-        Regex("""^(?:what (?:colou?r )?(?:of )?mana (?:can|does|do|will) (?:it|that|(?:my |their |the |@\w+'s )?(c\d+)) (?:make|produce|add|tap for)|what (?:does|do|can) (?:it|that|(?:my |their |the )?(c\d+)) tap for)(?: now| then)?$""").find(clause0)?.let { q ->
+        Regex("""^(?:(?:what|how much|how many) (?:colou?r )?(?:of )?mana (?:can|does|do|will) (?:it|that|(?:my |their |the |@\w+'s )?(c\d+)) (?:make|produce|add|give|tap for)|what (?:does|do|can) (?:it|that|(?:my |their |the )?(c\d+)) tap for)(?: now| then| for me)?$""").find(clause0)?.let { q ->
             val ph = q.groupValues[1].ifEmpty { q.groupValues[2] }
             val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
                      else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.card?.name?.let { slug(it) } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, to = "mana"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "which of my creatures can attack?": one answer per creature that player controls.
-        Regex("""^(?:which|what) (?:of (?:my|their|his|her)|my|their|his|her) creatures?(?: can| could| may| is able to| are able to)? (attack|block)(?: this turn| now| at all)?$""").find(clause0)?.let { q ->
+        Regex("""^(?:which|what) (?:of (?:my|their|his|her)|my|their|his|her) creatures?(?: can| could| may| is able to| are able to)? (attack|block)(?:\s+(?:it|that|them|the attacker|this turn|now|at all))*$""").find(clause0)?.let { q ->
             val who = Regex("""\b(my|their|his|her)\b""").find(clause0)?.groupValues?.get(1)?.let { if (it == "my") "me" else pronounPlayer(ctx, it) } ?: "me"
             val ids = ctx.objects.values.filter { it.controller == who && it.zone == "battlefield" && isCreatureName(it.card.name) }.map { it.id }
             if (ids.isEmpty()) return@let

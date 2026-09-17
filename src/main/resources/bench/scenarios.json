@@ -8480,5 +8480,29 @@
     ],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "which-creatures-can-block-a-flyer",
+    "text": "My opponent attacks with Serra Angel. I control Grizzly Bears. Which of my creatures can block it?",
+    "expect": [
+      "can't block Serra Angel (flying)"
+    ],
+    "notExpect": [
+      "Yes: Grizzly Bears can block"
+    ],
+    "cite": [
+      "702.9b"
+    ]
+  },
+  {
+    "id": "how-much-mana-does-it-make",
+    "text": "I control Sol Ring. How much mana does it make?",
+    "expect": [
+      "Add {C}{C}"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]

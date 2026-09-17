@@ -890,6 +890,29 @@ class Engine(val state: GameState) {
     }
 
     /** Declare one blocker for one attacker (509.1). Legality of evasion abilities is checked here; menace is re-checked when damage is dealt. */
+    /** Why [b] can't block [a] — the trace line, the rules behind it, and the one-line outcome — or null when it can. */
+    fun cantBlockWhy(a: GameObject, b: GameObject): Triple<String, List<String>, String>? {
+        if (cant(a, "be blocked")) return Triple("${a.name} can't be blocked.", listOf("509.1b"), "${b.name} can't block ${a.name}.")
+        cantBeBlockedBy(a, b)?.let { r -> return Triple("${a.name} can't be blocked by ${r.by!!.raw}, and ${b.name} is one, so it can't block ${a.name}.", listOf("509.1b"), "${b.name} can't block ${a.name}.") }
+        state.protections(a).takeIf { it.isNotEmpty() }?.let { prots ->
+            val bq = qualitiesOf(b.def)
+            prots.firstOrNull { it == "everything" || it in bq }?.let { q -> return Triple("${a.name} has protection from $q, so ${b.name} can't block it.", listOf("702.16f"), "${b.name} can't block ${a.name} (protection).") }
+        }
+        if (a.has("fear") && !(b.has("fear") || "Artifact" in b.def.types || 'B' in b.def.colors)) return Triple("${a.name} has fear and can't be blocked except by artifact creatures and/or black creatures.", listOf("702.36b"), "${b.name} can't block ${a.name} (fear).")
+        if (a.has("intimidate") && !("Artifact" in b.def.types || b.def.colors.intersect(a.def.colors).isNotEmpty())) return Triple("${a.name} has intimidate and can't be blocked except by artifact creatures and/or creatures that share a color with it.", listOf("702.13b"), "${b.name} can't block ${a.name} (intimidate).")
+        if (a.has("horsemanship") && !b.has("horsemanship")) return Triple("${a.name} has horsemanship and can't be blocked except by creatures with horsemanship.", listOf("702.31b"), "${b.name} can't block ${a.name} (horsemanship).")
+        if (a.has("shadow") != b.has("shadow")) return Triple("${a.name} ${if (a.has("shadow")) "has" else "doesn't have"} shadow and ${b.name} ${if (b.has("shadow")) "has" else "doesn't have"}; creatures with shadow can only block and be blocked by creatures with shadow.", listOf("702.28b"), "${b.name} can't block ${a.name} (shadow).")
+        if (a.has("skulk") && (b.power ?: 0) > (a.power ?: 0)) return Triple("${a.name} has skulk and can't be blocked by creatures with greater power.", listOf("702.118b"), "${b.name} can't block ${a.name} (skulk).")
+        (a.def.keywords.firstOrNull { it.endsWith("walk") && it != "landwalk" } ?: a.def.abilities.filterIsInstance<StaticAbility>().map { it.text.trimEnd('.').lowercase() }.firstOrNull { it.endsWith("walk") && !it.contains(' ') })?.let { walk ->
+            val landType = walk.removeSuffix("walk").replaceFirstChar { it.uppercase() }
+            val defender = state.player(b.controller)
+            if (state.objects.values.any { it.isOnBattlefield() && it.controller == defender.id && "Land" in it.def.types && (it.def.subtypes.any { st -> st.equals(landType, true) } || it.def.name.equals(landType, true)) })
+                return Triple("${a.name} has $walk and ${defender.subject.lowercase()} ${defender.v("controls", "control")} a $landType, so it can't be blocked.", listOf("702.14c"), "${b.name} can't block ${a.name} ($walk).")
+        }
+        if (a.has("flying") && !(b.has("flying") || b.has("reach"))) return Triple("${a.name} has flying and ${b.name} has neither flying nor reach, so ${b.name} can't block it.", listOf("702.9b"), "${b.name} can't block ${a.name} (flying).")
+        return null
+    }
+
     fun declareBlocker(playerId: String, blockerId: String, attackerId: String) {
         emptyStackFirst("declaring blockers")
         val b = state.obj(blockerId); val a = state.obj(attackerId); val p = state.player(playerId)
@@ -902,25 +925,7 @@ class Engine(val state: GameState) {
         if (!defendsAgainst) { trace.step("${a.name} is attacking ${state.nameOf(a.attacking!!)}, not ${p.subject.lowercase()}${if (p.you) "" else " or a planeswalker ${p.subject} controls"}, so ${b.name} can't block it.", "509.1a"); state.outcomes += "${b.name} can't block ${a.name} (it isn't attacking ${p.subject.lowercase()})."; return }
         if (b.tapped == true) { trace.step("${b.name} is tapped, so it can't block.", "509.1a"); state.outcomes += "${b.name} can't block (tapped)."; return }
         if (cant(b, "block")) { trace.step("${b.name} can't block (a rules text says so${cantSource(b, "block")?.let { ": $it" } ?: ""}).", "509.1b"); state.outcomes += "${b.name} can't block."; return }
-        if (cant(a, "be blocked")) { trace.step("${a.name} can't be blocked.", "509.1b"); state.outcomes += "${b.name} can't block ${a.name}."; return }
-        cantBeBlockedBy(a, b)?.let { r -> trace.step("${a.name} can't be blocked by ${r.by!!.raw}, and ${b.name} is one, so it can't block ${a.name}.", "509.1b"); state.outcomes += "${b.name} can't block ${a.name}."; return }
-        state.protections(a).takeIf { it.isNotEmpty() }?.let { prots ->
-            val bq = qualitiesOf(b.def)
-            prots.firstOrNull { it == "everything" || it in bq }?.let { q -> trace.step("${a.name} has protection from $q, so ${b.name} can't block it.", "702.16f"); state.outcomes += "${b.name} can't block ${a.name} (protection)."; return }
-        }
-        if (a.has("fear") && !(b.has("fear") || "Artifact" in b.def.types || 'B' in b.def.colors)) { trace.step("${a.name} has fear and can't be blocked except by artifact creatures and/or black creatures.", "702.36b"); state.outcomes += "${b.name} can't block ${a.name} (fear)."; return }
-        if (a.has("intimidate") && !("Artifact" in b.def.types || b.def.colors.intersect(a.def.colors).isNotEmpty())) { trace.step("${a.name} has intimidate and can't be blocked except by artifact creatures and/or creatures that share a color with it.", "702.13b"); state.outcomes += "${b.name} can't block ${a.name} (intimidate)."; return }
-        if (a.has("horsemanship") && !b.has("horsemanship")) { trace.step("${a.name} has horsemanship and can't be blocked except by creatures with horsemanship.", "702.31b"); state.outcomes += "${b.name} can't block ${a.name} (horsemanship)."; return }
-        if (a.has("shadow") != b.has("shadow")) { trace.step("${a.name} ${if (a.has("shadow")) "has" else "doesn't have"} shadow and ${b.name} ${if (b.has("shadow")) "has" else "doesn't have"}; creatures with shadow can only block and be blocked by creatures with shadow.", "702.28b"); state.outcomes += "${b.name} can't block ${a.name} (shadow)."; return }
-        if (a.has("skulk") && (b.power ?: 0) > (a.power ?: 0)) { trace.step("${a.name} has skulk and can't be blocked by creatures with greater power.", "702.118b"); state.outcomes += "${b.name} can't block ${a.name} (skulk)."; return }
-        (a.def.keywords.firstOrNull { it.endsWith("walk") && it != "landwalk" } ?: a.def.abilities.filterIsInstance<StaticAbility>().map { it.text.trimEnd('.').lowercase() }.firstOrNull { it.endsWith("walk") && !it.contains(' ') })?.let { walk ->
-            val landType = walk.removeSuffix("walk").replaceFirstChar { it.uppercase() }
-            val defender = state.player(b.controller)
-            if (state.objects.values.any { it.isOnBattlefield() && it.controller == defender.id && "Land" in it.def.types && (it.def.subtypes.any { st -> st.equals(landType, true) } || it.def.name.equals(landType, true)) }) {
-                trace.step("${a.name} has $walk and ${defender.subject.lowercase()} ${defender.v("controls", "control")} a $landType, so it can't be blocked.", "702.14c"); state.outcomes += "${b.name} can't block ${a.name} ($walk)."; return
-            }
-        }
-        if (a.has("flying") && !(b.has("flying") || b.has("reach"))) { trace.step("${a.name} has flying and ${b.name} has neither flying nor reach, so ${b.name} can't block it.", "702.9b"); state.outcomes += "${b.name} can't block ${a.name} (flying)."; return }
+        cantBlockWhy(a, b)?.let { (why, rules, out) -> trace.step(why, *rules.toTypedArray()); state.outcomes += out; return }
         val firstBlocker = blockersOf(a).isEmpty()
         b.blocking = a.id; a.wasBlocked = true
         if (firstBlocker) onEvent(GameEvent.BecomesBlocked(a))
