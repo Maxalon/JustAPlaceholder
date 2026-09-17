@@ -9434,5 +9434,28 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "keyword-after-the-size",
+    "text": "My opponent attacks with a 2/2 lifelink and I block with a 2/2 deathtouch. What happens?",
+    "expect": [
+      "opponent gains 2 life",
+      "a 2/2 creature with lifelink: the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "keyword-after-the-size-on-control",
+    "text": "I control a 2/2 vigilance and attack with it. Is it tapped?",
+    "expect": [
+      "is untapped"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

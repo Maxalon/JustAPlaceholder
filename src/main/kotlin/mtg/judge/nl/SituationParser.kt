@@ -304,8 +304,10 @@ class SituationParser(private val names: NameIndex) {
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in colorWords &&
                 ((normWords.getOrNull(f.start - 1) == "from" && (maxOf(0, f.start - 4) until f.start).any { normWords[it] == "protection" }) ||
                  normWords.getOrNull(f.end) in colorNouns)) }
-            // "a 2/2 with lifelink and deathtouch": a keyword in a keyword list is a keyword, not the card of that name.
-            .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in keywordWords && normWords.getOrNull(f.start - 1) in setOf("with", "and", "&", "gains", "gain", "has", "have", "granted") && normWords[f.start] !in short) }
+            // "a 2/2 with lifelink and deathtouch", "a 2/2 lifelink": a keyword in a keyword list, or straight
+            // after the size, is a keyword and not the card of that name.
+            .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in keywordWords && normWords[f.start] !in short &&
+                (normWords.getOrNull(f.start - 1) in setOf("with", "and", "&", "gains", "gain", "has", "have", "granted") || Regex("""^\d+(?:/\d+)?$""").matches(normWords.getOrNull(f.start - 1) ?: "") || Regex("""^\d+/\d+$""").matches(rawWords.getOrNull(f.start - 1) ?: ""))) }
             // A first name that could mean several cards ("Jace") means the one named in full earlier, however it was matched.
             .map { f -> if (f.end - f.start == 1 && f.entry.alternatives.isNotEmpty()) short[normWords[f.start]]?.let { f.copy(entry = it) } ?: f else f }.sortedBy { it.start }
         val keptSpans = kept.map { it.start to it.end }.toSet()
@@ -753,6 +755,9 @@ class SituationParser(private val names: NameIndex) {
         val clauseIn = clauseIn0.replace(Regex("""\b(?:tr(?:y|ies|ied)|attempts?|attempted|want(?:s|ed)?|would like) to (?=(?:activate|use|tap|untap|block|attack|cast|play|sacrifice|equip|counter|draw|search|target|crack|pop|fire|give|put|destroy|exile|bounce|kill|return|regenerate)\b)"""), "")
             // "I control Valakut and five other Mountains": "other" only says they aren't the card just named.
             .replace(Regex("""^(\d+) other (?=c\d+\b|[a-z])"""), "$1 ")
+            // "I control a 2/2 vigilance": a keyword straight after the size, with no noun after it, describes the
+            // creature the same way "a 2/2 with vigilance" does.
+            .replace(Regex("""\b(\d+/\d+) ($kwPhrase)(?=$|[.,;?]| (?:and|or|plus)\b)"""), "$1 creature with $2")
             // "activate its monstrosity" / "activate its ability": the permanent is the thing being activated.
             .replace(Regex("""\b(activates?|activating|uses?|using) (?:its|his|her|their) (?:monstrosity|ability)\b"""), "$1 it")
         val read = readClause0(clauseIn, m, ctx)
