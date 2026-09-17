@@ -388,9 +388,25 @@ object OracleParser {
         Regex("""^if a player would gain life, that player gains no life instead\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return StaticEffect.Replace(Replacement.LifeGainMultiplier(0, anyPlayer = true)) }
         Regex("""^if you would gain life, you gain no life instead\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return StaticEffect.Replace(Replacement.LifeGainMultiplier(0)) }
         Regex("""^if an effect would create one or more tokens under your control, it creates twice that many of those tokens instead\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return StaticEffect.Replace(Replacement.TokenMultiplier(2)) }
+        // Primal Vigor: no "under your control", so it doubles every player's tokens.
+        Regex("""^if one or more tokens would be created, twice that many of those tokens are created instead\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return StaticEffect.Replace(Replacement.TokenMultiplier(2, anyPlayer = true)) }
         Regex("""^if an effect would (?:place|put) one or more counters on a permanent you control, it (?:places|puts) twice that many of those counters on that permanent instead\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return StaticEffect.Replace(Replacement.CounterMultiplier(2)) }
         Regex("""^creatures you control can't have ([+-]\d/[+-]\d|\w+) counters put on them\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             return StaticEffect.Replace(Replacement.CounterMultiplier(0, kind = m.groupValues[1]))
+        }
+        // Corpsejack Menace: "If one or more +1/+1 counters would be put on a creature you control, twice that
+        // many +1/+1 counters are put on it instead." — the same doubling Doubling Season does, for one kind.
+        Regex("""^if one or more ([+-]\d+/[+-]\d+|\w+) counters would be put on an? (?:creature|artifact|permanent|creature or artifact|artifact or creature) you control, twice that many \1 counters are put on (?:it|that permanent|that creature) instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            return StaticEffect.Replace(Replacement.CounterMultiplier(2, kind = m.groupValues[1]))
+        }
+        // Primal Vigor: the same without "you control", so it doubles for every player.
+        Regex("""^if one or more ([+-]\d+/[+-]\d+|\w+) counters would be put on an? (?:creature|artifact|permanent), twice that many \1 counters are put on (?:it|that permanent|that creature) instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            return StaticEffect.Replace(Replacement.CounterMultiplier(2, anyPlayer = true, kind = m.groupValues[1]))
+        }
+        // Winding Constrictor: every kind of counter, one more of each.
+        Regex("""^if one or more counters would be put on an? (?:artifact or creature|creature or artifact|creature|artifact|permanent) you control, that many plus (one|two|\d+) of each of those kinds of counters are put on that permanent instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val n = number(m.groupValues[1]) ?: return@let
+            return StaticEffect.Replace(Replacement.CounterMultiplier(1, extra = n))
         }
         // Hardened Scales: "If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead."
         Regex("""^if one or more ([+-]\d+/[+-]\d+|\w+) counters would be put on an? (?:creature|artifact|permanent) you control, that many plus (one|two|\d+) \1 counters are put on it instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->

@@ -418,7 +418,8 @@ sealed interface Replacement {
     /** "If an effect would place one or more counters on a permanent you control, it places twice that many instead." (Doubling Season) */
     data class CounterMultiplier(val factor: Int, val anyPlayer: Boolean = false, val extra: Int = 0, val kind: String? = null) : Replacement
     /** "If an effect would create one or more tokens under your control, it creates twice that many instead." */
-    data class TokenMultiplier(val factor: Int) : Replacement
+    /** Doubling Season doubles its controller's tokens; Primal Vigor doubles everyone's (anyPlayer). */
+    data class TokenMultiplier(val factor: Int, val anyPlayer: Boolean = false) : Replacement
     /** Regeneration shield: the next time it would be destroyed this turn (701.19a). */
     data object Regenerate : Replacement
 }

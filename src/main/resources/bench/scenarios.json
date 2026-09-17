@@ -8794,5 +8794,51 @@
       "+1/+1 counter"
     ],
     "cite": []
+  },
+  {
+    "id": "corpsejack-doubles-a-counter",
+    "text": "I control Corpsejack Menace and put a +1/+1 counter on my Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears has 2 +1/+1 counters"
+    ],
+    "notExpect": [],
+    "cite": [
+      "614.6"
+    ]
+  },
+  {
+    "id": "winding-constrictor-adds-one",
+    "text": "I control Winding Constrictor and put a +1/+1 counter on my Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears has 2 +1/+1 counters"
+    ],
+    "notExpect": [],
+    "cite": [
+      "614.6"
+    ]
+  },
+  {
+    "id": "primal-vigor-doubles-everyones-tokens",
+    "text": "My opponent controls Primal Vigor and casts Lingering Souls. What happens?",
+    "expect": [
+      "(\u00d74)"
+    ],
+    "notExpect": [],
+    "cite": [
+      "111.1"
+    ]
+  },
+  {
+    "id": "doubling-season-is-only-yours",
+    "text": "I control Doubling Season and my opponent casts Lingering Souls. What happens?",
+    "expect": [
+      "(\u00d72)"
+    ],
+    "notExpect": [
+      "(\u00d74)"
+    ],
+    "cite": [
+      "111.1"
+    ]
   }
 ]
