@@ -1118,6 +1118,14 @@ class SituationParser(private val names: NameIndex) {
             if (tail.isNotEmpty() && !Regex("""^(?:is |are )?(?:tapped|untapped|out|in play|on the battlefield|on board)$""").matches(tail)) {
                 val action = Regex("""^(attacks?|swings?|blocks?)\b(.*)$""").find(tail)
                 if (action != null) return readClause("@$owner ${action.groupValues[1]} with ${r.groupValues[3]}${action.groupValues[2]}", m, ctx) || true
+                // Anything else after the card ("@alice's Bears has a Rancor on it") belongs to another rule.
+                // Claiming the clause here dropped the rest of it without saying so; the permanent is on the
+                // battlefield either way, and the rules that read a possessive take the clause from here.
+                // A tail the state words above already applied ("has 3 +1/+1 counters on it") is not passed on,
+                // or the counters would be put on twice.
+                if (!Regex("""(?:with|at|has|having|and) (?:\d+|\w+) (?:loyalty|(?:[+-]\d+/[+-]\d+|[a-z]+) counters?|damage)\b""").containsMatchIn(tail) &&
+                    !Regex("""\b(?:summoning sick|summoning sickness|just (?:played|cast)|played this turn|cast this turn|has been out|from last turn)\b""").containsMatchIn(tail))
+                    return@let
             }
             return true
         }

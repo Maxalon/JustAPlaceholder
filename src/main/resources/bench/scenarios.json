@@ -8668,5 +8668,27 @@
     "cite": [
       "701.6a"
     ]
+  },
+  {
+    "id": "a-named-players-aura",
+    "text": "Alice's Grizzly Bears has a Rancor on it. What are its stats?",
+    "expect": [
+      "Grizzly Bears is 4/2"
+    ],
+    "notExpect": [
+      "Grizzly Bears is 2/2"
+    ],
+    "cite": []
+  },
+  {
+    "id": "a-named-players-creature-enchanted",
+    "text": "Alice's Grizzly Bears is enchanted with Pacifism. Can it attack?",
+    "expect": [
+      "can't attack"
+    ],
+    "notExpect": [],
+    "cite": [
+      "508.1c"
+    ]
   }
 ]
