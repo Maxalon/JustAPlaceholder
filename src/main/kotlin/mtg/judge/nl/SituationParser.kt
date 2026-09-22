@@ -93,7 +93,7 @@ class SituationParser(private val names: NameIndex) {
 
     /** For debugging: the sentences with card names replaced by placeholders. */
     fun debugMark(text: String): List<String> = splitSentences(text).let { ss -> val short = shortNames(ss); val named = playerNames(ss); ss.map { s -> val m = mark(s, short, named); m.text + "   " + m.cards.map { (k, v) -> "$k=${v.display}" } + (if (m.players.isEmpty()) "" else "   players=" + m.players.values) + "   clauses=" + m.text.split(clauseSplit).map { it.trim() } } }
-    private val clauseSplit = Regex("""\s*(?:,|\band\b)\s+""")
+    private val clauseSplit = Regex("""\s*(?:,|\band\b|\bbut\b(?= (?:i|we|they|he|she|my|their|his|her|the|it)\b))\s+""")
 
     fun parse(text: String): Parsed {
         val ctx = Ctx()

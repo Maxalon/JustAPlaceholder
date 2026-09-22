@@ -12446,5 +12446,16 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "but-splits-a-statement",
+    "text": "They block with a 2/2 but I have a Giant Growth. What happens?",
+    "expect": [
+      "a 2/2 creature has 1 damage marked"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
