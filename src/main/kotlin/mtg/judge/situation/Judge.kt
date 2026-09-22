@@ -527,6 +527,12 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
     private fun parseRef(s: String, state: GameState): Ref {
         if (state.objects.containsKey(s)) return Ref.Obj(s)
+        // "my 3/3 is blocked by a 2/2 and I cast Giant Growth on it": after a block "it" has two readings, and the
+        // parser hands both over, the speaker's own side first. disambiguate() picks between them where it knows
+        // the target's filter; everywhere else, take the first that names something rather than dropping the event.
+        if ('|' in s) for (part in s.split('|')) if (part.isNotEmpty()) {
+            try { return parseRef(part, state) } catch (e: JudgeException) { }
+        }
         if (state.players.any { it.id == s }) return Ref.Player(s)
         if (state.stackItem(s) != null) return Ref.Stack(s)
         if (':' in s) {

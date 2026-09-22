@@ -430,8 +430,12 @@ class Engine(val state: GameState) {
             state.unsupported += Unsupported(obj.name, "No activated ability was recognised on ${obj.name}."); return null
         }
         val pickedIndex = abilityIndex ?: if (abilities.size > 1) {
-            // Nothing said which: take the first that isn't a mana ability, and say so.
-            val first = abilities.indexOfFirst { a -> !(isManaEffect(a.effect)) }.takeIf { it >= 0 } ?: 0
+            // Nothing said which: take the first that isn't a mana ability, and say so. A target was named, so
+            // prefer one that takes a target — "I activate Walking Ballista targeting their 1/1" is the ability
+            // that deals the damage, not the one that only puts a counter on the Ballista itself.
+            val nonMana = abilities.withIndex().filter { !(isManaEffect(it.value.effect)) }
+            val first = (if (targets.isEmpty()) null else nonMana.firstOrNull { it.value.effect.targets().isNotEmpty() })?.index
+                ?: nonMana.firstOrNull()?.index ?: 0
             state.assumptions += "${obj.name} has ${abilities.size} activated abilities and none was named; assuming \"${abilities[first].text.replace("~", obj.name)}\"${abilities.withIndex().filter { it.index != first }.joinToString("") { " (not \"${it.value.text.replace("~", obj.name)}\")" }}."
             first
         } else 0
@@ -947,6 +951,9 @@ class Engine(val state: GameState) {
                 if (obj.counters["+1/+1"] == 0) obj.counters.remove("+1/+1")
                 if (obj.counters["-1/-1"] == 0) obj.counters.remove("-1/-1")
                 trace.step("${obj.name} has both +1/+1 and -1/-1 counters, so $n of each are removed (state-based action); it's now ${obj.power}/${obj.toughness}.", "704.3", "704.5q")
+                // Said in the trace only, a board that was nothing but a creature carrying both kinds of counter
+                // answered "nothing changes" — when removing them is the whole of what happens.
+                state.outcomes += "${obj.name}: $n +1/+1 and $n -1/-1 counter${if (n == 1) "" else "s"} are removed (704.5q); it's ${obj.power}/${obj.toughness}."
                 changed = true
             }
             // Creatures dying to the same state-based check die at once: each sees the others go (603.10a).
