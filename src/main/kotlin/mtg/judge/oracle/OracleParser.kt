@@ -1038,6 +1038,8 @@ object OracleParser {
         Regex("""^each mode must target a different (player|opponent|creature|permanent)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated(s.trim().trimEnd('.'), listOf("700.2c")) }
         // "You can't lose the game this turn and your opponents can't win the game this turn." (Angel's Grace)
         Regex("""^you can't lose the game(?: this turn)?(?: and your opponents can't win the game(?: this turn)?)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.CantLoseThisTurn }
+        // "Until end of turn, damage that would reduce your life total to less than 1 reduces it to 1 instead." (Angel's Grace)
+        Regex("""^(?:until end of turn, )?damage that would reduce your life total to less than (\d+) reduces it to \1 instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.DamageLifeFloor(it.groupValues[1].toInt()) }
         modalRe.matchEntire(s)?.let { m ->
             val modeTexts = m.groupValues[3].split("•").map { it.trim().trimEnd('.') }.filter { it.isNotEmpty() }
             return Effect.Modal(m.groupValues[2].lowercase(), modeTexts.map { parseEffect(it) }, modeTexts)

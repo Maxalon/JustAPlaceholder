@@ -169,6 +169,8 @@ class GameState(
     var monarch: String? = null,
     /** Players who can't lose the game this turn (Angel's Grace); cleared in the cleanup step. */
     val cantLoseThisTurn: MutableSet<String> = mutableSetOf(),
+    /** Players whose life total damage can't take below the given number this turn (Angel's Grace); cleared in cleanup. */
+    val damageLifeFloor: MutableMap<String, Int> = mutableMapOf(),
     var phase: String? = null,
     var step: String? = null,
 ) {

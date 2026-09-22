@@ -11420,5 +11420,73 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "angels-grace-damage-floor",
+    "text": "I'm at 2 life. I cast Angel's Grace and my opponent attacks with a 5/5. What is my life total?",
+    "expect": [
+      "You are at 1 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "then-means-the-spell-resolved",
+    "text": "I cast Lightning Bolt at my opponent, then they cast Lightning Helix at me. What happens?",
+    "expect": [
+      "opponent takes 3 damage",
+      "You take 3 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "whats-contraction",
+    "text": "My Grizzly Bears has a +1/+1 counter. What's its power?",
+    "expect": [
+      "Grizzly Bears is 3/3"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "life-total-without-the-word",
+    "text": "I'm at 20 and my opponent attacks with a 5/5 that I don't block. What is my life total?",
+    "expect": [
+      "You are at 15 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "creature-hits-a-player",
+    "text": "I'm at 20. My opponent's Grizzly Bears hits me. What is my life total?",
+    "expect": [
+      "You are at 18 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "bare-cast-belongs-to-the-last-actor",
+    "text": "I'm at 3 life and cast Angel's Grace, then my opponent casts Lightning Bolt at me. Do I lose?",
+    "expect": [
+      "No: You are still in the game"
+    ],
+    "notExpect": [
+      "Yes: You have lost the game",
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
