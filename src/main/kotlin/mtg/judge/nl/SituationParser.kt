@@ -497,7 +497,7 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\bsends? ((?:$possPrefix|an? )?c\d+) (?:at|into|after) """), "attacks $1 at ")
             // "I blocked", "I declared Hill Giant as a blocker", "I throw Hill Giant in front of their Bears":
             // more ways to say a block that only the plain present tense was read from.
-            .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+|c\d+) blocked (?=(?:it|that|them|the|an?|my|their|his|her|with|c\d+)\b)"""), "$1 blocks ")
+            .replace(Regex("""\b(i|we|they|he|she|you|my opponent|the opponent|@\w+|c\d+) blocked (?=(?:it|that|them|the|an?|one|two|three|another|both|all|my|their|his|her|with|\d+/\d+|c\d+)\b)"""), "$1 blocks ")
             .replace(Regex("""\bdeclares? ((?:$possPrefix|an? )?c\d+) as a blocker(?: on| against| for)? """), "$1 blocks ")
             .replace(Regex("""\b(?:throws?|threw|puts?|drops?|chumps?) ((?:$possPrefix|an? )?c\d+) in (?:front of|the way of) """), "$1 blocks ")
             // "I activated it", "I turn on my Elves", "I fire off its ability", "Llanowar Elves taps for mana":
@@ -2053,11 +2053,12 @@ class SituationParser(private val names: NameIndex) {
         }
         // "I tap my Grizzly Bears", "they tap it down", "it becomes tapped": tapping a permanent, which is not the
         // same as using a {T} ability — a creature with no {T} ability can still be tapped by an effect.
-        Regex("""^taps? (?:an? |the |my |their |his |her )?(c\d+|it|that|\d+/\d+)(?: creature)?(?: down)?$|^(?:my |their |his |her |the |own )?(c\d+|it|that|\d+/\d+)(?: creature)? (?:becomes tapped|gets tapped|is tapped|was tapped|got tapped|taps down)$""").find(c)?.let { r ->
+        Regex("""^taps? (?:an? |the |my |their |his |her )?(c\d+|it|that|\d+/\d+)(?: creature)?(?: down)?$|^(?:my |their |his |her |the |own )?(c\d+|it|that|\d+/\d+|creature|guy|dude|blocker|attacker)(?: creature)? (?:becomes tapped|gets tapped|is tapped|was tapped|got tapped|taps down)$""").find(c)?.let { r ->
             val ph = r.groupValues[1].ifEmpty { r.groupValues[2] }
             val mine = Regex("""\bmy\b""").containsMatchIn(clause0) || (actor != null && actor != "me")
             val id = if (ph in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
                      else if (Regex("""^\d+/\d+$""").matches(ph)) describedCreatures("a ", ph, "creature", if (mine) "me" else (actor ?: ctx.lastOwner ?: "me"), ctx).firstOrNull() ?: return@let
+                     else if (ph in setOf("creature", "guy", "dude", "blocker", "attacker")) describedCreatures("a ", "", "creature", if (Regex("""^(?:their|his|her)\b""").containsMatchIn(clause0)) (ctx.other(actor ?: "me") ?: "opp") else (actor ?: ctx.lastOwner ?: "me"), ctx).firstOrNull() ?: return@let
                      else m.cards[ph]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, actor ?: ctx.lastOwner ?: "me", false, ctx) } ?: return@let
             // "I tap Cabal Coffers" means using its ability, not turning it sideways for nothing. The bare active
             // form is only a tap-down when it says "down" or when it is somebody else's permanent.
@@ -3098,7 +3099,7 @@ class SituationParser(private val names: NameIndex) {
             emitCast(subject ?: ctx.lastActor ?: "me", m.cards.getValue(r.groupValues[2]), r.groupValues[3] + (if (r.groupValues[1].isNotEmpty()) " " + r.groupValues[1].trim() else "") + (if (c.startsWith("kick")) " kicked" else "") + (if (c.startsWith("evok")) " with evoke" else ""), m, ctx); return true
         }
         // Verbified card name right after the actor: "Stifles the trigger", "Bolt the bears".
-        Regex("""^(c\d+)s?\s+(?:(?:targeting|on|at)\s+)?((?:the|my|their|that|this|it|them|me|c\d+)\b.*)$""").find(c)?.let { r ->
+        Regex("""^(c\d+)s?\s+(?:(?:targeting|on|at)\s+)?((?:the|my|their|that|this|it|them|me|an?|c\d+|\d+/\d+)\b.*)$""").find(c)?.let { r ->
             emitCast(subject ?: ctx.lastActor ?: "me", m.cards.getValue(r.groupValues[1]), " targeting " + r.groupValues[2], m, ctx); return true
         }
         // Loyalty abilities: "activate Jace's +1", "use Jace's -3 on the Bears", "+1 Jace", "Jace -3 targeting X"
@@ -3406,7 +3407,7 @@ class SituationParser(private val names: NameIndex) {
         // Said the other way round ("it is blocked", "it gets chump blocked") it's the same statement, and the
         // blocker is whatever the defending player has — or, if nobody said, a creature nobody named.
         // "They block my 5/5": the attacker is named but the blocker isn't, which is still a block.
-        Regex("""^(?:chump[- ]?)?blocks?(?: it| that| the attacker| with it| ($possPrefix|an? )?(c\d+|\d+/\d+))?$|^(?:(?:it|that|they|the attacker|my attacker|their attacker|the creature) )?(?:is|are|was|were|gets?|got) (?:chump[- ]?)?blocked$""").find(c)?.let { r ->
+        Regex("""^(?:chump[- ]?)?blocks?(?: it| that| the attacker| with it| one (?:guy|dude|of them|of the attackers|attacker)| a guy| a dude| ($possPrefix|an? )?(c\d+|\d+/\d+))?$|^(?:(?:it|that|they|the attacker|my attacker|their attacker|the creature) )?(?:is|are|was|were|gets?|got) (?:chump[- ]?)?blocked$""").find(c)?.let { r ->
             // A block with no attack described says there was one: "I control a 3/3 and my opponent blocks with a 1/1".
             val named = r.groupValues.getOrNull(2)?.takeIf { it.isNotEmpty() }?.let { ph ->
                 val owner = possessiveOwner(r.groupValues[1], ctx, m) ?: ctx.other(actor ?: ctx.lastActor ?: "me") ?: "opp"

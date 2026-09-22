@@ -11804,5 +11804,49 @@
     "cite": [
       "702.16b"
     ]
+  },
+  {
+    "id": "their-creature-is-tapped",
+    "text": "Their creature is tapped. Can I attack with my 1/1?",
+    "expect": [
+      "opponent takes 1 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "verbified-card-on-a-described-creature",
+    "text": "I bolt a creature with protection from red. Can I?",
+    "expect": [
+      "can't target a creature with protection from red"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "blocks-one-guy",
+    "text": "I have two 2/2s and attack with everything. They block one guy. How much damage?",
+    "expect": [
+      "opponent takes 2 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "they-tapped-my-creature",
+    "text": "They tapped my Grizzly Bears. Can I block with it?",
+    "expect": [
+      "No: Grizzly Bears is tapped"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
