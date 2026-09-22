@@ -11872,5 +11872,29 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "cant-attack-on-their-turn",
+    "text": "It's my opponent's turn. I attack with my Grizzly Bears. Can I?",
+    "expect": [
+      "You can't attack on opponent's turn"
+    ],
+    "notExpect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "508.1"
+    ]
+  },
+  {
+    "id": "cast-a-creature-with-flash",
+    "text": "I cast a creature with flash during their end step. Can I attack next turn?",
+    "expect": [
+      "opponent takes 1 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

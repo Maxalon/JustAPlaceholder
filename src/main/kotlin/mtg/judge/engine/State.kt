@@ -177,6 +177,12 @@ class GameState(
     val extraLandsThisTurn: MutableMap<String, Int> = mutableMapOf(),
     var phase: String? = null,
     var step: String? = null,
+    /**
+     * Whether the situation said whose turn it is, rather than the engine working it out from a step that was
+     * described. Only the active player declares attackers (508.1), but "block it next turn" names a turn
+     * without saying whose, so an attack by the other player there says whose turn it really is.
+     */
+    var activePlayerStated: Boolean = false,
 ) {
     val trace = Trace()
     var combatDamageDealt = false
