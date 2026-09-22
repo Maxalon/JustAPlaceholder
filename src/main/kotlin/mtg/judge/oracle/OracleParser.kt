@@ -717,6 +717,13 @@ object OracleParser {
         if (Regex("""^Counters can't be put on artifacts, creatures, enchantments, or lands\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Replace(Replacement.CounterMultiplier(0, anyPlayer = true)))
         if (Regex("""^Players can't get counters\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("122.1")))
         if (Regex("""^You may look at the top card of your library any time\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("401.5")))
+        // "~ costs {1} less to cast for each creature on the battlefield." (Blasphemous Act): a reduction the
+        // engine can work out, rather than a note saying the cost is determined as the spell is cast.
+        Regex("""^~ costs \{(\d+)\} less to cast(?: for each (.+?))?\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val n = m.groupValues[1].toIntOrNull() ?: return@let
+            val per = m.groupValues[2].takeIf { it.isNotEmpty() }?.let { parseCount("the number of $it") }
+            if (per == null || per !is CountExpr.Unknown) return listOf(StaticEffect.SelfCostReduction(n, per))
+        }
         if (Regex("""^(As an additional cost to cast ~|~ costs \{[^}]+\} (less|more) to cast|You may cast ~ )""", RegexOption.IGNORE_CASE).containsMatchIn(line)) return listOf(StaticEffect.CostText(line))
         // "~ gets -X/-X, where X is your life total." (Death's Shadow)
         Regex("""^~ gets ([+-])X/\1X, where X is (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->

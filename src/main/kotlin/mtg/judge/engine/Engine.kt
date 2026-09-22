@@ -2760,15 +2760,35 @@ class Engine(val state: GameState) {
             .flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CostTax>()
                 .filter { t -> (t.whose == null || (t.whose == Who.YOU) == (o.controller == obj.controller)) && spellMatches(t.filter, card) }.map { o to it } }
         val commanderTax = if (obj.commander && obj.commanderCasts > 0) 2 * obj.commanderCasts else 0
-        val tax = taxes.sumOf { it.second.amount } + commanderTax
-        val total = card.manaValue.toInt() + tax
-        if (taxes.isEmpty() && commanderTax == 0) return "${card.name} costs $printed — $total mana. Nothing on the battlefield changes it."
+        // Blasphemous Act: the spell's own reduction, which can only take the generic part away (601.2f).
+        val self = selfReduction(obj)
+        val tax = taxes.sumOf { it.second.amount } + commanderTax - self.first
+        val total = maxOf(colouredPips(printed), card.manaValue.toInt() + tax)
+        if (taxes.isEmpty() && commanderTax == 0 && self.first == 0) return "${card.name} costs $printed — $total mana. Nothing on the battlefield changes it."
         val parts = taxes.map { (o, t) -> "${o.name} makes it cost {${kotlin.math.abs(t.amount)}} ${if (t.amount < 0) "less" else "more"}" } +
+            (if (self.first > 0) listOf("its own text makes it cost {${self.first}} less (${self.second})") else emptyList()) +
             (if (commanderTax > 0) listOf("the commander tax adds {$commanderTax}") else emptyList())
         trace.step("${parts.joinToString(" and ")}. ${card.name}'s total cost is $printed ${if (tax < 0) "less" else "plus"} {${kotlin.math.abs(tax)}}: $total mana in all. The extra is generic, so it can be paid with any colour.", "601.2f", "118.7")
         val avail = p.mana
-        return "${card.name} costs $printed plus {${kotlin.math.abs(tax)}} ${if (tax < 0) "less" else "more"} (${parts.joinToString("; ")}) — $total mana in all." +
+        return "${card.name} costs $printed ${if (tax < 0) "minus" else "plus"} {${kotlin.math.abs(tax)}} (${parts.joinToString("; ")}) — $total mana in all." +
             (if (avail != null) if (avail >= total) " ${p.subject} ${p.v("has", "have")} $avail available, enough." else " ${p.subject} ${p.v("has", "have")} only $avail available, so it can't be cast." else "")
+    }
+
+    /** The coloured pips of a mana cost: a reduction can never take the cost below them (601.2f). */
+    private fun colouredPips(cost: String) = Regex("""\{([^}]+)\}""").findAll(cost).count { !Regex("""^\d+$|^X$""").matches(it.groupValues[1]) }
+
+    /** "~ costs {1} less to cast for each creature on the battlefield": how much less, and why. */
+    private fun selfReduction(obj: GameObject): Pair<Int, String> {
+        val r = obj.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.SelfCostReduction>().firstOrNull() ?: return 0 to ""
+        val per = r.per ?: return r.amount to "a flat {${r.amount}}"
+        val n = when (per) {
+            is CountExpr.Permanents -> state.objects.values.count { it.isOnBattlefield() && state.matches(per.filter, it, obj.controller) }
+            is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size
+            is CountExpr.YourLifeTotal -> state.player(obj.controller).life ?: 0
+            is CountExpr.Unknown -> return 0 to ""
+        }
+        val what = (per as? CountExpr.Permanents)?.filter?.raw ?: "of them"
+        return r.amount * n to "$n ${if (n == 1 || what.endsWith("s")) what else what + "s"}".trim()
     }
 
     fun manaAvailable(playerId: String): String {

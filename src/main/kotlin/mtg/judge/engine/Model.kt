@@ -445,6 +445,8 @@ sealed interface StaticEffect {
     data class CostTax(val filter: ObjFilter, val amount: Int, val whose: Who? = null) : StaticEffect
     /** Cost modifiers and additional costs: narrated when the spell is cast (601.2b, 601.2f). */
     data class CostText(val text: String) : StaticEffect
+    /** Blasphemous Act: "This spell costs {1} less to cast for each creature on the battlefield." */
+    data class SelfCostReduction(val amount: Int, val per: CountExpr?) : StaticEffect
     /** "~ attacks each combat if able." (508.1d) */
     data object MustAttack : StaticEffect
     /** Vedalken Orrery, Leyline of Anticipation: "You may cast [spells] as though they had flash." null filter = every spell. */

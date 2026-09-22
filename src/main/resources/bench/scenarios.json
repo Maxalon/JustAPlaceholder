@@ -5552,7 +5552,7 @@
     "id": "thalia-taxes-a-noncreature-spell",
     "text": "My opponent controls Thalia, Guardian of Thraben. How much does my Lightning Bolt cost?",
     "expect": [
-      "Lightning Bolt costs {R} plus {1} more",
+      "Lightning Bolt costs {R} plus {1}",
       "2 mana in all"
     ],
     "notExpect": [
@@ -10703,7 +10703,7 @@
     "id": "cost-question-about-the-card-in-hand",
     "text": "My opponent controls Thalia, Guardian of Thraben and I have Lightning Bolt. How much does it cost?",
     "expect": [
-      "Lightning Bolt costs {R} plus {1} more"
+      "Lightning Bolt costs {R} plus {1}"
     ],
     "notExpect": [
       "Thalia, Guardian of Thraben costs"
@@ -12071,5 +12071,19 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "blasphemous-act-costs-less",
+    "text": "I have two 2/2s and my opponent has one 2/2. What does Blasphemous Act cost?",
+    "expect": [
+      "minus {3}",
+      "6 mana in all"
+    ],
+    "notExpect": [
+      "Nothing on the battlefield changes it"
+    ],
+    "cite": [
+      "601.2f"
+    ]
   }
 ]
