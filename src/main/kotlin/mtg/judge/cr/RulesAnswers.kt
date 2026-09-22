@@ -1,0 +1,173 @@
+package mtg.judge.cr
+
+/**
+ * Questions about the rules themselves, asked with no board at all: "what order do triggers go on the stack?",
+ * "can I respond to a land being played?", "when can I cast a creature with flash?".
+ *
+ * There is nothing to simulate in these — no cards are named and nothing happens — so the judge used to say it
+ * couldn't find any cards or actions, which is a refusal to a question that has one settled answer. Each entry
+ * here is that answer in a sentence, with the rules it comes from; the rule numbers are cited the same way the
+ * engine cites them, so `CitationsTest` checks them against the live Comprehensive Rules like every other one.
+ *
+ * This is deliberately a table and not a search: a question whose wording doesn't match anything gets the
+ * refusal it got before, which is better than an answer put together out of whichever rule text scored highest.
+ */
+object RulesAnswers {
+
+    data class Answer(val text: String, val rules: List<String>)
+
+    /** The question as typed, with case, punctuation and doubled spaces taken out of the way. */
+    private fun normalize(q: String) = q.lowercase()
+        .replace(Regex("""[?!.,;:'’“”]"""), " ")
+        .replace(Regex("""\s+"""), " ").trim()
+
+    /** Every term must appear, and none of [without] may. Order doesn't matter; the wording around them doesn't either. */
+    private class Entry(val terms: List<String>, val without: List<String>, val answer: Answer)
+
+    private fun e(terms: String, answer: String, vararg rules: String, without: String = "") =
+        Entry(terms.split('+').map { it.trim() }.filter { it.isNotEmpty() },
+              without.split('+').map { it.trim() }.filter { it.isNotEmpty() },
+              Answer(answer, rules.toList()))
+
+    // Longest (most specific) first: the first entry whose terms are all present wins.
+    private val entries: List<Entry> = listOf(
+        e("trigger + stack + order",
+            "Triggered abilities wait until a player would next receive priority, and then go on the stack: the active player's first, in whatever order that player chooses, then each other player's in turn order. The last one put on the stack is the first to resolve.",
+            "603.3b", "101.4"),
+        e("trigger + same time + first",
+            "The active player's trigger goes on the stack first, so the non-active player's resolves first. Each player orders their own triggers among themselves.",
+            "603.3b", "101.4"),
+        e("trigger + both + whose",
+            "The active player's trigger goes on the stack first, so the non-active player's resolves first. Each player orders their own triggers among themselves.",
+            "603.3b", "101.4"),
+        e("respond + land",
+            "No. Playing a land is a special action, not a spell or an ability: it doesn't use the stack, and nobody gets priority until after the land is on the battlefield. You can respond to what the land does once it's there, not to the land being played.",
+            "116.2a", "305.1"),
+        e("priority + spell + resolve",
+            "Every player gets priority and passes it before a spell resolves. A spell on the stack only resolves once all players have passed in succession with it on top.",
+            "117.4", "608.1", "117.3c"),
+        e("respond + blockers + damage",
+            "Yes. Once blockers are declared the active player gets priority, so both players can cast spells and activate abilities before the combat damage step begins.",
+            "509.2", "510.1"),
+        e("flash + cast + when",
+            "Any time you could cast an instant: whenever you have priority, including during your opponent's turn and in the middle of combat.",
+            "702.8a", "117.1a"),
+        e("sorcery + opponent + turn",
+            "No. A sorcery can only be cast during one of your own main phases, while the stack is empty and you have priority.",
+            "307.1", "117.1a"),
+        e("sorcery + speed",
+            "Sorcery speed means during one of your own main phases, while the stack is empty and you have priority.",
+            "307.1", "117.1a"),
+        e("loyalty + two",
+            "Only one loyalty ability of a given planeswalker each turn, and only at sorcery speed: during one of your main phases, with the stack empty.",
+            "606.3"),
+        e("loyalty + twice",
+            "Only one loyalty ability of a given planeswalker each turn, and only at sorcery speed: during one of your main phases, with the stack empty.",
+            "606.3"),
+        e("mana + empty",
+            "Mana pools empty at the end of every step and phase, so mana never carries from one step to the next.",
+            "500.4", "106.4"),
+        e("draw + empty library + when",
+            "Not at the moment you draw. Drawing from an empty library doesn't do anything by itself; you lose the game the next time a player would receive priority, as a state-based action.",
+            "121.4", "704.5b"),
+        e("untap step + untap",
+            "The active player untaps all the permanents they control that untap, and they all untap at once. No player gets priority during the untap step, so nothing can be done in response.",
+            "502.3", "502.4"),
+        e("respond + mana ability",
+            "No. A mana ability doesn't use the stack and doesn't target, so it resolves as soon as it is activated and nothing can be done in response.",
+            "605.3a"),
+        e("commander damage + how much",
+            "21. A player who has been dealt 21 or more combat damage by the same commander over the course of the game loses.",
+            "903.10a"),
+        e("commander damage + 21",
+            "21 combat damage from the same commander, counted over the whole game, makes that player lose. Damage from two different commanders is counted separately.",
+            "903.10a"),
+        e("poison + lose",
+            "Ten poison counters. A player with ten or more loses the game as a state-based action.",
+            "704.5c"),
+        e("poison + how many",
+            "Ten poison counters. A player with ten or more loses the game as a state-based action.",
+            "704.5c"),
+        e("summoning sick",
+            "A creature can't attack, and can't pay a {T} or {Q} cost, unless its controller has controlled it continuously since their most recent turn began. Haste turns that off. Everything else it can do — blocking, abilities without {T} in the cost — it can do the turn it arrives.",
+            "302.6"),
+        e("legend rule",
+            "If one player controls two or more legendary permanents with the same name, that player chooses one and the rest go to their owners' graveyards, as a state-based action.",
+            "704.5j"),
+        e("deathtouch + what",
+            "Any nonzero damage from a source with deathtouch is lethal: the creature dealt it is destroyed as a state-based action. It isn't only about combat, and one damage is enough.",
+            "702.2b"),
+        e("first strike + damage",
+            "If any attacking or blocking creature has first strike or double strike, combat damage is dealt in two steps. Creatures with first or double strike deal theirs in the first step; everything else, and double strikers again, in the second.",
+            "510.4", "702.7b"),
+        e("trample + assign",
+            "The attacker assigns lethal damage to each creature blocking it first, and only what's left over can be assigned to the player. Damage already marked and deathtouch both count towards what's lethal.",
+            "702.19b"),
+        e("block + tapped",
+            "No. A creature has to be untapped to be declared as a blocker. Tapping it after blockers are declared doesn't remove it from combat, though: it still deals its combat damage.",
+            "509.1a", "506.4"),
+        e("damage + wear off",
+            "Damage marked on permanents is removed during the cleanup step, at the end of every turn, at the same time as \"until end of turn\" effects end.",
+            "514.2"),
+        e("+1/+1 + -1/-1",
+            "They cancel out. If a permanent has both, the same number of each is removed as a state-based action.",
+            "704.5q"),
+        e("illegal + target",
+            "If every target is illegal when a spell or ability tries to resolve, it doesn't resolve at all: none of its effects happen, and it is put into its owner's graveyard. If some targets are still legal, it resolves and does as much as it can.",
+            "608.2b"),
+        e("fizzle",
+            "\"Fizzling\" is a spell or ability whose targets are all illegal as it tries to resolve: it doesn't resolve, none of its effects happen, and it goes to its owner's graveyard. If even one target is still legal, it resolves and does as much as it can.",
+            "608.2b"),
+        e("0 life + lose",
+            "A player at 0 or less life loses the game the next time a player would receive priority, as a state-based action — not the instant their life total changes.",
+            "704.5a", "104.3b"),
+        e("state-based action + when",
+            "Whenever a player would receive priority. They are all performed at once, as a single event, and then checked again; no player can respond to them.",
+            "704.3", "117.5"),
+        e("commander tax",
+            "Casting your commander from the command zone costs {2} more for each time it has been cast from there before this game. Times it died or was exiled don't count on their own — only casts from the command zone do.",
+            "903.8"),
+        e("indestructible + destroy",
+            "A permanent with indestructible isn't destroyed by lethal damage or by an effect that says \"destroy\". It can still be exiled, sacrificed, bounced, or put into a graveyard for having 0 toughness.",
+            "702.12b"),
+        e("flying + block",
+            "A creature with flying can only be blocked by creatures with flying or reach. It can block anything.",
+            "702.9b"),
+        e("indestructible + exile",
+            "No. Indestructible only stops destruction — lethal damage and effects that say \"destroy\". Exiling moves the permanent to the exile zone without destroying it, so indestructible does nothing about it.",
+            "702.12b", "406.2"),
+        e("regenerat + exile",
+            "No. A regeneration shield replaces a destruction event; exiling isn't one, so the shield is never used and the permanent is exiled. The same goes for sacrificing it and for bouncing it.",
+            "701.19a", "701.8c", "406.2"),
+        e("hexproof + sacrifice",
+            "Yes. \"Sacrifice a creature\" makes you choose and sacrifice one yourself: nothing targets it, so hexproof (and shroud) doesn't stop it. Hexproof only stops your opponents' spells and abilities targeting it.",
+            "702.11b", "701.21a"),
+        e("shroud + target",
+            "No, not even your own. Shroud means the permanent can't be the target of spells or abilities at all, including yours — that is the difference between shroud and hexproof.",
+            "702.18a", "702.11b"),
+        e("lifelink + dies",
+            "You still gain the life. Lifelink applies as the damage is dealt, and the creature dying afterwards — even at the same time, from damage dealt to it — doesn't undo it.",
+            "702.15b", "702.15c"),
+        e("double strike + first strike",
+            "The creature with double strike deals its damage in both combat damage steps; the one with only first strike deals its in the first step alone. So a double striker fighting a first striker deals damage twice and takes it once.",
+            "702.4b", "510.4"),
+        e("first strike + both",
+            "Both deal their combat damage in the first combat damage step, at the same time, and neither gets to hit before the other. If both die there, they trade.",
+            "702.7b", "510.4"),
+        e("tap ability + turn",
+            "Only if you have controlled the creature continuously since your most recent turn began, or it has haste. A {T} cost can't be paid by a creature that came under your control this turn; abilities without {T} in the cost can be activated straight away.",
+            "302.6"),
+        e("sacrifice + in response",
+            "You can, and it is usually right to: sacrificing the creature before the spell resolves makes its target illegal, so the spell doesn't resolve at all. Anything already on the stack that doesn't target it still happens.",
+            "608.2b", "701.21a"),
+        e("reach + block",
+            "Reach lets a creature block creatures with flying. It does nothing else — a creature with reach has no evasion of its own.",
+            "702.9b"),
+    )
+
+    /** The answer to [question] if it is one of the questions this table knows, and null otherwise. */
+    fun lookup(question: String): Answer? {
+        val q = normalize(question)
+        return entries.firstOrNull { entry -> entry.terms.all { it in q } && entry.without.none { it in q } }?.answer
+    }
+}

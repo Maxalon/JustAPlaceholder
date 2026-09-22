@@ -59,6 +59,17 @@ fun main(args: Array<String>) {
             val parsed = parser.parse(text)
             val json = kotlinx.serialization.json.Json { prettyPrint = true; encodeDefaults = false }
             if (parsed.situation.objects.isEmpty() && parsed.situation.events.isEmpty()) {
+                // "What order do triggers go on the stack?" names no cards and nothing happens, so there is
+                // nothing to simulate — but it still has one settled answer, taken straight from the rules.
+                mtg.judge.cr.RulesAnswers.lookup(text)?.let { a ->
+                    println(a.text)
+                    if (!opts.containsKey("short") && rules != null && a.rules.isNotEmpty()) {
+                        println(); println("Rules cited:")
+                        for (n in a.rules) rules.rule(n)?.let { r -> println("  $n  " + r.text.replace(Regex("""\s+"""), " ").trim()) }
+                    }
+                    if (parsed.unread.isNotEmpty()) { println(); println("Read as a question about the rules, not a situation.") }
+                    exitProcess(0)
+                }
                 println("I couldn't find any cards or actions in that. Try naming the cards and what happens to them, e.g.")
                 println("  \"I have Rhystic Study. My opponent casts Sol Ring and Stifles the trigger.\"")
                 if (parsed.unread.isNotEmpty()) println("Not understood: " + parsed.unread.joinToString(" | "))

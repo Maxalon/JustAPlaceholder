@@ -8,6 +8,7 @@ rules engine whose every step cites the rule that justifies it. No language-mode
 $ mtg-judge ask "I have Rhystic Study. It's their turn, they cast Sol Ring and Stifle the Rhystic Study trigger."
 $ mtg-judge ask "Alice attacks Bob with Hill Giant and Carol with Grizzly Bears. Bob blocks with Wall of Omens. Carol is at 2 life."
 $ mtg-judge ask "I have Jace Beleren with 3 loyalty. I activate Jace's +2. Then my opponent attacks Jace with Hill Giant."
+$ mtg-judge ask "What order do triggers go on the stack?"   # a question about the rules, with no board at all
 $ mtg-judge card "time vault" --set lea     # Oracle text, rulings, and a warning if that printing's text is outdated
 $ mtg-judge rule 702.19                     # a rule with its subrules, or `rule trample`, `rule "state-based action"`
 $ mtg-judge resolve "rystic studdy"         # how a (misspelled) name resolves
@@ -19,7 +20,7 @@ $ mtg-judge resolve "rystic studdy"         # how a (misspelled) name resolves
 |---|---|
 | `.github/workflows/fetch-data.yml` | daily: fetch Scryfall bulk data, MTGJSON and the rules text, build `judge.db`, publish to the `data` branch |
 | `src/main/kotlin/mtg/judge/carddb` | database schema, ingest, name resolution (exact, face, fuzzy) |
-| `src/main/kotlin/mtg/judge/cr` | Comprehensive Rules parser and lookups |
+| `src/main/kotlin/mtg/judge/cr` | Comprehensive Rules parser and lookups, and the answers to questions about the rules themselves |
 | `src/main/kotlin/mtg/judge/oracle` | template-based Oracle text → abilities/effects; unknown text is marked, never guessed |
 | `src/main/kotlin/mtg/judge/engine` | the rules engine: stack, triggers, targets, resolution, state-based actions, with a rule-cited trace |
 | `src/main/kotlin/mtg/judge/situation` | the situation language (see `docs/situation-language.md`) and the judge that runs it |
