@@ -365,6 +365,11 @@ object OracleParser {
             val filter = if (what == "spell") null else parseFilter(what, Kind.SPELL).let { if (Kind.SPELL in it.kinds) it else it.copy(kinds = it.kinds + Kind.SPELL) }
             return Trigger.SpellCast(who, filter)
         }
+        // "one or more +1/+1 counters are put on ~": one trigger for the placement as a whole (603.2).
+        Regex("""^(one|two|three|\d+) or more ([+-]\d+/[+-]\d+|\w+) counters are put on ~$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
+            val n = number(m.groupValues[1]) ?: m.groupValues[1].toIntOrNull() ?: 1
+            return Trigger.CountersPutOnThis(m.groupValues[2], n)
+        }
         // "~ attacks while saddled" / "~ becomes saddled (for the first time each turn)" (702.166b).
         if (Regex("""^~ attacks while saddled$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisAttacksSaddled
         Regex("""^~ becomes saddled( for the first time each turn)?$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->

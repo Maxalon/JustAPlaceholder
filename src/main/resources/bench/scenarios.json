@@ -13367,5 +13367,36 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "counters-put-on-trigger",
+    "text": "I control Herd Baloth and put a +1/+1 counter on it",
+    "expect": [
+      "You get a Beast token"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "counters-put-on-trigger-once",
+    "text": "I control Herd Baloth and Hardened Scales and put a +1/+1 counter on it",
+    "expect": [
+      "Herd Baloth has 2 +1/+1 counters"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "counters-put-on-wrong-kind",
+    "text": "I control Herd Baloth and put a -1/-1 counter on it",
+    "expect": [
+      "Herd Baloth has 1 -1/-1 counter"
+    ],
+    "notExpect": [
+      "You get a Beast token"
+    ],
+    "cite": []
   }
 ]

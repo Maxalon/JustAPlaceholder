@@ -645,6 +645,7 @@ class Engine(val state: GameState) {
         obj.counters[kind] = (obj.counters[kind] ?: 0) + placed
         trace.step("$placed $kind counter${if (placed == 1) "" else "s"} ${if (placed == 1) "is" else "are"} put on ${obj.name}${if (obj.def.isCreature) "; it is now ${state.describePt(obj)}" else ""}.", "122.1", "614.1a")
         state.outcomes += "${obj.name} has ${obj.counters[kind]} $kind counter${if (obj.counters[kind] == 1) "" else "s"}."
+        onEvent(GameEvent.CountersPut(obj, kind, placed))
         stateBasedActions()
     }
 
@@ -1290,6 +1291,7 @@ class Engine(val state: GameState) {
         data class LeavesBattlefield(val obj: GameObject) : GameEvent
         data class Attacks(val obj: GameObject) : GameEvent
         data class BecomesSaddled(val obj: GameObject) : GameEvent
+        data class CountersPut(val obj: GameObject, val kind: String, val count: Int) : GameEvent
         data class PlayerAttacks(val playerId: String) : GameEvent
         data class AttacksAlone(val obj: GameObject) : GameEvent
         data class StepBegins(val step: String, val activePlayer: String) : GameEvent
@@ -1381,6 +1383,7 @@ class Engine(val state: GameState) {
                 is GameEvent.LeavesBattlefield -> "${event.obj.name} leaving the battlefield"
                 is GameEvent.Attacks -> "${event.obj.name} attacking"
                 is GameEvent.BecomesSaddled -> "${event.obj.name} becoming saddled"
+                is GameEvent.CountersPut -> "${event.count} ${event.kind} counter${if (event.count == 1) "" else "s"} being put on ${event.obj.name}"
                 is GameEvent.PlayerAttacks -> "${state.player(event.playerId).subject.lowercase()} attacking"
                 is GameEvent.AttacksAlone -> "${event.obj.name} attacking alone"
                 is GameEvent.StepBegins -> "the beginning of ${state.player(event.activePlayer).possessive} ${event.step.replace('_', ' ')}"
@@ -1452,6 +1455,8 @@ class Engine(val state: GameState) {
         Trigger.ThisLeavesBattlefield -> (event is GameEvent.LeavesBattlefield || event is GameEvent.Dies) && (event as? GameEvent.LeavesBattlefield)?.obj === obj || (event as? GameEvent.Dies)?.obj === obj
         Trigger.ThisAttacks -> event is GameEvent.Attacks && event.obj === obj
         Trigger.ThisAttacksSaddled -> event is GameEvent.Attacks && event.obj === obj && obj.saddled
+        is Trigger.CountersPutOnThis -> event is GameEvent.CountersPut && event.obj === obj && onBf() &&
+            event.kind.equals(trigger.kind, true) && event.count >= trigger.atLeast
         is Trigger.ThisBecomesSaddled -> event is GameEvent.BecomesSaddled && event.obj === obj && (!trigger.firstEachTurn || obj.saddledThisTurn == 1)
         Trigger.ThisCast -> event is GameEvent.SpellCast && event.item.source === obj
         is Trigger.BeginningOfStep -> event is GameEvent.StepBegins && event.step == trigger.step && onBf() && when (trigger.whose) {
@@ -2360,6 +2365,7 @@ class Engine(val state: GameState) {
                         o.counters[effect.kind] = (o.counters[effect.kind] ?: 0) + n
                         trace.step("$n ${effect.kind} counter${if (n > 1) "s are" else " is"} put on ${o.name}${if (o.def.isCreature) "; it's now ${o.power}/${o.toughness}" else ""}.", "122.1a", "122.6")
                         state.outcomes += "${o.name} has ${o.counters[effect.kind]} ${effect.kind} counter${if (o.counters[effect.kind]!! > 1) "s" else ""}."
+                        onEvent(GameEvent.CountersPut(o, effect.kind, n))
                     }
                 }
                 if (effect.all != null) { val affected = state.objects.values.filter { state.matches(effect.all, it, item.controller, item.source) }; if (affected.isEmpty()) trace.step("No permanents match \"${effect.all.raw}\", so no counters are put anywhere.", "122.6") else affected.forEach(put) }
