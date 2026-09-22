@@ -11374,5 +11374,16 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "blocker-takes-the-damage",
+    "text": "My Serra Angel blocks a 4/4 and takes 4 damage. Does it die?",
+    "expect": [
+      "Yes: Serra Angel died"
+    ],
+    "notExpect": [
+      "Yes: a 4/4 creature died"
+    ],
+    "cite": []
   }
 ]

@@ -1166,7 +1166,12 @@ class SituationParser(private val names: NameIndex) {
             // "deals 3 damage to my Grizzly Bears" / "it is dealt 3 damage": a permanent can be the one damaged.
             val objWord = victimWord.replace(Regex("""^(?:$possPrefix)"""), "")
             val victimObj = when {
-                objWord == "it" || objWord == "that" -> ctx.lastMentioned?.takeIf { it in ctx.objects }
+                // A subjectless "takes N damage" is about the creature the clause before it was about, which is
+                // the one its actor controls — not the other creature in the same combat.
+                objWord == "it" || objWord == "that" -> (if (carriesOn) ctx.lastActor?.let { who ->
+                        ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller == who }
+                            ?: ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id
+                    } else null) ?: ctx.lastMentioned?.takeIf { it in ctx.objects }
                 Regex("""^c\d+$""").matches(objWord) -> m.cards[objWord]?.let { card ->
                     val owner: String = ctx.lastOwner ?: "me"
                     objectIdFor(card, ctx) ?: addObject(card, owner, false, ctx)
