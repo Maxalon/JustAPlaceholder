@@ -12266,5 +12266,27 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "bare-noun-with-an-aura",
+    "text": "My creature has a Pacifism on it. Can it block?",
+    "expect": [
+      "can't block (Pacifism says so)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "described-creature-deals-damage",
+    "text": "Their 3/3 deals combat damage to me. How much life do I lose?",
+    "expect": [
+      "You take 3 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

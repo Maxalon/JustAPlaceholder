@@ -1763,11 +1763,13 @@ class SituationParser(private val names: NameIndex) {
         }
         // "My 1/1 has a Bonesplitter (equipped)", "my 2/2 has Rancor on it": the creature given by its size,
         // carrying a named Aura or Equipment. Read as the creature alone, the attachment was dropped.
-        Regex("""^(?:(?:have|has|got|controls?|controlling)\s+)?(an? |\d+ |two |three )?(\d+/\d+)s?(?: ($creatureKinds))? (?:has|have|with|carrying|wearing) (?:an? |the |my |their )?(c\d+)(?: equipped| attached| on it| enchanting it)?$""").find(c)?.let { r ->
+        Regex("""^(?:(?:have|has|got|controls?|controlling)\s+)?(an? |\d+ |two |three )?(\d+/\d+|creature|guy|dude|token)s?(?: ($creatureKinds))? (?:has|have|with|carrying|wearing) (?:an? |the |my |their )?(c\d+)(?: equipped| attached| on it| enchanting it)?$""").find(c)?.let { r ->
             val gear = m.cards[r.groupValues[4]] ?: return@let
             if (gear.isSpellOnly || !(gear.typeLine.contains("Equipment") || gear.typeLine.contains("Aura") || gear.typeLine.contains("Enchantment") || gear.typeLine.contains("Artifact"))) return@let
             val who = actor ?: subject ?: ctx.lastOwner ?: "me"
-            val ids = describedCreatures(r.groupValues[1].ifEmpty { "a " }, r.groupValues[2], r.groupValues[3], who, ctx)
+            val pt = r.groupValues[2].takeIf { Regex("""^\d+/\d+$""").matches(it) } ?: ""
+            val ids = ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" && isCreatureName(it.card.name) && (pt.isEmpty() || (it.card.name ?: "").startsWith("a $pt")) }?.let { listOf(it.id) }
+                ?: describedCreatures(r.groupValues[1].ifEmpty { "a " }, pt, r.groupValues[3], who, ctx)
             if (ids.isEmpty()) return@let
             for (id in ids) { val att = addObject(gear, who, false, ctx, allowDuplicate = ids.size > 1); ctx.objects[att] = ctx.objects.getValue(att).copy(attachedTo = id) }
             ctx.lastVerb = "have"; ctx.lastOwner = who; ctx.lastActor = who; ctx.lastMentioned = ids.last(); return true
@@ -2178,14 +2180,19 @@ class SituationParser(private val names: NameIndex) {
         }
         // "it deals combat damage to my opponent": the way to say a creature attacked and got through, which is
         // what abilities that trigger on combat damage need.
-        Regex("""^(?:(my|their|his|her|the|my opponent's|@\w+'s) )?(c\d+|it|that) (?:deals?|dealt|connects? for) combat damage to (me|them|him|her|my opponent|the opponent|opponent|@\w+)$""").find(c)?.let { r ->
+        Regex("""^(?:(my|their|his|her|the|my opponent's|@\w+'s) )?(c\d+|it|that|\d+/\d+|creature|guy|dude|token)(?: creature)? (?:deals?|dealt|connects? for) (?:combat )?damage to (me|them|him|her|my opponent|the opponent|opponent|@\w+)$""").find(c)?.let { r ->
             val owner = when (val w = r.groupValues[1].trim()) {
                 "my" -> "me"
                 "their", "his", "her", "my opponent's" -> pronounPlayer(ctx, "their")
                 else -> actor ?: ctx.lastOwner ?: "me"
             }
-            val id = if (r.groupValues[2] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
-                     else m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, owner, false, ctx) } ?: return@let
+            val ref = r.groupValues[2]
+            val pt = ref.takeIf { Regex("""^\d+/\d+$""").matches(it) } ?: ""
+            val id = if (ref in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else if (pt.isNotEmpty() || ref in setOf("creature", "guy", "dude", "token"))
+                         ctx.objects.values.lastOrNull { it.controller == owner && it.zone == "battlefield" && isCreatureName(it.card.name) && (pt.isEmpty() || (it.card.name ?: "").startsWith("a $pt")) }?.id
+                             ?: describedCreatures("a ", pt, "creature", owner, ctx).firstOrNull() ?: return@let
+                     else m.cards[ref]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, owner, false, ctx) } ?: return@let
             val who = ctx.objects[id]?.controller ?: owner
             val victim = when (val w = r.groupValues[3]) {
                 "me" -> "me"
