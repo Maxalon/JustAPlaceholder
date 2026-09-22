@@ -12026,5 +12026,28 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "keyword-noun-before-a-verb",
+    "text": "My 3/3 first striker blocks their 3/3. Do both die?",
+    "expect": [
+      "a 3/3 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "two-keywords-split-by-and",
+    "text": "My opponent's creature has lifelink and deathtouch and blocks my 5/5. What happens?",
+    "expect": [
+      "opponent gains 1 life",
+      "a 5/5 creature: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

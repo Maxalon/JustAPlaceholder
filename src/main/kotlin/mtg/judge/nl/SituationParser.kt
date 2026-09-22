@@ -841,7 +841,14 @@ class SituationParser(private val names: NameIndex) {
             return true
         }
         // Clause-by-clause for actions.
-        val clauses = t.split(clauseSplit).map { it.trim() }.filter { it.isNotEmpty() }
+        // "has lifelink and deathtouch" splits on the "and", and a clause that is only a keyword belongs to the
+        // one before it. Left on its own, "deathtouch" made a creature of the asker's with deathtouch.
+        val clauses = t.split(clauseSplit).map { it.trim() }.filter { it.isNotEmpty() }.fold(mutableListOf<String>()) { acc, cl ->
+            val bare = Regex("""^(?:$kwPhrase)$""", RegexOption.IGNORE_CASE).matches(cl)
+            if (bare && acc.isNotEmpty() && Regex("""\b(?:has|have|with|gains?|gained|granted)\b""").containsMatchIn(acc.last())) acc[acc.lastIndex] = acc.last() + " and " + cl
+            else acc += cl
+            acc
+        }
         val unreadClauses = mutableListOf<String>()
         for ((ci, clause) in clauses.withIndex()) {
             ctx.clauseIndex = ci
@@ -906,6 +913,10 @@ class SituationParser(private val names: NameIndex) {
             // "I control a 2/2 vigilance": a keyword straight after the size, with no noun after it, describes the
             // creature the same way "a 2/2 with vigilance" does.
             .replace(Regex("""\b(\d+/\d+) ($kwPhrase)(?=$|[.,;?]| (?:and|or|plus)\b)"""), "$1 creature with $2")
+            .let { t0 -> Regex("""\b(\d+/\d+) ($kwNouns)(?= (?:blocks?|blocking|attacks?|attacking|swings?|dies|die|died|is|was|has|have|gets?|takes?|deals?|and|or|plus)\b)""").replace(t0) { r ->
+                r.groupValues[1] + " creature with " + r.groupValues[2].removeSuffix("s").replace("flier", "flying").replace("flyer", "flying")
+                    .replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink").replace("striker", "strike")
+            } }
             // "activate its monstrosity" / "activate its ability": the permanent is the thing being activated.
             .replace(Regex("""\b(activates?|activating|uses?|using) (?:its|his|her|their) (?:monstrosity|ability)\b"""), "$1 it")
         val read = readClause0(clauseIn, m, ctx)
@@ -1720,19 +1731,30 @@ class SituationParser(private val names: NameIndex) {
             return true
         }
         // "Both have first strike" / "mine has deathtouch" / "the blocker has trample": keywords on creatures already described.
-        Regex("""^(both|both of them|they both|all of them|mine|theirs|yours|his|hers|the attacker|the blocker|my creature|their creature|it) (?:has|have|gets?|gained?|is|are) ($kwNouns)(?:,? (?:and )?($kwNouns))?$""").find(c)?.let { r ->
+        Regex("""^(both|both of them|they both|all of them|mine|theirs|yours|his|hers|the attacker|the blocker|my creature|their creature|(?:my opponent's |the opponent's |opponent's |their |his |her |my )?(?:creature|token|guy|dude)|it) (?:has|have|gets?|gained?|is|are) ($kwNouns)(?:,? (?:and )?($kwNouns))?$""").find(c)?.let { r ->
             fun kw(x: String) = x.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink")
             val kws = listOfNotNull(r.groupValues[2].takeIf { it.isNotEmpty() }, r.groupValues[3].takeIf { it.isNotEmpty() }).map { kw(it) }
             if (kws.isEmpty()) return@let
             val who = r.groupValues[1]
             val attackerId = ctx.events.lastOrNull { it.verb == "attack" }?.obj
             val blockerId = ctx.events.lastOrNull { it.verb == "block" }?.obj
-            val ids = when (who) {
-                "both", "both of them", "they both", "all of them" -> listOfNotNull(attackerId, blockerId).ifEmpty { ctx.objects.values.toList().takeLast(2).map { o -> o.id } }
-                "mine", "yours", "my creature" -> listOfNotNull(ctx.objects.values.lastOrNull { it.controller == "me" }?.id)
-                "theirs", "his", "hers", "their creature" -> listOfNotNull(ctx.objects.values.lastOrNull { it.controller != "me" }?.id)
-                "the attacker" -> listOfNotNull(attackerId)
-                "the blocker" -> listOfNotNull(blockerId)
+            val ids = when {
+                who in setOf("both", "both of them", "they both", "all of them") -> listOfNotNull(attackerId, blockerId).ifEmpty { ctx.objects.values.toList().takeLast(2).map { o -> o.id } }
+                who in setOf("mine", "yours", "my creature") -> listOfNotNull(ctx.objects.values.lastOrNull { it.controller == "me" }?.id)
+                who in setOf("theirs", "his", "hers", "their creature") -> listOfNotNull(ctx.objects.values.lastOrNull { it.controller != "me" }?.id)
+                who == "the attacker" -> listOfNotNull(attackerId)
+                who == "the blocker" -> listOfNotNull(blockerId)
+                // "my opponent's creature has lifelink": the possessive says whose it is, and with nothing of
+                // theirs on the battlefield yet the creature they described is made here.
+                Regex("""(?:creature|token|guy|dude)$""").containsMatchIn(who) -> {
+                    val owner = when {
+                        Regex("""^(?:my opponent's|the opponent's|opponent's|their|his|her)\b""").containsMatchIn(who) -> pronounPlayer(ctx, "their")
+                        who.startsWith("my") -> "me"
+                        else -> actor ?: ctx.lastOwner ?: "me"
+                    }
+                    listOfNotNull(ctx.objects.values.lastOrNull { it.controller == owner && isCreatureName(it.card.name) }?.id
+                        ?: describedCreatures("a ", "", "creature", owner, ctx).firstOrNull())
+                }
                 else -> listOfNotNull(ctx.lastMentioned?.takeIf { it in ctx.objects })
             }.filter { it in ctx.objects }
             if (ids.isEmpty()) return@let
