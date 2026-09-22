@@ -1956,14 +1956,26 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "${if (who == "me") "You control" else "They control"} a commander; it stands in for whichever card it is, as a 2/2 legendary creature."
             ctx.lastMentioned = id; ctx.lastOwner = who; ctx.lastActor = who; ctx.note(who); return true
         }
-        Regex("""^(controls?|controlling|have|has|got|there (?:is|are))\s+(an?|one|\d+|two|three|four|five|six|seven|eight|nine|ten)(?: (?:more|other))? (artifacts?|enchantments?|planeswalkers?|permanents?|lands?)(?: on the battlefield| in play| out)?$""").find(c)?.let { r ->
+        // "their planeswalker has 4 loyalty": a planeswalker nobody named, said by what is on it rather than counted.
+        Regex("""^planeswalkers?(?: card)? (?:has|have|is at|is on|with|starts with|at) (\d+) loyalty(?: counters?)?$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: ctx.lastOwner ?: "me"
+            var id = "planeswalker"; var k = 2; while (ctx.objects.containsKey(id)) id = "planeswalker_" + (k++)
+            ctx.objects[id] = ObjectSpec(id, CardRef(name = "a planeswalker"), controller = who, counters = mapOf("loyalty" to (r.groupValues[1].toIntOrNull() ?: 0)))
+            ctx.notes += "A planeswalker nobody named, with ${r.groupValues[1]} loyalty; only the loyalty matters to the answer."
+            ctx.lastMentioned = id; ctx.lastOwner = who; ctx.lastActor = who; ctx.note(who); return true
+        }
+        Regex("""^(controls?|controlling|have|has|got|there (?:is|are))\s+(an?|one|\d+|two|three|four|five|six|seven|eight|nine|ten)(?: (?:more|other))? (artifacts?|enchantments?|planeswalkers?|permanents?|lands?)(?: with (\d+) loyalty(?: counters?)?)?(?: on the battlefield| in play| out)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: ctx.lastOwner ?: "me"
             val n = number(r.groupValues[2]) ?: 1
             val kind = r.groupValues[3].removeSuffix("s")
             // "I have four lands" is the mana idiom and is read as mana further down; "I control four lands" is a board.
             if (kind == "land" && !r.groupValues[1].startsWith("control")) return@let
             val name = (if (kind.first() in "aeiou") "an " else "a ") + kind
-            val ids = (1..n).map { var id = slug(kind); var k = 2; while (ctx.objects.containsKey(id)) id = slug(kind) + "_" + (k++); ctx.objects[id] = ObjectSpec(id, CardRef(name = name), controller = who); id }
+            // "they control a planeswalker with 4 loyalty": a planeswalker with no loyalty is already dead, so a
+            // stand-in needs one — the asker's number if they gave it, and otherwise it is theirs to say.
+            val loyalty = r.groupValues[4].toIntOrNull()
+            val ids = (1..n).map { var id = slug(kind); var k = 2; while (ctx.objects.containsKey(id)) id = slug(kind) + "_" + (k++)
+                ctx.objects[id] = ObjectSpec(id, CardRef(name = name), controller = who, counters = if (kind == "planeswalker" && loyalty != null) mapOf("loyalty" to loyalty) else emptyMap()); id }
             ctx.notes += "$n unnamed ${kind}${if (n > 1) "s" else ""} on the battlefield; only being ${if (kind.first() in "aeiou") "an" else "a"} $kind matters to the answer."
             ctx.lastMentioned = ids.last(); ctx.lastOwner = who; ctx.lastActor = who; ctx.note(who); return true
         }
@@ -3103,10 +3115,12 @@ class SituationParser(private val names: NameIndex) {
         var clause0 = clause00
         var c = c0
         // "hit them with Atraxa again unblocked" / "swing at Bob with Kaalia": an attack.
-        Regex("""^(?:hits?|hitting|swings? at|swinging at|attacks?) (me|them|him|her|my opponent|the opponent|@\w+) with (?:my |the |an? |their )?(?:commander )?(c\d+)(?: again| once more)?( unblocked| and (?:it's|it is|they're) (?:not|un)blocked)?$""").find(c)?.let { r ->
+        Regex("""^(?:hits?|hitting|swings? at|swinging at|attacks?) (me|them|him|her|my opponent|the opponent|@\w+) with (?:my |the |an? |their )?(?:commander )?(?:(c\d+)|(\d+/\d+)(?: creature)?(?: with ($kwPhrase(?:(?:,|,? and) $kwPhrase)*))?)(?: again| once more)?( unblocked| and (?:it's|it is|they're) (?:not|un)blocked)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val defender = when (val d = r.groupValues[1]) { "me" -> "me"; else -> if (d.startsWith("@")) d.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else pronounPlayer(ctx, d.substringAfterLast(' ')) }
-            val card = m.cards.getValue(r.groupValues[2]); val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
+            // "I hit them with a 1/1 infect": the creature may be described by its size rather than named.
+            val id = if (r.groupValues[2].isEmpty()) describedCreatures("a ", r.groupValues[3], "creature", who, ctx, r.groupValues[4]).firstOrNull() ?: return@let
+                     else m.cards.getValue(r.groupValues[2]).let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) }
             ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(defender)); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; ctx.note(defender); return true
         }
         // "my commander is Atraxa" / "Atraxa is my commander"
@@ -3632,8 +3646,12 @@ class SituationParser(private val names: NameIndex) {
         }
         // "attack Jace with Hill Giant", "attacks their planeswalker with c2": the defender comes first.
         // "I attack their Jace with a 3/3" / "… with two 2/2s": the attacker may be described by its size too.
-        Regex("""^(?:attacks?|attacking|swings? at|swinging at)\s+((?:$possPrefix|an? )?(?:c\d+|planeswalker|me|them|him|her|my opponent|the opponent|opponent|@\w+))\s+with\s+(an? |the |my |their |\d+ |two |three |four |five )?(my commander |commander )?(c\d+|\d+/\d+)s?(?: ($kwNouns))?(?: ($creatureKinds))?(?: alone| by itself| only)?$""").find(c)?.let { r ->
+        Regex("""^(?:attacks?|attacking|swings? at|swinging at)\s+((?:$possPrefix|an? )?(?:c\d+|planeswalker|me|them|him|her|my opponent|the opponent|opponent|@\w+)|it|that)\s+with\s+(an? |the |my |their |\d+ |two |three |four |five )?(my commander |commander )?(c\d+|\d+/\d+)s?(?: ($kwNouns))?(?: ($creatureKinds))?(?: alone| by itself| only)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
+            // "I attack it with a 5/5" right after a planeswalker was described: "it" is that planeswalker. Read
+            // as the player, the answer said they took the damage and the planeswalker was never touched.
+            val lastPw = ctx.lastMentioned?.takeIf { id -> ctx.objects[id]?.let { o -> o.controller != who && o.zone == "battlefield" &&
+                (o.card.name == "a planeswalker" || names.lookup(Names.normalize(o.card.name ?: ""))?.typeLine?.contains("Planeswalker", true) == true) } == true }
             val what = r.groupValues[4]
             val ids = if (cardRef.matches(what)) {
                 val card = m.cards.getValue(what)
@@ -3645,11 +3663,13 @@ class SituationParser(private val names: NameIndex) {
             if (ids.isEmpty()) return@let
             // "their planeswalker": one nobody named, which the defender has to have for the attack to mean anything.
             val defTail = r.groupValues[1]
-            val defender = if (Regex("""\bplaneswalker$""").containsMatchIn(defTail)) {
+            val defender = if ((defTail == "it" || defTail == "that") && lastPw != null) listOf(lastPw)
+            else if (defTail == "it" || defTail == "that") return@let
+            else if (Regex("""\bplaneswalker$""").containsMatchIn(defTail)) {
                 val foe = possessiveOwner(defTail.substringBefore("planeswalker"), ctx, m) ?: ctx.other(who) ?: "opp"
                 // A planeswalker nobody named has no loyalty to count the damage against, so the attack is read as
                 // being at its controller and the question is asked rather than a stand-in being invented.
-                listOfNotNull(ctx.objects.values.lastOrNull { it.controller == foe && it.zone == "battlefield" && names.lookup(Names.normalize(it.card.name ?: ""))?.typeLine?.contains("Planeswalker", true) == true }?.id
+                listOfNotNull(ctx.objects.values.lastOrNull { it.controller == foe && it.zone == "battlefield" && (it.card.name == "a planeswalker" || names.lookup(Names.normalize(it.card.name ?: ""))?.typeLine?.contains("Planeswalker", true) == true) }?.id
                     ?: run { ctx.notes += "No planeswalker was named, so the attack is read as being at ${if (foe == "me") "you" else (ctx.players[foe] ?: "your opponent")}; name the planeswalker and its loyalty for the answer you want."; foe })
             } else targetsIn("at " + defTail, m, ctx).ifEmpty { listOf(ctx.other(who) ?: "opp") }
             for (id in ids) ctx.events += EventSpec("attack", player = who, obj = id, targets = defender)

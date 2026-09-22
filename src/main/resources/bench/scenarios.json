@@ -13169,5 +13169,49 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "hit-them-with-a-described-creature",
+    "text": "my opponent has 9 poison and I hit them with a 1/1 infect",
+    "expect": [
+      "opponent loses the game (poison)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "unnamed-planeswalker-loyalty",
+    "text": "their planeswalker has 4 loyalty and I attack it with a 5/5",
+    "expect": [
+      "a planeswalker: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "opponent takes 5 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "unnamed-planeswalker-counted",
+    "text": "they control a planeswalker with 4 loyalty and I attack it with a 5/5",
+    "expect": [
+      "a planeswalker has 0 loyalty"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "bolt-an-unnamed-planeswalker",
+    "text": "their planeswalker has 4 loyalty, I Bolt it",
+    "expect": [
+      "a planeswalker has 1 loyalty"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
