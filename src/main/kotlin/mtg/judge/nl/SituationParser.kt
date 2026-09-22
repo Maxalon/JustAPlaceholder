@@ -963,10 +963,13 @@ class SituationParser(private val names: NameIndex) {
             // "I control a 2/2 vigilance": a keyword straight after the size, with no noun after it, describes the
             // creature the same way "a 2/2 with vigilance" does.
             .replace(Regex("""\b(\d+/\d+) ($kwPhrase)(?=$|[.,;?]| (?:and|or|plus)\b)"""), "$1 creature with $2")
-            .let { t0 -> Regex("""\b(\d+/\d+) ($kwNouns)(?= (?:blocks?|blocking|attacks?|attacking|swings?|dies|die|died|is|was|has|have|gets?|takes?|deals?|and|or|plus)\b)""").replace(t0) { r ->
+            .let { t0 -> Regex("""\b(\d+/\d+) ($kwNouns)(?= (?:blocks?|blocking|attacks?|attacking|swings?|dies|die|died|is|was|has|have|gets?|takes?|deals?|and|or|plus)\b| with (?:an? |one |two |three |\d+ )?[+-]\d+/[+-]\d+ counter)""").replace(t0) { r ->
                 r.groupValues[1] + " creature with " + r.groupValues[2].removeSuffix("s").replace("flier", "flying").replace("flyer", "flying")
                     .replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink").replace("striker", "strike")
             } }
+            // "with double strike with a +1/+1 counter": two "with" phrases for one creature, which the keyword
+            // rewrite above can leave behind. The second is part of the same description.
+            .replace(Regex("""\bwith ($kwPhrase(?:(?:,|,? and) $kwPhrase)*) with ((?:an? |one |two |three |\d+ )?[+-]\d+/[+-]\d+ counters?)"""), "with $1 and $2")
             // "activate its monstrosity" / "activate its ability": the permanent is the thing being activated.
             .replace(Regex("""\b(activates?|activating|uses?|using) (?:its|his|her|their) (?:monstrosity|ability)\b"""), "$1 it")
         val read = readClause0(clauseIn, m, ctx)
@@ -3371,6 +3374,18 @@ class SituationParser(private val names: NameIndex) {
             } else targetsIn("at " + defTail, m, ctx).ifEmpty { listOf(ctx.other(who) ?: "opp") }
             for (id in ids) ctx.events += EventSpec("attack", player = who, obj = id, targets = defender)
             ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = ids.last(); return true
+        }
+        // "I attack with a 1/1 with double strike and a +1/+1 counter": the attack rules read keywords but not
+        // counters, so the counter was dropped and the creature attacked at its printed size. The creature is
+        // put on the battlefield first, counter and all, and then attacks.
+        Regex("""^(?:attacks?|attacking|swings?|swinging) with ((?:an? |one |two |three |\d+ )?\d+/\d+[a-z ,&]*?) (?:and|with) ((?:an? |one |two |three |\d+ )?[+-]\d+/[+-]\d+ counters?(?: on it)?)$""").find(c)?.let { r ->
+            val says = (actor ?: subject)?.let { if (it == "me") "i " else if (it == "opp") "they " else "@$it " } ?: "i "
+            if (!readClause(says + "have " + r.groupValues[1].trim(), m, ctx)) return@let
+            val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+            Regex("""^(an?|one|two|three|four|five|\d+)? ?([+-]\d+/[+-]\d+) counters?""").find(r.groupValues[2].trim())?.let { cm ->
+                ctx.events += EventSpec("counters", obj = id, amount = number(cm.groupValues[1].ifEmpty { "a" }) ?: 1, to = cm.groupValues[2])
+            }
+            return readClause(says + "attacks with it", m, ctx)
         }
         Regex("""^(?:attacks?|attacking|swings?|swinging)(?: with)?\s+(\d+|two|three|four|five) (elves|elf|goblins|zombies|soldiers|humans|spirits|angels|dragons|beasts|elementals|saprolings|thopters|knights|warriors|wizards|vampires|merfolk|cats|dogs|birds|insects|squirrels|servos|tokens)(?: tokens?)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"

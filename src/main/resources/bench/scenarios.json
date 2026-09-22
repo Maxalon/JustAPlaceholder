@@ -12412,5 +12412,28 @@
       "which one depends on your hand"
     ],
     "cite": []
+  },
+  {
+    "id": "attack-with-a-counter-on-it",
+    "text": "I attack with a 2/2 with a +1/+1 counter. How much damage?",
+    "expect": [
+      "opponent takes 3 damage"
+    ],
+    "notExpect": [
+      "opponent takes 2 damage",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "attack-with-a-keyword-noun-and-a-counter",
+    "text": "I attack with a 1/1 double striker with a +1/+1 counter. How much damage?",
+    "expect": [
+      "opponent takes 2 damage. (×2)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
