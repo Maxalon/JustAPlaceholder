@@ -11848,5 +11848,29 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "planeswalker-attacked-passive",
+    "text": "My Liliana of the Veil has 3 loyalty and is attacked by a 2/2. How much loyalty is left?",
+    "expect": [
+      "Liliana of the Veil has 1 loyalty"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "120.3c"
+    ]
+  },
+  {
+    "id": "creature-attacked-by-is-a-block",
+    "text": "My Grizzly Bears was attacked by a 3/3. Does it die?",
+    "expect": [
+      "Yes: Grizzly Bears died"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

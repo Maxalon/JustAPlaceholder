@@ -3470,6 +3470,29 @@ class SituationParser(private val names: NameIndex) {
             ids.forEach { ctx.events += EventSpec("block", player = who, obj = it, targets = listOfNotNull(attackerEvent.obj)) }
             ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
+        // "My Liliana is attacked by a 2/2", "my Bears got attacked by a 3/3": the passive form. A planeswalker
+        // is attacked; a creature can't be (506.3), so for a creature it is read as that creature blocking.
+        Regex("""^(?:(c\d+|\d+/\d+|planeswalker|walker)(?: creature)? )?(?:is|are|was|were|gets?|got) attacked by (?:an? |the |my |their |his |her )?(c\d+|\d+/\d+)(?: creature)?$""").find(c)?.let { r ->
+            val mine = actor ?: ctx.lastOwner ?: "me"
+            val them = ctx.other(mine) ?: "opp"
+            val subjPh = r.groupValues[1]
+            val subj = when {
+                subjPh.isEmpty() -> ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                cardRef.matches(subjPh) -> m.cards[subjPh]?.let { objectIdFor(it, ctx) ?: addObject(it, mine, false, ctx) } ?: return@let
+                Regex("""^\d+/\d+$""").matches(subjPh) -> describedCreatures("a ", subjPh, "creature", mine, ctx).firstOrNull() ?: return@let
+                else -> return@let
+            }
+            val atk = if (cardRef.matches(r.groupValues[2])) m.cards[r.groupValues[2]]?.let { objectIdFor(it, ctx) ?: addObject(it, them, false, ctx) } ?: return@let
+                      else describedCreatures("a ", r.groupValues[2], "creature", them, ctx).firstOrNull() ?: return@let
+            val walker = (ctx.objects[subj]?.card?.name ?: "").let { n -> m.cards.values.firstOrNull { it.display == n }?.typeLine?.contains("Planeswalker") == true } || subjPh in setOf("planeswalker", "walker")
+            if (walker) { ctx.events += EventSpec("attack", player = them, obj = atk, targets = listOf(subj)) }
+            else {
+                ctx.events += EventSpec("attack", player = them, obj = atk, targets = listOf(mine))
+                ctx.events += EventSpec("block", player = mine, obj = subj, targets = listOf(atk))
+                ctx.notes += "Only a player, a planeswalker or a battle can be attacked (506.3), so \"attacked by\" is read as ${ctx.objects[subj]?.card?.name ?: "it"} blocking."
+            }
+            ctx.lastActor = them; ctx.lastVerb = if (walker) "attack" else "block"; ctx.lastMentioned = subj; return true
+        }
         // "attacks me (with it)" after a Threaten: the last-mentioned creature attacks; the engine knows who controls it now.
         Regex("""^(?:attacks?|swings? at|swings? (?:it )?(?:at|into)|comes? at) (me|us|them|my opponent|the opponent|opponent|@\w+)(?: with (?:it|that|that creature))?(?: again| once more| a second time| this turn| now)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "opp"
