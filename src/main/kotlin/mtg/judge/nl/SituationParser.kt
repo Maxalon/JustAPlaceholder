@@ -639,11 +639,25 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""^(?:just to check|just checking|to check|to be clear|for clarity)[,:]? +""", RegexOption.IGNORE_CASE), "")
             .replace(Regex("""^(?:can you (?:tell me|explain|say)|tell me|explain|i'd like to know|i would like to know|i want to know|i wonder|wondering)[,:]? +(?:what happens |whether |if |about )?(?:when |if )?""", RegexOption.IGNORE_CASE), "")
             .replace(Regex("""^(?:is it true that|is it right that|am i right that|what's the ruling (?:when|if|on)|what is the ruling (?:when|if|on)|how does it work (?:when|if))[,:]? +""", RegexOption.IGNORE_CASE), "")
+            // "…, both die right?" / "…, correct?" / "…, yeah?": a tag asking for confirmation, not part of the board.
+            .let { t0 -> Regex("""\s*[,;]?\s*(?:right|correct|yeah|isn't it|isnt it|is that right|am i right|is that correct|is this correct|true)\s*(\??)$""", RegexOption.IGNORE_CASE).replace(t0) { r -> r.groupValues[1] } }
             .replace(Regex("""\?\s*(?:yes or no|y/n)\?*$""", RegexOption.IGNORE_CASE), "?")
             .replace(Regex("""\s*[,.]?\s*(?:yes or no|y/n)\?*$""", RegexOption.IGNORE_CASE), "")
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?""", RegexOption.IGNORE_CASE), "")
             // "my 1/1 survives a Shock": the statement form of "does my 1/1 survive a Shock?".
             .replace(Regex("""^((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude)[a-z0-9/+ ]*?) (dies|survives|lives)((?: to| against)? (?:an? |the )?c\d+)\.?$""", RegexOption.IGNORE_CASE), "does $1 $2$3")
+            // "…, they Doom Blade it, it dies?" / "…, both die right?": a bare "it dies" at the very end of a
+            // sentence that already said what happened is the question, not one more thing that happens. Read as
+            // an action it killed the creature itself, before the spell aimed at it could.
+            .let { t0 -> Regex("""(?:(?<=[,;] )|^)(it|that|they|both|both of them) (dies|die|survives|survive|lives|live)$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                // On its own it is only a question once something has already happened: "my 2/2 dies" said first
+                // is the player telling the engine that it died.
+                if (r.range.first == 0 && ctx.events.isEmpty()) r.value
+                else {
+                    val subj = r.groupValues[1].lowercase()
+                    (if (subj == "it" || subj == "that") "does " else "do ") + subj + " " + r.groupValues[2].lowercase().removeSuffix("s")
+                }
+            } }
             // "Who wins the fight between Grizzly Bears and Hill Giant?": a fight with no card making it happen.
             // The "and" would otherwise break the sentence and leave the second creature as a clause of its own.
             .replace(Regex("""^(?:who|which(?: creature| one)?) (?:wins|survives|comes out on top|lives)(?: the fight| a fight| in a fight| the combat)?(?: (?:between|with)) ((?:$possPrefix|an? )?c\d+) (?:and|vs\.?|versus) ((?:$possPrefix|an? )?c\d+)\??$"""), "$1 fights $2, does $1 die, does $2 die")
@@ -685,6 +699,12 @@ class SituationParser(private val names: NameIndex) {
             // "Can Doom Blade target Black Knight?": cast it and the answer says whether the target is legal.
             .let { t0 -> Regex("""^can ($possPrefix)?(c\d+) target ($possPrefix)?(c\d+)\??$""").replace(t0) { r ->
                 "i cast ${r.groupValues[1]}${r.groupValues[2]} targeting ${r.groupValues[3].ifEmpty { "their " }}${r.groupValues[4]}"
+            } }
+            // "Does my Llanowar Elves tap for mana?": the creature is the subject, but the player is the one who
+            // taps it. Said as "can <player> tap it for mana" the question keeps any "the turn it comes down" tail.
+            .let { t0 -> Regex("""^(?:does|do|will|would|can|could)(?:n't| not)? (my|our|their|his|her|the) (c\d+|it|that) tap for (?:mana|\{[wubrgc]\}|(?:white|blue|black|red|green|colorless) mana)\b""").replace(t0) { r ->
+                val who = if (r.groupValues[1] == "their" || r.groupValues[1] == "his" || r.groupValues[1] == "her") "they" else "i"
+                "can $who tap ${r.groupValues[1]} ${r.groupValues[2]} for mana"
             } }
             // "Does indestructible save my creature from Doom Blade?": a keyword question asked with no board.
             // It is the same question as giving a creature the keyword and letting the spell at it.
@@ -1265,14 +1285,22 @@ class SituationParser(private val names: NameIndex) {
             // it came under its controller's control this turn. Ignored, the answer assumed it had been there
             // since the turn began and said the attack went through.
             Regex("""^(.*?),? (?:the (?:same )?turn (?:it|i|they|he|she) (?:comes? down|came down|plays? it|played it|casts? it|cast it|enters?(?: the battlefield)?|entered)|the turn it came into play)$""").find(r.groupValues[1])?.let { q ->
-                val id = Regex("""c\d+""").find(q.groupValues[1])?.value?.let { ph -> m.cards[ph]?.let { objectIdFor(it, ctx) } }
-                    ?: ctx.lastMentioned?.takeIf { it in ctx.objects }
-                    ?: ctx.objects.values.lastOrNull { it.zone == "battlefield" && isCreatureName(it.card.name) }?.id
-                if (id != null) {
+                val ph = Regex("""c\d+""").find(q.groupValues[1])?.value
+                fun sick(id: String) {
                     ctx.objects[id] = ctx.objects.getValue(id).copy(summoningSick = true)
                     ctx.notes += "\"${restore(clause0, m)}?\" asks about the turn ${ctx.objects.getValue(id).card.name ?: "it"} came down, so it is summoning sick."
                 }
-                return readClause(clause0.removeRange(clause0.length - (r.groupValues[1].length - q.groupValues[1].length), clause0.length), m, ctx)
+                fun find(): String? = ph?.let { p -> m.cards[p]?.let { objectIdFor(it, ctx) } }
+                    ?: ctx.lastMentioned?.takeIf { it in ctx.objects }
+                    ?: ctx.objects.values.lastOrNull { it.zone == "battlefield" && isCreatureName(it.card.name) }?.id
+                val id = find()
+                if (id != null) sick(id)
+                val rest = readClause(clause0.removeRange(clause0.length - (r.groupValues[1].length - q.groupValues[1].length), clause0.length), m, ctx)
+                // The creature the question asks about may not have been on the table yet — "can I attack with
+                // Llanowar Elves the turn it comes down?" puts it there only once the rest of the clause is read.
+                // Marking it sick afterwards is what keeps the answer from quietly letting the attack through.
+                if (id == null) find()?.let { sick(it) }
+                return rest
             }
             // "can I still block with it?" / "can my Bears attack?": a yes/no about that creature, answered once everything has resolved.
             if (askQuestion(clause0, m, ctx)) return true
@@ -2091,7 +2119,7 @@ class SituationParser(private val names: NameIndex) {
             return true
         }
         // "tap Llanowar Elves for mana", "tap Sol Ring for {C}{C}"
-        Regex("""^(?:still )?taps? (?:an? |the |my )?(c\d+|it) for (?:mana|\{.*|[a-z]+ mana|[a-z]+)(?: in response(?: to (?:it|that))?)?$""").find(c)?.let { r ->
+        Regex("""^(?:still )?taps? (?:an? |the |my |their |his |her |our )?(c\d+|it) for (?:mana|\{.*|[a-z]+ mana|[a-z]+)(?: in response(?: to (?:it|that))?)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             // "it" is the tapper's own permanent: the last one mentioned, unless that belongs to someone else.
             // "I cast Llanowar Elves and tap it for mana": the Elves has to resolve first, and once it has, it is

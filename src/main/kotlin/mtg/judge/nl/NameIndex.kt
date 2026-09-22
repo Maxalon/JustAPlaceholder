@@ -78,7 +78,9 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
             "cyc rift" to "cyclonic rift", "rift" to "cyclonic rift", "tutor" to "demonic tutor", "demonic" to "demonic tutor", "vamp tutor" to "vampiric tutor",
             "mana crypt" to "mana crypt", "crypt" to "mana crypt", "vault" to "mana vault", "sdt" to "sensei s divining top", "divining top" to "sensei s divining top",
             "farewell" to "farewell", "teferi s protection" to "teferi s protection", "tefprot" to "teferi s protection",
-            "fow" to "force of will", "force" to "force of will", "fon" to "force of negation", "mana drain" to "mana drain", "drain" to "mana drain",
+            // "drain" on its own is the verb for what Blood Artist and Exsanguinate do far more often than it is
+            // the counterspell, and read as the card it put a Mana Drain on a battlefield nobody said it was on.
+            "fow" to "force of will", "force" to "force of will", "fon" to "force of negation", "mana drain" to "mana drain",
             "counterspell" to "counterspell", "negate" to "negate", "swan song" to "swan song", "arcane denial" to "arcane denial",
             "ur dragon" to "the ur dragon", "dockside" to "dockside extortionist", "thoracle" to "thassa s oracle", "thassa s oracle" to "thassa s oracle",
             "consult" to "demonic consultation", "pact" to "demonic pact", "tim" to "prodigal sorcerer", "sad robot" to "solemn simulacrum", "solemn" to "solemn simulacrum",

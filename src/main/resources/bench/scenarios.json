@@ -12644,5 +12644,82 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "sick-attack-card-named-first",
+    "text": "can I attack with Llanowar Elves the turn it comes down",
+    "expect": [
+      "Llanowar Elves can't attack (summoning sick)"
+    ],
+    "notExpect": [
+      "opponent takes 1 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sick-mana-card-named-first",
+    "text": "can I tap Llanowar Elves for mana the turn it comes down",
+    "expect": [
+      "can't be activated (summoning sickness)"
+    ],
+    "notExpect": [
+      "add {G}"
+    ],
+    "cite": []
+  },
+  {
+    "id": "does-my-elves-tap-for-mana",
+    "text": "Does my Llanowar Elves tap for mana the turn it comes down?",
+    "expect": [
+      "can't be activated (summoning sickness)"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "does-their-elves-tap-for-mana",
+    "text": "Does their Llanowar Elves tap for mana?",
+    "expect": [
+      "add {G}"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "tag-question-both-die",
+    "text": "I attack with a 2/2 and they block with a 2/2, both die right?",
+    "expect": [
+      "Yes: a 2/2 creature died"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "trailing-it-dies-question",
+    "text": "I have a Grizzly Bears, they Doom Blade it, it dies?",
+    "expect": [
+      "Yes: Grizzly Bears died"
+    ],
+    "notExpect": [
+      "Doom Blade doesn't resolve"
+    ],
+    "cite": []
+  },
+  {
+    "id": "drain-is-a-verb",
+    "text": "I have a Blood Artist and a 2/2. It dies. Do I drain 1?",
+    "expect": [
+      "opponent loses 1 life"
+    ],
+    "notExpect": [
+      "Mana Drain"
+    ],
+    "cite": []
   }
 ]
