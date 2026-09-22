@@ -12155,5 +12155,27 @@
     "cite": [
       "704.5n"
     ]
+  },
+  {
+    "id": "priest-of-titania-counts-elves",
+    "text": "I control a Priest of Titania and five Elves. How much mana do I have?",
+    "expect": [
+      "You can make 6 mana"
+    ],
+    "notExpect": [
+      "no untapped permanent"
+    ],
+    "cite": []
+  },
+  {
+    "id": "bare-mana-question",
+    "text": "I have Mana Crypt, Sol Ring and two lands untapped. How much mana?",
+    "expect": [
+      "You can make 6 mana"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]

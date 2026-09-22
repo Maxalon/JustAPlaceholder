@@ -1091,8 +1091,8 @@ class SituationParser(private val names: NameIndex) {
         // "After damage, does Serra Angel untap?": the time phrase adds nothing the ordering doesn't already say.
         clause0 = clause0.replace(Regex("""^(?:after|once|when) (?:combat )?(?:damage|blockers|blocks|combat|that|this|it resolves|everything resolves)(?: is dealt| are declared)?,?\s+"""), "")
         // "how much mana do I have?" / "how much mana can I make?": every untapped source that player controls.
-        Regex("""^how (?:much|many) mana (?:do|does|can|could|would) (i|we|they|he|she|my opponent|the opponent|opponent|@\w+) (?:have|make|produce|get|tap for|generate|have available|have up)(?: (?:available|up|right now|now|in total|altogether))?$""").find(clause0)?.let { q ->
-            val who = when (val w = q.groupValues[1]) { "i", "we" -> "me"; "opponent", "my opponent", "the opponent" -> "opp"; else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w) }
+        Regex("""^how (?:much|many) mana(?: (?:do|does|can|could|would) (i|we|they|he|she|my opponent|the opponent|opponent|@\w+) (?:have|make|produce|get|tap for|generate|have available|have up))?(?: (?:available|up|right now|now|in total|altogether|is there|do i have))?$""").find(clause0)?.let { q ->
+            val who = when (val w = q.groupValues[1]) { "" -> "me"; "i", "we" -> "me"; "opponent", "my opponent", "the opponent" -> "opp"; else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w) }
             ctx.asks += EventSpec("ask", player = who, to = "manaAvailable"); ctx.note(who)
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }

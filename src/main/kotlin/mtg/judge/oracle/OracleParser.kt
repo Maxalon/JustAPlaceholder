@@ -1226,7 +1226,7 @@ object OracleParser {
         tuckAllRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[1], Kind.PERMANENT); if (f.verifiable) return Effect.ForAll(f, "tuck") }
         // "Add {G} for each creature you control." (Gaea's Cradle, Cabal Coffers)
         Regex("""^add (\{[^}]+\}) for each (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
-            val f = parseFilter(m.groupValues[2], Kind.PERMANENT)
+            val f = parseFilter(m.groupValues[2].removeSuffix(" on the battlefield"), Kind.PERMANENT)
             if (f.verifiable) return Effect.AddManaPer(m.groupValues[1], f)
         }
         // "If you control an Urza's Mine and an Urza's Power-Plant, add {C}{C}{C} instead."

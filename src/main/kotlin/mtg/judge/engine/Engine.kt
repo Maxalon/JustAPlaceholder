@@ -2818,10 +2818,13 @@ class Engine(val state: GameState) {
                 val text = made.removePrefix("add ")
                 Triple(o, text, Regex("""\{[^}]+\}""").findAll(text).count().takeIf { it > 0 } ?: 1)
             }
-        if (sources.isEmpty()) return "${p.subject} ${p.v("has", "have")} no untapped permanent with a mana ability the engine recognises."
+        val stated = p.mana?.takeIf { it > 0 }
+        if (sources.isEmpty()) return (if (stated != null) "${p.subject} ${p.v("has", "have")} $stated mana available (the situation says so; no permanent it named makes mana)."
+                                       else "${p.subject} ${p.v("has", "have")} no untapped permanent with a mana ability the engine recognises.")
         val usable = sources.filter { it.third != null }
         val total = usable.sumOf { it.third ?: 0 }
-        return "${p.subject} can make $total mana right now: " + sources.joinToString("; ") { (o, what, n) -> "${o.name} → $what" + (if (n == null) "" else "") } + "."
+        return "${p.subject} can make ${total + (stated ?: 0)} mana right now: " + sources.joinToString("; ") { (o, what, n) -> "${o.name} → $what" + (if (n == null) "" else "") } +
+            (if (stated != null) "; plus the $stated the situation gives from permanents it didn't name" else "") + "."
     }
 
     fun manaOptions(objectId: String): String {
