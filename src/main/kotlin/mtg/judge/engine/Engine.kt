@@ -498,6 +498,33 @@ class Engine(val state: GameState) {
         return putTriggerOnStack(obj, ability, targets)
     }
 
+    /** How many lands [playerId] may play this turn: one, plus whatever effects add (305.2). */
+    fun landPlaysAllowed(playerId: String): Int = 1 + (state.extraLandsThisTurn[playerId] ?: 0) +
+        state.objects.values.filter { it.isOnBattlefield() }.sumOf { src ->
+            src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.ExtraLandPlays>()
+                .filter { it.who != Who.YOU || src.controller == playerId }.sumOf { it.count }
+        }
+
+    /**
+     * "I play a land": a land play is not a spell and uses the stack for nothing (305.1), but a player may only
+     * make one each turn unless an effect says otherwise (305.2). Without the count a second land went down
+     * without a word, and "can I play another land?" answered yes.
+     */
+    fun playLand(playerId: String, objectId: String) {
+        val p = state.player(playerId)
+        val allowed = landPlaysAllowed(playerId)
+        val already = state.landsPlayed[playerId] ?: 0
+        if (already >= allowed) {
+            val extra = allowed - 1
+            trace.step("${p.subject} ${p.v("has", "have")} already played $already land${if (already == 1) "" else "s"} this turn and may play $allowed${if (extra > 0) " (one, plus $extra from an effect)" else ""}, so ${p.subject.lowercase()} can't play another.", "305.2a", "116.2a")
+            state.outcomes += "${p.subject} can't play another land this turn."
+            return
+        }
+        state.landsPlayed[playerId] = already + 1
+        trace.step("${p.subject} ${p.v("plays", "play")} a land. Playing a land is a special action: it uses no stack and can't be responded to.", "305.1", "116.2a")
+        enter(objectId)
+    }
+
     fun enter(objectId: String, choice: String? = null) {
         val obj = state.obj(objectId)
         obj.zone = Zone.BATTLEFIELD; obj.tapped = false; obj.timestamp = state.tick()
@@ -717,6 +744,8 @@ class Engine(val state: GameState) {
                 theirs.forEach { it.tapped = false; state.outcomes += "${it.name} untaps (${src.name})." }
             }
             held.forEach { it.summoningSick = false; it.attacking = null; it.blocking = null }
+            // A new turn, so the land plays and the extra ones an effect gave start over (305.2).
+            state.landsPlayed.clear(); state.extraLandsThisTurn.clear()
             trace.step("${p.possessive.replaceFirstChar { it.uppercase() }} turn begins: ${p.subject.lowercase()} ${p.v("untaps", "untap")} all ${p.possessive} permanents, and everything ${p.subject.lowercase()} ${p.v("has", "have")} controlled since the turn began can attack and use {T} abilities.", "502.3", "302.6")
             return
         }
@@ -738,6 +767,7 @@ class Engine(val state: GameState) {
             }
             state.cantLoseThisTurn.clear()
             state.damageLifeFloor.clear()
+            state.landsPlayed.clear(); state.extraLandsThisTurn.clear()
             for (o in affected) { o.pumps.clear(); o.tempKeywords.clear(); o.basePt = null; o.animatedAs = null; o.damage = 0; trace.step("${o.name} is back to ${if (o.def.isCreature) state.describePt(o) else "normal"} with no damage.", "514.2"); state.outcomes += "${o.name}'s until-end-of-turn effects and damage are gone (cleanup)." }
             state.shields.clear(); state.objects.values.forEach { it.exileOnDeath = null }
             return
@@ -2238,6 +2268,12 @@ class Engine(val state: GameState) {
                 trace.step("${p.subject} can't lose the game this turn and ${p.possessive} opponents can't win it; the state-based action that would end the game doesn't apply until the effect ends.", "104.3b", "614.1")
                 state.outcomes += "${p.subject} can't lose the game this turn."
             }
+            is Effect.ExtraLandThisTurn -> {
+                val p = state.player(item.controller)
+                state.extraLandsThisTurn[p.id] = (state.extraLandsThisTurn[p.id] ?: 0) + effect.count
+                trace.step("${p.subject} may play ${effect.count} additional land${if (effect.count == 1) "" else "s"} this turn.", "305.2")
+                state.outcomes += "${p.subject} may play ${effect.count} additional land${if (effect.count == 1) "" else "s"} this turn."
+            }
             is Effect.DamageLifeFloor -> {
                 val p = state.player(item.controller)
                 state.damageLifeFloor[p.id] = effect.floor
@@ -3012,7 +3048,7 @@ class Engine(val state: GameState) {
         is Effect.Draw -> "draw ${if (effect.x) "X" else effect.count.toString()} card${if (effect.count > 1 || effect.x) "s" else ""}"
         is Effect.Damage -> "deal ${effect.amount} damage to ${effect.target.raw}"
         is Effect.CounterThatSpell -> "counter that spell"; is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Fight -> "${effect.mine.raw} fights ${effect.theirs.raw}"; is Effect.DealsPowerTo -> "${effect.mine.raw} deals damage equal to its power to ${effect.theirs.raw}"; is Effect.RedirectToSelf -> "change a target of ${effect.target.raw} to ${item.source.name}"; is Effect.Blink -> "exile ${effect.target.raw}, then return it to the battlefield under ${if (effect.ownersControl) "its owner's" else "your"} control"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.StormCopy -> "copy it for each spell cast before it this turn"; is Effect.Monstrosity -> "become monstrous with ${effect.amount} +1/+1 counters"; is Effect.MoveSourceCounters -> "put its ${effect.kind} counters on ${effect.target.raw}"; is Effect.Evolve -> "put a +1/+1 counter on it if the creature that entered is bigger"; is Effect.ChangeTarget -> "change the target of ${effect.target.raw}"; is Effect.DamageDivided -> "deal ${effect.amount} damage divided as you choose among ${effect.maxTargets?.let { "up to $it " } ?: ""}${effect.target.raw}"; is Effect.PreventCombatToAndBy -> "prevent all combat damage dealt to and by ${effect.target.raw} this turn"; is Effect.WinIfCastBefore -> "win the game if another spell with this name was cast this game, otherwise tuck it seventh from the top and gain ${effect.life} life"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
-        is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.CantLoseThisTurn -> "you can't lose the game this turn"; is Effect.DamageLifeFloor -> "damage can't reduce your life total below ${effect.floor} this turn"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.AnimateSelf -> "${item.source.name} becomes a ${effect.power}/${effect.toughness} creature until end of turn"; is Effect.BecomeMonarch -> "become the monarch"; is Effect.PumpSelfCount -> "${item.source.name} gets ${signed(effect.power)}/${signed(effect.toughness)} for each of them"; is Effect.TapAttached -> "tap the creature ${item.source.name} is attached to"; is Effect.ReturnSelfFromGraveyard -> "return ${item.source.name} from your graveyard to the battlefield${if (effect.tapped) " tapped" else ""}"; is Effect.DamageThatMuch -> "deal that much damage to ${effect.target.raw}"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
+        is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.CantLoseThisTurn -> "you can't lose the game this turn"; is Effect.DamageLifeFloor -> "damage can't reduce your life total below ${effect.floor} this turn"; is Effect.ExtraLandThisTurn -> "play ${effect.count} additional land${if (effect.count == 1) "" else "s"} this turn"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.AnimateSelf -> "${item.source.name} becomes a ${effect.power}/${effect.toughness} creature until end of turn"; is Effect.BecomeMonarch -> "become the monarch"; is Effect.PumpSelfCount -> "${item.source.name} gets ${signed(effect.power)}/${signed(effect.toughness)} for each of them"; is Effect.TapAttached -> "tap the creature ${item.source.name} is attached to"; is Effect.ReturnSelfFromGraveyard -> "return ${item.source.name} from your graveyard to the battlefield${if (effect.tapped) " tapped" else ""}"; is Effect.DamageThatMuch -> "deal that much damage to ${effect.target.raw}"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
         is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.CreateTokenCopy -> "create ${effect.count} token${if (effect.count > 1) "s" else ""} that's a copy of ${effect.target?.raw ?: item.source.name}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.GainLifePerSpellThisTurn -> "gain ${effect.per} life for each spell cast this turn"; is Effect.WinIfDevotionCoversLibrary -> "look at the top X cards (X = your devotion) and win if X is at least your library size"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.ExileGraveyard -> "exile ${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "your"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }}${if (effect.who == Who.YOU) "" else "'s"} graveyard"; is Effect.DiscardNamed -> "that player reveals their hand and discards every card with the name you chose"; is Effect.BounceChosen -> "return ${withArticle(effect.what)} you control to its owner's hand"; is Effect.LivingWeapon -> "create a 0/0 black Phyrexian Germ creature token, then attach ${item.source.name} to it"; is Effect.DiscardChosen -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }} reveals their hand and discards ${effect.what} of your choice"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"} onto the battlefield"
         is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.GainLifeEqualToToughness -> "its controller gains life equal to its toughness"; is Effect.PutOnBottom -> "put ${effect.target.raw} on the bottom of its owner's library"; is Effect.GainLifeLostThisWay -> "gain life equal to the life lost this way"; is Effect.RevealTopToHand -> "reveal the top card of your library and put it into your hand"; is Effect.PutSelfOnLibraryTop -> "put ${item.source.name} on top of its owner's library"; is Effect.LoseLifeEqualToRevealedMv -> "lose life equal to the revealed card's mana value"; is Effect.ExileIfDamagedDies -> "exile a creature dealt damage this way instead if it would die this turn"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"

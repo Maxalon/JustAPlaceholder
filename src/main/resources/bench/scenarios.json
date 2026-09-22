@@ -11488,5 +11488,64 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "one-land-per-turn",
+    "text": "I play a land, then play another land. What happens?",
+    "expect": [
+      "can't play another land this turn"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "305.2a"
+    ]
+  },
+  {
+    "id": "exploration-allows-a-second-land",
+    "text": "I have Exploration and play two lands. Can I play a third?",
+    "expect": [
+      "can't play another land this turn"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "azusa-allows-three-lands",
+    "text": "I play a land and I have Azusa, Lost but Seeking. Can I play two more?",
+    "expect": [
+      "a basic land enters the battlefield. (×3)"
+    ],
+    "notExpect": [
+      "can't play another land",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "explore-adds-a-land-play",
+    "text": "I cast Explore. Can I play another land?",
+    "expect": [
+      "may play 1 additional land this turn"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "land-drops-reset-each-turn",
+    "text": "I play a land, then it's my next turn and I play another land. Is that fine?",
+    "expect": [
+      "a basic land enters the battlefield. (×2)"
+    ],
+    "notExpect": [
+      "can't play another land",
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

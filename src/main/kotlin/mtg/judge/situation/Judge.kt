@@ -408,6 +408,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             }
             "pass" -> engine.resolveTop()
             "enter" -> engine.enter(e.obj ?: throw JudgeException("enter needs an object"), e.to)
+            // "I play a land": counted against the one land a player may play each turn (305.2).
+            "playland" -> { val objId = e.obj ?: throw JudgeException("playLand needs an object"); engine.playLand(e.player ?: state.obj(objId).controller, objId) }
             "leave" -> engine.leave(e.obj ?: throw JudgeException("leave needs an object"), zone(e.to ?: "graveyard"))
             "damage" -> {
                 val srcName = e.source?.let { state.objects[it]?.name } ?: e.source ?: "A source"
@@ -469,6 +471,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "resolveall" -> "everything on the stack resolves"
             "ask" -> if (e.to == "playerDraw") "question: ${if (who == "you") "do you" else "does $who"} draw?" else if (e.to == "playerLife") "question: what ${if (who == "you") "is your" else "is $who's"} life total?" else if (e.to == "playerSurvive") "question: ${if (who == "you") "do you" else "does $who"} survive?" else if (e.to == "playerDie") "question: ${if (who == "you") "do you" else "does $who"} lose?" else if (e.to == "playerWin") "question: ${if (who == "you") "do you" else "does $who"} win?" else if (e.to == "playerDamage") "question: ${if (who == "you") "do you" else "does $who"} take damage?" else "question: ${if (e.to == "block" || e.to == "attack") "can" else "does"} ${state.objects[e.obj]?.name ?: e.obj} ${if (e.to == "damage") "deal damage to ${e.targets.firstOrNull()?.let { t -> state.players.firstOrNull { it.id == t }?.let { if (it.you) "you" else it.name } } ?: "the player"}" else e.to}?"
             "enter" -> "${state.objects[e.obj]?.name ?: e.obj} enters the battlefield"
+            "playland" -> "${who ?: "you"} play${if (who == null || who == "you") "" else "s"} ${state.objects[e.obj]?.name ?: e.obj}"
             "leave" -> "${state.objects[e.obj]?.name ?: e.obj} goes to ${e.to}"
             "damage" -> "${e.source} deals ${e.amount} damage${tg.replace(" targeting ", " to ")}"
             "attack" -> "${who ?: "you"} attack${if (who == null || who == "you") "" else "s"} with ${state.objects[e.obj]?.name ?: e.obj}$tg"

@@ -289,6 +289,21 @@ class SituationParser(private val names: NameIndex) {
         "kills", "killed", "destroys", "destroyed", "exiles", "exiled", "bounces", "bounced", "blinks", "blinked", "flickers", "flickered", "removes", "removed", "nukes", "nuked", "pings", "pinged", "zaps", "zapped", "pumps", "pumped", "shrinks", "answers", "sacs", "discards", "mills", "returns", "steals", "copies", "untaps", "reveals", "searches", "makes", "creates", "attacks", "blocks", "swings", "wipes", "scoops", "concedes")
     private val playerPreps = setOf("at", "targeting", "target", "to", "attacks", "attack", "attacking", "and", "hits", "hit", "with", "against", "on", "of", "then", "meanwhile")
 
+    /** Whether the last thing played or cast was a land: "another one" after a land means another land. */
+    private fun lastPlayWasALand(ctx: Ctx) = ctx.events.lastOrNull { it.verb in setOf("playLand", "cast", "activate") }?.verb == "playLand"
+
+    /** "I play a land", said again: [n] more land plays for [who], each counted against the turn's allowance. */
+    private fun playALand(who: String, n: Int, ctx: Ctx) {
+        repeat(n) {
+            var id = slug("a land"); var k = 2; while (ctx.objects.containsKey(id)) id = slug("a land") + "_" + (k++)
+            ctx.objects[id] = ObjectSpec(id, CardRef(name = "a basic land"), controller = who, zone = "hand")
+            ctx.events += EventSpec("playLand", player = who, obj = id); ctx.lastMentioned = id
+        }
+        ctx.lastActor = who; ctx.lastOwner = who; ctx.lastVerb = "playLand"; ctx.note(who)
+    }
+
+    private val castWordsBeforeAName = setOf("cast", "casts", "casting", "play", "plays", "playing", "played", "resolve", "resolves")
+
     private fun mark(sentence: String, short: Map<String, NameIndex.Entry> = emptyMap(), named: Map<String, String> = emptyMap()): Marked {
         val rawWords = sentence.split(Regex("\\s+")).filter { it.isNotEmpty() }
         // Normalize per word so word indices line up with the original words.
@@ -344,7 +359,13 @@ class SituationParser(private val names: NameIndex) {
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in keywordWords && normWords[f.start] !in short &&
                 (normWords.getOrNull(f.start - 1) in setOf("with", "and", "&", "gains", "gain", "has", "have", "granted") || Regex("""^\d+(?:/\d+)?$""").matches(normWords.getOrNull(f.start - 1) ?: "") || Regex("""^\d+/\d+$""").matches(rawWords.getOrNull(f.start - 1) ?: ""))) }
             // A first name that could mean several cards ("Jace") means the one named in full earlier, however it was matched.
-            .map { f -> if (f.end - f.start == 1 && f.entry.alternatives.isNotEmpty()) short[normWords[f.start]]?.let { f.copy(entry = it) } ?: f else f }.sortedBy { it.start }
+            .map { f -> if (f.end - f.start == 1 && f.entry.alternatives.isNotEmpty()) short[normWords[f.start]]?.let { f.copy(entry = it) } ?: f else f }
+            // "I cast Explore": a keyword-action word is kept out of the name index so the grammar can use it
+            // ("the creature explores"), but a capital right after a cast verb means the card of that name.
+            .let { fs -> fs + normWords.indices.filter { i -> i !in fs.flatMap { it.start until it.end }.toSet() &&
+                    normWords.getOrNull(i - 1) in castWordsBeforeAName && rawWords[i].firstOrNull()?.isUpperCase() == true }
+                .mapNotNull { i -> names.lookup(normWords[i])?.takeIf { it.isCard }?.let { NameIndex.Found(i, i + 1, it) } } }
+            .sortedBy { it.start }
         val keptSpans = kept.map { it.start to it.end }.toSet()
         val cards = LinkedHashMap<String, NameIndex.Entry>()
         val players = LinkedHashMap<String, String>()
@@ -990,6 +1011,9 @@ class SituationParser(private val names: NameIndex) {
         }
         // Trailing "with Guttersnipe out" / "with Rhystic Study on the battlefield": a permanent of the actor's; "with no blockers" says nothing.
         var clause0 = clauseIn.replace(Regex("""\s+(?:next turn|on my next turn|the next turn|the turn after|a turn later|on their next turn)$"""), "")
+        // "then it's my next turn": the turn has already been taken care of above, and what is left is only the
+        // words that introduced it. Left to the rules below it was reported unread although it had been read.
+        if (ctx.nextTurn && Regex("""^(?:and |then |now |so )*(?:it's|it is|we're on|we are on|on)? ?(?:my|their|his|her|the)?$""").matches(clause0.trim())) return true
         while (true) {
             val r = Regex("""\s+with (?:an? |the |my |their |@(\w+)'s )?(?:(\d+|two|three|four|five) )?(c\d+) (?:out|in play|on the battlefield|on board|on the field)$""").find(clause0) ?: break
             val owner = r.groupValues[1].ifEmpty { actorOfClause(clause0) ?: ctx.lastActor ?: "me" }
@@ -1799,8 +1823,16 @@ class SituationParser(private val names: NameIndex) {
             ctx.note(who); return true
         }
         // "casts three spells", "casts a creature spell", "plays two more instants"
+        // "I play a land. Can I play two more?" / "can I play a third?": after a land play, a bare count is
+        // more lands. Read as spells, the question answered about casting and the land limit never came up.
+        if (lastPlayWasALand(ctx)) Regex("""^(?:plays?|played|playing) (?:(a|an|one|another|two|three|four|\d+)(?: more| other| additional)?|an?(?: (second|third|fourth|fifth))(?: one)?)$""").find(c)?.let { r ->
+            val n = r.groupValues[1].takeIf { it.isNotEmpty() }?.let { if (it in setOf("a", "an", "one", "another")) 1 else number(it) ?: 1 } ?: 1
+            playALand(actor ?: subject ?: "me", n, ctx); return true
+        }
         Regex("""^(?:$castVerbs) (?:one|another|another one|one too|one as well|one of their own|one of my own)$""").find(c)?.let {
             val who = actor ?: subject ?: "me"
+            // "I play a land. Can I play another one?": after a land, "another one" is another land, not a spell.
+            if (lastPlayWasALand(ctx)) { playALand(who, 1, ctx); return true }
             ctx.events += EventSpec("cast", player = who, card = CardRef(name = "a spell")); ctx.lastActor = who; ctx.lastVerb = "cast"; return true
         }
         Regex("""^(?:$castVerbs)\s+(?:my |their |his |her |the )?(?:(a|an|another|\d+|two|three|four|five)(?: more| other)? )?(spells?|instants?|sorcer(?:y|ies)|creature spells?|creatures?|noncreature spells?|artifacts?|enchantments?|one|(?:second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)(?: one| spell)?)(?: this turn| in a row| in one turn| on their turn| on my turn)?((?:,? (?:paying for none of them|paying for nothing|without paying|not paying|and pays? for none|never paying|declining to pay each time|and doesn't pay|and never pays)(?: for (?:any|each|all) of them)?)?)$""").find(c)?.let { r ->
@@ -2946,8 +2978,9 @@ class SituationParser(private val names: NameIndex) {
             val n = r.groupValues[1].trim().let { if (it.isEmpty() || it == "a" || it == "an" || it == "another" || it == "the") 1 else number(it) ?: 1 }
             val ids = (1..n).map { var id = slug("a land"); var k = 2; while (ctx.objects.containsKey(id)) id = slug("a land") + "_" + (k++)
                 ctx.objects[id] = ObjectSpec(id, CardRef(name = "a basic land"), controller = who, zone = "hand"); id }
-            for (id in ids) ctx.events += EventSpec("enter", obj = id)
-            ctx.lastMentioned = ids.last(); ctx.lastActor = who; ctx.lastOwner = who; ctx.note(who); return true
+            val played = Regex("""^(?:plays?|played|playing)\b""").containsMatchIn(c)
+            for (id in ids) ctx.events += EventSpec(if (played) "playLand" else "enter", player = if (played) who else null, obj = id)
+            ctx.lastMentioned = ids.last(); ctx.lastActor = who; ctx.lastOwner = who; if (played) ctx.lastVerb = "playLand"; ctx.note(who); return true
         }
         Regex("""^(?:an? |the )?(c\d+) (?:enters|comes in|etbs|enters the battlefield)""").find(c)?.let { r ->
             val id = addObject(m.cards.getValue(r.groupValues[1]), actor ?: subject ?: "me", false, ctx, zone = "hand")
