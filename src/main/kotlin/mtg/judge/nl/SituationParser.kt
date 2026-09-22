@@ -571,7 +571,9 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""^with (?:the |an? |my |their )?c\d+ (?:still )?on the stack,? """), "in response ")
             .replace(Regex("""^before (?:it|that|the spell) resolves,? """), "in response ")
             // "I attack with an 8/8 trampler into a 2/2 blocker": the thing attacked into is the blocker.
-            .replace(Regex("""\b(attacks?|attacking|swings?|swinging)((?: with)? .+?) into ((?:an? |the |their |his |her )?(?:\d+/\d+|c\d+)(?:\s+(?!blocker)[a-z]+)*)(?:\s+blockers?)?(?=[.,]|$)"""), "$1$2, they block with $3")
+            .let { t0 -> Regex("""\b(attacks?|attacking|swings?|swinging)((?: with)? .+?) into ((?:an? |the |their |his |her )?(?:untapped |tapped |fresh )?(?:\d+/\d+|c\d+)(?:\s+(?!blocker)[a-z]+)*)(?:\s+blockers?)?(?=[.,]|$)""").replace(t0) { r ->
+                r.groupValues[1] + r.groupValues[2] + ", they block with " + r.groupValues[3].replace(Regex("""\b(?:untapped|fresh) """), "")
+            } }
             // "when it connects", "if my Skirge connects": table talk for dealing combat damage to a player.
             .replace(Regex("""\b(?:when|if|after) ((?:their |his |her )c\d+) connects\b"""), "and $1 deals combat damage to me")
             .replace(Regex("""\b(?:when|if|after) ((?:it|that|(?:$possPrefix)?c\d+)) connects\b"""), "and $1 deals combat damage to my opponent")
@@ -618,6 +620,13 @@ class SituationParser(private val names: NameIndex) {
             // the activation says so, so this only fires when the permanent is named.
             .replace(Regex("""\b(?:i|we|they|he|she|my opponent|the opponent|@\w+) (?:gives?|gave|grants?|granted) ((?:$possPrefix)(?:c\d+|\d+/\d+|creature)) (?=(?:$kwPhrase)\b)"""), "$1 has ")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
+            .replace(Regex("""^(?:so|ok|okay|alright|all right|hey|hi|right|well|anyway|anyways|actually)[,:]? +""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""^(?:quick question|question|my question is|one more|another one|new question|a question)[,:]? +(?:whether |if |about )?""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""^(?:just to check|just checking|to check|to be clear|for clarity)[,:]? +""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""^(?:can you (?:tell me|explain|say)|tell me|explain|i'd like to know|i would like to know|i want to know|i wonder|wondering)[,:]? +(?:what happens |whether |if |about )?(?:when |if )?""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""^(?:is it true that|is it right that|am i right that|what's the ruling (?:when|if|on)|what is the ruling (?:when|if|on)|how does it work (?:when|if))[,:]? +""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""\?\s*(?:yes or no|y/n)\?*$""", RegexOption.IGNORE_CASE), "?")
+            .replace(Regex("""\s*[,.]?\s*(?:yes or no|y/n)\?*$""", RegexOption.IGNORE_CASE), "")
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
             // "Who wins the fight between Grizzly Bears and Hill Giant?": a fight with no card making it happen.
             // The "and" would otherwise break the sentence and leave the second creature as a clause of its own.
@@ -631,6 +640,7 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""^(?:will|would|does|do|is|are|can|could) ((?:$possPrefix)?c\d+) (?:die|be killed|be destroyed) to ((?:$possPrefix|an? )?c\d+)\??$"""), "they cast $2 targeting $1, does $1 die")
             // "Can Serra Angel block Grizzly Bears?": the second card is the attacker, whichever way round the
             // sentence puts them. Without this the first card was read as attacking and combat ran backwards.
+            .replace(Regex("""^((?:$possPrefix)?c\d+) can block ((?:$possPrefix)?c\d+)\??$"""), "can $1 block $2")
             .let { t0 -> Regex("""^can ($possPrefix)?(c\d+) block ($possPrefix)?(c\d+)\??$""").replace(t0) { r ->
                 val blk = r.groupValues[1].ifEmpty { "my " }; val atk = r.groupValues[3].ifEmpty { "their " }
                 "$atk${r.groupValues[4]} attacks, can $blk${r.groupValues[2]} block it"
@@ -923,7 +933,7 @@ class SituationParser(private val names: NameIndex) {
         return false
     }
 
-    private fun isNoise(clause: String) = Regex("""(?i)^(what happens|what now|so|then|now|ok|okay|right|they're|they are|i'm|i am|he's|she's|we're|it's|does it wear off|do(?:es)? (?:it|that|they) (?:wear off|go away|end|stay)|after (?:combat )?damage|after blockers|after blocks|after combat|after that|after this|before damage|i don't respond|they don't respond|i do(?:n't| not) respond|no response|no responses|nobody responds|no one responds|i pass|they pass|everyone passes|all players pass|does it work|is that right|correct|legal|is that legal|is it legal|allowed|is that allowed|and|but|also|too|as well|no wait|wait|never mind|nevermind|sorry|hmm|uh|um|actually|they durdle|i durdle|durdles?|they do nothing|i do nothing|nothing happens)\??$""").matches(clause.trim()) ||
+    private fun isNoise(clause: String) = Regex("""(?i)^(what happens|what now|so|then|now|ok|okay|right|they're|they are|i'm|i am|he's|she's|we're|it's|does it wear off|do(?:es)? (?:it|that|they) (?:wear off|go away|end|stay)|after (?:combat )?damage|after blockers|after blocks|after combat|after that|after this|before damage|i don't respond|they don't respond|i do(?:n't| not) respond|no response|no responses|nobody responds|no one responds|i pass|they pass|everyone passes|all players pass|does it work|is that right|correct|yes or no|y/n|legal|is that legal|is it legal|allowed|is that allowed|and|but|also|too|as well|no wait|wait|never mind|nevermind|sorry|hmm|uh|um|actually|they durdle|i durdle|durdles?|they do nothing|i do nothing|nothing happens)\??$""").matches(clause.trim()) ||
         (!Regex("""c\d+""").containsMatchIn(clause) && Regex("""^(?:do|does|did|can|could|will|would|is|are|was|were|what|who|which|how|should|when|why|am)\b""").matches(clause.trim().substringBefore(' ')) &&
             // "is blocked by a 1/1", "was countered": a passive statement whose subject was left out opens with
             // the same word a question does, and dropping it as noise lost the block with nothing said about it.
@@ -1193,6 +1203,25 @@ class SituationParser(private val names: NameIndex) {
                 emitCast(caster, spell, "", m, ctx)
                 ctx.events.indexOfLast { it.verb == "cast" }.takeIf { it >= 0 }?.let { i -> ctx.events[i] = ctx.events[i].copy(targets = listOf(victim)) }
                 ctx.asks += EventSpec("ask", obj = victim, to = "die"); ctx.lastMentioned = victim; return true
+            }
+            // "does my 2/2 die to a 2/2 with deathtouch in combat?": what it dies to is a creature, not a spell,
+            // so the question is about a fight in combat. Answered without one, it was always "no".
+            Regex("""^(it|that|(?:my |the |their |his |her )?(?:c\d+|\d+/\d+|creature|guy|dude)) (?:dies?|die|is killed|get(?:s)? killed|survives?|live(?:s)?|trades? with) (?:to|against|with)? ?(?:an? |the |their |my )?(\d+/\d+)([a-z ,/+&]*?)(?: in combat| in a fight| in the fight)?$""").find(r.groupValues[1])?.let { q ->
+                val minePh = q.groupValues[1]
+                val mineId = when {
+                    Regex("""c\d+""").containsMatchIn(minePh) -> Regex("""c\d+""").find(minePh)!!.value.let { ph -> m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } }
+                    Regex("""\d+/\d+""").containsMatchIn(minePh) -> Regex("""\d+/\d+""").find(minePh)!!.value.let { pt ->
+                        ctx.objects.values.lastOrNull { it.controller == "me" && (it.card.name ?: "").startsWith("a $pt") }?.id ?: describedCreatures("a ", pt, "creature", "me", ctx).firstOrNull() }
+                    minePh in setOf("it", "that") -> ctx.lastMentioned?.takeIf { it in ctx.objects }
+                    else -> ctx.objects.values.lastOrNull { it.controller == "me" && isCreatureName(it.card.name) }?.id ?: describedCreatures("a ", "", "creature", "me", ctx).firstOrNull()
+                } ?: return@let
+                val kws = Regex("""$kwNouns""").findAll(q.groupValues[3]).map { k -> k.value.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink").replace("striker", "strike") }.distinct().joinToString(", ")
+                val theirs = ctx.other(ctx.objects[mineId]?.controller ?: "me") ?: "opp"
+                val foe = describedCreatures("a ", q.groupValues[2], "creature", theirs, ctx, kws).firstOrNull() ?: return@let
+                ctx.events += EventSpec("attack", player = ctx.objects[mineId]?.controller ?: "me", obj = mineId, targets = listOf(theirs))
+                ctx.events += EventSpec("block", player = theirs, obj = foe, targets = listOf(mineId))
+                ctx.notes += "Read as combat: ${ctx.objects[mineId]?.card?.name ?: "it"} attacks and ${ctx.objects[foe]?.card?.name ?: "the other creature"} blocks."
+                ctx.asks += EventSpec("ask", obj = mineId, to = "die"); ctx.lastMentioned = mineId; return true
             }
             // "can it attack the turn it comes down?" / "can I tap it for mana the turn I play it?": the tail says
             // it came under its controller's control this turn. Ignored, the answer assumed it had been there
@@ -1668,7 +1697,12 @@ class SituationParser(private val names: NameIndex) {
         // Questions with no card in them carry no state ("do they get a land?"); "doesn't block" / "no blocks" / "takes it" mean no block.
         // A card-less question can still be about something ("what are its stats?", "does it survive?"): asked before it's dropped as noise.
         if (isNoise(c)) { askQuestion(clause0, m, ctx); return true }
-        if (Regex("""^(?:(?:doesn't|does not|don't|do not|didn't|won't|declines? to|chooses? not to) block\b.*|no blocks?|takes? (?:it|the damage|the hit|the other|the other one|the rest|the others)|lets? (?:it|the other|the others|the rest) through)$""").matches(c)) { ctx.lastActor = actor ?: ctx.lastActor; return true }
+        if (Regex("""^(?:(?:doesn't|does not|don't|do not|didn't|won't|declines? to|chooses? not to) block\b.*|no blocks?|takes? (?:it|the damage|the hit|the other|the other one|the rest|the others)|lets? (?:it|the other|the others|the rest) through)$""").matches(c)) {
+            val who = actor ?: ctx.other(ctx.events.lastOrNull { it.verb == "attack" }?.player) ?: ctx.lastActor
+            val plain = Regex("""^(?:(?:doesn't|does not|don't|do not|didn't|won't|declines? to|chooses? not to) block(?: at all| this turn| it| that| the attacker| anything)?|no blocks?|takes? (?:it|the damage|the hit)|lets? it through)$""").matches(c)
+            if (plain && ctx.events.removeAll { it.verb == "block" && (who == null || it.player == who) }) ctx.notes += "\"${restore(clause0, m)}\": the block read from an earlier clause is taken back."
+            ctx.lastActor = actor ?: ctx.lastActor; return true
+        }
         // "has no creatures" / "have no blockers": nothing to add to the board.
         // "my opponent has no untapped lands": nothing to add to the board, but it does say there is no mana,
         // which is what a tax or a response is checked against.
@@ -3667,18 +3701,21 @@ class SituationParser(private val names: NameIndex) {
         }
         // "My Liliana is attacked by a 2/2", "my Bears got attacked by a 3/3": the passive form. A planeswalker
         // is attacked; a creature can't be (506.3), so for a creature it is read as that creature blocking.
-        Regex("""^(?:(c\d+|\d+/\d+|planeswalker|walker)(?: creature)? )?(?:is|are|was|were|gets?|got) attacked by (?:an? |the |my |their |his |her )?(c\d+|\d+/\d+)(?: creature)?$""").find(c)?.let { r ->
+        Regex("""^(?:(c\d+|\d+/\d+|planeswalker|walker|creature|guy|dude|token)(?: creature)? )?(?:is|are|was|were|gets?|got) attacked by (?:an? |the |my |their |his |her )?(c\d+|\d+/\d+|creature|guy|dude|token)(?: creature)?$""").find(c)?.let { r ->
             val mine = actor ?: ctx.lastOwner ?: "me"
             val them = ctx.other(mine) ?: "opp"
             val subjPh = r.groupValues[1]
             val subj = when {
                 subjPh.isEmpty() -> ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
                 cardRef.matches(subjPh) -> m.cards[subjPh]?.let { objectIdFor(it, ctx) ?: addObject(it, mine, false, ctx) } ?: return@let
-                Regex("""^\d+/\d+$""").matches(subjPh) -> describedCreatures("a ", subjPh, "creature", mine, ctx).firstOrNull() ?: return@let
+                Regex("""^\d+/\d+$""").matches(subjPh) -> ctx.objects.values.lastOrNull { it.controller == mine && (it.card.name ?: "").startsWith("a $subjPh") }?.id
+                    ?: describedCreatures("a ", subjPh, "creature", mine, ctx).firstOrNull() ?: return@let
+                subjPh in setOf("creature", "guy", "dude", "token") -> ctx.objects.values.lastOrNull { it.controller == mine && isCreatureName(it.card.name) }?.id
+                    ?: describedCreatures("a ", "", "creature", mine, ctx).firstOrNull() ?: return@let
                 else -> return@let
             }
             val atk = if (cardRef.matches(r.groupValues[2])) m.cards[r.groupValues[2]]?.let { objectIdFor(it, ctx) ?: addObject(it, them, false, ctx) } ?: return@let
-                      else describedCreatures("a ", r.groupValues[2], "creature", them, ctx).firstOrNull() ?: return@let
+                      else describedCreatures("a ", r.groupValues[2].takeIf { Regex("""^\d+/\d+$""").matches(it) } ?: "", "creature", them, ctx).firstOrNull() ?: return@let
             val walker = (ctx.objects[subj]?.card?.name ?: "").let { n -> m.cards.values.firstOrNull { it.display == n }?.typeLine?.contains("Planeswalker") == true } || subjPh in setOf("planeswalker", "walker")
             if (walker) { ctx.events += EventSpec("attack", player = them, obj = atk, targets = listOf(subj)) }
             else {

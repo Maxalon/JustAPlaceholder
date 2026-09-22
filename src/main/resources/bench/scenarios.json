@@ -12457,5 +12457,38 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "attack-into-an-untapped-blocker",
+    "text": "Explain what happens when I attack with a 2/2 into an untapped 3/3.",
+    "expect": [
+      "a 2/2 creature: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "conversational-preamble",
+    "text": "Quick question: does my 2/2 die to a 2/2 with deathtouch in combat?",
+    "expect": [
+      "Yes"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "question-is-whether",
+    "text": "My question is whether my Serra Angel can block their Grizzly Bears.",
+    "expect": [
+      "Serra Angel"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
