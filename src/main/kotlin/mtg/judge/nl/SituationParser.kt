@@ -823,7 +823,7 @@ class SituationParser(private val names: NameIndex) {
         return false
     }
 
-    private fun isNoise(clause: String) = Regex("""(?i)^(what happens|what now|so|then|now|ok|okay|right|they're|they are|i'm|i am|he's|she's|we're|it's|does it wear off|do(?:es)? (?:it|that|they) (?:wear off|go away|end|stay)|after (?:combat )?damage|after blockers|after blocks|after combat|after that|after this|before damage|does it work|is that right|correct|and|but|also|too|as well|no wait|wait|never mind|nevermind|sorry|hmm|uh|um|actually|they durdle|i durdle|durdles?|they do nothing|i do nothing|nothing happens)\??$""").matches(clause.trim()) ||
+    private fun isNoise(clause: String) = Regex("""(?i)^(what happens|what now|so|then|now|ok|okay|right|they're|they are|i'm|i am|he's|she's|we're|it's|does it wear off|do(?:es)? (?:it|that|they) (?:wear off|go away|end|stay)|after (?:combat )?damage|after blockers|after blocks|after combat|after that|after this|before damage|i don't respond|they don't respond|i do(?:n't| not) respond|no response|no responses|nobody responds|no one responds|i pass|they pass|everyone passes|all players pass|does it work|is that right|correct|and|but|also|too|as well|no wait|wait|never mind|nevermind|sorry|hmm|uh|um|actually|they durdle|i durdle|durdles?|they do nothing|i do nothing|nothing happens)\??$""").matches(clause.trim()) ||
         (!Regex("""c\d+""").containsMatchIn(clause) && Regex("""^(?:do|does|did|can|could|will|would|is|are|was|were|what|who|which|how|should|when|why|am)\b""").matches(clause.trim().substringBefore(' ')) &&
             // "is blocked by a 1/1", "was countered": a passive statement whose subject was left out opens with
             // the same word a question does, and dropping it as noise lost the block with nothing said about it.
@@ -1149,13 +1149,17 @@ class SituationParser(private val names: NameIndex) {
         }
         // "They deal 3 damage to me", "I take 3 damage": damage from a source nobody named, so the answer can still
         // show what prevention and replacement effects do to it.
-        Regex("""^(?:(i|they|he|she|we|my opponent|the opponent|@\w+) )?(?:deals?|dealt) (\d+) damage to (me|you|them|him|her|my opponent|the opponent|@\w+|it|that|(?:$possPrefix)?c\d+|(?:my |their |the )?\d+/\d+)$|^(?:(i|they|he|she|we|my opponent|the opponent|@\w+) )?(?:takes?|took) (\d+) damage$|^(?:(?:my |their |his |her |the )?(c\d+|it|that) )?(?:is|are|was|were) dealt (\d+) damage$""").find(c)?.let { r ->
+        Regex("""^(?:(i|they|he|she|we|my opponent|the opponent|@\w+) )?(?:deals?|dealt) (\d+) damage to (me|you|them|him|her|my opponent|the opponent|@\w+|it|that|(?:$possPrefix)?c\d+|(?:my |their |the )?\d+/\d+)$|^(?:(i|they|he|she|we|my opponent|the opponent|@\w+|(?:$possPrefix)?c\d+|it|that) )?(?:takes?|took) (\d+) damage$|^(?:(?:my |their |his |her |the )?(c\d+|it|that) )?(?:is|are|was|were) dealt (\d+) damage$""").find(c)?.let { r ->
             val dealt = r.groupValues[2].isNotEmpty()
             val passive = r.groupValues[7].isNotEmpty()
             val amount = (if (dealt) r.groupValues[2] else if (passive) r.groupValues[7] else r.groupValues[5]).toIntOrNull() ?: return@let
-            val victimWord = if (dealt) r.groupValues[3] else if (passive) r.groupValues[6].ifEmpty { "it" } else r.groupValues[4].ifEmpty { "me" }
+            // "My Grizzly Bears has two +1/+1 counters and takes 3 damage": a subjectless "takes N damage" carries
+            // on from the permanent the sentence was about, not from the player.
+            val carriesOn = !dealt && !passive && r.groupValues[4].isEmpty() && ctx.clauseIndex > 0 &&
+                ctx.lastMentioned?.let { lm -> ctx.objects[lm]?.zone == "battlefield" } == true
+            val victimWord = if (dealt) r.groupValues[3] else if (passive) r.groupValues[6].ifEmpty { "it" } else r.groupValues[4].ifEmpty { if (carriesOn) "it" else "me" }
             // "deals 3 damage to my Grizzly Bears" / "it is dealt 3 damage": a permanent can be the one damaged.
-            val objWord = victimWord.replace(Regex("""^(?:my |their |his |her |the )"""), "")
+            val objWord = victimWord.replace(Regex("""^(?:$possPrefix)"""), "")
             val victimObj = when {
                 objWord == "it" || objWord == "that" -> ctx.lastMentioned?.takeIf { it in ctx.objects }
                 Regex("""^c\d+$""").matches(objWord) -> m.cards[objWord]?.let { card ->
@@ -1799,9 +1803,14 @@ class SituationParser(private val names: NameIndex) {
         }
         // "My Grizzly Bears gets a +1/+1 counter", "it has two charge counters on it".
         // "has +1/+1 counter on it": people leave the article out, and dropping the clause quietly lost the counter.
-        Regex("""^($possPrefix)?(c\d+|it|that) (?:gets?|has|have|is given|gains?|gained) (an?|one|two|three|four|five|\d+)? ?([+-]\d+/[+-]\d+|[a-z]+) counters?(?: on it)?$""").find(c)?.let { r ->
-            val owner = possessiveOwner(r.groupValues[1], ctx) ?: actor ?: ctx.lastOwner
+        // "my creature has a -1/-1 counter": the creature may be described rather than named.
+        Regex("""^($possPrefix)?(c\d+|it|that|creature|guy|dude|\d+/\d+) (?:gets?|has|have|is given|gains?|gained) (an?|one|two|three|four|five|\d+)? ?([+-]\d+/[+-]\d+|[a-z]+) counters?(?: on it)?$""").find(c)?.let { r ->
+            val owner = possessiveOwner(r.groupValues[1], ctx) ?: actor ?: ctx.lastOwner ?: "me"
             val id = if (r.groupValues[2] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                     else if (r.groupValues[2] in setOf("creature", "guy", "dude")) ctx.objects.values.lastOrNull { it.controller == owner && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id
+                        ?: describedCreatures("a ", "", "creature", owner, ctx).firstOrNull() ?: return@let
+                     else if (Regex("""^\d+/\d+$""").matches(r.groupValues[2])) describedCreatures("the ", r.groupValues[2], "creature", owner, ctx).firstOrNull()
+                        ?: describedCreatures("a ", r.groupValues[2], "creature", owner, ctx).firstOrNull() ?: return@let
                      else m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, owner, false, ctx) } ?: return@let
             val n = r.groupValues[3].ifEmpty { "one" }.let { number(it) } ?: return@let
             val kind = r.groupValues[4]
@@ -2145,9 +2154,10 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastVerb = "have"; ctx.lastOwner = who; return true
         }
         // A state fragment about the last-mentioned permanent: "… and 1 damage on it", "with three +1/+1 counters", "at 4 loyalty".
-        if (Regex("""^(?:with |has |having |it has |at |is at )?(?:\d+|\w+) (?:loyalty(?: counters?)?|(?:[+-]\d+/[+-]\d+|[a-z]+) counters?(?: on it)?|damage(?: marked)?(?: on it)?)$""").matches(c) || Regex("""^(?:with |has )?(?:an? )?[+-]\d+/[+-]\d+ (?:pump|bonus|boost)(?: from .*)?$""").matches(c)) {
+        // "… and gets two -1/-1 counters": the same fragment said with a verb, which was left unread.
+        if (Regex("""^(?:with |has |having |it has |at |is at |gets? |gains?ed? |gains? |is given |takes? )?(?:\d+|\w+) (?:loyalty(?: counters?)?|(?:[+-]\d+/[+-]\d+|[a-z]+) counters?(?: on it)?|damage(?: marked)?(?: on it)?)$""").matches(c) || Regex("""^(?:with |has )?(?:an? )?[+-]\d+/[+-]\d+ (?:pump|bonus|boost)(?: from .*)?$""").matches(c)) {
             val id = ctx.lastMentioned?.takeIf { ctx.objects.containsKey(it) } ?: return false
-            applyStateWords(id, "with " + c.replace(Regex("""^(?:with |has |having |it has |at |is at )"""), ""), ctx); return true
+            applyStateWords(id, "with " + c.replace(Regex("""^(?:with |has |having |it has |at |is at |gets? |gains?ed? |gains? |is given |takes? )"""), ""), ctx); return true
         }
         // "… and three Elves" continuing an attack: typed 1/1 tokens join the attack.
         if (ctx.lastVerb == "attack") Regex("""^(\d+|two|three|four|five) (elves|elf|goblins|zombies|soldiers|humans|spirits|angels|dragons|beasts|elementals|saprolings|thopters|knights|warriors|wizards|vampires|merfolk|cats|dogs|birds|insects|squirrels|servos|tokens|creatures)(?: tokens?)?$""").find(c)?.let { r ->
@@ -2311,6 +2321,15 @@ class SituationParser(private val names: NameIndex) {
             val sick = if (played.isEmpty()) null else !Regex("""last turn|a turn ago""").containsMatchIn(played)
             when (ctx.lastVerb) {
                 "have" -> {
+                    // An instant or sorcery never sits on the battlefield. Said by a player who is acting ("my
+                    // opponent Wraths") it is them casting it; otherwise it is a card they hold.
+                    if (card.isSpellOnly) {
+                        if (actor != null) { emitCast(actor, card, "", m, ctx); return true }
+                        val who = ctx.lastOwner ?: "me"
+                        ctx.inHand.getOrPut(who) { mutableListOf() } += card
+                        ctx.notes += "${card.display} noted as in hand (hidden zones are only tracked when you cast from them)."
+                        return true
+                    }
                     repeat(count) { id0 ->
                         val id = addObject(card, actor ?: ctx.lastOwner, isTapped, ctx, allowDuplicate = count > 1)
                         if (isTapped) ctx.objects[id] = ctx.objects.getValue(id).copy(tapped = true)
@@ -2321,7 +2340,9 @@ class SituationParser(private val names: NameIndex) {
                 "cast" -> { if (Regex("""^(?:their|my|his|her|the|an?) """).containsMatchIn(clauseIn.trim())) { addObject(card, if (clauseIn.trim().startsWith("my")) (ctx.lastActor ?: "me") else ctx.other(ctx.lastActor) ?: "opp", isTapped, ctx); return true }; emitCast(subject ?: "opp", card, "", m, ctx); return true }
                 "attack" -> { val who = ctx.lastActor ?: "me"; val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx); ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(ctx.other(who) ?: "opp")); return true }
                 "block" -> { val who = ctx.lastActor ?: "opp"; val id = ctx.objects.values.firstOrNull { it.card.oracleId == card.oracleId && it.controller == who }?.id ?: addObject(card, who, false, ctx, allowDuplicate = true); val attacker = ctx.events.lastOrNull { it.verb == "attack" && who in it.targets }?.obj ?: ctx.events.lastOrNull { it.verb == "attack" }?.obj; ctx.events += EventSpec("block", player = who, obj = id, targets = listOfNotNull(attacker)); return true }
-                else -> return false
+                // "My opponent Wraths": an instant or sorcery standing alone, with nothing before it to continue.
+                // It can only be someone casting it, and read as nothing at all the sweeper never happened.
+                else -> { if (card.isSpellOnly && (actor ?: subject) != null) { emitCast(actor ?: subject!!, card, "", m, ctx); return true }; return false }
             }
         }
 

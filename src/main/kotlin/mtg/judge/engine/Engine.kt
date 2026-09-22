@@ -868,6 +868,19 @@ class Engine(val state: GameState) {
                 for (o in group) if (o !== keep) { move(o, Zone.GRAVEYARD, "${p.subject} ${p.v("controls", "control")} two legendary permanents named ${o.name}; ${p.subject.lowercase()} ${p.v("chooses", "choose")} one and the other is put into its owner's graveyard (the \"legend rule\", a state-based action).", "704.3", "704.5j"); changed = true }
                 state.assumptions += "${p.subject} ${p.v("keeps", "keep")} the newer ${keep.name} (704.5j lets ${p.subject.lowercase()} choose which)."
             }
+            // +1/+1 and -1/-1 counters cancel out before anything is checked for dying (704.5q): a 2/2 with one
+            // of each is a 2/2 with no counters, not a 2/2 carrying both.
+            for (obj in state.objects.values.toList()) {
+                if (!obj.isOnBattlefield()) continue
+                val plus = obj.counters["+1/+1"] ?: 0; val minus = obj.counters["-1/-1"] ?: 0
+                val n = minOf(plus, minus)
+                if (n <= 0) continue
+                obj.counters["+1/+1"] = plus - n; obj.counters["-1/-1"] = minus - n
+                if (obj.counters["+1/+1"] == 0) obj.counters.remove("+1/+1")
+                if (obj.counters["-1/-1"] == 0) obj.counters.remove("-1/-1")
+                trace.step("${obj.name} has both +1/+1 and -1/-1 counters, so $n of each are removed (state-based action); it's now ${obj.power}/${obj.toughness}.", "704.3", "704.5q")
+                changed = true
+            }
             // Creatures dying to the same state-based check die at once: each sees the others go (603.10a).
             val dying = state.objects.values.filter { o -> o.isOnBattlefield() && o.def.isCreature && o.toughness?.let { t -> t <= 0 || (!o.has("indestructible") && ((o.damage >= t && o.damage > 0) || (o.dealtDeathtouchDamage && o.damage > 0))) } == true }
             if (dying.size > 1) { leavingTogether = dying.map { it.id }.toSet(); trace.step("${dying.joinToString(", ") { it.name }} are all put into their owners' graveyards by the same state-based check, simultaneously; abilities that trigger on a creature dying see all of them go, including a creature's own leaving alongside the others.", "704.3", "603.10a") }

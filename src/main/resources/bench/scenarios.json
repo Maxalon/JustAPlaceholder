@@ -11273,5 +11273,73 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "verbified-sweeper",
+    "text": "I control Grizzly Bears. My opponent Wraths.",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "verbified-sweeper-indestructible",
+    "text": "My opponent Wraths and I have an indestructible creature.",
+    "expect": [
+      "is indestructible and isn't destroyed"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "counters-cancel-out",
+    "text": "My Grizzly Bears has a -1/-1 counter and a +1/+1 counter. How many counters does it have?",
+    "expect": [
+      "Grizzly Bears has no counters on it"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5q"
+    ]
+  },
+  {
+    "id": "counters-cancel-partly",
+    "text": "My Walking Ballista has three +1/+1 counters and gets two -1/-1 counters. What are its stats?",
+    "expect": [
+      "Walking Ballista is 1/1"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "a-permanent-takes-damage",
+    "text": "My Grizzly Bears takes 3 damage. Does it die?",
+    "expect": [
+      "Yes: Grizzly Bears died"
+    ],
+    "notExpect": [
+      "You take 3 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "damage-carries-on-to-the-permanent",
+    "text": "My Grizzly Bears has two +1/+1 counters and takes 3 damage. Does it die?",
+    "expect": [
+      "No: Grizzly Bears is still on the battlefield"
+    ],
+    "notExpect": [
+      "You take 3 damage"
+    ],
+    "cite": []
   }
 ]
