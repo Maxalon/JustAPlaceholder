@@ -715,6 +715,8 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""^(?:my opponent|he|she|they|my teammate) says?[,:]? +(?:that )?""", RegexOption.IGNORE_CASE), "")
             .replace(Regex("""^(?:so like|like)[,:]? +""", RegexOption.IGNORE_CASE), "")
             .replace(Regex("""^i have a question about[,:]? +""", RegexOption.IGNORE_CASE), "")
+            // "it attacks while saddled": the Mount was saddled first, and then attacked.
+            .replace(Regex("""\b((?:$possPrefix)?(?:c\d+|it|that)) (attacks?|is attacking|swings?) while saddled\b""", RegexOption.IGNORE_CASE), "$1 is saddled, $1 $2")
             // "what happens to my Bears when a Wrath resolves": the spell resolving is its own clause.
             .replace(Regex("""\s+when ((?:an? |the |my |their )?c\d+) resolves\b""", RegexOption.IGNORE_CASE), ", $1 resolves")
             .replace(Regex("""^(?:just to check|just checking|to check|to be clear|for clarity)[,:]? +""", RegexOption.IGNORE_CASE), "")
@@ -2879,6 +2881,20 @@ class SituationParser(private val names: NameIndex) {
             ctx.objects[id] = ctx.objects.getValue(id).copy(zone = "graveyard", controller = who)
             ctx.events += EventSpec("reanimate", player = who, obj = id)
             ctx.lastActor = who; ctx.lastMentioned = id; ctx.note(who); return true
+        }
+        // "I saddle my Caustic Bronco" / "my Mount is saddled": the Mount's own ability, which costs tapping
+        // other creatures rather than mana, and only turns on what the Mount does while saddled (702.166a).
+        Regex("""^(?:saddles?|saddled|saddling) (?:an? |the |my |their |his |her )?(c\d+|it|that|creature|\d+/\d+)$|^(?:$possPrefix)?(c\d+|it|that) (?:is|are|was|were|gets?|got|becomes?|became) (?:already )?saddled$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: ctx.lastOwner ?: "me"
+            val w = r.groupValues[1].ifEmpty { r.groupValues[2] }
+            val id = when {
+                w == "it" || w == "that" -> ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                w == "creature" -> ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id ?: return@let
+                Regex("""^\d+/\d+$""").matches(w) -> describedCreatures("a ", w, "creature", who, ctx).firstOrNull() ?: return@let
+                else -> m.cards[w]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) } ?: return@let
+            }
+            ctx.events += EventSpec("activate", player = ctx.objects[id]?.controller ?: who, obj = id, to = "saddle")
+            ctx.lastActor = who; ctx.lastMentioned = id; return true
         }
         // "I flicker my Wall of Omens" / "they blink it": exiling and returning it at once, with no card named.
         Regex("""^(?:blinks?|blinked|blinking|flickers?|flickered|flickering) ($possPrefix|an? )?(c\d+|it|that|creature|guy|dude|\d+/\d+)(?: creature)?$""").find(c)?.let { r ->

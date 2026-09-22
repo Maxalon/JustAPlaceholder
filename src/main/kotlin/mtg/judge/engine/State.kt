@@ -66,6 +66,10 @@ class GameObject(
     var basePt: Pair<Int, Int>? = null
     /** Set while "until end of turn, ~ becomes a creature" is in effect (Mutavault). Cleared at cleanup and on a zone change. */
     var animatedAs: Animation? = null
+    /** Saddled until end of turn (702.166a). A Mount is a creature either way; only its own triggers care. */
+    var saddled: Boolean = false
+    /** How many times it has been saddled this turn, for "becomes saddled for the first time each turn". */
+    var saddledThisTurn: Int = 0
     /** The controller an until-end-of-turn control change (Threaten) hands this back to at cleanup. */
     var controlRevertsTo: String? = null
     var timestamp: Int = 0

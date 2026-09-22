@@ -13343,5 +13343,29 @@
       "You draw 1 card"
     ],
     "cite": []
+  },
+  {
+    "id": "saddle-a-mount",
+    "text": "I control Brightfield Mustang and I saddle it, then I attack with it",
+    "expect": [
+      "Brightfield Mustang is saddled until end of turn"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.166a"
+    ]
+  },
+  {
+    "id": "attacks-while-saddled",
+    "text": "I control Caustic Bronco and it attacks while saddled",
+    "expect": [
+      "Caustic Bronco is saddled until end of turn"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

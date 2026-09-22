@@ -126,6 +126,9 @@ object OracleParser {
                                       else Effect.Narrated("~ becomes an artifact creature until end of turn", listOf("702.122a"))
                             abilities += ActivatedAbility(part.trimEnd('.') + " (tap any number of other untapped creatures you control with total power N or more)", eff, part)
                         }
+                        // Saddle works like crew, but the Mount is already a creature: saddling only turns on
+                        // what its own text does while saddled (702.166a).
+                        "saddle" -> abilities += ActivatedAbility(part.trimEnd('.') + " (tap any number of other untapped creatures you control with total power N or more)", Effect.SaddleSelf, part)
                         else -> abilities += StaticAbility(part, kw)
                     }
                 }
@@ -361,6 +364,11 @@ object OracleParser {
             // word "spell" before parseFilter sees it, so the kind is put back here.
             val filter = if (what == "spell") null else parseFilter(what, Kind.SPELL).let { if (Kind.SPELL in it.kinds) it else it.copy(kinds = it.kinds + Kind.SPELL) }
             return Trigger.SpellCast(who, filter)
+        }
+        // "~ attacks while saddled" / "~ becomes saddled (for the first time each turn)" (702.166b).
+        if (Regex("""^~ attacks while saddled$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisAttacksSaddled
+        Regex("""^~ becomes saddled( for the first time each turn)?$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
+            return Trigger.ThisBecomesSaddled(m.groupValues[1].isNotEmpty())
         }
         if (Regex("""^~ enters(?: the battlefield)?$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisEnters
         if (Regex("""^~ dies$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisDies

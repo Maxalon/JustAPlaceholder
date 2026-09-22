@@ -17,20 +17,26 @@
 109.2	if a spell or ability uses
 110.5b	permanents enter the battlefield untapped unflipped
 111.1	some effects put tokens onto the
+111.7	a token that s in a
+113.6c	an ability that states which zones
 113.7a	once activated or triggered an ability
 115.1	some spells and abilities require their
 115.1a	an instant or sorcery spell is
 115.3	the same target can t be
 115.7	some effects allow a player to
+115.7b	if an effect allows a player
 116.2a	playing a land is a special
 117.1a	a player may cast an instant
+117.3a	the active player receives priority at
 117.3b	the active player receives priority after
 117.3c	if a player has priority when
 117.3d	if a player has priority and
 117.4	if all players pass in succession
 117.5	each time a player would get
 118.3	a player can t pay a
+118.5	some costs are represented by 0
 118.7	what a player actually needs to
+118.9	some spells have alternative costs an
 119.3	if an effect causes a player
 119.4	if a cost or effect allows
 120.3	damage may have one or more
@@ -44,6 +50,7 @@
 121.2	cards may only be drawn one
 121.3	if there are no cards in
 121.4	a player who attempts to draw
+121.6	some effects replace card draws
 122.1	a counter is a marker placed
 122.1a	a x y counter on a
 122.6	some spells and abilities refer to
@@ -59,6 +66,7 @@
 303.4f	if an aura is entering the
 305.1	a player who has priority may
 305.2	a player can normally play one
+305.2a	to determine whether a player can
 305.7	if an effect sets a land
 306.1	a player who has priority may
 306.5b	a planeswalker has the intrinsic ability
@@ -66,6 +74,7 @@
 306.9	if a planeswalker s loyalty is
 307.1	a player who has priority may
 310.1	a player who has priority may
+400.2	public zones are zones in which
 400.7	an object that moves from one
 401.4	if an effect puts two or
 401.5	some effects tell a player to
@@ -85,6 +94,7 @@
 506.2	during the combat phase the active
 506.3	only a creature can attack or
 506.4	a permanent is removed from combat
+508.1	first the active player declares attackers
 508.1a	the active player chooses which creatures
 508.1b	if the defending player controls any
 508.1c	the active player checks each creature
@@ -111,9 +121,11 @@
 601.2a	to propose the casting of a
 601.2b	if the spell is modal the
 601.2c	the player announces their choice of
+601.2d	if the spell requires the player
 601.2f	the player determines the total cost
 601.2h	the player pays the total cost
 601.3	a player can begin to cast
+602.1a	the activation cost is everything before
 602.2	to activate an ability is to
 602.2a	the player announces that they are
 602.2b	the remainder of the process for
@@ -138,6 +150,7 @@
 606.4	the cost to activate a loyalty
 606.6	a loyalty ability with a negative
 608.1	each time all players pass in
+608.2	if the object that s resolving
 608.2b	if the spell or ability specifies
 608.2c	the controller of the spell or
 608.2d	if an effect of a spell
@@ -157,6 +170,7 @@
 613.4b	layer 7b effects that set power
 614.1	some continuous effects are replacement effects
 614.1a	effects that use the word instead
+614.1b	effects that use the word skip
 614.1c	effects that read this permanent enters
 614.6	if an event is replaced it
 614.8	regeneration is a destruction replacement effect
@@ -168,6 +182,8 @@
 616.1	if two or more replacement and
 616.1e	any of the applicable replacement and
 700.2a	the controller of a modal spell
+700.2c	if a spell or ability targets
+700.2d	if a player is allowed to
 700.4	the term dies means is put
 700.5	a player s devotion to color
 701.3a	to attach an aura equipment or
@@ -196,12 +212,15 @@
 701.26a	to tap a permanent turn it
 701.26b	to untap a permanent rotate it
 701.27a	to transform a permanent turn it
+701.31a	a player may planeswalk only during
+701.31b	to planeswalk is to put each
 701.34a	to proliferate means to choose any
 701.36a	to populate means to choose a
 701.40a	to manifest a card turn it
 701.41a	support n on a permanent means
 701.44a	certain spells and abilities instruct a
 701.47a	to amass subtype n means if
+701.50a	certain spells and abilities instruct a
 702.2b	a creature with toughness greater than
 702.2c	any nonzero amount of combat damage
 702.3b	a creature with defender can t
@@ -228,8 +247,10 @@
 702.20b	attacking doesn t cause creatures with
 702.21a	ward is a triggered ability ward
 702.24a	cumulative upkeep is a triggered ability
+702.25a	flanking is a triggered ability that
 702.27a	buyback appears on some instants and
 702.28b	a creature with shadow can t
+702.29b	although the cycling ability can be
 702.30a	echo is a triggered ability echo
 702.31b	a creature with horsemanship can t
 702.33a	kicker is a static ability that
@@ -238,7 +259,10 @@
 702.35a	madness is a keyword that represents
 702.36b	a creature with fear can t
 702.37a	morph is a static ability that
+702.40a	storm is a triggered ability that
 702.41a	affinity is a static ability that
+702.43b	if a creature has multiple instances
+702.46a	soulshift is a triggered ability soulshift
 702.51a	convoke is a static ability that
 702.61a	split second is a static ability
 702.62a	suspend is a keyword that represents
@@ -257,6 +281,7 @@
 702.92a	living weapon is a triggered ability
 702.93a	undying is a triggered ability undying
 702.96a	overload is a keyword that represents
+702.100a	evolve is a triggered ability evolve
 702.103a	bestow represents a static ability that
 702.108a	prowess is a triggered ability prowess
 702.110a	exploit is a triggered ability exploit
@@ -268,6 +293,7 @@
 702.122a	crew is an activated ability of
 702.124a	partner abilities are keyword abilities that
 702.126a	improvise is a static ability that
+702.131a	ascend on an instant or sorcery
 702.133a	jump start appears on some instants
 702.137a	spectacle is a static ability that
 702.138a	escape represents a static ability that
@@ -277,6 +303,7 @@
 702.153a	casualty is a keyword that represents
 702.160a	prototype is a static ability that
 702.164c	combat damage dealt to a player
+702.166a	bargain is a static ability that
 702.168a	disguise is a static ability that
 702.174a	gift is a keyword that represents
 702.175a	offspring represents two abilities offspring cost
@@ -297,6 +324,8 @@
 704.5n	if an equipment or fortification is
 704.5q	if a permanent has both a
 704.6c	in a commander game a player
+705.1	some cards refer to flipping a
+705.2	some effects that instruct a player
 707.2	when copying an object the copy
 707.2a	a copy acquires the color of
 707.9	copy effects may include modifications or
@@ -304,6 +333,10 @@
 707.10a	if a copy of a spell
 707.10c	some effects copy a spell or
 714.4	if the number of lore counters
+725.1	the monarch is a designation a
+725.2	there are two inherent triggered abilities
+725.3	only one player can be the
 800.4a	when a player leaves the game
+903.3	each deck has a legendary card
 903.8	a player may cast a commander
 903.10a	a player who s been dealt
