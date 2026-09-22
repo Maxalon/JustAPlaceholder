@@ -1837,7 +1837,7 @@ class SituationParser(private val names: NameIndex) {
             return true
         }
         // "Both have first strike" / "mine has deathtouch" / "the blocker has trample": keywords on creatures already described.
-        Regex("""^(both|both of them|they both|all of them|mine|theirs|yours|his|hers|the attacker|the blocker|my creature|their creature|(?:my opponent's |the opponent's |opponent's |their |his |her |my )?(?:creature|token|guy|dude)|it) (?:has|have|gets?|gained?|is|are) ($kwNouns)(?:,? (?:and )?($kwNouns))?$""").find(c)?.let { r ->
+        Regex("""^(both|both of them|they both|all of them|mine|theirs|yours|his|hers|the attacker|the blocker|my creature|their creature|(?:my opponent's |the opponent's |opponent's |their |his |her |my )?(?:creature|token|guy|dude|\d+/\d+)|it) (?:has|have|gets?|gained?|is|are) ($kwNouns)(?:,? (?:and )?($kwNouns))?$""").find(c)?.let { r ->
             fun kw(x: String) = x.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink")
             val kws = listOfNotNull(r.groupValues[2].takeIf { it.isNotEmpty() }, r.groupValues[3].takeIf { it.isNotEmpty() }).map { kw(it) }
             if (kws.isEmpty()) return@let
@@ -1852,14 +1852,15 @@ class SituationParser(private val names: NameIndex) {
                 who == "the blocker" -> listOfNotNull(blockerId)
                 // "my opponent's creature has lifelink": the possessive says whose it is, and with nothing of
                 // theirs on the battlefield yet the creature they described is made here.
-                Regex("""(?:creature|token|guy|dude)$""").containsMatchIn(who) -> {
+                Regex("""(?:creature|token|guy|dude|\d+/\d+)$""").containsMatchIn(who) -> {
                     val owner = when {
                         Regex("""^(?:my opponent's|the opponent's|opponent's|their|his|her)\b""").containsMatchIn(who) -> pronounPlayer(ctx, "their")
                         who.startsWith("my") -> "me"
                         else -> actor ?: ctx.lastOwner ?: "me"
                     }
-                    listOfNotNull(ctx.objects.values.lastOrNull { it.controller == owner && isCreatureName(it.card.name) }?.id
-                        ?: describedCreatures("a ", "", "creature", owner, ctx).firstOrNull())
+                    val pt = Regex("""\d+/\d+$""").find(who)?.value ?: ""
+                    listOfNotNull(ctx.objects.values.lastOrNull { it.controller == owner && isCreatureName(it.card.name) && (pt.isEmpty() || (it.card.name ?: "").startsWith("a $pt")) }?.id
+                        ?: describedCreatures("a ", pt, "creature", owner, ctx).firstOrNull())
                 }
                 else -> listOfNotNull(ctx.lastMentioned?.takeIf { it in ctx.objects })
             }.filter { it in ctx.objects }

@@ -12357,5 +12357,16 @@
     "cite": [
       "704.5a"
     ]
+  },
+  {
+    "id": "keywords-on-a-sized-creature",
+    "text": "My 2/2 has double strike and first strike. What happens if it attacks?",
+    "expect": [
+      "opponent takes 2 damage. (×2)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
