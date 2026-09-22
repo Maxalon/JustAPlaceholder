@@ -30,6 +30,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
                 val sing = singularize(span)
                 // Exact name, then nickname, then singularized forms; a nickname beats a token that happens to share the word ("bears" -> Grizzly Bears, not a Bear token).
                 val e0 = byNorm[key] ?: alias(key) ?: sing?.let { alias(it) } ?: sing?.let { byNorm[it] }
+                    ?: (if (len >= 2) byNorm["the $key"] ?: sing?.let { byNorm["the $it"] } else null)
                 // A first name shared by several legendary creatures ("Sheoldred", "Atraxa"): the front face of a transforming card
                 // that happens to carry it ("Sheoldred // The True Scriptures") doesn't win over them.
                 val e = if (len == 1 && key !in aliases && (e0 == null || e0.kind != "full" || !e0.isCard) && heads[key] != null) heads.getValue(key).let { hs -> hs.first().copy(alternatives = hs.drop(1).map { it.display } + listOfNotNull(e0?.display)) } else e0
@@ -113,6 +114,11 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
             ).use { rs ->
                 while (rs.next()) {
                     val norm = rs.getString(1); val kind = rs.getString(4)
+                    // Alchemy rebalances are named "A-Blood Artist", which normalizes to "a blood artist" — the
+                    // same words as "a Blood Artist". They are Arena-only and never what the article means, and
+                    // indexed they took the whole phrase: the Blood Artist on the battlefield was the rebalanced
+                    // card, whose text is not the one the asker had in mind.
+                    if (rs.getString(2).startsWith("A-")) continue
                     val isCard = rs.getString(5) !in mtg.judge.carddb.ingest.ScryfallIngest.nonCardLayouts
                     val e = Entry(rs.getString(2), rs.getString(3), isCard, kind, rs.getString(6) ?: "")
                     val prev = map[norm]

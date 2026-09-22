@@ -1571,6 +1571,21 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:sacrifices?|sacs?|sacrificing|saccing) (?:an? |one |another )(land|creature|artifact|enchantment|permanent|token)(?: (?:to|into|with) (?:it|that|(?:my |the )?(c\d+))(?:'s ability)?)?(?: to (?:protect|save|shroud|shield) (?:it|that|them|(?:my |the )?(c\d+)))?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val kind = r.groupValues[1]
+            // "My Gitrog Monster and I sacrifice a land": with no outlet named, the sacrifice is just a
+            // sacrifice. Read as the cost of some permanent's ability it was paid to a card that has none.
+            val answering = ctx.events.lastOrNull { it.verb == "cast" && it.player != who }?.targets?.firstOrNull { it in ctx.objects }
+            if (answering == null && !Regex("""\s(?:to|into|with)\s+(?:it|that|(?:my |the )?c\d+)|\sto (?:protect|save|shroud|shield)\b""").containsMatchIn(r.groupValues[0])) {
+                val id = ctx.objects.values.lastOrNull { o -> o.controller == who && o.zone == "battlefield" &&
+                        (if (kind == "land") (o.card.name ?: "").contains("land", true) else if (kind == "creature") isCreatureName(o.card.name) else (o.card.name ?: "").contains(kind, true)) }?.id
+                    ?: if (kind == "creature") describedCreatures("a ", "", "creature", who, ctx).firstOrNull()
+                       else {
+                           var nid = slug("a $kind"); var k = 2; while (ctx.objects.containsKey(nid)) nid = slug("a $kind") + "_" + (k++)
+                           ctx.objects[nid] = ObjectSpec(nid, CardRef(name = if (kind == "land") "a basic land" else "a $kind"), controller = who)
+                           ctx.notes += "No $kind was described, so one is taken as read for the sacrifice."
+                           nid
+                       }
+                if (id != null) { ctx.events += EventSpec("sacrifice", player = who, obj = id); ctx.lastActor = who; ctx.lastMentioned = id; return true }
+            }
             val named = r.groupValues[2].takeIf { it.isNotEmpty() }?.let { m.cards[it] }?.let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) }
             // The outlet is the other permanent that player controls; the engine checks whether the cost can actually be paid.
             val protectedId = ctx.events.lastOrNull { it.verb == "cast" && it.player != who }?.targets?.firstOrNull { it in ctx.objects }

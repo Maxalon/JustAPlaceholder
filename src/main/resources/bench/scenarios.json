@@ -11674,5 +11674,40 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "a-blood-artist-is-not-the-alchemy-card",
+    "text": "I have a Blood Artist and my opponent casts Doom Blade on my Grizzly Bears. What happens?",
+    "expect": [
+      "opponent loses 1 life",
+      "You gain 1 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "gitrog-monster-without-the-article",
+    "text": "My Gitrog Monster and I sacrifice a land. Do I draw?",
+    "expect": [
+      "Yes: You draw 1 card"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sacrifice-with-no-outlet",
+    "text": "I have a Zulaport Cutthroat and sacrifice a creature. What happens?",
+    "expect": [
+      "opponent loses 1 life",
+      "You gain 1 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
