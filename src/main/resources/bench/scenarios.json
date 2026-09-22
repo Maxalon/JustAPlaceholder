@@ -12490,5 +12490,27 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "does-a-2-2-die-to-a-bolt",
+    "text": "Does a 2/2 die to a Lightning Bolt?",
+    "expect": [
+      "Yes: a 2/2 creature died"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "lets-say-blocked-by",
+    "text": "Let's say my Bears is blocked by a 1/1 with deathtouch. Does it die?",
+    "expect": [
+      "Yes: Grizzly Bears died"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

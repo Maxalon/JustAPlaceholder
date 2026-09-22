@@ -282,7 +282,8 @@ class SituationParser(private val names: NameIndex) {
     private val playerNameStop = setOf("i", "my", "me", "we", "opponent", "opp", "they", "he", "she", "it", "the", "then", "now", "so", "if", "when", "what", "where", "why", "which", "who", "whom", "how", "will", "would", "could", "should", "am", "was", "were", "does", "do", "can", "is", "are", "at", "during", "on", "in", "after", "before", "also",
         "both", "each", "everyone", "nobody", "no", "yes", "player", "someone", "another", "his", "her", "their", "its", "next", "later", "finally", "meanwhile", "who", "whose", "which", "how", "why", "there", "here", "this", "that", "these", "those",
         "one", "two", "three", "four", "first", "second", "third", "last", "turn", "upkeep", "combat", "stack", "response", "target", "counter", "damage", "life", "commander", "planeswalker", "creature", "spell", "ability", "trigger", "token", "land",
-        "mine", "theirs", "yours", "ours", "attacker", "blocker", "neither", "either", "everything", "nothing", "something", "anything")
+        "mine", "theirs", "yours", "ours", "attacker", "blocker", "neither", "either", "everything", "nothing", "something", "anything",
+        "let", "lets", "say", "suppose", "imagine", "assume", "tell", "explain", "question", "quick", "just", "ok", "okay", "alright", "hey", "well", "anyway")
     private val playerVerbs = setOf("casts", "cast", "plays", "played", "attacks", "attacked", "blocks", "blocked", "has", "have", "had", "controls", "control", "activates", "activated", "responds", "responded", "taps", "sacrifices",
         "is", "are", "was", "swings", "targets", "counters", "draws", "pays", "declines", "passes", "says", "wants", "does", "gets", "takes", "loses", "gains", "dies", "wins", "uses", "equips", "flashes", "resolves", "fires", "slams", "runs",
         // What one player does to another's things: "Alice kills Bob's Bears", "Bob bounces Alice's Titan".
@@ -627,7 +628,7 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""^(?:is it true that|is it right that|am i right that|what's the ruling (?:when|if|on)|what is the ruling (?:when|if|on)|how does it work (?:when|if))[,:]? +""", RegexOption.IGNORE_CASE), "")
             .replace(Regex("""\?\s*(?:yes or no|y/n)\?*$""", RegexOption.IGNORE_CASE), "?")
             .replace(Regex("""\s*[,.]?\s*(?:yes or no|y/n)\?*$""", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
+            .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?""", RegexOption.IGNORE_CASE), "")
             // "Who wins the fight between Grizzly Bears and Hill Giant?": a fight with no card making it happen.
             // The "and" would otherwise break the sentence and leave the second creature as a clause of its own.
             .replace(Regex("""^(?:who|which(?: creature| one)?) (?:wins|survives|comes out on top|lives)(?: the fight| a fight| in a fight| the combat)?(?: (?:between|with)) ((?:$possPrefix|an? )?c\d+) (?:and|vs\.?|versus) ((?:$possPrefix|an? )?c\d+)\??$"""), "$1 fights $2, does $1 die, does $2 die")
@@ -1191,14 +1192,23 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "Can my opponent respond …?" / "Could I block with …?": the question is read as the action.
-        Regex("""^(?:can|could|may|should|is it legal for|am i allowed to|are they allowed to|do|does|will|would|am|is|are) ((?:i|my opponent|the opponent|opponent|they|he|she|we|it|that|@\w+|(?:my |the |their |his |her )?(?:c\d+|\d+/\d+(?: [a-z]+)*|creature|token|guy|attacker|blocker|dude|beater))\b.*)$""").find(clause0)?.let { r ->
+        Regex("""^(?:can|could|may|should|is it legal for|am i allowed to|are they allowed to|do|does|will|would|am|is|are) ((?:i|my opponent|the opponent|opponent|they|he|she|we|it|that|@\w+|(?:my |the |their |his |her |an? )?(?:c\d+|\d+/\d+(?: [a-z]+)*|creature|token|guy|attacker|blocker|dude|beater))\b.*)$""").find(clause0)?.let { r ->
             // A question about what can be done now comes after what was described, unless it says "in response".
             if (!Regex("""\b(?:in response|respond|responding)\b""").containsMatchIn(r.groupValues[1]) && ctx.events.lastOrNull()?.verb in setOf("cast", "activate", "trigger")) ctx.events += EventSpec("resolveAll")
             // "My Grizzly Bears. Does it die to Lightning Bolt?": the spell the question names is cast at the
             // creature. Answered without casting it, the answer was "no, it's still on the battlefield".
-            Regex("""^(it|that|(?:my |the |their |his |her )?c\d+) (?:dies?|die|is killed|get(?:s)? killed|is destroyed|get(?:s)? destroyed|survives?|live(?:s)?) (?:to|against) (?:$possPrefix|an? )?(c\d+)$""").find(r.groupValues[1])?.let { q ->
+            Regex("""^(it|that|(?:my |the |their |his |her |an? )?(?:c\d+|\d+/\d+(?:[a-z ,/+&]*?)?|creature|guy|dude)) (?:dies?|die|is killed|get(?:s)? killed|is destroyed|get(?:s)? destroyed|survives?|live(?:s)?) (?:to|against) (?:$possPrefix|an? )?(c\d+)$""").find(r.groupValues[1])?.let { q ->
                 val spell = m.cards[q.groupValues[2]] ?: return@let
-                val victim = (if (Regex("""c\d+""").containsMatchIn(q.groupValues[1])) Regex("""c\d+""").find(q.groupValues[1])?.value?.let { ph -> m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } } else ctx.lastMentioned?.takeIf { it in ctx.objects }) ?: return@let
+                val subj = q.groupValues[1]
+                val victim = (when {
+                    Regex("""c\d+""").containsMatchIn(subj) -> Regex("""c\d+""").find(subj)!!.value.let { ph -> m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } }
+                    Regex("""\d+/\d+""").containsMatchIn(subj) -> Regex("""\d+/\d+""").find(subj)!!.value.let { pt ->
+                        val owner = if (Regex("""^(?:their|his|her)\b""").containsMatchIn(subj)) pronounPlayer(ctx, "their") else "me"
+                        val kws = Regex("""$kwNouns""").findAll(subj).map { k -> k.value.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink").replace("striker", "strike") }.distinct().joinToString(", ")
+                        ctx.objects.values.lastOrNull { it.controller == owner && (it.card.name ?: "").startsWith("a $pt") }?.id ?: describedCreatures("a ", pt, "creature", owner, ctx, kws).firstOrNull() }
+                    subj in setOf("it", "that") -> ctx.lastMentioned?.takeIf { it in ctx.objects }
+                    else -> ctx.objects.values.lastOrNull { it.controller == "me" && isCreatureName(it.card.name) }?.id ?: describedCreatures("a ", "", "creature", "me", ctx).firstOrNull()
+                }) ?: return@let
                 val caster = ctx.other(ctx.objects[victim]?.controller ?: "me") ?: "opp"
                 emitCast(caster, spell, "", m, ctx)
                 ctx.events.indexOfLast { it.verb == "cast" }.takeIf { it >= 0 }?.let { i -> ctx.events[i] = ctx.events[i].copy(targets = listOf(victim)) }
@@ -3535,7 +3545,7 @@ class SituationParser(private val names: NameIndex) {
             if (blockers.isEmpty()) return@let
             ensureAttacker(ctx, who)
             for (b in blockers) ctx.events += EventSpec("block", player = who, obj = b, targets = listOf(attacker))
-            ctx.lastActor = who; ctx.lastVerb = "block"; return true
+            ctx.lastActor = who; ctx.lastVerb = "block"; ctx.lastMentioned = attacker; return true
         }
         // "I untap my lands": the untap step in other words, and it went unread.
         Regex("""^untaps?(?: (?:my|their|his|her|all(?: my| their)?))? (?:lands?|permanents?|creatures?|everything|board|team)$|^untap(?: step)?$""").find(c)?.let {
