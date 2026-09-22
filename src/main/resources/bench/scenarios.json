@@ -11980,5 +11980,27 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "toxic-deluge-against-a-question-sized-creature",
+    "text": "My opponent casts Toxic Deluge for 4. Does my 4/4 die?",
+    "expect": [
+      "Yes: a 4/4 creature died"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "toxic-deluge-not-enough",
+    "text": "My opponent casts Toxic Deluge for 3. Does my 4/4 die?",
+    "expect": [
+      "No: a 4/4 creature is still on the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

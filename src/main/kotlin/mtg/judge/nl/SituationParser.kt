@@ -3736,6 +3736,14 @@ class SituationParser(private val names: NameIndex) {
 
     /** "does X trigger?" / "does X survive / die?": queues an explicit yes/no answer for after everything has resolved. */
     private fun askQuestion(clause0: String, m: Marked, ctx: Ctx): Boolean {
+        // "My opponent casts Toxic Deluge for 3. Does my 4/4 die?": a creature the question gives by its size is
+        // on the battlefield too. Without it the sweeper resolved against nothing and the question went unanswered.
+        Regex("""\b(my|their|his|her) (\d+/\d+)(?: creature)?\b""").find(clause0)?.let { q ->
+            val who = if (q.groupValues[1] == "my") "me" else pronounPlayer(ctx, q.groupValues[1])
+            if (ctx.objects.values.none { it.controller == who && (it.card.name ?: "").startsWith("a ${q.groupValues[2]}") })
+                describedCreatures("a ", q.groupValues[2], "creature", who, ctx)
+        }
+
         // "who dies?" / "who wins?" / "who loses?": every player's fate, one answer each.
         Regex("""^who (dies|loses|wins|survives|is dead|is alive|comes out ahead)(?: here| then| the game| now)?$""").find(clause0)?.let { q ->
             val to = when (q.groupValues[1]) { "wins", "comes out ahead" -> "playerWin"; "survives", "is alive" -> "playerSurvive"; else -> "playerDie" }
@@ -3967,9 +3975,12 @@ class SituationParser(private val names: NameIndex) {
             ctx.asks += EventSpec("ask", obj = id, to = "tapped"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "does my creature survive?" / "does their token die?": the last creature that player described.
-        Regex("""^(?:does|do|did|will|would|is|are) (my|their|his|her|the|@\w+'s) (?:creature|token|guy|attacker|blocker|dude|beater) (?:still |going to |gonna )?(trigger|triggers|go off|survive|survives|die|dies|dead|still alive|live|lives|make it)\b""").find(clause0)?.let { q ->
+        Regex("""^(?:does|do|did|will|would|is|are) (my|their|his|her|the|@\w+'s) (?:(\d+/\d+)(?: creature)?|creature|token|guy|attacker|blocker|dude|beater) (?:still |going to |gonna )?(trigger|triggers|go off|survive|survives|die|dies|dead|still alive|live|lives|make it)\b""").find(clause0)?.let { q0 ->
+            val q = object { val groupValues = listOf(q0.groupValues[0], q0.groupValues[1], q0.groupValues[3]) }
             val who = when (val w = q.groupValues[1]) { "my" -> "me"; "the" -> null; "their", "his", "her" -> pronounPlayer(ctx, w); else -> w.removePrefix("@").removeSuffix("'s") }
-            val id = ctx.objects.values.lastOrNull { (who == null || it.controller == who) && (it.card.name ?: "").startsWith("a ") } ?: ctx.objects.values.lastOrNull { who == null || it.controller == who } ?: return@let
+            val pt = q0.groupValues[2]
+            val id = (if (pt.isNotEmpty()) ctx.objects.values.lastOrNull { (who == null || it.controller == who) && (it.card.name ?: "").startsWith("a $pt") } else null)
+                ?: ctx.objects.values.lastOrNull { (who == null || it.controller == who) && (it.card.name ?: "").startsWith("a ") } ?: ctx.objects.values.lastOrNull { who == null || it.controller == who } ?: return@let
             ctx.asks += EventSpec("ask", obj = id.id, to = if (q.groupValues[2].startsWith("trigger") || q.groupValues[2] == "go off") "trigger" else if (q.groupValues[2] in setOf("die", "dies", "dead")) "die" else "survive")
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below (read as ${id.card.name ?: id.id})."; return true
         }
