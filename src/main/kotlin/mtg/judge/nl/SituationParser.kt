@@ -575,6 +575,19 @@ class SituationParser(private val names: NameIndex) {
             .let { t0 -> Regex("""\b(attacks?|attacking|swings?|swinging)((?: with)? .+?) into ((?:an? |the |their |his |her )?(?:untapped |tapped |fresh )?(?:\d+/\d+|c\d+)(?:\s+(?!blocker)[a-z]+)*)(?:\s+blockers?)?(?=[.,]|$)""").replace(t0) { r ->
                 r.groupValues[1] + r.groupValues[2] + ", they block with " + r.groupValues[3].replace(Regex("""\b(?:untapped|fresh) """), "")
             } }
+            // "a 4/4 attacks my 2/2": the attacker is said without an owner, but a creature of mine blocking it
+            // makes it the opponent's.
+            .replace(Regex("""\b(?:an?|the) ((?:\d+/\d+|c\d+)(?:\s+(?!attacks?\b|attacking\b|swings?\b|swinging\b)[a-z]+)*\s+(?:attacks?|attacking|swings?|swinging) (?:my|our) )"""), "their $1")
+            // "their 4/4 attacks my 2/2": nobody attacks a creature, so the creature named after the verb is the
+            // blocker. Whose it is says who blocks. A planeswalker really can be attacked, so a named card only
+            // reads this way when it is a creature.
+            .let { t0 -> Regex("""\b(attacks?|attacking|swings?|swinging) (my|our|their|his|her|the opponent's|my opponent's) ((?:untapped |tapped |fresh )?(?:(\d+/\d+)|(c\d+))(?:\s+(?!blockers?\b|and\b|or\b|plus\b|but\b)[a-z]+)*)(?:\s+blockers?)?(?=[.,]|$)""").replace(t0) { r ->
+                val spec = r.groupValues[3].replace(Regex("""\b(?:untapped|fresh) """), "")
+                val isCreature = r.groupValues[4].isNotEmpty() || m.cards[r.groupValues[5]]?.typeLine?.contains("Creature", true) == true
+                val mine = r.groupValues[2] == "my" || r.groupValues[2] == "our"
+                if (!isCreature) r.value
+                else r.groupValues[1] + if (mine) ", i block with $spec" else ", they block with $spec"
+            } }
             // "when it connects", "if my Skirge connects": table talk for dealing combat damage to a player.
             .replace(Regex("""\b(?:when|if|after) ((?:their |his |her )c\d+) connects\b"""), "and $1 deals combat damage to me")
             .replace(Regex("""\b(?:when|if|after) ((?:it|that|(?:$possPrefix)?c\d+)) connects\b"""), "and $1 deals combat damage to my opponent")
@@ -673,6 +686,14 @@ class SituationParser(private val names: NameIndex) {
             .let { t0 -> Regex("""^can ($possPrefix)?(c\d+) target ($possPrefix)?(c\d+)\??$""").replace(t0) { r ->
                 "i cast ${r.groupValues[1]}${r.groupValues[2]} targeting ${r.groupValues[3].ifEmpty { "their " }}${r.groupValues[4]}"
             } }
+            // "Does indestructible save my creature from Doom Blade?": a keyword question asked with no board.
+            // It is the same question as giving a creature the keyword and letting the spell at it.
+            .replace(Regex("""^does(?:n't| not)? ($kwPhrase) (?:save|protect|defend|help|stop|keep|prevent) (?:my |the |an? )?(creature|guy|dude|\d+/\d+|c\d+)(?: creature)? (?:from|against) (?:an? |the )?(c\d+)\??$"""), "my $2 has $1, they cast $3 on it")
+            // "Does protection from green stop a Giant Growth my opponent cast on my creature?": the same question
+            // with the spell named first and the creature it is aimed at said at the end.
+            .replace(Regex("""^does(?:n't| not)? ($kwPhrase) (?:stop|prevent|beat|handle|help against|do anything about) (?:an? |the )?(c\d+)(?: (?:that )?(?:my opponent|the opponent|they|he|she) (?:casts?|cast|played?|plays)| cast| played)?(?: (?:on|at|targeting|against) (?:my |the |an? )?(?:creature|guy|dude|\d+/\d+|c\d+)(?: creature)?)?\??$"""), "my creature has $1, they cast $2 on it")
+            // "can it be hit by Lightning Bolt?": table talk for letting that spell at it.
+            .replace(Regex("""\bcan (it|that|him|her|them|(?:my |the |their |his |her )?(?:creature|guy|dude|c\d+|\d+/\d+)) be (?:hit|targeted|killed|destroyed|damaged|burned|bolted) by (?:an? |the )?(c\d+)\??"""), "they cast $2 on $1")
             // "Is Serra Angel able to block?" is "can Serra Angel block?"
             .replace(Regex("""\b(?:is|are) ((?:$possPrefix)?c\d+) able to """), "can $1 ")
             // "What happens if I Doom Blade it?" / "if I block, do I die?": the "if" is the question, not a condition.
@@ -1905,7 +1926,7 @@ class SituationParser(private val names: NameIndex) {
             return true
         }
         // "Both have first strike" / "mine has deathtouch" / "the blocker has trample": keywords on creatures already described.
-        Regex("""^(both|both of them|they both|all of them|mine|theirs|yours|his|hers|the attacker|the blocker|my creature|their creature|(?:my opponent's |the opponent's |opponent's |their |his |her |my )?(?:creature|token|guy|dude|\d+/\d+)|it) (?:has|have|gets?|gained?|is|are) ($kwNouns)(?:,? (?:and )?($kwNouns))?$""").find(c)?.let { r ->
+        Regex("""^(both|both of them|they both|all of them|mine|theirs|yours|his|hers|the attacker|the blocker|my creature|their creature|(?:my opponent's |the opponent's |opponent's |their |his |her |my )?(?:creature|token|guy|dude|\d+/\d+)|it) (?:has|have|gets?|gained?|is|are) ((?:$kwNouns|$kwPhrase))(?:,? (?:and )?((?:$kwNouns|$kwPhrase)))?$""").find(c)?.let { r ->
             fun kw(x: String) = x.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink")
             val kws = listOfNotNull(r.groupValues[2].takeIf { it.isNotEmpty() }, r.groupValues[3].takeIf { it.isNotEmpty() }).map { kw(it) }
             if (kws.isEmpty()) return@let
@@ -3686,15 +3707,16 @@ class SituationParser(private val names: NameIndex) {
         }
         // "I block their 3/3 with two 2/2s": the attacker is named inside the block and nobody said it attacked.
         // The attack is declared first, then the rest of the clause is read as an ordinary "blocks with …".
-        Regex("""^(?:chump[- ]?)?blocks? ($possPrefix|an? )(c\d+|\d+/\d+)(?: creature)? with (.+)$""").find(c)?.let { r ->
+        Regex("""^(?:chump[- ]?)?blocks? ($possPrefix|an? )(c\d+|\d+/\d+)(?: ($kwNouns))?(?: creature)? with (.+)$""").find(c)?.let { r ->
             if (ctx.events.any { it.verb == "attack" || it.verb == "attackAll" }) return@let
             val defender = actor ?: subject ?: "me"
             val owner = when (r.groupValues[1].trim()) { "my" -> defender; "" , "a", "an", "the" -> ctx.other(defender) ?: "opp"; else -> ctx.other(defender) ?: "opp" }
+            val atkKw = r.groupValues[3].let { k -> if (k.isEmpty()) "" else k.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink").replace("striker", "strike") }
             val id = if (cardRef.matches(r.groupValues[2])) m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, owner, false, ctx) } ?: return@let
-                     else describedCreatures("a ", r.groupValues[2], "creature", owner, ctx).firstOrNull() ?: return@let
+                     else describedCreatures("a ", r.groupValues[2], "creature", owner, ctx, atkKw).firstOrNull() ?: return@let
             ctx.events += EventSpec("attack", player = owner, obj = id, targets = listOf(defender)); ctx.note(defender)
             ctx.notes += "No attack was described, so ${ctx.objects[id]?.card?.name ?: "the creature"} is read as attacking ${if (defender == "me") "you" else ctx.players[defender] ?: "your opponent"}; the block answers it."
-            return readClause((if (defender == "me") "i " else if (defender == "opp") "they " else "@$defender ") + "blocks with " + r.groupValues[3], m, ctx)
+            return readClause((if (defender == "me") "i " else if (defender == "opp") "they " else "@$defender ") + "blocks with " + r.groupValues[4], m, ctx)
         }
         // "blocks with two 2/2s", "chump blocks with a 1/1 goblin": described creatures block the last attacker (all of them the same one).
         Regex("""^(?:(?:chump[- ]?)?(?:blocks?|blocking)|chumps?)(?: it| that| the attacker)?(?: with)?\s+(an? |the |my |their |\d+ |two |three |four |five )?(?:(\d+/\d+)s?\s*)?(?:(red|green|white|blue|black|colorless|flying) )?(?:($kwNouns)\b ?)?($creatureKinds)?( tokens?)?(?: with ([a-z ,&]+?))?(?: plus .*)?$""").find(c)?.let { r0 ->

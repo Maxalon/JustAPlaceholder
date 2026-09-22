@@ -12545,5 +12545,104 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "attacks-a-creature-deathtouch-trample",
+    "text": "a 4/4 deathtouch trample attacks my 2/2, how much gets through",
+    "expect": [
+      "You take 3 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "attacks-a-creature-plain",
+    "text": "their 4/4 attacks my 2/2",
+    "expect": [
+      "a 2/2 creature: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "attacks-a-named-creature",
+    "text": "their Serra Angel attacks my Grizzly Bears",
+    "expect": [
+      "Grizzly Bears can't block Serra Angel"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "block-a-trampler-two-chumps",
+    "text": "My opponent blocks my 6/6 trample with two 1/1s, how much trample damage goes through?",
+    "expect": [
+      "opponent takes 4 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "block-a-trampler-one-chump",
+    "text": "I block a 5/5 trample with a 1/1, how much damage do I take?",
+    "expect": [
+      "You take 4 damage"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "block-a-flier-with-reach",
+    "text": "I block their 3/3 flyer with a 2/2 reach",
+    "expect": [
+      "a 2/2 creature with reach: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "keyword-question-indestructible",
+    "text": "does indestructible save my creature from Doom Blade",
+    "expect": [
+      "isn't destroyed"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "keyword-question-protection-target",
+    "text": "my creature has protection from red, can it be hit by Lightning Bolt",
+    "expect": [
+      "Lightning Bolt can't target a creature with protection from red"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "keyword-question-protection-pump",
+    "text": "Does protection from green stop a Giant Growth my opponent cast on my creature?",
+    "expect": [
+      "Giant Growth can't target a creature with protection from green"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
