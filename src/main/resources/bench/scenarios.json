@@ -13079,5 +13079,38 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "equipped-creature-dies",
+    "text": "my equipped creature dies, what happens to the equipment",
+    "expect": [
+      "an Equipment stays on the battlefield, unattached"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "enchanted-creature-dies",
+    "text": "my enchanted creature dies, what happens to the Aura",
+    "expect": [
+      "an Aura: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sacrifice-a-creature-with-an-aura",
+    "text": "I sacrifice my creature with an Aura on it",
+    "expect": [
+      "an Aura: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

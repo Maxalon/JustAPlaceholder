@@ -749,10 +749,23 @@ class SituationParser(private val names: NameIndex) {
             } }
             // "I blink my creature with a counter on it": the counter is part of the board, not of the blinking.
             .replace(Regex("""\b(i|we|they|he|she|my opponent|the opponent|@\w+) (blinks?|flickers?) ((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude)) with ((?:an? |one |two |three |\d+ )?(?:[+-]\d+/[+-]\d+ |[a-z]+ )?counters?(?: on it)?)"""), "$3 has $4, $1 $2 it")
+            // "My equipped creature dies" / "my enchanted creature": the adjective says what is on it.
+            .replace(Regex("""\b((?:$possPrefix|an? )?)equipped (creature|guy|dude|\d+/\d+)\b"""), "$1$2 with an equipment on it")
+            .replace(Regex("""\b((?:$possPrefix|an? )?)enchanted (creature|guy|dude|\d+/\d+)\b"""), "$1$2 with an aura on it")
+            // "I sacrifice my creature with an Aura on it": the attachment is board, the verb is the action.
+            .let { t0 -> Regex("""\b(i|we|they|he|she|my opponent|the opponent|@\w+) (sacrifices?|sacs?|blinks?|flickers?|bounces?|exiles?|destroys?|kills?) ((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude|token)) with (?:an? |the )?(c\d+|aura|equipment)(?: on it| attached(?: to it)?)?""").replace(t0) { r ->
+                // "with X" is the instrument far more often than it is an attachment ("they kill my creature with
+                // Doom Blade"), so this only fires for something that really can be attached.
+                val word = r.groupValues[4]
+                val attachable = word == "aura" || word == "equipment" ||
+                    m.cards[word]?.typeLine?.let { it.contains("Aura", true) || it.contains("Equipment", true) } == true
+                if (!attachable) r.value
+                else "${r.groupValues[3]} has ${if (word == "aura" || word == "equipment") "an $word" else word} on it, ${r.groupValues[1]} ${r.groupValues[2]} it"
+            } }
             // "My 2/2 with a Rancor on it dies" / "my creature dies with a Rancor on it": the attachment is part
             // of the board, not of the dying, and said either way round it left the whole clause unread.
-            .replace(Regex("""\b((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude|token)) with (?:an? |the )?(c\d+)(?: on it| attached(?: to it)?)? (dies|died|is destroyed|gets destroyed|is sacrificed|is exiled|leaves the battlefield)\b"""), "$1 has $2 on it and it $3")
-            .replace(Regex("""\b((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude|token)) (dies|died|is destroyed|gets destroyed|is sacrificed|is exiled|leaves the battlefield) with (?:an? |the )?(c\d+)(?: on it| attached(?: to it)?)?"""), "$1 has $3 on it and it $2")
+            .replace(Regex("""\b((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude|token)) with (an? |the )?(c\d+|aura|equipment)(?: on it| attached(?: to it)?)? (dies|died|is destroyed|gets destroyed|is sacrificed|is exiled|leaves the battlefield)\b"""), "$1 has $2$3 on it and it $4")
+            .replace(Regex("""\b((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude|token)) (dies|died|is destroyed|gets destroyed|is sacrificed|is exiled|leaves the battlefield) with (an? |the )?(c\d+|aura|equipment)(?: on it| attached(?: to it)?)?"""), "$1 has $3$4 on it and it $2")
             // "My only untapped land is a Mountain": the board, said as what is left rather than what is there.
             .let { t0 -> Regex("""\b(my|our|their|his|her) only untapped (?:land|permanent|mana source|creature) is ((?:an? |the )?c\d+)""").replace(t0) { r ->
                 (if (r.groupValues[1] == "my" || r.groupValues[1] == "our") "i have " else "they have ") + r.groupValues[2] + " untapped"
@@ -1985,15 +1998,23 @@ class SituationParser(private val names: NameIndex) {
         }
         // "My 1/1 has a Bonesplitter (equipped)", "my 2/2 has Rancor on it": the creature given by its size,
         // carrying a named Aura or Equipment. Read as the creature alone, the attachment was dropped.
-        Regex("""^(?:(?:have|has|got|controls?|controlling)\s+)?(an? |\d+ |two |three )?(\d+/\d+|creature|guy|dude|token)s?(?: ($creatureKinds))? (?:has|have|with|carrying|wearing) (?:an? |the |my |their )?(c\d+)(?: equipped| attached| on it| enchanting it)?$""").find(c)?.let { r ->
-            val gear = m.cards[r.groupValues[4]] ?: return@let
-            if (gear.isSpellOnly || !(gear.typeLine.contains("Equipment") || gear.typeLine.contains("Aura") || gear.typeLine.contains("Enchantment") || gear.typeLine.contains("Artifact"))) return@let
+        Regex("""^(?:(?:have|has|got|controls?|controlling)\s+)?(an? |\d+ |two |three )?(\d+/\d+|creature|guy|dude|token)s?(?: ($creatureKinds))? (?:has|have|with|carrying|wearing) (?:an? |the |my |their )?(?:(c\d+)|(aura|equipment))(?: card)?(?: equipped| attached| on it| enchanting it)?$""").find(c)?.let { r ->
+            // "a creature with an Aura on it": which one it is doesn't matter to the question, but Aura or
+            // Equipment does — one goes to the graveyard when its host leaves, the other stays unattached.
+            val generic = r.groupValues[5].takeIf { it.isNotEmpty() }?.let { if (it == "aura") "an Aura" else "an Equipment" }
+            val gear = if (generic != null) null else m.cards[r.groupValues[4]] ?: return@let
+            if (gear != null && (gear.isSpellOnly || !(gear.typeLine.contains("Equipment") || gear.typeLine.contains("Aura") || gear.typeLine.contains("Enchantment") || gear.typeLine.contains("Artifact")))) return@let
             val who = actor ?: subject ?: ctx.lastOwner ?: "me"
             val pt = r.groupValues[2].takeIf { Regex("""^\d+/\d+$""").matches(it) } ?: ""
             val ids = ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" && isCreatureName(it.card.name) && (pt.isEmpty() || (it.card.name ?: "").startsWith("a $pt")) }?.let { listOf(it.id) }
                 ?: describedCreatures(r.groupValues[1].ifEmpty { "a " }, pt, r.groupValues[3], who, ctx)
             if (ids.isEmpty()) return@let
-            for (id in ids) { val att = addObject(gear, who, false, ctx, allowDuplicate = ids.size > 1); ctx.objects[att] = ctx.objects.getValue(att).copy(attachedTo = id) }
+            for (id in ids) {
+                val att = if (gear != null) addObject(gear, who, false, ctx, allowDuplicate = ids.size > 1)
+                          else { var a = slug(generic!!); var k = 2; while (ctx.objects.containsKey(a)) a = slug(generic) + "_" + (k++); ctx.objects[a] = ObjectSpec(a, CardRef(name = generic), controller = who); a }
+                ctx.objects[att] = ctx.objects.getValue(att).copy(attachedTo = id)
+            }
+            if (generic != null) ctx.notes += "\"$generic\" stands in for whichever one it is; what matters is that it is ${if (generic == "an Aura") "an Aura (it goes to the graveyard when its host leaves, 704.5m)" else "an Equipment (it stays on the battlefield, unattached, 704.5n)"}."
             ctx.lastVerb = "have"; ctx.lastOwner = who; ctx.lastActor = who; ctx.lastMentioned = ids.last(); return true
         }
         // "a creature enchanted with Pacifism", "a 2/2 equipped with Bonesplitter": a creature nobody named,
