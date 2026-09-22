@@ -1064,6 +1064,10 @@ object OracleParser {
         Regex("""^you can't lose the game(?: this turn)?(?: and your opponents can't win the game(?: this turn)?)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.CantLoseThisTurn }
         // "Until end of turn, damage that would reduce your life total to less than 1 reduces it to 1 instead." (Angel's Grace)
         Regex("""^(?:until end of turn, )?damage that would reduce your life total to less than (\d+) reduces it to \1 instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.DamageLifeFloor(it.groupValues[1].toInt()) }
+        // "Your opponents can't cast spells this turn." (Silence, Orim's Chant)
+        Regex("""^(your opponents|each opponent|players|target player|that player) can't cast spells this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { r ->
+            return Effect.CantCastThisTurn(when (r.groupValues[1].lowercase()) { "players" -> Who.EACH_PLAYER; "target player" -> Who.TARGET_PLAYER; "that player" -> Who.THAT_PLAYER; else -> Who.EACH_OPPONENT })
+        }
         // "You may play an additional land this turn." (Explore)
         Regex("""^you may play (an|one|two|three|\d+) additional lands? this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { r ->
             val n = if (r.groupValues[1].equals("an", true)) 1 else number(r.groupValues[1]) ?: return@let

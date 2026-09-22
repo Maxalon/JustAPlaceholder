@@ -12210,5 +12210,27 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "silence-stops-casting",
+    "text": "I cast Silence. Then they cast Lightning Bolt at me. Can they?",
+    "expect": [
+      "Lightning Bolt can't be cast"
+    ],
+    "notExpect": [
+      "You take 3 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "orims-chant-targets-a-player",
+    "text": "My opponent casts Orim's Chant targeting me. Can I cast anything?",
+    "expect": [
+      "You can't cast spells this turn"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
