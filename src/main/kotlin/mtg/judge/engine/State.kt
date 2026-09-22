@@ -171,6 +171,8 @@ class GameState(
     val cantLoseThisTurn: MutableSet<String> = mutableSetOf(),
     /** Players whose life total damage can't take below the given number this turn (Angel's Grace); cleared in cleanup. */
     val damageLifeFloor: MutableMap<String, Int> = mutableMapOf(),
+    /** Coin flips the situation stated, oldest first: "win" or "lose" (705.2). Each flip takes the next one. */
+    val coinFlips: MutableList<String> = mutableListOf(),
     /** Lands each player has played this turn (305.2 allows one, plus whatever an effect adds). */
     val landsPlayed: MutableMap<String, Int> = mutableMapOf(),
     /** Extra land plays a one-shot effect gave a player this turn ("you may play an additional land this turn"). */

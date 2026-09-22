@@ -12002,5 +12002,29 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "mana-crypt-coin-flip-both-ways",
+    "text": "I have Mana Crypt and it's my upkeep. What happens?",
+    "expect": [
+      "Coin flip: if you lose"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "705.2"
+    ]
+  },
+  {
+    "id": "mana-crypt-lost-the-flip",
+    "text": "I have Mana Crypt at 20 life and it's my upkeep and I lose the flip. What is my life total?",
+    "expect": [
+      "You are at 17 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

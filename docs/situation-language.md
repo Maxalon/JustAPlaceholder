@@ -146,6 +146,7 @@ What happens next, in order. The engine applies these to the described state.
 | `monarch` | `player` (that player is the monarch, 725.1) |
 | `setPt` | `object`, `to`: `"4/4"` (a base size set outright — layer 7b, so counters still apply on top) |
 | `playLand` | `player`, `obj` (a land in that player's hand). Counted against the one land a player may play each turn (305.2), plus whatever Exploration, Azusa or Explore add. `enter` puts a land onto the battlefield without using the land play, which is what a fetchland does. |
+| `flip` | `player`, `to`: `"win"` or `"lose"` (a coin flip the situation settles, 705.2). Without one, a card that flips reports both branches and asks which way it went. |
 | `setLife` | `player`, `amount` (that player's life total becomes that number, 118.5). Use it, rather than the player's starting life, for a total the question states *after* something has already happened — "I cast Angel's Grace and go to 0 life" is where the player ends up, so setting it at setup would end the game before the spell resolved. |
 
 `activate` also accepts `to: "mana"` (the object's mana ability) or a loyalty cost such as `"+1"`.

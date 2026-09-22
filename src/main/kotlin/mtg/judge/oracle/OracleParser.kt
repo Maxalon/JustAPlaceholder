@@ -885,6 +885,12 @@ object OracleParser {
                     val f = parseFilter("$what card", Kind.CARD).let { if (mv == null) it else it.copy(maxManaValue = mv) }
                     out += Effect.DiscardChosen(who, f.takeIf { it.verifiable }, "a $what card" + (mv?.let { " with mana value $it or less" } ?: ""))
                     i += 3
+                } else if (Regex("""^flip a coin\.?$""", RegexOption.IGNORE_CASE).matches(cur) && next != null &&
+                           Regex("""^if you (?:lose|win) the flip, .+$""", RegexOption.IGNORE_CASE).matches(next)) {
+                    val lost = next.startsWith("If you lose", true)
+                    val branch = parseSentence(next.replace(Regex("""^if you (?:lose|win) the flip, """, RegexOption.IGNORE_CASE), "").replaceFirstChar { it.uppercase() })
+                    out += Effect.CoinFlip(onWin = if (lost) null else branch, onLose = if (lost) branch else null)
+                    i += 2
                 } else if (repeatRe.matches(cur) && next != null) {
                     val w = repeatRe.find(cur)!!.groupValues[1]
                     out += Effect.Repeat(parseSentence(next), if (w.equals("X", true)) 0 else (w.toIntOrNull() ?: number(w) ?: 1), x = w.equals("X", true)); i += 2

@@ -1456,6 +1456,11 @@ class SituationParser(private val names: NameIndex) {
             }
             ctx.life[who] = to; return true
         }
+        // "I lose the flip" / "they win the coin flip" / "the coin comes up tails": a coin flip the asker settled.
+        Regex("""^(?:lose[sd]?|los[et]|win[s]?|won)(?: the)?(?: coin)? flip$|^(?:the )?(?:coin )?flip is (?:lost|won)$|^(?:the coin )?comes? up (?:heads|tails)$""").find(c)?.let {
+            val lost = Regex("""\blos|\btails\b""").containsMatchIn(c)
+            ctx.events += EventSpec("flip", player = actor ?: ctx.lastActor ?: "me", to = if (lost) "lose" else "win"); return true
+        }
         // "tries to Murder it", "attempts to cast Bolt on it": the attempt is the action.
         // "goes to combat" is a step, not an attempt to do something: without the guard "goes to" was stripped and
         // the step word was left as a clause of its own.
@@ -2826,6 +2831,8 @@ class SituationParser(private val names: NameIndex) {
             val count = r.groupValues[1].let { numberWords[it] ?: it.toIntOrNull() ?: 1 }
             val rest = r.groupValues[3]
             if (count > 1) { repeat(count) { addObject(m.cards.getValue(r.groupValues[2]), owner, false, ctx, allowDuplicate = true) }; ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner; return true }
+            // "I have Mana Crypt at 20 life": the life total, said as part of the board.
+            Regex("""\b(?:at|on|with) (\d+) life\b""").find(rest)?.let { l -> ctx.life[owner] = l.groupValues[1].toInt(); ctx.note(owner) }
             Regex("""\bwith (\d+|\w+|no) cards? in (?:their |my |his |her )?hand\b""").find(rest)?.let { h -> ctx.handSize[owner] = if (h.groupValues[1] == "no") 0 else number(h.groupValues[1]) ?: 0 }
             Regex("""\bwith (\d+|\w+|no) cards? (?:left )?in (?:their |my |his |her |the )?library\b""").find(rest)?.let { h -> ctx.librarySize[owner] = if (h.groupValues[1] == "no") 0 else number(h.groupValues[1]) ?: 0 }
             if (Regex("""\bin (?:my |their |his |her |the )?(?:graveyard|yard|bin|exile)\b""").containsMatchIn(rest)) {
