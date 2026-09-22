@@ -822,6 +822,19 @@ class SituationParser(private val names: NameIndex) {
             // of the board, not of the dying, and said either way round it left the whole clause unread.
             .replace(Regex("""\b((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude|token)) with (an? |the )?(c\d+|aura|equipment)(?: on it| attached(?: to it)?)? (dies|died|is destroyed|gets destroyed|is sacrificed|is exiled|leaves the battlefield)\b"""), "$1 has $2$3 on it and it $4")
             .replace(Regex("""\b((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude|token)) (dies|died|is destroyed|gets destroyed|is sacrificed|is exiled|leaves the battlefield) with (an? |the )?(c\d+|aura|equipment)(?: on it| attached(?: to it)?)?"""), "$1 has $3$4 on it and it $2")
+            // "double strike 2/2 attacks": the keyword said before the size describes the creature all the same.
+            .replace(Regex("""(?<![\w/])($kwPhrase) (\d+/\d+)\b(?! creature with)"""), "$2 creature with $1")
+            // "a 2/2 with deathtouch and a 2/2 with lifelink fight each other": the fight, said with both in front.
+            .replace(Regex("""^((?:$possPrefix|an? )?(?:c\d+|\d+/\d+)(?: creature)?(?: with $kwPhrase)?) and ((?:$possPrefix|an? )?(?:c\d+|\d+/\d+)(?: creature)?(?: with $kwPhrase)?) fight(?: each other| one another)?\??$"""), "$1 fights $2")
+            // "how much damage do I take from two 3/3s": they are attacking, and the question is the damage.
+            .replace(Regex("""^(?:(?:if )?(?:i|we) (?:don't|do not) block,? )?how much (?:damage )?do (?:i|we) take from ((?:an? |two |three |four |five |\d+ )?\d+/\d+s?(?: [a-z]+)*)\??$"""), "they attack me with $1, i don't block")
+            // "a creature with 4 toughness", "a creature with 2 power and 5 toughness": a size given in words. Power
+            // left unsaid is taken as 1 and noted; for a damage question it doesn't matter.
+            .replace(Regex("""\b((?:$possPrefix|an? )?)creature with (\d+) power and (\d+) toughness\b"""), "$1$2/$3 creature")
+            .let { t0 -> Regex("""\b((?:$possPrefix|an? )?)creature with (\d+) toughness\b""").replace(t0) { r -> ctx.notes += "\"a creature with ${r.groupValues[2]} toughness\" is read as a 1/${r.groupValues[2]}; its power wasn't said."; r.groupValues[1] + "1/" + r.groupValues[2] + " creature" } }
+            .let { t0 -> Regex("""\b((?:$possPrefix|an? )?)creature with (\d+) power\b""").replace(t0) { r -> ctx.notes += "\"a creature with ${r.groupValues[2]} power\" is read as a ${r.groupValues[2]}/1; its toughness wasn't said."; r.groupValues[1] + r.groupValues[2] + "/1 creature" } }
+            // "a 2/2 that already has 2 damage", "my 4/4 with 1 damage on it": damage already marked is part of the board.
+            .replace(Regex("""\b((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude)(?: creature)?) (?:with|that (?:already )?(?:has|took|was dealt)) (\d+) damage(?: marked)?(?: on it)?(?: already| this turn)?\b"""), "$1, it has $2 damage")
             // "My only untapped land is a Mountain": the board, said as what is left rather than what is there.
             .let { t0 -> Regex("""\b(my|our|their|his|her) only untapped (?:land|permanent|mana source|creature) is ((?:an? |the )?c\d+)""").replace(t0) { r ->
                 (if (r.groupValues[1] == "my" || r.groupValues[1] == "our") "i have " else "they have ") + r.groupValues[2] + " untapped"
@@ -2805,8 +2818,11 @@ class SituationParser(private val names: NameIndex) {
         // A state fragment about the last-mentioned permanent: "… and 1 damage on it", "with three +1/+1 counters", "at 4 loyalty".
         // "… and gets two -1/-1 counters": the same fragment said with a verb, which was left unread.
         if (Regex("""^(?:with |has |having |it has |at |is at |gets? |gains?ed? |gains? |is given |takes? )?(?:\d+|\w+) (?:loyalty(?: counters?)?|(?:[+-]\d+/[+-]\d+|[a-z]+) counters?(?: on it)?|damage(?: marked)?(?: on it)?)$""").matches(c) || Regex("""^(?:with |has )?(?:an? )?[+-]\d+/[+-]\d+ (?:pump|bonus|boost)(?: from .*)?$""").matches(c)) {
-            val id = ctx.lastMentioned?.takeIf { ctx.objects.containsKey(it) } ?: return false
-            applyStateWords(id, "with " + c.replace(Regex("""^(?:with |has |having |it has |at |is at |gets? |gains?ed? |gains? |is given |takes? )"""), ""), ctx); return true
+            // "I bolt a 1/4, it has 2 damage": after a cast the last thing mentioned is the spell, and the thing
+            // meant is what the spell was aimed at. Returning "unread" here also stopped every later rule trying.
+            val id = ctx.lastMentioned?.takeIf { ctx.objects.containsKey(it) }
+                ?: ctx.events.lastOrNull { it.verb == "cast" }?.targets?.firstOrNull { it in ctx.objects }
+            if (id != null) { applyStateWords(id, "with " + c.replace(Regex("""^(?:with |has |having |it has |at |is at |gets? |gains?ed? |gains? |is given |takes? )"""), ""), ctx); return true }
         }
         // "… and three Elves" continuing an attack: typed 1/1 tokens join the attack.
         if (ctx.lastVerb == "attack") Regex("""^(\d+|two|three|four|five) (elves|elf|goblins|zombies|soldiers|humans|spirits|angels|dragons|beasts|elementals|saprolings|thopters|knights|warriors|wizards|vampires|merfolk|cats|dogs|birds|insects|squirrels|servos|tokens|creatures)(?: tokens?)?$""").find(c)?.let { r ->
@@ -2915,6 +2931,26 @@ class SituationParser(private val names: NameIndex) {
             }
             ctx.events += EventSpec("activate", player = ctx.objects[id]?.controller ?: who, obj = id, to = "saddle")
             ctx.lastActor = who; ctx.lastMentioned = id; return true
+        }
+        // "my 2/2 has 1 damage", "it took 2 damage this turn": damage already marked, part of the board rather
+        // than something happening now. "Last turn" is the exception: damage wears off at cleanup (514.2).
+        Regex("""^(?:$possPrefix)?(c\d+|it|that|creature|guy|dude|\d+/\d+)(?: creature)? (?:has|have|took|takes|was dealt|were dealt|got|gets|is dealt) (\d+) damage(?: marked)?(?: on it)?( already| this turn| earlier| earlier this turn| last turn| on their turn| on my turn| last combat)?$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: ctx.lastOwner ?: "me"
+            val w = r.groupValues[1]
+            val id = when {
+                // "I bolt a creature that already has 2 damage": "it" is the creature the spell was just aimed at.
+                w == "it" || w == "that" -> ctx.lastMentioned?.takeIf { it in ctx.objects }
+                    ?: ctx.events.lastOrNull { it.verb == "cast" }?.targets?.firstOrNull { it in ctx.objects }
+                    ?: ctx.objects.values.lastOrNull { it.zone == "battlefield" && isCreatureName(it.card.name) }?.id ?: return@let
+                w == "creature" || w == "guy" || w == "dude" -> ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id ?: describedCreatures("a ", "", "creature", who, ctx).firstOrNull() ?: return@let
+                Regex("""^\d+/\d+$""").matches(w) -> ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" && (it.card.name ?: "").startsWith("a $w") }?.id ?: describedCreatures("a ", w, "creature", who, ctx).firstOrNull() ?: return@let
+                else -> m.cards[w]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) } ?: return@let
+            }
+            val n = r.groupValues[2].toIntOrNull() ?: return@let
+            if (r.groupValues[3].trim() in setOf("last turn", "on their turn", "on my turn", "last combat")) {
+                ctx.notes += "Damage dealt ${r.groupValues[3].trim()} was removed at that turn's cleanup step (514.2), so none of it is marked on ${ctx.objects[id]?.card?.name ?: id} now."
+            } else ctx.objects[id] = ctx.objects.getValue(id).let { o -> o.copy(damage = o.damage + n) }
+            ctx.lastMentioned = id; return true
         }
         // "I flicker my Wall of Omens" / "they blink it": exiling and returning it at once, with no card named.
         Regex("""^(?:blinks?|blinked|blinking|flickers?|flickered|flickering) ($possPrefix|an? )?(c\d+|it|that|creature|guy|dude|\d+/\d+)(?: creature)?$""").find(c)?.let { r ->
@@ -3847,7 +3883,10 @@ class SituationParser(private val names: NameIndex) {
         }
         // "Grizzly Bears fights Hill Giant": the fight itself, with no card named as what caused it. Each creature
         // goes on the battlefield, on opposite sides of the table unless the asker said whose they are (701.14a).
-        Regex("""^($possPrefix|an? )?(c\d+|it|that|\d+/\d+)(?: creature)? (?:fights?|fought) ($possPrefix|an? )?(c\d+|\d+/\d+)(?: creature)?$""").find(c)?.let { r ->
+        Regex("""^($possPrefix|an? )?(c\d+|it|that|\d+/\d+)(?: creature)?(?: with ($kwPhrase(?:(?:,|,? and|,? &) $kwPhrase)*))? (?:fights?|fought) ($possPrefix|an? )?(c\d+|\d+/\d+)(?: creature)?(?: with ($kwPhrase(?:(?:,|,? and|,? &) $kwPhrase)*))?$""").find(c)?.let { r0 ->
+            // "a 2/2 with deathtouch fights a 2/2 with lifelink": the keywords describe each side.
+            val kwA = r0.groupValues[3]; val kwB = r0.groupValues[6]
+            val r = object { val groupValues = listOf(r0.groupValues[0], r0.groupValues[1], r0.groupValues[2], r0.groupValues[4], r0.groupValues[5]) }
             fun side(word: String, fallback: String) = when (val w = word.trim()) {
                 "my", "own" -> "me"
                 "their", "his", "her" -> pronounPlayer(ctx, w)
@@ -3858,10 +3897,10 @@ class SituationParser(private val names: NameIndex) {
             val whoA = side(r.groupValues[1], "me")
             // "a 3/3 fights a 2/2": either side may be described by its size rather than named.
             val aId = if (r.groupValues[2] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
-                      else if (Regex("""^\d+/\d+$""").matches(r.groupValues[2])) describedCreatures("a ", r.groupValues[2], "creature", whoA, ctx).firstOrNull() ?: return@let
+                      else if (Regex("""^\d+/\d+$""").matches(r.groupValues[2])) describedCreatures("a ", r.groupValues[2], "creature", whoA, ctx, kwA).firstOrNull() ?: return@let
                       else m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, whoA, false, ctx) } ?: return@let
             val whoB = side(r.groupValues[3], ctx.other(ctx.objects[aId]?.controller ?: whoA) ?: "opp")
-            val bId = if (Regex("""^\d+/\d+$""").matches(r.groupValues[4])) describedCreatures("a ", r.groupValues[4], "creature", whoB, ctx).firstOrNull() ?: return@let
+            val bId = if (Regex("""^\d+/\d+$""").matches(r.groupValues[4])) describedCreatures("a ", r.groupValues[4], "creature", whoB, ctx, kwB).firstOrNull() ?: return@let
                       else m.cards[r.groupValues[4]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, whoB, false, ctx) } ?: return@let
             if (aId == bId) return@let
             ctx.events += EventSpec("fight", obj = aId, targets = listOf(bId))
@@ -3870,7 +3909,7 @@ class SituationParser(private val names: NameIndex) {
         // "their Grizzly Bears is blocked by my Hill Giant": the same declaration, said from the attacker's side.
         // "My Grizzly Bears is blocked by two 1/1s" says the attack too: being blocked is only possible in combat,
         // so the creature is put on the battlefield and made to attack rather than the whole clause going unread.
-        Regex("""^($possPrefix)?(c\d+|it|that|\d+/\d+) (?:is|are|was|were|gets?|got) (?:chump[- ]?)?blocked by (.+)$""").find(c)?.let { r ->
+        Regex("""^($possPrefix)?(c\d+|it|that|\d+/\d+)(?: creature)?(?: with ($kwPhrase(?:(?:,|,? and|,? &) $kwPhrase)*))? (?:is|are|was|were|gets?|got) (?:chump[- ]?)?blocked by (.+)$""").find(c)?.let { r ->
             val atkWho = when (val w = r.groupValues[1].trim()) {
                 "my", "own" -> "me"
                 "their", "his", "her" -> pronounPlayer(ctx, w)
@@ -3881,11 +3920,12 @@ class SituationParser(private val names: NameIndex) {
             val attacker = when {
                 r.groupValues[2] in setOf("it", "that") -> ctx.events.lastOrNull { it.verb == "attack" }?.obj ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
                 cardRef.matches(r.groupValues[2]) -> m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, atkWho ?: ctx.lastOwner, false, ctx) } ?: return@let
-                else -> describedFrom(if (atkWho == null) "the " else "my ", r.groupValues[2], "", atkWho ?: ctx.lastOwner, ctx).firstOrNull() ?: return@let
+                // "my 3/3 with trample is blocked by a 0/4": the keyword describes the attacker.
+                else -> describedFrom(if (atkWho == null) "the " else "my ", r.groupValues[2], r.groupValues[3], atkWho ?: ctx.lastOwner, ctx).firstOrNull() ?: return@let
             }
             val who = ctx.other(ctx.objects[attacker]?.controller ?: "opp") ?: "me"
             // "blocked by a 2/2 and a 3/3" — the sentence reader joins them with "plus", so the block is multiple.
-            val blockers = r.groupValues[3].split(" plus ", " & ").mapNotNull { part0 ->
+            val blockers = r.groupValues[4].split(" plus ", " & ").mapNotNull { part0 ->
                 val part = part0.trim().removePrefix("a ").removePrefix("an ").removePrefix("the ")
                     .removePrefix("my ").removePrefix("their ").removePrefix("his ").removePrefix("her ").trim()
                 val cnt = Regex("""^(one|two|three|four|five|\d+) """).find(part)?.groupValues?.get(1)
@@ -4032,7 +4072,9 @@ class SituationParser(private val names: NameIndex) {
         }
         // "I block their 3/3 with two 2/2s": the attacker is named inside the block and nobody said it attacked.
         // The attack is declared first, then the rest of the clause is read as an ordinary "blocks with …".
-        Regex("""^(?:chump[- ]?)?blocks? ($possPrefix|an? )(?:($kwNouns) )?(c\d+|\d+/\d+|creature|guy|dude)(?: ($kwNouns))?(?: creature)? with (.+)$""").find(c)?.let { r0 ->
+        Regex("""^(?:chump[- ]?)?blocks? ($possPrefix|an? )(?:($kwNouns) )?(c\d+|\d+/\d+|creature|guy|dude|$kwNouns)(?: ($kwNouns))?(?: creature)? with (.+)$""").find(c)?.let { r00 ->
+            // "I block a first striker with a 2/2": the keyword noun is the whole of the attacker's description.
+            val r0 = object { val groupValues: List<String> = if (Regex("""^$kwNouns$""").matches(r00.groupValues[3]) && !cardRef.matches(r00.groupValues[3])) listOf(r00.groupValues[0], r00.groupValues[1], r00.groupValues[3], "creature", r00.groupValues[4], r00.groupValues[5]) else r00.groupValues }
             // "I block their infect creature with my 2/2": the attacker may be described by a keyword instead of
             // a size, with the keyword said before the noun as readily as after it.
             val r = object { val groupValues = listOf(r0.groupValues[0], r0.groupValues[1], r0.groupValues[3],

@@ -110,6 +110,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
             // Mechanic words a player types meaning the mechanic, never the legend whose name starts with it.
             "monstrosity", "monstrous", "ninjutsu", "bushido", "landfall", "prowess", "cascade", "proliferate", "populate", "investigate", "adapt", "amass", "explore", "surveil", "scry", "morph", "megamorph", "mutate", "escape", "embalm", "eternalize", "delve", "madness", "bestow", "rebound",
             "leave", "leaves", "left", "enter", "enters", "entered", "return", "returns", "bounce", "bounces",
+            "lifelink", "vigilance", "fear", "persist", "landfall", "provoke", "intimidate",
             "everything", "all", "nothing", "everyone", "nobody", "blockers", "attackers", "response", "responses", "counters", "loyalty", "marked", "regeneration", "regenerate", "shield", "flash", "sacrifice", "sac", "attacking", "blocking", "wear", "tear", "begin", "start", "time", "enchanted", "equipped", "poison", "unblocked", "alone", "x", "give", "gives", "grant", "elves", "goblins", "zombies", "tokens", "creatures",
         )
 

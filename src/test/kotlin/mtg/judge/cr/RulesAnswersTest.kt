@@ -62,6 +62,7 @@ class RulesAnswersTest {
         "When can a player concede?" to "104.3a",
         "They scoop in response to my spell, what happens?" to "104.3a",
         "When does an extra turn happen?" to "500.7",
+        "Does deathtouch work on a planeswalker?" to "702.2b",
     )
 
     @Test

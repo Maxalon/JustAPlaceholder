@@ -13509,5 +13509,104 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "lifelink-in-a-fight",
+    "text": "my Vampire Nighthawk fights their Grizzly Bears",
+    "expect": [
+      "You gain 2 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.15b"
+    ]
+  },
+  {
+    "id": "keyword-before-the-size",
+    "text": "double strike 2/2 attacks and they block with a 3/3",
+    "expect": [
+      "a 3/3 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "described-fight-with-keywords",
+    "text": "a 2/2 with deathtouch and a 2/2 with lifelink fight each other",
+    "expect": [
+      "opponent gains 2 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "damage-already-marked-on-a-target",
+    "text": "I bolt a creature with 4 toughness that already has 2 damage",
+    "expect": [
+      "a 1/4 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "opponent takes 3 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "attacker-with-keyword-blocked-by",
+    "text": "my 3/3 with trample is blocked by a 0/4 wall",
+    "expect": [
+      "a 0/4 wall creature has 3 damage marked"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "a-first-striker-as-the-attacker",
+    "text": "I block a first striker with a 2/2",
+    "expect": [
+      "a creature with first strike: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "how-much-damage-from-attackers",
+    "text": "if I don't block how much damage do I take from two 3/3s",
+    "expect": [
+      "You take 3 damage. (×2)"
+    ],
+    "notExpect": [
+      "opponent takes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "a-lifelink-attacker-is-not-the-aura",
+    "text": "I cast Holy Day and they have a lifelink attacker, do they gain life",
+    "expect": [
+      "Prevention effect until end of turn (Holy Day)"
+    ],
+    "notExpect": [
+      "Lifelink: the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "damage-from-last-turn-is-gone",
+    "text": "my creature took 2 damage last turn, is it still damaged",
+    "expect": [],
+    "notExpect": [
+      "2 damage marked"
+    ],
+    "cite": []
   }
 ]

@@ -2763,6 +2763,13 @@ class Engine(val state: GameState) {
                 } }
             is Ref.Stack -> { state.unsupported += Unsupported(sourceName, "Damage can't be dealt to something on the stack."); return 0 }
         }
+        // Lifelink is about damage, not only combat damage (702.15b): a fight, a Rabid Bite or a pinger with
+        // lifelink gains its controller the life too. Combat damage gains it in the combat damage step itself.
+        if (!inCombatDamage && amount > 0 && source != null && target !is Ref.Stack && source.has("lifelink")) {
+            val c = state.player(source.controller)
+            trace.step("${source.name} has lifelink, so ${c.subject.lowercase()} ${c.v("gains", "gain")} $amount life from the damage it dealt.", "702.15b")
+            gainLife(c, amount)
+        }
         if (source != null && target !is Ref.Stack) onEvent(GameEvent.DamageDealt(source, target, amount, inCombatDamage))
         if (source != null && inCombatDamage) monarchCombatDamage(source, target)
         return amount
