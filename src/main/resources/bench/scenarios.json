@@ -12322,5 +12322,40 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "counters-on-a-described-creature",
+    "text": "I put three +1/+1 counters on my 1/1. How big is it?",
+    "expect": [
+      "is 4/4"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "size-said-after-the-creature",
+    "text": "My creature gets -3/-3 and it's a 2/2. What happens?",
+    "expect": [
+      "a 2/2 creature: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "platinum-angel-destroyed-at-negative-life",
+    "text": "I destroy their Platinum Angel while they're at -3. What happens?",
+    "expect": [
+      "opponent has -3 life and loses the game"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "704.5a"
+    ]
   }
 ]
