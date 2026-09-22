@@ -11628,5 +11628,51 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "shalai-gives-you-hexproof",
+    "text": "I have a Shalai, Voice of Plenty and they cast Thoughtseize targeting me. Can they?",
+    "expect": [
+      "Thoughtseize can't target you"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.11c"
+    ]
+  },
+  {
+    "id": "shalai-is-not-hexproof-itself",
+    "text": "I have a Shalai and my opponent casts Lightning Bolt at Shalai. Can they?",
+    "expect": [
+      "Shalai, Voice of Plenty has 3 damage marked"
+    ],
+    "notExpect": [
+      "can't target Shalai"
+    ],
+    "cite": []
+  },
+  {
+    "id": "aura-put-on-a-described-creature",
+    "text": "I put a Rancor on my 2/2 and it dies. What happens to Rancor?",
+    "expect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "enchanted-creature-then-a-verb",
+    "text": "My 2/2 enchanted with Rancor dies. What happens to Rancor?",
+    "expect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

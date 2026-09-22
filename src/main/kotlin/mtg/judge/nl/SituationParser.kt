@@ -1646,9 +1646,25 @@ class SituationParser(private val names: NameIndex) {
             ctx.objects[att] = ctx.objects.getValue(att).copy(attachedTo = host)
             ctx.lastMentioned = host; return true
         }
+        // "I put a Rancor on my 2/2", "they put Pacifism on my Bears": an Aura attached to a creature. Said this
+        // way rather than "enchanted with", the whole clause went unread.
+        Regex("""^(?:puts?|put|putting|attaches?|attached|sticks?|stuck) (?:an? |the |my |their )?(c\d+) on (?:to )?($possPrefix|an? )?(c\d+|\d+/\d+|it|that)$""").find(c)?.let { r ->
+            val aura = m.cards.getValue(r.groupValues[1])
+            val who = actor ?: subject ?: ctx.lastOwner ?: "me"
+            val target = r.groupValues[3]
+            val hostOwner = when (r.groupValues[2].trim()) { "my" -> who; "their", "his", "her" -> ctx.other(who) ?: "opp"; else -> who }
+            val host = when {
+                target in setOf("it", "that") -> ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                cardRef.matches(target) -> m.cards[target]?.let { objectIdFor(it, ctx) ?: addObject(it, hostOwner, false, ctx) } ?: return@let
+                else -> describedCreatures("a ", target, "creature", hostOwner, ctx).firstOrNull() ?: return@let
+            }
+            val att = objectIdFor(aura, ctx) ?: addObject(aura, who, false, ctx)
+            ctx.objects[att] = ctx.objects.getValue(att).copy(attachedTo = host)
+            ctx.lastVerb = "have"; ctx.lastOwner = who; ctx.lastActor = who; ctx.lastMentioned = host; return true
+        }
         // "a creature enchanted with Pacifism", "a 2/2 equipped with Bonesplitter": a creature nobody named,
         // carrying something that is named.
-        Regex("""^(?:(?:have|has|got|controls?|controlling)\s+)?(an? |\d+ |two |three )?(?:(\d+/\d+)s?\s*)?($creatureKinds)?\s*(?:enchanted with|equipped with|wearing|carrying) (?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->
+        Regex("""^(?:(?:have|has|got|controls?|controlling)\s+)?(an? |\d+ |two |three )?(?:(\d+/\d+)s?\s*)?($creatureKinds)?\s*(?:enchanted with|equipped with|wearing|carrying) (?:an? |the |my |their )?(c\d+)((?: .+)?)$""").find(c)?.let { r ->
             if (r.groupValues[2].isEmpty() && r.groupValues[3].isEmpty()) return@let
             val who = actor ?: subject ?: ctx.lastOwner ?: "me"
             val ids = describedCreatures(r.groupValues[1], r.groupValues[2], r.groupValues[3], who, ctx)
@@ -1658,7 +1674,11 @@ class SituationParser(private val names: NameIndex) {
                 val att = addObject(aura, who, false, ctx, allowDuplicate = true)
                 ctx.objects[att] = ctx.objects.getValue(att).copy(attachedTo = id)
             }
-            ctx.lastVerb = "have"; ctx.lastOwner = who; ctx.lastActor = who; ctx.lastMentioned = ids.last(); return true
+            ctx.lastVerb = "have"; ctx.lastOwner = who; ctx.lastActor = who; ctx.lastMentioned = ids.last()
+            // "My 2/2 enchanted with Rancor dies": what the creature then does is a statement of its own.
+            val rest = r.groupValues[5].trim()
+            if (rest.isNotEmpty()) return readClause("it $rest", m, ctx)
+            return true
         }
         // "Both have first strike" / "mine has deathtouch" / "the blocker has trample": keywords on creatures already described.
         Regex("""^(both|both of them|they both|all of them|mine|theirs|yours|his|hers|the attacker|the blocker|my creature|their creature|it) (?:has|have|gets?|gained?|is|are) ($kwNouns)(?:,? (?:and )?($kwNouns))?$""").find(c)?.let { r ->

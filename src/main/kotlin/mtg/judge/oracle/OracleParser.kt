@@ -599,6 +599,11 @@ object OracleParser {
         }
         Regex("""^you have no maximum hand size\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.NoMaximumHandSize) }
         Regex("""^you have hexproof\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.PlayerHexproof) }
+        // "You, planeswalkers you control, and other creatures you control have hexproof." (Shalai, Voice of Plenty)
+        Regex("""^you(?:, (?:and )?[^,]+?)*,? and (other creatures you control|creatures you control) have hexproof\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val f = parseFilter(m.groupValues[1], Kind.CREATURE).let { if (m.groupValues[1].trim().startsWith("other", true)) it.copy(other = true) else it }
+            return listOf(StaticEffect.PlayerHexproof) + (if (f.verifiable) listOf(StaticEffect.KeywordGrant(f, setOf("hexproof"))) else emptyList())
+        }
         Regex("""^you can't lose the game and your opponents can't win the game\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.CantLose) }
         Regex("""^nonbasic lands are mountains\.?$""", RegexOption.IGNORE_CASE).matches(line).let { if (it) return listOf(StaticEffect.NonbasicLandsAreMountains) }
         // "Creatures without flying can't attack" (Moat), "Non-Eye creatures you control can't block": a filter
