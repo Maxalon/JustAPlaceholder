@@ -1060,6 +1060,13 @@ class SituationParser(private val names: NameIndex) {
             clause0 = clause0.removeRange(r.range)
         }
         Regex("""\s+after (?:combat )?damage(?: is dealt)?$""").find(clause0)?.let { r -> if (ctx.events.any { it.verb == "attack" || it.verb == "attackAll" }) ctx.events += EventSpec("combatDamage"); clause0 = clause0.removeRange(r.range) }
+        // "… with 4 mana (up)": what the actor has available, said as a trailer on the action it pays for.
+        Regex("""\s+(?:with|having) (\d+) mana(?: available| up| open| untapped| left)?$""").find(clause0)?.let { r ->
+            val who = actorOfClause(clause0) ?: ctx.lastActor ?: "me"
+            ctx.mana[who] = r.groupValues[1].toInt(); ctx.note(who)
+            ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} ${r.groupValues[1]} mana available; costs are checked against that."
+            clause0 = clause0.removeRange(r.range)
+        }
         // "before combat", "before blockers", "in their main phase": when it happened, which the order of the
         // clauses already says. Left on the end, the whole clause went unread.
         clause0 = clause0.replace(Regex("""\s+(?:before (?:combat|blockers|blocks|attackers|attacks|the combat phase|combat starts)|precombat|in (?:their|my|the) (?:precombat |first )?main phase|during (?:their|my) main phase)$"""), "")

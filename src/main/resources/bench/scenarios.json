@@ -12199,5 +12199,16 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "mana-said-as-a-trailer",
+    "text": "My opponent has a Propaganda and I attack with three creatures with 4 mana. Can I?",
+    "expect": [
+      "can't attack (can't pay {2} for Propaganda)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
