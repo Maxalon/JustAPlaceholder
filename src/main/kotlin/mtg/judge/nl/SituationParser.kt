@@ -620,6 +620,11 @@ class SituationParser(private val names: NameIndex) {
             val card = r.groupValues[2]
             if (r.groupValues[3].isNotEmpty()) "i control $card and my opponent controls $card" else "i control ${r.groupValues[1]}$card"
         }
+        // "is dealt 1 damage twice": two separate hits, which is not the same as one hit for two — a prevention
+        // shield stops only one of them — and read as one the second was dropped.
+        t2 = Regex("""\b(is dealt|are dealt|was dealt|were dealt|takes?|took|deals?|dealt) (\d+) damage twice\b""").replace(t2) { r ->
+            "${r.groupValues[1]} ${r.groupValues[2]} damage and ${if (r.groupValues[1].startsWith("deal")) r.groupValues[1] else "takes"} ${r.groupValues[2]} more damage"
+        }
         // "I go to 0 life", "they drop to 3": a life total after something, said as a change.
         Regex("""\b(?:i|we) (?:go|goes|went|drop|drops|dropped|fall|falls|fell) (?:to|down to) (-?\d+)(?: life)?\b""").find(t2)?.let { ctx.life["me"] = it.groupValues[1].toInt(); ctx.usesMe = true; any = true; t2 = t2.removeRange(it.range) }
         Regex("""\b(?:they|he|she|my opponent|the opponent|opponent) (?:go|goes|went|drop|drops|dropped|fall|falls|fell) (?:to|down to) (-?\d+)(?: life)?\b""").find(t2)?.let { ctx.life[pronounPlayer(ctx)] = it.groupValues[1].toInt(); any = true; t2 = t2.removeRange(it.range) }
@@ -1149,7 +1154,7 @@ class SituationParser(private val names: NameIndex) {
         }
         // "They deal 3 damage to me", "I take 3 damage": damage from a source nobody named, so the answer can still
         // show what prevention and replacement effects do to it.
-        Regex("""^(?:(i|they|he|she|we|my opponent|the opponent|@\w+) )?(?:deals?|dealt) (\d+) damage to (me|you|them|him|her|my opponent|the opponent|@\w+|it|that|(?:$possPrefix)?c\d+|(?:my |their |the )?\d+/\d+)$|^(?:(i|they|he|she|we|my opponent|the opponent|@\w+|(?:$possPrefix)?c\d+|it|that) )?(?:takes?|took) (\d+) damage$|^(?:(?:my |their |his |her |the )?(c\d+|it|that) )?(?:is|are|was|were) dealt (\d+) damage$""").find(c)?.let { r ->
+        Regex("""^(?:(i|they|he|she|we|my opponent|the opponent|@\w+) )?(?:deals?|dealt) (\d+) damage to (me|you|them|him|her|my opponent|the opponent|@\w+|it|that|(?:$possPrefix)?c\d+|(?:my |their |the )?\d+/\d+)$|^(?:(i|they|he|she|we|my opponent|the opponent|@\w+|(?:$possPrefix)?c\d+|(?:$possPrefix)?\d+/\d+|it|that) )?(?:takes?|took) (\d+) damage$|^(?:(?:my |their |his |her |the )?(c\d+|it|that) )?(?:is|are|was|were) dealt (\d+) damage$""").find(c)?.let { r ->
             val dealt = r.groupValues[2].isNotEmpty()
             val passive = r.groupValues[7].isNotEmpty()
             val amount = (if (dealt) r.groupValues[2] else if (passive) r.groupValues[7] else r.groupValues[5]).toIntOrNull() ?: return@let
@@ -1167,6 +1172,7 @@ class SituationParser(private val names: NameIndex) {
                     objectIdFor(card, ctx) ?: addObject(card, owner, false, ctx)
                 }
                 Regex("""^\d+/\d+$""").matches(objWord) -> ctx.objects.values.lastOrNull { (it.card.name ?: "").startsWith("a $objWord") }?.id
+                    ?: describedCreatures("a ", objWord, "creature", possessiveOwner(victimWord.removeSuffix(objWord), ctx, m) ?: ctx.lastOwner ?: "me", ctx).firstOrNull()
                 else -> null
             }
             val victim = victimObj ?: when (victimWord) {
@@ -1175,6 +1181,8 @@ class SituationParser(private val names: NameIndex) {
                 else -> if (victimWord.startsWith("@")) victimWord.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else return@let
             }
             ctx.events += EventSpec("damage", source = "a source", targets = listOf(victim), amount = amount)
+            // "… and takes 1 more": the running total a bare continuation adds to.
+            if (victimObj != null) { ctx.lastMentioned = victimObj; ctx.lastStat = "damage"; ctx.lastStatWho = "obj:$victimObj" }
             ctx.notes += "No source was named for the $amount damage; it is read as coming from a source nobody named, which is enough to show what prevention and replacement effects do to it."
             if (victimObj == null) ctx.note(victim) else ctx.lastMentioned = victimObj
             return true
@@ -1427,8 +1435,17 @@ class SituationParser(private val names: NameIndex) {
         // Read before isNoise: "is dealt 2 more" opens with a question word and would be dropped as noise.
         // "… and I get 2 more" / "… and loses 2 more": the running total the clause before it stated
         // ("8 poison counters", "3 +1/+1 counters", "5 life"), with the direction the verb gives it.
-        Regex("""^(gets?|got|gains?|gained|takes?|took|receives?|received|is dealt|are dealt|was dealt|were dealt|loses?|lost|drops?) (an?|one|two|three|four|five|\d+) more$""").find(c)?.let { r ->
-            val stat = ctx.lastStat ?: return@let
+        Regex("""^(gets?|got|gains?|gained|takes?|took|receives?|received|is dealt|are dealt|was dealt|were dealt|loses?|lost|drops?) (an?|one|two|three|four|five|\d+) more(?: (damage|life|poison counters?))?$""").find(c)?.let { r ->
+            val stat = r.groupValues[3].ifEmpty { ctx.lastStat ?: return@let }
+            // "takes 1 more damage": damage stacks on the permanent the sentence was about, and without this the
+            // second hit was dropped and a creature with lethal damage on it was answered as surviving.
+            if (stat == "damage") {
+                val id = (ctx.lastStatWho?.removePrefix("obj:")?.takeIf { it in ctx.objects && ctx.lastStatWho!!.startsWith("obj:") }
+                    ?: ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).zone == "battlefield" }) ?: return@let
+                val n = number(r.groupValues[2]) ?: return@let
+                ctx.events += EventSpec("damage", source = "a source", targets = listOf(id), amount = n)
+                ctx.lastMentioned = id; ctx.lastStat = "damage"; ctx.lastStatWho = "obj:$id"; return true
+            }
             val losing = r.groupValues[1].startsWith("lo") || r.groupValues[1].startsWith("drop")
             if (losing && stat != "life") return@let      // "loses 2 more poison counters" isn't a thing
             val who = actor ?: subject ?: ctx.lastStatWho ?: return@let
@@ -4185,7 +4202,7 @@ class SituationParser(private val names: NameIndex) {
             val kind = r.groupValues[2]
             if (kind == "loyalty") counters["loyalty"] = n else counters[kind] = (counters[kind] ?: 0) + n
         }
-        Regex("""(?:with|has|having|and) (\d+|\w+) damage(?: marked)?(?: on it)?""").find(rest)?.let { r -> number(r.groupValues[1])?.let { spec = spec.copy(damage = it) } }
+        Regex("""(?:with|has|having|and) (\d+|\w+) damage(?: marked)?(?: on it)?""").find(rest)?.let { r -> number(r.groupValues[1])?.let { spec = spec.copy(damage = it); ctx.lastStat = "damage"; ctx.lastStatWho = "obj:$id" } }
         Regex("""(?:with |has |having |and )?(?:an? )?([+-]\d+/[+-]\d+) (?:pump|bonus|boost|until end of turn)""").find(rest)?.let { r -> spec = spec.copy(pump = r.groupValues[1]) }
         ctx.objects[id] = spec.copy(counters = counters)
     }

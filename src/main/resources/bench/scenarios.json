@@ -11341,5 +11341,38 @@
       "You take 3 damage"
     ],
     "cite": []
+  },
+  {
+    "id": "damage-dealt-twice",
+    "text": "My Grizzly Bears is dealt 1 damage twice. Does it die?",
+    "expect": [
+      "Yes: Grizzly Bears died"
+    ],
+    "notExpect": [
+      "No: Grizzly Bears is still on the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "damage-plus-one-more",
+    "text": "My Grizzly Bears has 1 damage on it and takes 1 more. Does it die?",
+    "expect": [
+      "Yes: Grizzly Bears died"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "described-creature-takes-damage-twice",
+    "text": "My 4/4 takes 2 damage and takes 2 more damage. Does it die?",
+    "expect": [
+      "Yes: a 4/4 creature died"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
