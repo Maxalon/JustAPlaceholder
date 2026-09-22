@@ -1265,6 +1265,11 @@ class SituationParser(private val names: NameIndex) {
         // "I pump it with Giant Growth after blockers": a timing phrase at the end says when, not what, and left
         // on the clause it stopped every rule that anchors at the end from matching.
         clause0 = clause0.replace(Regex("""\s+(?:after (?:blockers|blocks|attackers|attacks)(?: are declared)?|before (?:combat )?damage(?: is dealt)?|during combat|after combat|in combat|post[- ]?blocks?)$"""), "")
+        // "I bounce my token to my hand": after "bounce" the destination is never in doubt, so saying it adds
+        // nothing but a tail that stopped the clause matching. "Return … to its owner's hand" keeps its tail:
+        // there the destination is what makes it a bounce at all.
+        if (Regex("""\b(?:bounces?|bounced|bouncing)\b""").containsMatchIn(clause0))
+            clause0 = clause0.replace(Regex("""\s+(?:back )?to (?:its owner's|their owner's|the owner's|my|their|his|her|your) hand$"""), "")
         // "how much mana do I have?" / "how much mana can I make?": every untapped source that player controls.
         Regex("""^how (?:much|many) mana(?: (?:do|does|can|could|would) (i|we|they|he|she|my opponent|the opponent|opponent|@\w+) (?:have|make|produce|get|tap for|generate|have available|have up))?(?: (?:available|up|right now|now|in total|altogether|is there|do i have))?$""").find(clause0)?.let { q ->
             val who = when (val w = q.groupValues[1]) { "" -> "me"; "i", "we" -> "me"; "opponent", "my opponent", "the opponent" -> "opp"; else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w) }
@@ -2795,6 +2800,18 @@ class SituationParser(private val names: NameIndex) {
             else ctx.events += EventSpec("leave", obj = id, to = if (r.groupValues[6].contains("exile")) "exile" else if (r.groupValues[6].contains("bounce")) "hand" else "graveyard")
             ctx.lastMentioned = id; ctx.lastOwner = who; ctx.note(who); return true
         }
+        // "I reanimate a creature from my graveyard": a card in a graveyard is put onto the battlefield with no
+        // card named for doing it. Read as the spell of that name, the creature it named went unused.
+        Regex("""^(?:reanimates?|reanimated|reanimating) (?:an? |the |my |their |his |her )?(c\d+|creature|\d+/\d+)(?: card)?(?: from (?:my|their|his|her|the|a) graveyard)?$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: ctx.lastOwner ?: "me"
+            val w = r.groupValues[1]
+            val id = if (cardRef.matches(w)) m.cards[w]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) } ?: return@let
+                     else ctx.objects.values.lastOrNull { it.controller == who && it.zone == "graveyard" && isCreatureName(it.card.name) }?.id
+                        ?: describedCreatures("a ", w.takeIf { Regex("""^\d+/\d+$""").matches(it) } ?: "", "creature", who, ctx).firstOrNull() ?: return@let
+            ctx.objects[id] = ctx.objects.getValue(id).copy(zone = "graveyard", controller = who)
+            ctx.events += EventSpec("reanimate", player = who, obj = id)
+            ctx.lastActor = who; ctx.lastMentioned = id; ctx.note(who); return true
+        }
         // "I flicker my Wall of Omens" / "they blink it": exiling and returning it at once, with no card named.
         Regex("""^(?:blinks?|blinked|blinking|flickers?|flickered|flickering) ($possPrefix|an? )?(c\d+|it|that|creature|guy|dude|\d+/\d+)(?: creature)?$""").find(c)?.let { r ->
             val who = possessiveOwner(r.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me"
@@ -2864,6 +2881,23 @@ class SituationParser(private val names: NameIndex) {
             ctx.events.indexOfLast { it.verb == "cast" }.takeIf { it >= 0 }?.let { i -> ctx.events[i] = ctx.events[i].copy(targets = listOf(id)) }
             ctx.asks += EventSpec("ask", obj = id, to = "die")
             ctx.lastActor = who; ctx.lastMentioned = id; return true
+        }
+        // "I bounce my own token", "they exile my 2/2": the permanent is described rather than named.
+        Regex("""^(kills?|killed|destroys?|destroyed|exiles?|exiled|bounces?|bounced|sacrifices?|sacrificed|sacced?) (?:(my opponent's|the opponent's|opponent's|their own|their|my own|my|own|the|an?)\s+)?(\d+/\d+|creature|token|guy|dude)(?: creature)?$""").find(c)?.let { r ->
+            val doer = actor ?: subject ?: "me"
+            val owner = when (r.groupValues[2]) {
+                "my opponent's", "the opponent's", "opponent's", "their" -> pronounPlayer(ctx, "their")
+                "my", "my own", "own" -> "me"
+                "their own" -> doer
+                else -> if (r.groupValues[1].startsWith("sac")) doer else ctx.other(doer) ?: "opp"
+            }
+            val pt = r.groupValues[3].takeIf { Regex("""^\d+/\d+$""").matches(it) } ?: ""
+            val id = ctx.objects.values.lastOrNull { o -> o.controller == owner && o.zone == "battlefield" && isCreatureName(o.card.name) && (pt.isEmpty() || (o.card.name ?: "").startsWith("a $pt")) }?.id
+                ?: (if (r.groupValues[3] == "token") describedTokens("a ", pt, "creature", owner, ctx) else describedCreatures("a ", pt, "creature", owner, ctx)).firstOrNull() ?: return@let
+            val verb = r.groupValues[1]
+            if (verb.startsWith("sac")) ctx.events += EventSpec("sacrifice", player = owner, obj = id)
+            else ctx.events += EventSpec("leave", obj = id, to = if (verb.startsWith("exile")) "exile" else if (verb.startsWith("bounce")) "hand" else "graveyard")
+            ctx.lastActor = doer; ctx.lastOwner = owner; ctx.lastMentioned = id; return true
         }
         // "My opponent kills my Grizzly Bears", "I lose my Bears": said the active way, with nothing named as
         // what did it. Where a card is named ("kills it with Doom Blade") another rule has already taken it.
@@ -4800,7 +4834,7 @@ class SituationParser(private val names: NameIndex) {
     /** Verbs that are also card names and are followed by "for" ("I tutor for Lightning Bolt"). */
     private val verbsBeforeFor = setOf("tutor", "tutors", "search", "searches", "dig", "digs", "fetch", "fetches", "look", "looks", "pay", "pays", "swing", "swings")
     /** Verbs that are also card names and take an object ("can they redirect it?", "they remove my Bears"). */
-    private val verbsBeforeAnObject = setOf("redirect", "redirects", "reflect", "reflects", "deflect", "deflects", "steal", "steals",
+    private val verbsBeforeAnObject = setOf("reanimate", "reanimates", "reanimated", "redirect", "redirects", "reflect", "reflects", "deflect", "deflects", "steal", "steals",
         "swap", "swaps", "remove", "removes", "nuke", "nukes", "ping", "pings", "zap", "zaps", "answer", "answers", "shrink", "shrinks",
         "wipe", "wipes", "burn", "burns", "burned")
     /** Colour words that are also the start of card names ("Black Knight"); after "protection from" they are colours. */

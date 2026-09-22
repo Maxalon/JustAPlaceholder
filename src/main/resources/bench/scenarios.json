@@ -13112,5 +13112,62 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "reanimate-the-verb",
+    "text": "I reanimate a creature from my graveyard",
+    "expect": [
+      "a creature enters the battlefield"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "reanimate-into-containment-priest",
+    "text": "my opponent has Containment Priest and I reanimate my Grizzly Bears",
+    "expect": [
+      "graveyard → exile (replaced by Containment Priest)"
+    ],
+    "notExpect": [
+      "Grizzly Bears enters the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "bounce-a-described-token",
+    "text": "I bounce my own token to my hand, what happens",
+    "expect": [
+      "ceases to exist"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5d"
+    ]
+  },
+  {
+    "id": "token-leaves-the-battlefield",
+    "text": "my token leaves the battlefield, does it come back",
+    "expect": [
+      "ceases to exist"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "exile-a-described-creature",
+    "text": "they exile my 2/2",
+    "expect": [
+      "a 2/2 creature: the battlefield → exile"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

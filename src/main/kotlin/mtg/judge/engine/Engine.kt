@@ -311,6 +311,24 @@ class Engine(val state: GameState) {
 
     /** A player draws cards outside any effect ("my opponent draws a card"): each draw is an event triggers can see. */
     /**
+     * Put a card from a graveyard onto the battlefield without casting it: what "I reanimate my Grizzly Bears"
+     * says with no card behind it. It is never cast, so nothing that watches for a spell being cast sees it, and
+     * the effects that stop an uncast permanent entering (Containment Priest, Grafdigger's Cage) still apply.
+     */
+    fun reanimateObject(o: GameObject, controllerId: String) {
+        val p = state.player(controllerId)
+        if (o.zone != Zone.GRAVEYARD) { trace.step("${o.name} isn't in a graveyard, so there's nothing to put onto the battlefield.", "608.2b"); return }
+        uncastEntryBlocked(o, Zone.GRAVEYARD)?.let { (by, how) ->
+            if (how == "cant") { trace.step("$by stops cards in a graveyard from entering the battlefield, so ${o.name} stays there. Nothing enters, so no enters-the-battlefield ability triggers.", "614.1", "616.1"); state.outcomes += "${o.name} can't enter the battlefield ($by)." }
+            else { trace.step("${o.name} would enter the battlefield without having been cast, so $by exiles it instead.", "614.1a", "614.6"); moveRaw(o, Zone.EXILE); state.outcomes += "${o.name}: graveyard → exile (replaced by $by)." }
+            return
+        }
+        o.controller = controllerId
+        trace.step("${p.subject} ${p.v("puts", "put")} ${o.name} from the graveyard onto the battlefield. It's put there directly rather than cast, so it never was a spell: it can't be countered and \"whenever you cast\" abilities don't trigger.", "608.2c", "400.7")
+        enter(o.id); stateBasedActions()
+    }
+
+    /**
      * Exile a permanent and return it at once (701.13a): a new object, with none of the old one's counters,
      * damage, attachments or tapped state, and summoning sick again. "I flicker my Wall of Omens" says exactly
      * this with no card behind it, and Cloudshift and its kin do it through [Effect.Blink].
@@ -993,7 +1011,15 @@ class Engine(val state: GameState) {
                 if (obj.isOnBattlefield() && obj.def.isPlaneswalker && (obj.counters["loyalty"] ?: 0) <= 0) { move(obj, Zone.GRAVEYARD, "${obj.name} has 0 loyalty and is put into its owner's graveyard (state-based action).", "704.3", "704.5i", "306.9"); changed = true }
             }
             for (obj in state.objects.values.toList()) {
-                if (obj.token && !obj.isOnBattlefield() && obj.zone != Zone.STACK) { state.objects.remove(obj.id); trace.step("${obj.name} token ceases to exist.", "704.5d"); changed = true }
+                // "I bounce my own token, what happens?": the answer is that it stops existing, so the outcome says
+                // it. (And the name may already end in "token", which read "a 1/1 token token".)
+                if (obj.token && !obj.isOnBattlefield() && obj.zone != Zone.STACK) {
+                    state.objects.remove(obj.id)
+                    val what = if (obj.name.endsWith("token", true)) obj.name else "${obj.name} token"
+                    trace.step("$what ceases to exist (a token that isn't on the battlefield stops existing the next time state-based actions are checked).", "704.5d", "111.7")
+                    state.outcomes += "$what ceases to exist; it doesn't stay in the zone it went to."
+                    changed = true
+                }
             }
             for (obj in state.objects.values.toList()) {
                 if (!obj.isOnBattlefield()) continue
