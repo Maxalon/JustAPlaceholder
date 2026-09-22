@@ -1551,6 +1551,10 @@ object OracleParser {
                 w.startsWith("non") && w.removePrefix("non") in kindWords -> notKinds += kindWords.getValue(w.removePrefix("non"))
                 w.startsWith("non-") && w.removePrefix("non-") in kindWords -> notKinds += kindWords.getValue(w.removePrefix("non-"))
                 w.startsWith("non-") && w.length > 4 -> notSubtypes += singular(w.removePrefix("non-"))
+                // "nonbasic land": a land without the Basic supertype. Read as a creature type named "nonbasic",
+                // Wasteland's target was never legal.
+                w == "nonbasic" -> notSubtypes += "basic"
+                w == "nonsnow" -> notSubtypes += "snow"
                 w == "activated" || w == "triggered" -> { /* ability qualifiers: both counterable the same way */ }
                 w == "attacking" -> attacking = true
                 w == "tapped" -> tapped = true

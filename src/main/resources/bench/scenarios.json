@@ -13765,5 +13765,164 @@
       "from your hand"
     ],
     "cite": []
+  },
+  {
+    "id": "thalia-taxes-the-bolt",
+    "text": "I cast Thalia and they cast Lightning Bolt, how much does it cost",
+    "expect": [
+      "Lightning Bolt costs {R} plus {1} (Thalia, Guardian of Thraben makes it cost {1} more) — 2 mana in all."
+    ],
+    "notExpect": [],
+    "cite": [
+      "604.2"
+    ]
+  },
+  {
+    "id": "thalia-does-not-tax-a-creature",
+    "text": "I have Thalia and cast Grizzly Bears, does it cost more",
+    "expect": [
+      "Grizzly Bears costs {1}{G} — 2 mana. Nothing on the battlefield changes it."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "stifle-it-means-the-fetch-ability",
+    "text": "they crack Polluted Delta and I Stifle it",
+    "expect": [
+      "Polluted Delta's activated ability is countered."
+    ],
+    "notExpect": [
+      "all targets illegal"
+    ],
+    "cite": [
+      "115.1"
+    ]
+  },
+  {
+    "id": "stifle-as-a-verb-is-not-its-own-trigger",
+    "text": "they cast Sol Ring and I Stifle the trigger",
+    "expect": [
+      "Sol Ring enters the battlefield."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "thoughtseize-take-is-a-discard",
+    "text": "I cast Thoughtseize and take their Counterspell",
+    "expect": [
+      "Counterspell: opponent's hand → opponent's graveyard."
+    ],
+    "notExpect": [
+      "You control Counterspell"
+    ],
+    "cite": []
+  },
+  {
+    "id": "wasteland-as-a-verb",
+    "text": "they Wasteland my Tropical Island",
+    "expect": [
+      "Tropical Island: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "all targets illegal"
+    ],
+    "cite": []
+  },
+  {
+    "id": "wasteland-hits-a-nonbasic",
+    "text": "they activate Wasteland targeting my Urza's Saga",
+    "expect": [
+      "Urza's Saga: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "all targets illegal"
+    ],
+    "cite": []
+  },
+  {
+    "id": "ghostly-prison-with-two-lands",
+    "text": "I have Ghostly Prison and they attack with two creatures with only 2 lands",
+    "expect": [
+      "a creature can't attack (can't pay {2} for Ghostly Prison)."
+    ],
+    "notExpect": [
+      "pays {4}"
+    ],
+    "cite": []
+  },
+  {
+    "id": "attack-into-propaganda-with-four-lands",
+    "text": "they attack into my Propaganda with 3 creatures and 4 lands untapped",
+    "expect": [
+      "a creature can't attack (can't pay {2} for Propaganda)."
+    ],
+    "notExpect": [
+      "pays {6}"
+    ],
+    "cite": []
+  },
+  {
+    "id": "menace-question-single-blocker",
+    "text": "does my 1/1 with menace get blocked by their one creature",
+    "expect": [
+      "a creature can't block a 1/1 creature with menace on its own (menace)."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "a-morph-is-a-2-2",
+    "text": "I have a morph face down and they Bolt it",
+    "expect": [
+      "a 2/2 creature: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "You take 3 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "lowercase-alice-and-bob",
+    "text": "alice attacks bob with a 4/4 and bob blocks with a 2/2",
+    "expect": [
+      "a 2/2 creature: the battlefield → Bob's graveyard."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "lowercase-bob-doom-blades-alice",
+    "text": "bob casts Doom Blade on alice's Grizzly Bears",
+    "expect": [
+      "Grizzly Bears: the battlefield → Alice's graveyard."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "goyf-with-only-lands-in-graveyards",
+    "text": "I cast Lightning Bolt on their Tarmogoyf with only lands in graveyards",
+    "expect": [
+      "Tarmogoyf: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "can-their-creature-attack-is-theirs",
+    "text": "I cast Ensnaring Bridge, can their 0/1 attack",
+    "expect": [
+      "Ensnaring Bridge enters the battlefield."
+    ],
+    "notExpect": [
+      "You attack",
+      "you attack",
+      "assuming it may attack"
+    ],
+    "cite": []
   }
 ]

@@ -438,7 +438,7 @@ class GameState(
             Kind.PERMANENT -> true; Kind.CARD -> !o.token; else -> false
         } }
         val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> isCreature(o); Kind.LAND -> "Land" in o.def.types; Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types; else -> false } }
-        val notSubOk = f.notSubtypes.none { st -> o.def.subtypes.any { it.equals(st, true) } }
+        val notSubOk = f.notSubtypes.none { st -> o.def.subtypes.any { it.equals(st, true) } || ((st == "basic" || st == "snow") && o.def.supertypes.any { it.equals(st, true) }) }
         val ctrlOk = when (f.controller) { null -> true; Who.YOU -> o.controller == controller; Who.OPPONENT -> o.controller != controller; else -> true }
         val anim = o.animatedAs
         fun hasSub(st: String) = o.def.subtypes.any { it.equals(st, true) } || (anim?.subtypes?.any { it.equals(st, true) } == true) ||

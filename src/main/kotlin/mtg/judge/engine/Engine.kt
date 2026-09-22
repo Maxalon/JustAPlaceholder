@@ -88,6 +88,9 @@ class Engine(val state: GameState) {
         // Cost taxes (Thalia, the commander tax) against the mana the situation said is available.
         run {
             val taxes = state.objects.values.filter { it.isOnBattlefield() }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CostTax>().filter { t -> (t.whose == null || (t.whose == Who.YOU) == (o.controller == playerId)) && spellMatches(t.filter, card) }.map { o to it } }
+            // "I cast Thalia and they cast Bolt": Thalia is still a spell on the stack, so its tax isn't applying yet.
+            state.stack.map { it.source }.filter { s -> s.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CostTax>().any { t -> spellMatches(t.filter, card) } }
+                .forEach { s -> trace.step("${s.name} is still on the stack, not on the battlefield, so its cost-raising ability isn't applying yet: ${card.name} costs its printed cost. (Once ${s.name} resolves, it would cost more.)", "604.2") }
             val commanderTax = if (obj.commander && obj.commanderCasts > 0) 2 * obj.commanderCasts else 0
             if (commanderTax > 0) trace.step("${card.name} is ${player.possessive} commander and has been cast from the command zone ${obj.commanderCasts} time${if (obj.commanderCasts == 1) "" else "s"} before, so it costs an additional {${commanderTax}} this time (the \"commander tax\").", "903.8")
             val tax = taxes.sumOf { it.second.amount } + commanderTax
@@ -115,6 +118,14 @@ class Engine(val state: GameState) {
         }
         var effect = card.spellEffect ?: card.enchant?.takeIf { card.isAura }?.let { Effect.Attach(TargetSpec(it, "enchant ${it.raw}")) }
         val needed = effect?.targets() ?: emptyList()
+        // "they crack Polluted Delta and I Stifle it": a spell that targets an ability, aimed at a permanent whose
+        // ability is on the stack, is aimed at that ability. Read as the land, Stifle's target was illegal.
+        val targetsGiven = targets.mapIndexed { i, t ->
+            val spec = needed.getOrNull(i)
+            if (t is Ref.Obj && spec != null && Kind.ABILITY in spec.filter.kinds && Kind.PERMANENT !in spec.filter.kinds && Kind.CREATURE !in spec.filter.kinds)
+                state.stack.lastOrNull { s -> s.kind != StackKind.SPELL && s.source.id == t.id }?.let { s -> trace.step("${card.name} targets an ability, so \"${state.nameOf(t)}\" is read as ${s.describe}, which is on the stack.", "115.1"); Ref.Stack(s.id) } ?: t
+            else t
+        }
         var asked = false
         var noLegalTarget = false
         var targetsUnknown = false
@@ -122,7 +133,7 @@ class Engine(val state: GameState) {
             trace.step("Revolt: a permanent left the battlefield under ${player.possessive} control this turn, so ${card.name} can destroy a creature with mana value 4 or less instead of 2 or less.", "207.2c")
             effect = d.copy(target = d.target.copy(filter = d.target.filter.copy(maxManaValue = 4, raw = "creature with mana value 4 or less"), raw = "creature with mana value 4 or less"))
         } }
-        var targets = if (targets.isEmpty() && needed.size == 1) inferTarget(card.name, needed[0], playerId, harmful = isHarmful(effect), source = obj, beneficial = isBeneficial(effect)).also { asked = it == null && state.clarifications.any { c -> c.about == "${card.name}'s target" }; noLegalTarget = it != null && it.isEmpty() } ?: targets else targets
+        var targets = if (targetsGiven.isEmpty() && needed.size == 1) inferTarget(card.name, needed[0], playerId, harmful = isHarmful(effect), source = obj, beneficial = isBeneficial(effect)).also { asked = it == null && state.clarifications.any { c -> c.about == "${card.name}'s target" }; noLegalTarget = it != null && it.isEmpty() } ?: targets else targetsGiven
         // Two targets and only one named ("Rabid Bite on my Bears"): the named one takes the spec it fits, the other is inferred.
         if (targets.size == 1 && needed.size == 2) {
             val given = targets[0]
@@ -1133,7 +1144,9 @@ class Engine(val state: GameState) {
         // Ensnaring Bridge: creatures with power greater than the number of cards in the Bridge controller's hand can't attack.
         state.objects.values.filter { it.isOnBattlefield() }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.Cant>().filter { it.what == "attack" && it.powerAboveHand }.map { o to it } }.forEach { (src, _) ->
             val hand = state.player(src.controller).handSize
-            if (hand == null) state.assumptions += "${src.name}: ${a.name} can attack only if its power (${a.power}) isn't greater than the number of cards in ${state.player(src.controller).possessive} hand, which wasn't stated; assuming it may attack."
+            // Power 0 is never greater than a hand size, so the Bridge can't stop it whatever the hand holds.
+            if ((a.power ?: 0) <= 0) trace.step("${src.name} doesn't stop ${a.name}: its power is ${a.power ?: 0}, which can't be greater than the number of cards in any hand, so it can attack even into an empty hand.", "508.1c")
+            else if (hand == null) state.assumptions += "${src.name}: ${a.name} can attack only if its power (${a.power}) isn't greater than the number of cards in ${state.player(src.controller).possessive} hand, which wasn't stated; assuming it may attack."
             else if ((a.power ?: 0) > hand) { trace.step("${src.name}: ${state.player(src.controller).subject} ${state.player(src.controller).v("has", "have")} $hand card${if (hand == 1) "" else "s"} in hand and ${a.name} has power ${a.power}, so it can't attack.", "508.1c"); state.outcomes += "${a.name} can't attack (${src.name})."; return }
             else trace.step("${src.name} allows ${a.name} to attack: its power (${a.power}) isn't greater than the $hand card${if (hand == 1) "" else "s"} in ${state.player(src.controller).possessive} hand.", "508.1c")
         }
