@@ -165,7 +165,10 @@ class Engine(val state: GameState) {
         if (divided != null && targets.isNotEmpty() && (divided.maxTargets == null || targets.size <= divided.maxTargets)) Unit
         // A modal spell's targets belong to the mode, which isn't known here — and a rider sentence in front of the
         // modes ("If you control a commander …, you may choose both instead") makes the spell a Seq, not a Modal.
-        else if (needed.size != targets.size && !unmodeledTarget && !isModal(effect) && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && effect != null && targetsAPlayer(effect))) {
+        // "A source of your choice" (Deflecting Palm) is chosen as the spell resolves, not targeted; a source named
+        // with the spell is that choice, not a target the spell doesn't have.
+        else if (needed.size != targets.size && !unmodeledTarget && !isModal(effect) && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && effect != null && targetsAPlayer(effect))
+                 && !(needed.isEmpty() && targets.size == 1 && card.oracleText.contains("source of your choice", true))) {
             if (!asked) state.clarifications += Clarification("${card.name}'s target${if (needed.size == 1) "" else "s"}",
                 "${card.name} needs ${needed.size} target${if (needed.size == 1) "" else "s"} (${needed.joinToString("; ") { it.raw }}) but ${targets.size} ${if (targets.size == 1) "was" else "were"} given (601.2c).")
             if (needed.size > targets.size && (card.isInstantOrSorcery || obj.zone == Zone.HAND)) { targetsUnknown = true; trace.step("${card.name} needs a target that wasn't stated; it's put on the stack anyway so responses to it can be shown, but what it does to its target can't be.", "601.2c") }
@@ -375,6 +378,24 @@ class Engine(val state: GameState) {
     private fun drawCards(who: Player, count0: Int) {
         var count = count0
         var trimmed = false
+        // Notion Thief: a draw an opponent would make is the Thief's controller's instead (614.1a). Only the
+        // first card of that player's own draw step is theirs to keep. Without this Brainstorm under a Thief
+        // drew its caster three cards and the Thief's controller none.
+        state.objects.values.filter { it.isOnBattlefield() && it.controller != who.id }
+            .firstNotNullOfOrNull { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.OpponentsDrawsRedirected>().firstOrNull()?.let { src to it } }
+            ?.let { (thief, e) ->
+                val exempt = if (e.exceptFirstInDrawStep && state.step == "draw" && state.activePlayer == who.id && who.drewThisTurn == 0) minOf(1, count) else 0
+                val redirected = count - exempt
+                if (redirected > 0) {
+                    val taker = state.player(thief.controller)
+                    trace.step("${thief.name} says that whenever ${who.subject.lowercase()} would draw a card${if (exempt > 0) " other than the first in ${who.possessive} draw step" else ""}, ${taker.subject.lowercase()} ${taker.v("draws", "draw")} a card instead and ${who.subject.lowercase()} ${who.v("skips", "skip")} that draw: $redirected of the $count draw${if (count == 1) "" else "s"} ${if (redirected == 1) "is" else "are"} ${if (taker.you) "yours" else taker.possessive}.", "614.1a", "121.1")
+                    state.outcomes += "${who.subject} ${who.v("skips", "skip")} $redirected draw${if (redirected == 1) "" else "s"} (${thief.name}); ${taker.subject.lowercase()} ${taker.v("draws", "draw")} instead."
+                    count = exempt
+                    if (count > 0) drawCards(who, count)
+                    drawCards(taker, redirected)
+                    return
+                }
+            }
         drawLimit(who)?.let { (limit, src) ->
             val left = (limit - who.drewThisTurn).coerceAtLeast(0)
             if (count > left) {
@@ -1878,6 +1899,15 @@ class Engine(val state: GameState) {
                     }
                 }
             }
+            is Effect.ReflectPrevented -> {
+                val sh = state.shields.lastOrNull { it.sourceName == item.describe }
+                if (sh == null) trace.step("${item.describe} made no prevention shield, so there is nothing for the damage to be sent back from.")
+                else {
+                    val r = sh.replacement as Replacement.PreventDamage
+                    sh.replacement = r.copy(reflectToCreature = r.reflectToCreature || effect.toCreature, reflectToController = r.reflectToController || effect.toController)
+                    trace.step("If damage${if (effect.toCreature) " from a creature source" else if (r.reflectToCreature) " from a noncreature source" else ""} is prevented this way, ${item.source.name} deals that much damage to ${if (effect.toCreature) "that creature" else "the source's controller"}. That damage comes from ${item.source.name}, not from the original source, so it isn't combat damage and the original source's abilities don't apply to it.", "615.7")
+                }
+            }
             is Effect.Monstrosity -> {
                 val o = item.source
                 if (!o.isOnBattlefield()) trace.step("${o.name} isn't on the battlefield, so monstrosity does nothing.", "608.2b")
@@ -2262,7 +2292,9 @@ class Engine(val state: GameState) {
             }
             is Effect.CreateShield -> {
                 val r = effect.replacement
-                if (effect.target == null) { state.shields += Shield(r, null, if (r.toPlayer == Who.YOU) item.controller else null, r.amount, item.describe); trace.step("${item.describe} creates a prevention effect until end of turn: prevent ${r.amount?.toString() ?: "all"}${if (r.combatOnly) " combat" else ""} damage that would be dealt${r.from?.let { " by ${it.raw}" } ?: ""}${when {
+                // "The next time a source of your choice would deal damage": the source named with the spell is the choice.
+                val chosen = item.targets.singleOrNull()?.let { it as? Ref.Obj }?.id?.takeIf { r.from == null && item.source.def.oracleText.contains("source of your choice", true) }
+                if (effect.target == null) { state.shields += Shield(r, null, if (r.toPlayer == Who.YOU) item.controller else null, r.amount, item.describe, fromId = chosen); if (chosen != null) trace.step("${item.describe}'s source of your choice is ${state.obj(chosen).name}; it isn't a target, just a choice made as the spell resolves.", "608.2c"); trace.step("${item.describe} creates a prevention effect until end of turn: prevent ${r.amount?.toString() ?: "all"}${if (r.combatOnly) " combat" else ""} damage that would be dealt${r.from?.let { " by ${it.raw}" } ?: ""}${when {
                     // "prevent all combat damage that would be dealt this turn" (Fog) covers players and permanents
                     // alike; naming players only made the line narrower than the effect.
                     r.to?.raw == "everything" -> ""
@@ -2480,8 +2512,9 @@ class Engine(val state: GameState) {
                 // Text with its own subject ("You choose…", "That player discards…", "Its controller may…") is quoted as the instruction it is.
                 val ownSubject = Regex("""^(you|that player|its controller|each|the|its|their|if|search)\b""", RegexOption.IGNORE_CASE).containsMatchIn(effect.text)
                 if (ownSubject) trace.step("${item.source.name}: \"${effect.text.replace("~", item.source.name).replaceFirstChar { it.uppercase() }.trimEnd('.')}.\" (${you.subject} ${you.v("carries", "carry")} this out; the details aren't tracked here.)", *effect.rules.toTypedArray())
-                else trace.step("${you.subject} ${effectText(effect.text, item)}.", *effect.rules.toTypedArray())
-                state.outcomes += "${item.source.name}: ${effect.text.replace("~", item.source.name).replaceFirstChar { it.uppercase() }.trimEnd('.')} (not tracked in detail)."
+                else trace.step("${you.subject} ${thirdPerson(effectText(effect.text, item), you)}.", *effect.rules.toTypedArray())
+                val said = if (ownSubject || you.you) effect.text.replace("~", item.source.name).replaceFirstChar { it.uppercase() } else "${you.subject} ${thirdPerson(effectText(effect.text, item), you)}"
+                state.outcomes += "${item.source.name}: ${said.trimEnd('.')} (not tracked in detail)."
             }
             is Effect.ForAll -> {
                 val affected = state.objects.values.filter { state.matches(effect.filter, it, item.controller) }
@@ -2665,6 +2698,22 @@ class Engine(val state: GameState) {
     /** "~" -> the source's name; first letter lowercased for use after a subject. */
     private fun effectText(t: String, item: StackItem) = t.replace("~", item.source.name).replaceFirstChar { it.lowercase() }
 
+    /** "put two cards from your hand on top of your library" said of an opponent: "puts two cards from their hand on top of their library".
+     *  Read as written, Brainstorm cast by the opponent had them putting back cards from the asker's hand. */
+    private fun thirdPerson(t: String, p: Player): String {
+        if (p.you) return t
+        val words = t.split(" ", limit = 2)
+        val verb = words[0]
+        val conj = when {
+            verb in setOf("may", "can", "must", "can't") -> verb
+            verb.endsWith("s") || verb.endsWith("x") || verb.endsWith("ch") || verb.endsWith("sh") -> verb + "es"
+            verb.endsWith("y") && verb.length > 1 && verb[verb.length - 2] !in "aeiou" -> verb.dropLast(1) + "ies"
+            else -> verb + "s"
+        }
+        val rest = words.getOrNull(1)?.replace(Regex("""\byour\b"""), "their")?.replace(Regex("""\byou\b"""), "they")
+        return if (rest == null) conj else "$conj $rest"
+    }
+
     /** Applicable prevention effects for damage from [source] to [target]: static ones from the battlefield plus shields. */
     private fun preventionFor(source: GameObject?, target: Ref, combat: Boolean): List<Pair<String, Any>> {
         val out = mutableListOf<Pair<String, Any>>()
@@ -2675,6 +2724,7 @@ class Engine(val state: GameState) {
             if (r.fromSelf && source !== owner) return false
             // The source of damage can be a spell on the stack, so it is matched in whatever zone it is in.
             if (r.from != null && (source == null || !state.matches(r.from, source, ownerPlayer ?: "", owner, anyZone = true))) return false
+            if (shield?.fromId != null && source?.id != shield.fromId) return false
             if (shield != null && shield.objectId != null) return tObj?.id == shield.objectId
             if (shield != null && shield.playerId != null) return tPlayer?.id == shield.playerId
             val toOk = when {
@@ -2707,16 +2757,24 @@ class Engine(val state: GameState) {
         val doublers = state.objects.values.filter { it.isOnBattlefield() }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.DamageMultiplier }.filter { d -> d.sourceControl == null || source == null || (d.sourceControl == Who.YOU) == (source.controller == o.controller) }.map { o to it } }
         val prevention = preventionFor(source, target, inCombatDamage)
         if (doublers.isNotEmpty() && prevention.isNotEmpty()) trace.step("Both a damage-doubling replacement effect and a prevention effect apply; the affected player chooses the order (616.1). Assuming the prevention is applied first, which is best for the affected player.", "616.1", "616.1e")
+        // Comeuppance / Deflecting Palm: what a shield prevented is dealt back by the shield's own source (its ruling:
+        // the spell is the source of the new damage, so it isn't combat damage and the original source's abilities don't apply).
+        val reflections = mutableListOf<() -> Unit>()
         if (prevention.isNotEmpty()) {
             for ((name, p) in prevention) {
                 if (amount <= 0) break
                 when (p) {
                     is Replacement.PreventDamage -> { trace.step("$name prevents ${if (p.amount == null) "all" else p.amount.toString()} of the $amount damage $sourceName would deal to ${state.nameOf(target)}.", "615.1", "615.6"); amount = if (p.amount == null) 0 else maxOf(0, amount - p.amount) }
-                    is Shield -> { val r = p.replacement as Replacement.PreventDamage; val prevented = if (r.amount == null) amount else minOf(amount, p.remaining ?: 0); trace.step("$name's prevention shield prevents $prevented of the $amount damage $sourceName would deal to ${state.nameOf(target)}.", "615.7", "615.6"); amount -= prevented; if (r.amount != null) p.remaining = (p.remaining ?: 0) - prevented else if (r.once) p.remaining = 0 }
+                    is Shield -> { val r = p.replacement as Replacement.PreventDamage; val prevented = if (r.amount == null) amount else minOf(amount, p.remaining ?: 0); trace.step("$name's prevention shield prevents $prevented of the $amount damage $sourceName would deal to ${state.nameOf(target)}.", "615.7", "615.6"); amount -= prevented; if (r.amount != null) p.remaining = (p.remaining ?: 0) - prevented else if (r.once) p.remaining = 0
+                        if (prevented > 0 && source != null && (r.reflectToCreature || r.reflectToController)) {
+                            val back: Ref? = if (r.reflectToCreature && state.isCreature(source)) Ref.Obj(source.id) else if (r.reflectToController) Ref.Player(source.controller) else null
+                            if (back != null) reflections += { trace.step("$name prevented $prevented damage from ${source.name}, so $name deals $prevented damage to ${state.nameOf(back)}${if (back is Ref.Player) " (${source.name}'s controller)" else ""}. $name is the source of that damage, so it isn't combat damage.", "615.7"); applyDamage(name, back, prevented, state.objects.values.firstOrNull { it.name == name }) }
+                        } }
                 }
             }
-            if (amount <= 0) { state.outcomes += "Damage to ${state.nameOf(target)} from $sourceName is prevented."; return 0 }
+            if (amount <= 0) { state.outcomes += "Damage to ${state.nameOf(target)} from $sourceName is prevented."; reflections.forEach { it() }; return 0 }
         }
+        reflections.forEach { it() }
         for ((o, d) in doublers) { trace.step("${o.name} replaces the damage: $sourceName deals ${amount * d.factor} damage instead of $amount.", "614.1a", "614.6"); amount *= d.factor }
         if (source != null && target is Ref.Obj) {
             val o = state.objects[target.id]
@@ -3261,7 +3319,7 @@ class Engine(val state: GameState) {
     private fun describe(effect: Effect, item: StackItem): String = when (effect) {
         is Effect.Draw -> "draw ${if (effect.x) "X" else effect.count.toString()} card${if (effect.count > 1 || effect.x) "s" else ""}"
         is Effect.Damage -> "deal ${effect.amount} damage to ${effect.target.raw}"
-        is Effect.CounterThatSpell -> "counter that spell"; is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Fight -> "${effect.mine.raw} fights ${effect.theirs.raw}"; is Effect.DealsPowerTo -> "${effect.mine.raw} deals damage equal to its power to ${effect.theirs.raw}"; is Effect.RedirectToSelf -> "change a target of ${effect.target.raw} to ${item.source.name}"; is Effect.Blink -> "exile ${effect.target.raw}, then return it to the battlefield under ${if (effect.ownersControl) "its owner's" else "your"} control"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.StormCopy -> "copy it for each spell cast before it this turn"; is Effect.Monstrosity -> "become monstrous with ${effect.amount} +1/+1 counters"; is Effect.MoveSourceCounters -> "put its ${effect.kind} counters on ${effect.target.raw}"; is Effect.Evolve -> "put a +1/+1 counter on it if the creature that entered is bigger"; is Effect.ChangeTarget -> "change the target of ${effect.target.raw}"; is Effect.DamageDivided -> "deal ${effect.amount} damage divided as you choose among ${effect.maxTargets?.let { "up to $it " } ?: ""}${effect.target.raw}"; is Effect.PreventCombatToAndBy -> "prevent all combat damage dealt to and by ${effect.target.raw} this turn"; is Effect.WinIfCastBefore -> "win the game if another spell with this name was cast this game, otherwise tuck it seventh from the top and gain ${effect.life} life"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
+        is Effect.CounterThatSpell -> "counter that spell"; is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Fight -> "${effect.mine.raw} fights ${effect.theirs.raw}"; is Effect.DealsPowerTo -> "${effect.mine.raw} deals damage equal to its power to ${effect.theirs.raw}"; is Effect.RedirectToSelf -> "change a target of ${effect.target.raw} to ${item.source.name}"; is Effect.Blink -> "exile ${effect.target.raw}, then return it to the battlefield under ${if (effect.ownersControl) "its owner's" else "your"} control"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.StormCopy -> "copy it for each spell cast before it this turn"; is Effect.Monstrosity -> "become monstrous with ${effect.amount} +1/+1 counters"; is Effect.ReflectPrevented -> "deal damage prevented this way back to ${if (effect.toCreature) "that creature" else "the source's controller"}"; is Effect.MoveSourceCounters -> "put its ${effect.kind} counters on ${effect.target.raw}"; is Effect.Evolve -> "put a +1/+1 counter on it if the creature that entered is bigger"; is Effect.ChangeTarget -> "change the target of ${effect.target.raw}"; is Effect.DamageDivided -> "deal ${effect.amount} damage divided as you choose among ${effect.maxTargets?.let { "up to $it " } ?: ""}${effect.target.raw}"; is Effect.PreventCombatToAndBy -> "prevent all combat damage dealt to and by ${effect.target.raw} this turn"; is Effect.WinIfCastBefore -> "win the game if another spell with this name was cast this game, otherwise tuck it seventh from the top and gain ${effect.life} life"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
         is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.CantLoseThisTurn -> "you can't lose the game this turn"; is Effect.DamageLifeFloor -> "damage can't reduce your life total below ${effect.floor} this turn"; is Effect.ExtraLandThisTurn -> "play ${effect.count} additional land${if (effect.count == 1) "" else "s"} this turn"; is Effect.CoinFlip -> "flip a coin"; is Effect.CantCastThisTurn -> "stop spells being cast this turn"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.AnimateSelf -> "${item.source.name} becomes a ${effect.power}/${effect.toughness} creature until end of turn"; is Effect.SaddleSelf -> "${item.source.name} becomes saddled"; is Effect.BecomeMonarch -> "become the monarch"; is Effect.PumpSelfCount -> "${item.source.name} gets ${signed(effect.power)}/${signed(effect.toughness)} for each of them"; is Effect.TapAttached -> "tap the creature ${item.source.name} is attached to"; is Effect.ReturnSelfFromGraveyard -> "return ${item.source.name} from your graveyard to the battlefield${if (effect.tapped) " tapped" else ""}"; is Effect.DamageThatMuch -> "deal that much damage to ${effect.target.raw}"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
         is Effect.DamagePlayer -> "deal ${effect.amount} damage to ${when (effect.who) { Who.THAT_PLAYER -> "that player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; Who.YOU -> "you"; else -> "the player" }}"
         is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.CreateTokenCopy -> "create ${effect.count} token${if (effect.count > 1) "s" else ""} that's a copy of ${effect.target?.raw ?: item.source.name}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.GainLifePerSpellThisTurn -> "gain ${effect.per} life for each spell cast this turn"; is Effect.WinIfDevotionCoversLibrary -> "look at the top X cards (X = your devotion) and win if X is at least your library size"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.ExileGraveyard -> "exile ${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "your"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }}${if (effect.who == Who.YOU) "" else "'s"} graveyard"; is Effect.DiscardNamed -> "that player reveals their hand and discards every card with the name you chose"; is Effect.BounceChosen -> "return ${withArticle(effect.what)} you control to its owner's hand"; is Effect.LivingWeapon -> "create a 0/0 black Phyrexian Germ creature token, then attach ${item.source.name} to it"; is Effect.DiscardChosen -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }} reveals their hand and discards ${effect.what} of your choice"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"} onto the battlefield"

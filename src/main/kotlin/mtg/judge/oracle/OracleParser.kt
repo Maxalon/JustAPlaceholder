@@ -474,6 +474,10 @@ object OracleParser {
             }
             return StaticEffect.SpellsPerTurn(1, f)
         }
+        // Notion Thief: every draw an opponent would make, bar the one their draw step gives them, is yours instead.
+        Regex("""^if an opponent would draw a card( except the first one they draw in each of their draw steps)?, instead (?:that player skips that draw and you draw a card|you draw a card and (?:that player|they) skips? that draw)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            return StaticEffect.OpponentsDrawsRedirected(m.groupValues[1].isNotEmpty())
+        }
         // "Each opponent can't draw more than one card each turn." (Narset, Spirit of the Labyrinth)
         Regex("""^(each opponent|each player|your opponents|players) can't draw more than (one|two|three|\d+) cards? each turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val n = number(m.groupValues[2]) ?: return@let
@@ -1133,6 +1137,14 @@ object OracleParser {
             val t = target(to)
             if (t.filter.verifiable) return Effect.CreateShield(Replacement.PreventDamage(n, null, null, false, null), t)
         }
+        // Deflecting Palm: any one source of the asker's choice, once. The rider sentence that sends the damage
+        // back is parsed on its own, below, and attaches to this shield as the spell resolves.
+        if (Regex("""^the next time a source of your choice would deal damage to you this turn, prevent that damage\.?$""", RegexOption.IGNORE_CASE).matches(s.trim()))
+            return Effect.CreateShield(Replacement.PreventDamage(null, null, Who.YOU, false, null, once = true), null)
+        Regex("""^if damage(?: from an? (creature|noncreature) source)? is prevented this way, ~ deals that much damage to (that creature|(?:that|the) source's controller)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            val toCreature = m.groupValues[2].equals("that creature", true)
+            return Effect.ReflectPrevented(toCreature = toCreature, toController = !toCreature)
+        }
         // The Circles of Protection: "The next time a red source of your choice would deal damage to you this
         // turn, prevent that damage." One damage event from one source, then the shield is spent (615.8).
         Regex("""^the next time a (white|blue|black|red|green|colou?rless) source of your choice would deal damage to you this turn, prevent that damage\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
@@ -1502,6 +1514,9 @@ object OracleParser {
         val kinds = mutableSetOf<Kind>(); val notKinds = mutableSetOf<Kind>(); val unknown = mutableListOf<String>()
         val subtypes = mutableSetOf<String>(); val keywords = mutableSetOf<String>(); val notKeywords = mutableSetOf<String>(); val notSubtypes = mutableListOf<String>()
         var attacking: Boolean? = null; var tapped: Boolean? = null; var token: Boolean? = null; var legendary: Boolean? = null; var attachedToSource = false
+        // "sources you don't control": a source of damage is any object at all, permanent or spell. Read as a
+        // creature type named "source", Comeuppance's shield matched nothing and the damage went through.
+        var anySource = false
         // "with flying" / "with reach or flying" -> keyword requirements
         var minPower: Int? = null; var maxPower: Int? = null; var maxManaValue: Int? = null; var minManaValue: Int? = null
         Regex("""\s+(?:if it has|with) mana value (\d+) or less$""").find(core)?.let { m -> maxManaValue = m.groupValues[1].toInt(); core = core.removeRange(m.range) }
@@ -1546,6 +1561,7 @@ object OracleParser {
                 w == "nonlegendary" -> legendary = false
                 w == "enchanted" || w == "equipped" -> attachedToSource = true
                 w == "target" || w == "a" || w == "an" || w == "the" || w == "other" || w == "all" || w == "each" -> {}
+                w == "source" || w == "sources" -> anySource = true
                 w.length > 2 && w.all { it.isLetter() } && kinds.isEmpty() -> subtypes += singular(w)   // "Elf creatures", "Goblin"
                 w.length > 2 && w.all { it.isLetter() } -> unknown += w
                 else -> unknown += w
@@ -1563,6 +1579,7 @@ object OracleParser {
             subtypes.all { it in artifactSubtypes || it in enchantmentSubtypes || it in landTypes } -> defaultKind ?: Kind.PERMANENT
             else -> Kind.CREATURE
         }
+        if (kinds.isEmpty() && anySource) kinds += Kind.PERMANENT
         if (kinds.isEmpty() && notKinds.isNotEmpty()) kinds += defaultKind ?: Kind.PERMANENT
         if (kinds.isEmpty() && defaultKind != null) kinds += defaultKind
         if (kinds.isEmpty() && notSubtypes.isNotEmpty()) kinds += defaultKind ?: Kind.CREATURE

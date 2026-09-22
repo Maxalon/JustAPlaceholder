@@ -469,6 +469,8 @@ class GameState(
 }
 
 /** A shield from a resolved effect: applies to [objectId] / [playerId] (null = the filter in the replacement), with a remaining amount for "prevent the next N". */
-class Shield(val replacement: Replacement, val objectId: String?, val playerId: String?, var remaining: Int?, val sourceName: String)
+class Shield(var replacement: Replacement, val objectId: String?, val playerId: String?, var remaining: Int?, val sourceName: String,
+             /** "A source of your choice": only damage from this object is prevented (Deflecting Palm). */
+             val fromId: String? = null)
 
 class JudgeException(message: String) : RuntimeException(message)

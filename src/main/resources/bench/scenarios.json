@@ -13608,5 +13608,162 @@
       "2 damage marked"
     ],
     "cite": []
+  },
+  {
+    "id": "notion-thief-takes-brainstorms-draws",
+    "text": "I have Notion Thief and they cast Brainstorm",
+    "expect": [
+      "opponent skips 3 draws (Notion Thief); you draw instead.",
+      "You draw 3 cards."
+    ],
+    "notExpect": [
+      "opponent draws"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "maze-as-a-verb-stops-the-attacker",
+    "text": "they attack with a 3/3, I Maze it",
+    "expect": [
+      "3 combat damage from a 3/3 creature is prevented."
+    ],
+    "notExpect": [
+      "You take 3 damage",
+      "all targets illegal"
+    ],
+    "cite": [
+      "615.1"
+    ]
+  },
+  {
+    "id": "maze-on-it-means-the-attacker",
+    "text": "they attack with a 3/3 and I activate Maze of Ith on it",
+    "expect": [
+      "3 combat damage from a 3/3 creature is prevented."
+    ],
+    "notExpect": [
+      "all targets illegal"
+    ],
+    "cite": []
+  },
+  {
+    "id": "comeuppance-sends-combat-damage-back",
+    "text": "I cast Comeuppance when they attack with a 5/5",
+    "expect": [
+      "Damage to you from a 5/5 creature is prevented.",
+      "a 5/5 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "You take 5 damage"
+    ],
+    "cite": [
+      "615.7"
+    ]
+  },
+  {
+    "id": "deflecting-palm-hits-the-controller",
+    "text": "they attack with a 7/7, I cast Deflecting Palm choosing it",
+    "expect": [
+      "Damage to you from a 7/7 creature is prevented.",
+      "opponent takes 7 damage."
+    ],
+    "notExpect": [
+      "You take 7 damage"
+    ],
+    "cite": [
+      "615.7"
+    ]
+  },
+  {
+    "id": "deflecting-palm-chosen-source-only",
+    "text": "they attack with a 7/7 and a 2/2, I cast Deflecting Palm choosing the 7/7",
+    "expect": [
+      "opponent takes 7 damage.",
+      "You take 2 damage."
+    ],
+    "notExpect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "deflecting-palm-on-a-spell",
+    "text": "they cast Lightning Bolt at me and I cast Deflecting Palm",
+    "expect": [
+      "Damage to you from Lightning Bolt is prevented.",
+      "opponent takes 3 damage."
+    ],
+    "notExpect": [
+      "You take 3 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "deflecting-palm-source-is-not-a-target",
+    "text": "I cast Deflecting Palm on their 7/7 attacker",
+    "expect": [
+      "Prevention effect until end of turn (Deflecting Palm)."
+    ],
+    "notExpect": [
+      "needs 0 targets"
+    ],
+    "cite": []
+  },
+  {
+    "id": "austere-command-modes-by-what-they-hit",
+    "text": "I cast Austere Command choosing artifacts and creatures with mana value 3 or less, they have Sol Ring and a Grizzly Bears and a Wurmcoil Engine",
+    "expect": [
+      "Sol Ring: the battlefield → opponent's graveyard.",
+      "Grizzly Bears: the battlefield → opponent's graveyard.",
+      "Wurmcoil Engine: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [],
+    "cite": [
+      "700.2a"
+    ]
+  },
+  {
+    "id": "cryptic-modes-then-a-target",
+    "text": "I cast Cryptic Command choosing counter target spell and draw a card targeting their Lightning Bolt",
+    "expect": [
+      "Lightning Bolt is countered.",
+      "You draw 1 card."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "cryptic-counter-and-bounce",
+    "text": "they cast Lightning Bolt at me, I cast Cryptic Command choosing counter and bounce targeting Bolt and their Grizzly Bears",
+    "expect": [
+      "Lightning Bolt is countered.",
+      "Grizzly Bears: the battlefield → opponent's hand."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "kolaghans-command-shatter-mode",
+    "text": "I cast Kolaghan's Command choosing shatter and discard targeting their Sol Ring",
+    "expect": [
+      "Sol Ring: the battlefield → opponent's graveyard.",
+      "opponent discards 1 card."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "brainstorm-put-back-is-the-casters",
+    "text": "they cast Brainstorm",
+    "expect": [
+      "opponent draws 3 cards.",
+      "Brainstorm: opponent puts two cards from their hand on top of their library in any order (not tracked in detail)."
+    ],
+    "notExpect": [
+      "from your hand"
+    ],
+    "cite": []
   }
 ]

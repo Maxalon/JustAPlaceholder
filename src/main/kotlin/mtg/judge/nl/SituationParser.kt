@@ -345,7 +345,7 @@ class SituationParser(private val names: NameIndex) {
             // it is, not the card of that name — there is a card called "Artifacts", and it was taking the count
             // Dispatch's metalcraft check needed with it.
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in cardTypeWords &&
-                (normWords.getOrNull(f.start - 1) in indefiniteWords || normWords.getOrNull(f.start - 1) in countWords || normWords.getOrNull(f.start - 1) in setOf("more", "other", "fewer") || Regex("""^\d+$""").matches(normWords.getOrNull(f.start - 1) ?: ""))) }
+                (normWords.getOrNull(f.start - 1) in indefiniteWords || normWords.getOrNull(f.start - 1) in countWords || normWords.getOrNull(f.start - 1) in setOf("more", "other", "fewer", "choosing", "choose", "chose", "picking", "pick", "picked", "naming", "destroy", "destroys", "exile", "exiles", "all", "no", "any", "nonbasic", "noncreature", "target") || Regex("""^\d+$""").matches(normWords.getOrNull(f.start - 1) ?: ""))) }
             // "my graveyard has seven cards": a number word on its own is a count. It once reached a card and the
             // count went unread, so the graveyard the asker described wasn't there.
             .filter { f -> !(f.end - f.start == 1 && normWords[f.start] in countWords) }
@@ -1840,7 +1840,13 @@ class SituationParser(private val names: NameIndex) {
             val id = if (ph.isNotEmpty()) m.cards.getValue(ph).let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) }
                      else ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).zone == "battlefield" }
                          ?: ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" }?.id ?: return@let
-            ctx.events += EventSpec("activate", player = who, obj = id, abilityIndex = which, targets = targetsIn(r.groupValues[3].ifEmpty { r.groupValues[6] }, m, ctx))
+            // "I activate Maze of Ith targeting it": "it" is never the permanent being activated — it is the last
+            // creature named, and after an attack the attacker. Read as the Maze itself the target was illegal.
+            val targets = targetsIn(r.groupValues[3].ifEmpty { r.groupValues[6] }, m, ctx).let { t ->
+                if (t != listOf(id)) t
+                else listOfNotNull(ctx.events.lastOrNull { it.verb == "attack" }?.obj ?: ctx.objects.values.lastOrNull { it.id != id && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id)
+            }
+            ctx.events += EventSpec("activate", player = who, obj = id, abilityIndex = which, targets = targets)
             ctx.lastActor = who; ctx.lastMentioned = id; return true
         }
         // "choosing mode 1" left on its own: a card name that ends in "!" splits the sentence there, so the modes
@@ -2279,7 +2285,7 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:have|has|got|control|controls|controlling|'ve got|make|makes|made|create|creates|created)\s+(an? |\d+ |two |three |four |five )?((?:\d+/\d+ )?(?:(?:white|blue|black|red|green|colorless) )*(?:[a-z]+ )*?(?:creature |artifact )?tokens?)(.*)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val n = r.groupValues[1].trim().let { if (it.isEmpty()) 1 else number(it) ?: 1 }
-            val name = r.groupValues[2].trim().removeSuffix("s").let { if (it.endsWith(" token")) it else "$it token" }
+            val name = r.groupValues[2].trim().removeSuffix("s").let { if (it.endsWith(" token")) it else "$it token" }.let { if (it == "token token" || it == "token") "1/1 creature token" else it }
                 // "a Saproling token": the type says which token, and the token has a printed size. Without it the
                 // token had no size, so it wasn't a creature and Overrun pumped nothing.
                 .let { n0 -> if (Regex("""\d+/\d+""").containsMatchIn(n0)) n0 else tokenSize(n0)?.let { sz ->
@@ -3691,7 +3697,17 @@ class SituationParser(private val names: NameIndex) {
         }
         // Verbified card name right after the actor: "Stifles the trigger", "Bolt the bears".
         Regex("""^(c\d+)s?\s+(?:(?:targeting|on|at)\s+)?((?:the|my|their|that|this|it|them|me|an?|c\d+|\d+/\d+)\b.*)$""").find(c)?.let { r ->
-            emitCast(subject ?: ctx.lastActor ?: "me", m.cards.getValue(r.groupValues[1]), " targeting " + r.groupValues[2], m, ctx); return true
+            val card = m.cards.getValue(r.groupValues[1])
+            // "I Maze it", "I Wasteland it": a land's name used as a verb means its ability is activated; a land is never cast.
+            if (card.typeLine.contains("Land")) {
+                val who = subject ?: ctx.lastActor ?: "me"
+                val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
+                val targets = targetsIn("targeting " + r.groupValues[2], m, ctx).let { t ->
+                    if (t != listOf(id)) t else listOfNotNull(ctx.events.lastOrNull { it.verb == "attack" }?.obj)
+                }
+                ctx.events += EventSpec("activate", player = who, obj = id, targets = targets); ctx.lastActor = who; return true
+            }
+            emitCast(subject ?: ctx.lastActor ?: "me", card, " targeting " + r.groupValues[2], m, ctx); return true
         }
         // Loyalty abilities: "activate Jace's +1", "use Jace's -3 on the Bears", "+1 Jace", "Jace -3 targeting X"
         Regex("""^(?:(?:$activateVerbs)\s+)?(?:an? |the |their |my )?(c\d+)(?:'s)?\s+([+\u2212-]?\d+)(?: ability)?(.*)$""").find(c)?.let { r ->
@@ -3729,7 +3745,13 @@ class SituationParser(private val names: NameIndex) {
             // "activate it twice", "activate it three times": the ability is used that many times in a row.
             val timesRe = Regex("""\b(twice|two times|three times|four times|five times|(\d+) times)\b""")
             val times = timesRe.find(r.groupValues[2])?.let { t -> if (t.groupValues[1].startsWith("twice")) 2 else number(t.groupValues[2].ifEmpty { t.groupValues[1].substringBefore(' ') }) ?: 1 } ?: 1
-            val targets = targetsIn(r.groupValues[2].replace(xRe, "").replace(timesRe, "").trim(), m, ctx)
+            // "they attack with a 3/3 and I activate Maze of Ith on it": "it" is never the permanent being activated.
+            // After an attack it is the attacker; otherwise the last creature named. Read as the Maze itself, the
+            // ability's only target was illegal and the attacker connected.
+            val targets = targetsIn(r.groupValues[2].replace(xRe, "").replace(timesRe, "").trim(), m, ctx).let { t ->
+                if (t != listOf(id)) t
+                else listOfNotNull(ctx.events.lastOrNull { it.verb == "attack" }?.obj ?: ctx.objects.values.lastOrNull { it.id != id && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id)
+            }
             repeat(times) { ctx.events += EventSpec("activate", player = who, obj = id, targets = targets, amount = xValue) }
             ctx.lastActor = who; return true
         }
@@ -4768,12 +4790,18 @@ class SituationParser(private val names: NameIndex) {
         }
         // "choosing counter target spell & draw a card": whole mode lines, matched against the card's own modes by the judge.
         val modeVerbs = """counter|draw|destroy|exile|return|tap|untap|gain|deal|discard|sacrifice|prevent|create|search|put|mill"""
-        val modeWord = (Regex("""\b(?:choosing|picking|selecting) (?:the )?((?:$modeVerbs)[a-z0-9' ]*?) (?:and|&) (?:the )?((?:$modeVerbs)[a-z0-9' ]*?)\s*$""").find(rest.trim())?.let { mm -> mm.groupValues[1].trim() + "|" + mm.groupValues[2].trim() }
+        // "choosing counter target spell and draw a card targeting their Bolt": the target may follow the modes.
+        val modeWord = (Regex("""\b(?:choosing|picking|selecting) (?:the )?((?:$modeVerbs)[a-z0-9' ]*?) (?:and|&) (?:the )?((?:$modeVerbs)[a-z0-9' ]*?)(?:\s+(?:targeting|aimed at)\b.*)?\s*$""").find(rest.trim())?.let { mm -> mm.groupValues[1].trim() + "|" + mm.groupValues[2].trim() }
             ?: Regex("""\b(?:choosing|picking|selecting) (?:the )?((?:$modeVerbs)[a-z0-9' ]*?)\s*$""").find(rest.trim())?.groupValues?.get(1)?.trim()
-            ?: Regex("""\b(?:choosing|picking|selecting) (?:the )?(indestructible|double strike|first strike|damage|lifelink|hexproof|trample|flying|counter|draw|destroy|exile|bounce|pump|tap|untap|return)(?: mode)?,? (?:and|&) (?:the )?(indestructible|double strike|first strike|damage|lifelink|hexproof|trample|flying|counter|draw|destroy|exile|bounce|pump|tap|untap|return)(?: mode)?$""").find(rest.trim())?.let { mm -> mm.groupValues[1] + "|" + mm.groupValues[2] }
+            ?: Regex("""\b(?:choosing|picking|selecting) (?:the )?(indestructible|double strike|first strike|damage|lifelink|hexproof|trample|flying|counter|draw|destroy|exile|bounce|pump|tap|untap|return)(?: mode)?,? (?:and|&) (?:the )?(indestructible|double strike|first strike|damage|lifelink|hexproof|trample|flying|counter|draw|destroy|exile|bounce|pump|tap|untap|return)(?: mode)?(?:\s+(?:targeting|aimed at)\b.*)?$""").find(rest.trim())?.let { mm -> mm.groupValues[1] + "|" + mm.groupValues[2] }
             ?: Regex("""(?:choosing|picking|with|for|selecting) (?:the )?([a-z][a-z-]+) (?:mode|option)\b""").find(rest)?.groupValues?.get(1)
             ?: Regex("""\b(?:choosing|picking|selecting|for|giving (?:it |them |my creatures? |my team |everything )?|to give (?:it |them )?|granting (?:it |them )?) ?(?:the )?(indestructible|double strike|first strike|damage|lifelink|hexproof|trample|flying|counter|draw|destroy|exile|bounce|pump)(?: until end of turn| this turn| mode)?$""").find(rest.trim())?.groupValues?.get(1)
-            ?: Regex("""\b(?:to |and )?(gain|prevent|draw|destroy|exile|counter|return|deal|discard|scry|sacrifice|tap|untap)(?:ing|s)?\b(?: \d+ (?:life|cards?|damage))?$""").find(rest.trim())?.groupValues?.get(1))?.takeIf { it !in setOf("first", "second", "third", "fourth", "same", "other") }
+            ?: Regex("""\b(?:to |and )?(gain|prevent|draw|destroy|exile|counter|return|deal|discard|scry|sacrifice|tap|untap)(?:ing|s)?\b(?: \d+ (?:life|cards?|damage))?$""").find(rest.trim())?.groupValues?.get(1)
+            // "choosing artifacts and creatures with mana value 3 or less": modes named by what they hit rather than
+            // by their verb. The judge matches each phrase against the card's own mode texts and asks if none fits.
+            ?: Regex("""\b(?:choosing|picking|selecting) (?:the )?([a-z][a-z0-9' ]*?)(?: (?:and|&) (?:the )?([a-z][a-z0-9' ]*?))?(?:\s+(?:targeting|aimed at)\b.*)?\s*$""").find(rest.trim())?.takeIf { mm -> mm.groupValues[1].split(" ")[0] !in setOf("both", "all", "neither", "none", "not", "mode", "modes", "to", "it", "them", "that", "this", "one", "two", "three") }?.let { mm -> listOf(mm.groupValues[1], mm.groupValues[2]).filter { it.isNotBlank() }.joinToString("|") { w ->
+                // "choosing Shatter and discard": a card name standing for a mode ("Shatter" = destroy the artifact).
+                w.trim().replace(Regex("""\bc\d+\b""")) { m.cards[it.value]?.display?.lowercase() ?: it.value } } })?.takeIf { it !in setOf("first", "second", "third", "fourth", "same", "other") }
         ctx.castingCounter = needsSpellTarget(card); ctx.castingCounterName = card.display
         val targets0 = if (overload) emptyList() else targetsIn(rest.replace(Regex("""\b(?:paying|and pays?|pay) \d+ life\b"""), "").replace(Regex("""\b(?:with (?:the )?kicker|with kicker paid|paying (?:the )?kicker|kicked|with evoke|evoked|for (?:its|the) evoke cost|via evoke|evoking it|using evoke)\b"""), "").replace(Regex("""\b(?:with|for|where|at) x ?(?:=|equal to|equals|being|of|as) ?\d+\b|\bx ?= ?\d+\b"""), ""), m, ctx)
         // "They cast Counterspell" with nothing on the stack to counter: it must be answering a spell of the other player's.
@@ -4885,18 +4913,22 @@ class SituationParser(private val names: NameIndex) {
         }
         // "on my own land", "on my opponent's creature": a permanent nobody named, given only by its type. The
         // target was dropped, so the spell had none and the answer was "nothing changes".
-        Regex("""^(?:(my own|my|their|his|her|my opponent's|the opponent's|opponent's|an?|the) )?(?:(white|blue|black|red|green|colorless) )?(creatures?|lands?|artifacts?|enchantments?|permanents?|planeswalkers?|guys?|dudes?)$""").find(seg)?.let { r ->
+        Regex("""^(?:(my own|my|their|his|her|my opponent's|the opponent's|opponent's|an?|the) )?(?:(attacking|blocking|tapped|untapped) )?(?:(white|blue|black|red|green|colorless) )?(creatures?|lands?|artifacts?|enchantments?|permanents?|planeswalkers?|guys?|dudes?)$""").find(seg)?.let { r0 ->
+            // "Condemn on their attacking creature": the state word says what it is doing; an attacking creature
+            // nobody said attacked is declared as attacking the speaker.
+            val stateWord = r0.groupValues[2]
+            val r = object { val groupValues = listOf(r0.groupValues[0], r0.groupValues[1], r0.groupValues[3], r0.groupValues[4]) }
             val head = r.groupValues[1]
             val owner = when (head) { "my", "my own" -> "me"; "their", "his", "her", "my opponent's", "the opponent's", "opponent's" -> pronounPlayer(ctx, "their"); else -> pronounPlayer(ctx, "their") }
             // "on their black creature": the colour is what a Doom Blade question is about, so it is kept.
             val kind = (r.groupValues[2].takeIf { it.isNotEmpty() }?.let { "$it " } ?: "") + r.groupValues[3].removeSuffix("s")
             ctx.objects.values.lastOrNull { o -> o.controller == owner && o.zone == "battlefield" &&
-                (if (kind in setOf("creature", "guy", "dude")) isCreatureName(o.card.name) else (o.card.name ?: "").contains(kind, true)) }?.let { o -> out += o.id; return out }
-            if (kind in setOf("creature", "guy", "dude")) describedCreatures("a ", "", "creature", owner, ctx).firstOrNull()?.let { out += it; ctx.note(owner); return out }
+                (if (kind in setOf("creature", "guy", "dude")) isCreatureName(o.card.name) else (o.card.name ?: "").contains(kind, true)) }?.let { o -> out += o.id; return out.also { withState(o.id, stateWord, owner, ctx) } }
+            if (kind in setOf("creature", "guy", "dude")) describedCreatures("a ", "", "creature", owner, ctx).firstOrNull()?.let { out += it; ctx.note(owner); return out.also { _ -> withState(it, stateWord, owner, ctx) } }
             var id = slug("a $kind"); var k = 2; while (ctx.objects.containsKey(id)) id = slug("a $kind") + "_" + (k++)
             ctx.objects[id] = ObjectSpec(id, CardRef(name = if (kind == "land") "a basic land" else "a $kind"), controller = owner)
             ctx.notes += "\"$seg\" names no card, so an unnamed $kind of ${if (owner == "me") "yours" else "theirs"} is taken as read; name it for a precise answer."
-            out += id; ctx.note(owner); return out
+            out += id; ctx.note(owner); return out.also { withState(id, stateWord, owner, ctx) }
         }
         // "a creature with protection from red" / "their creature with flying": a target described by what it
         // has rather than by its size. Without this the target was dropped and the spell hit a player instead.
@@ -5052,6 +5084,15 @@ class SituationParser(private val names: NameIndex) {
     }
 
     /** "a 1/1 Soldier token", "two Treasure tokens": described tokens. */
+    /** "their attacking creature", "my tapped creature": the state word said of a target that nobody named. */
+    private fun withState(id: String, word: String, owner: String, ctx: Ctx) {
+        when (word) {
+            "attacking" -> if (ctx.events.none { it.verb == "attack" && it.obj == id }) { ctx.events += EventSpec("attack", player = owner, obj = id, targets = listOf(ctx.other(owner) ?: "me")); ctx.note(ctx.other(owner) ?: "me") }
+            "tapped" -> ctx.objects[id] = ctx.objects.getValue(id).copy(tapped = true)
+            "untapped" -> ctx.objects[id] = ctx.objects.getValue(id).copy(tapped = false)
+        }
+    }
+
     private fun describedTokens(count: String, pt: String, kindWord: String, who: String, ctx: Ctx, keywords0: String = ""): List<String> {
         val keywords = keywords0.replace(" & ", ", ")
         val n = count.trim().let { if (it.isEmpty()) 1 else number(it) ?: 1 }

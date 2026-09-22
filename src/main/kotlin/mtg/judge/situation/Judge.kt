@@ -521,7 +521,10 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
     private fun matchMode(phrase: String, texts: List<String>, cardName: String): Int? {
         fun words(t: String) = Regex("""[a-z0-9]+""").findAll(t.lowercase().replace(cardName.lowercase(), " "))
             .map { it.value.removeSuffix("s") }.filter { it.length > 1 && it !in setOf("the", "a", "an", "to", "of", "it", "that", "this", "your", "you", "their", "from", "on", "in", "any") }.toList()
-        val want = words(phrase)
+        // Player shorthand for a mode: "bounce" is "return … to its owner's hand", "shatter" is "destroy … artifact".
+        val shorthand = mapOf("bounce" to "return owner hand", "shatter" to "destroy artifact", "counterspell" to "counter spell", "fog" to "prevent all damage",
+            "tuck" to "bottom library", "wrath" to "destroy all creatures", "naturalize" to "destroy artifact enchantment", "disenchant" to "destroy artifact enchantment")
+        val want = words(shorthand[phrase.trim()] ?: phrase)
         if (want.isEmpty()) return null
         texts.indexOfFirst { it.lowercase().contains(phrase) }.takeIf { it >= 0 }?.let { return it }
         val scored = texts.mapIndexed { i, t -> i to words(t).toSet().let { have -> want.count { w -> w in have }.toDouble() / want.size } }

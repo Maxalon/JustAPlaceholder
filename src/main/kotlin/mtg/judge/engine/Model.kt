@@ -156,6 +156,9 @@ sealed interface Effect {
     data object Evolve : Effect
     /** "Monstrosity N": N +1/+1 counters and it becomes monstrous, once only (701.31a). */
     data class Monstrosity(val amount: Int) : Effect
+    /** "If damage (from a creature source) is prevented this way, ~ deals that much damage to that creature / to that source's controller":
+     *  a rider on the prevention shield the same spell just made (Comeuppance, Deflecting Palm). */
+    data class ReflectPrevented(val toCreature: Boolean, val toController: Boolean) : Effect
     /** "~ deals N damage divided as you choose among one or two targets" (601.2d). */
     data class DamageDivided(val amount: Int, val target: TargetSpec, val maxTargets: Int?) : Effect
     /** Storm: copy the spell this trigger came from once for each spell cast before it this turn (702.40a). */
@@ -313,7 +316,7 @@ sealed interface Effect {
     /** Every target specification this effect (recursively) needs, in order. */
     fun targets(): List<TargetSpec> = when (this) {
         is Damage -> listOf(target); is Counter -> listOf(target); is Destroy -> listOf(target); is Exile -> listOf(target); is Blink -> listOf(target); is RedirectToSelf -> listOf(target); is Fight -> listOf(mine, theirs); is DealsPowerTo -> listOf(mine, theirs)
-        is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target)
+        is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target); is ReflectPrevented -> emptyList()
         is PutCounters -> listOfNotNull(target); is RemoveAllCounters -> listOf(target); is PutOnBottom -> listOf(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is CreateTokenCopy -> listOfNotNull(target); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is ExileGraveyard -> emptyList(); is DiscardChosen -> emptyList(); is BounceChosen -> emptyList(); is LivingWeapon -> emptyList(); is DiscardNamed -> emptyList(); is CounterThatSpell -> emptyList(); is AddManaInstead -> emptyList(); is AddManaPer -> emptyList(); is AddManaDevotion -> emptyList(); is GainLifePerSpellThisTurn -> emptyList(); is WinIfDevotionCoversLibrary -> emptyList(); is CopySpell -> listOf(target); is StormCopy -> emptyList(); is DamageDivided -> listOf(target); is Monstrosity -> emptyList(); is MoveSourceCounters -> listOf(target); is ChangeTarget -> listOf(target); is Evolve -> emptyList(); is PreventCombatToAndBy -> listOf(target); is WinIfCastBefore -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is BecomeMonarch -> emptyList(); is ReturnSelfFromGraveyard -> emptyList(); is AnimateSelf -> emptyList(); is SaddleSelf -> emptyList(); is PumpSelfCount -> emptyList(); is TapAttached -> emptyList(); is DamageThatMuch -> listOf(target); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is CantLoseThisTurn -> emptyList(); is DamageLifeFloor -> emptyList(); is ExtraLandThisTurn -> emptyList(); is CoinFlip -> (onWin?.targets() ?: emptyList()) + (onLose?.targets() ?: emptyList()); is CantCastThisTurn -> emptyList(); is ForAllTargeted -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
         is IfYouDo -> choice.targets() + then.targets()
@@ -379,6 +382,8 @@ sealed interface StaticEffect {
     data class ExtraLandPlays(val count: Int, val who: Who) : StaticEffect
     /** Rule of Law, Ethersworn Canonist: a limit on how many spells a player may cast each turn. */
     data class SpellsPerTurn(val count: Int, val filter: ObjFilter?) : StaticEffect
+    /** Notion Thief: "If an opponent would draw a card except the first one they draw in each of their draw steps, instead you draw a card and they skip that draw." */
+    data class OpponentsDrawsRedirected(val exceptFirstInDrawStep: Boolean) : StaticEffect
     /** Narset, Spirit of the Labyrinth: "Each opponent can't draw more than one card each turn." */
     data class CantDrawMoreThan(val count: Int, val who: Who) : StaticEffect
     /** Humility: "All creatures lose all abilities and have base power and toughness 1/1." */
@@ -480,7 +485,10 @@ sealed interface Replacement {
     /** Prevent [amount] (null = all) damage that would be dealt to things matching [to] (or the player [toPlayer]), optionally only combat damage / only from sources matching [from]. */
     data class PreventDamage(val amount: Int?, val to: ObjFilter?, val toPlayer: Who?, val combatOnly: Boolean, val from: ObjFilter?, val fromSelf: Boolean = false,
                              /** "The next time … would deal damage": all of one damage event, then the shield is gone (615.8). */
-                             val once: Boolean = false) : Replacement
+                             val once: Boolean = false,
+                             /** Comeuppance / Deflecting Palm: the shield's own source deals the prevented amount back to the creature that
+                              *  would have dealt it, or to the source's controller. */
+                             val reflectToCreature: Boolean = false, val reflectToController: Boolean = false) : Replacement
     /** "If [filter] would die, [instead] instead" / "would be put into a graveyard from anywhere". instead: exile | hand | library_bottom | library_top */
     data class GraveyardReplacement(val filter: ObjFilter, val self: Boolean, val instead: String, val fromAnywhere: Boolean, val alsoDo: Effect? = null) : Replacement
     /** "If a source (you control) would deal damage …, it deals double that damage instead." */
