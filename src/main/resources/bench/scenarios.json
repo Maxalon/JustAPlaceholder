@@ -11896,5 +11896,42 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "sorcery-on-their-turn",
+    "text": "It's my opponent's turn. I cast Wrath of God. Can I?",
+    "expect": [
+      "can't be cast on opponent's turn"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "307.1"
+    ]
+  },
+  {
+    "id": "land-on-their-turn",
+    "text": "It's my opponent's turn. I play a land. Can I?",
+    "expect": [
+      "can't play a land on opponent's turn"
+    ],
+    "notExpect": [
+      "a basic land enters the battlefield"
+    ],
+    "cite": [
+      "305.1"
+    ]
+  },
+  {
+    "id": "flash-creature-on-their-turn",
+    "text": "It's my opponent's turn. I cast Ambush Viper. Can I?",
+    "expect": [
+      "Ambush Viper enters the battlefield"
+    ],
+    "notExpect": [
+      "can't be cast"
+    ],
+    "cite": []
   }
 ]

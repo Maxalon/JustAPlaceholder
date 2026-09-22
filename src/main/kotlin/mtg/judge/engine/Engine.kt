@@ -188,6 +188,12 @@ class Engine(val state: GameState) {
                         .any { e -> e is StaticEffect.CastAsThoughFlash && (e.filter == null || spellMatches(e.filter, card)) }
                 }
                 if (granter != null) trace.step("${granter.name} lets ${state.player(playerId).possessive} spells be cast as though they had flash, so ${card.name} can be cast now even though ${withArticle(kind.lowercase())} spell normally couldn't be.", "702.8a", timingRule)
+                else if (state.activePlayerStated && state.activePlayer != null && state.activePlayer != playerId) {
+                    val active = state.player(state.activePlayer!!)
+                    trace.step("${withArticle(kind.lowercase()).replaceFirstChar { c -> c.uppercase() }} spell can be cast only during its controller's own main phase, and it's ${active.possessive} turn; ${card.name} doesn't have flash, so it can't be cast now.", timingRule, "117.1a")
+                    state.outcomes += "${card.name} can't be cast on ${active.possessive} turn (no flash)."
+                    return null
+                }
                 else { trace.step("${withArticle(kind.lowercase()).replaceFirstChar { c -> c.uppercase() }} spell can normally be cast only during its controller's main phase with an empty stack; ${card.name} doesn't have flash. Assuming an effect allows it, as described.", timingRule); state.assumptions += "${card.name} is cast at a time ${withArticle(kind.lowercase())} spell normally can't be (no flash); assuming something allows it." }
             }
         }
@@ -512,6 +518,10 @@ class Engine(val state: GameState) {
      */
     fun playLand(playerId: String, objectId: String) {
         val p = state.player(playerId)
+        state.activePlayer?.takeIf { state.activePlayerStated && it != playerId }?.let { active ->
+            trace.step("A land can only be played during a main phase of its controller's own turn, and it's ${state.player(active).possessive} turn.", "305.1", "116.2a")
+            state.outcomes += "${p.subject} can't play a land on ${state.player(active).possessive} turn."; return
+        }
         val allowed = landPlaysAllowed(playerId)
         val already = state.landsPlayed[playerId] ?: 0
         if (already >= allowed) {
