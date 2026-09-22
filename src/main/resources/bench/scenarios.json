@@ -12177,5 +12177,27 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "described-creature-with-an-equipment",
+    "text": "My 1/1 has a Bonesplitter and blocks a 3/3. What happens?",
+    "expect": [
+      "a 3/3 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Bonesplitter can't block"
+    ],
+    "cite": []
+  },
+  {
+    "id": "described-creature-with-an-aura",
+    "text": "My 2/2 has Rancor on it. How big is it?",
+    "expect": [
+      "a 2/2 creature is 4/2"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

@@ -1745,6 +1745,17 @@ class SituationParser(private val names: NameIndex) {
             ctx.objects[att] = ctx.objects.getValue(att).copy(attachedTo = host)
             ctx.lastVerb = "have"; ctx.lastOwner = who; ctx.lastActor = who; ctx.lastMentioned = host; return true
         }
+        // "My 1/1 has a Bonesplitter (equipped)", "my 2/2 has Rancor on it": the creature given by its size,
+        // carrying a named Aura or Equipment. Read as the creature alone, the attachment was dropped.
+        Regex("""^(?:(?:have|has|got|controls?|controlling)\s+)?(an? |\d+ |two |three )?(\d+/\d+)s?(?: ($creatureKinds))? (?:has|have|with|carrying|wearing) (?:an? |the |my |their )?(c\d+)(?: equipped| attached| on it| enchanting it)?$""").find(c)?.let { r ->
+            val gear = m.cards[r.groupValues[4]] ?: return@let
+            if (gear.isSpellOnly || !(gear.typeLine.contains("Equipment") || gear.typeLine.contains("Aura") || gear.typeLine.contains("Enchantment") || gear.typeLine.contains("Artifact"))) return@let
+            val who = actor ?: subject ?: ctx.lastOwner ?: "me"
+            val ids = describedCreatures(r.groupValues[1].ifEmpty { "a " }, r.groupValues[2], r.groupValues[3], who, ctx)
+            if (ids.isEmpty()) return@let
+            for (id in ids) { val att = addObject(gear, who, false, ctx, allowDuplicate = ids.size > 1); ctx.objects[att] = ctx.objects.getValue(att).copy(attachedTo = id) }
+            ctx.lastVerb = "have"; ctx.lastOwner = who; ctx.lastActor = who; ctx.lastMentioned = ids.last(); return true
+        }
         // "a creature enchanted with Pacifism", "a 2/2 equipped with Bonesplitter": a creature nobody named,
         // carrying something that is named.
         Regex("""^(?:(?:have|has|got|controls?|controlling)\s+)?(an? |\d+ |two |three )?(?:(\d+/\d+)s?\s*)?($creatureKinds)?\s*(?:enchanted with|equipped with|wearing|carrying) (?:an? |the |my |their )?(c\d+)((?: .+)?)$""").find(c)?.let { r ->
@@ -3497,9 +3508,9 @@ class SituationParser(private val names: NameIndex) {
                 ?: ensureAttacker(ctx, actor ?: ctx.lastActor ?: "me") ?: return false
             val defender = actor ?: ctx.other(attackerEvent.player) ?: "me"
             // A creature just cast has no object yet; the judge gives it the id the engine will use (its slug). Otherwise the defender's last creature.
-            val id = ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller == defender } ?: ctx.events.lastOrNull { it.verb == "cast" && it.player == defender }?.card?.name?.let { n -> ctx.objects.values.firstOrNull { it.card.name == n }?.id ?: slug(n) }
+            val id = ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller == defender && isCreatureName(ctx.objects.getValue(it).card.name) } ?: ctx.events.lastOrNull { it.verb == "cast" && it.player == defender }?.card?.name?.let { n -> ctx.objects.values.firstOrNull { it.card.name == n }?.id ?: slug(n) }
                 // "they block" when nobody said what they have: a blocker nobody named, rather than dropping the clause.
-                ?: ctx.objects.values.lastOrNull { it.controller == defender && it.id != attackerEvent.obj }?.id
+                ?: ctx.objects.values.lastOrNull { it.controller == defender && it.id != attackerEvent.obj && isCreatureName(it.card.name) }?.id
                 ?: describedCreatures("a ", "", "creature", defender, ctx, "").firstOrNull()?.also {
                     ctx.notes += "Nothing was said about what ${if (defender == "me") "you" else (ctx.players[defender] ?: "your opponent")} ${if (defender == "me") "block" else "blocks"} with, so the blocker is read as an unnamed creature; name it for a precise answer."
                 } ?: return false
