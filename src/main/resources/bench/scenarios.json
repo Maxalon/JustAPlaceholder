@@ -12512,5 +12512,38 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "survives-a-spell",
+    "text": "Does my 1/1 with two +1/+1 counters survive a Shock?",
+    "expect": [
+      "Yes: a 1/1 creature is still on the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "survive-a-sweeper",
+    "text": "Does my Serra Angel survive a Wrath of God?",
+    "expect": [
+      "Serra Angel: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Yes: Serra Angel is still on the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "try-to-cast-plural",
+    "text": "I have a Grizzly Bears and they try to Doom Blade it. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

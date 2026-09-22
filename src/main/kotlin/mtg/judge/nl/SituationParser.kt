@@ -629,6 +629,8 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\?\s*(?:yes or no|y/n)\?*$""", RegexOption.IGNORE_CASE), "?")
             .replace(Regex("""\s*[,.]?\s*(?:yes or no|y/n)\?*$""", RegexOption.IGNORE_CASE), "")
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?""", RegexOption.IGNORE_CASE), "")
+            // "my 1/1 survives a Shock": the statement form of "does my 1/1 survive a Shock?".
+            .replace(Regex("""^((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude)[a-z0-9/+ ]*?) (dies|survives|lives)((?: to| against)? (?:an? |the )?c\d+)\.?$""", RegexOption.IGNORE_CASE), "does $1 $2$3")
             // "Who wins the fight between Grizzly Bears and Hill Giant?": a fight with no card making it happen.
             // The "and" would otherwise break the sentence and leave the second creature as a clause of its own.
             .replace(Regex("""^(?:who|which(?: creature| one)?) (?:wins|survives|comes out on top|lives)(?: the fight| a fight| in a fight| the combat)?(?: (?:between|with)) ((?:$possPrefix|an? )?c\d+) (?:and|vs\.?|versus) ((?:$possPrefix|an? )?c\d+)\??$"""), "$1 fights $2, does $1 die, does $2 die")
@@ -1197,7 +1199,7 @@ class SituationParser(private val names: NameIndex) {
             if (!Regex("""\b(?:in response|respond|responding)\b""").containsMatchIn(r.groupValues[1]) && ctx.events.lastOrNull()?.verb in setOf("cast", "activate", "trigger")) ctx.events += EventSpec("resolveAll")
             // "My Grizzly Bears. Does it die to Lightning Bolt?": the spell the question names is cast at the
             // creature. Answered without casting it, the answer was "no, it's still on the battlefield".
-            Regex("""^(it|that|(?:my |the |their |his |her |an? )?(?:c\d+|\d+/\d+(?:[a-z ,/+&]*?)?|creature|guy|dude)) (?:dies?|die|is killed|get(?:s)? killed|is destroyed|get(?:s)? destroyed|survives?|live(?:s)?) (?:to|against) (?:$possPrefix|an? )?(c\d+)$""").find(r.groupValues[1])?.let { q ->
+            Regex("""^(it|that|(?:my |the |their |his |her |an? )?(?:c\d+|\d+/\d+(?:[a-z0-9 ,/+&]*?)?|creature|guy|dude)) (?:dies?|die|survive|is killed|get(?:s)? killed|is destroyed|get(?:s)? destroyed|survives?|live(?:s)?)(?: (?:to|against))? (?:$possPrefix|an? )?(c\d+)$""").find(r.groupValues[1])?.let { q ->
                 val spell = m.cards[q.groupValues[2]] ?: return@let
                 val subj = q.groupValues[1]
                 val victim = (when {
@@ -1212,7 +1214,12 @@ class SituationParser(private val names: NameIndex) {
                 val caster = ctx.other(ctx.objects[victim]?.controller ?: "me") ?: "opp"
                 emitCast(caster, spell, "", m, ctx)
                 ctx.events.indexOfLast { it.verb == "cast" }.takeIf { it >= 0 }?.let { i -> ctx.events[i] = ctx.events[i].copy(targets = listOf(victim)) }
-                ctx.asks += EventSpec("ask", obj = victim, to = "die"); ctx.lastMentioned = victim; return true
+                Regex("""\b(an?|one|two|three|four|five|\d+) ([+-]\d+/[+-]\d+) counters?\b""").find(subj)?.let { cm ->
+                    ctx.events.add(0, EventSpec("counters", obj = victim, amount = number(cm.groupValues[1]) ?: 1, to = cm.groupValues[2]))
+                }
+                // "does it survive?" and "does it die?" are the same question asked the other way round.
+                ctx.asks += EventSpec("ask", obj = victim, to = if (Regex("""\b(?:survives?|lives?)\b""").containsMatchIn(q.groupValues[0])) "survive" else "die")
+                ctx.lastMentioned = victim; return true
             }
             // "does my 2/2 die to a 2/2 with deathtouch in combat?": what it dies to is a creature, not a spell,
             // so the question is about a fight in combat. Answered without one, it was always "no".
@@ -1604,7 +1611,7 @@ class SituationParser(private val names: NameIndex) {
         // "tries to Murder it", "attempts to cast Bolt on it": the attempt is the action.
         // "goes to combat" is a step, not an attempt to do something: without the guard "goes to" was stripped and
         // the step word was left as a clause of its own.
-        Regex("""^(?:tries|tried|attempts|attempted|wants|goes) to (?!(?:my |their |his |her |the )?(?:combat|upkeep|draw step|end step|end of turn|main phase|combat phase|second main phase)\b)(.+)$""").find(c)?.let { r ->
+        Regex("""^(?:try|tries|tried|attempt|attempts|attempted|want|wants|goes|go) to (?!(?:my |their |his |her |the )?(?:combat|upkeep|draw step|end step|end of turn|main phase|combat phase|second main phase)\b)(.+)$""").find(c)?.let { r ->
             if (ctx.events.lastOrNull()?.verb in setOf("cast", "activate", "trigger")) ctx.events += EventSpec("resolveAll")   // the attempt comes after what was already happening
             return readClause((actor?.let { if (it == "me") "i " else if (it == "opp") "they " else "@$it " } ?: "") + r.groupValues[1], m, ctx)
         }
@@ -1832,7 +1839,7 @@ class SituationParser(private val names: NameIndex) {
         }
         // "I put a Rancor on my 2/2", "they put Pacifism on my Bears": an Aura attached to a creature. Said this
         // way rather than "enchanted with", the whole clause went unread.
-        Regex("""^(?:puts?|put|putting|attaches?|attached|sticks?|stuck) (?:an? |the |my |their )?(c\d+) on (?:to )?($possPrefix|an? )?(c\d+|\d+/\d+|it|that)$""").find(c)?.let { r ->
+        Regex("""^(?:puts?|put|putting|attaches?|attached|sticks?|stuck) (?:an? |the |my |their )?(c\d+) on (?:to )?($possPrefix|an? )?(c\d+|\d+/\d+|creature|guy|dude|token|it|that)$""").find(c)?.let { r ->
             val aura = m.cards.getValue(r.groupValues[1])
             val who = actor ?: subject ?: ctx.lastOwner ?: "me"
             val target = r.groupValues[3]
@@ -1840,7 +1847,11 @@ class SituationParser(private val names: NameIndex) {
             val host = when {
                 target in setOf("it", "that") -> ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
                 cardRef.matches(target) -> m.cards[target]?.let { objectIdFor(it, ctx) ?: addObject(it, hostOwner, false, ctx) } ?: return@let
-                else -> describedCreatures("a ", target, "creature", hostOwner, ctx).firstOrNull() ?: return@let
+                else -> {
+                    val pt = target.takeIf { Regex("""^\d+/\d+$""").matches(it) } ?: ""
+                    ctx.objects.values.lastOrNull { it.controller == hostOwner && it.zone == "battlefield" && isCreatureName(it.card.name) && (pt.isEmpty() || (it.card.name ?: "").startsWith("a $pt")) }?.id
+                        ?: describedCreatures("a ", pt, "creature", hostOwner, ctx).firstOrNull() ?: return@let
+                }
             }
             val att = objectIdFor(aura, ctx) ?: addObject(aura, who, false, ctx)
             ctx.objects[att] = ctx.objects.getValue(att).copy(attachedTo = host)
