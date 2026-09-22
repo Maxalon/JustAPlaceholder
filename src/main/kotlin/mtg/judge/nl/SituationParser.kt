@@ -3543,6 +3543,17 @@ class SituationParser(private val names: NameIndex) {
             ids.forEach { ctx.events += EventSpec("block", player = who, obj = it, targets = listOfNotNull(attackerEvent.obj)) }
             ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
+        // "My Stoneforge Mystic dies with a Batterskull attached": the attachment, said as a trailer on what
+        // happens to the creature. Unread, the Equipment was never on the battlefield at all.
+        Regex("""^(c\d+|it|that)(?: creature)? (dies|died|is destroyed|gets destroyed|is exiled|is sacrificed|leaves the battlefield|is bounced) with (?:an? |the |my |their )?(c\d+) (?:attached|equipped|on it)$""").find(c)?.let { r ->
+            val who = actor ?: ctx.lastOwner ?: "me"
+            val host = if (r.groupValues[1] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                       else m.cards[r.groupValues[1]]?.let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) } ?: return@let
+            val gear = m.cards[r.groupValues[3]]?.let { objectIdFor(it, ctx) ?: addObject(it, ctx.objects[host]?.controller ?: who, false, ctx) } ?: return@let
+            ctx.objects[gear] = ctx.objects.getValue(gear).copy(attachedTo = host)
+            ctx.lastMentioned = host
+            return readClause("it ${r.groupValues[2]}", m, ctx)
+        }
         // "My Liliana is attacked by a 2/2", "my Bears got attacked by a 3/3": the passive form. A planeswalker
         // is attacked; a creature can't be (506.3), so for a creature it is read as that creature blocking.
         Regex("""^(?:(c\d+|\d+/\d+|planeswalker|walker)(?: creature)? )?(?:is|are|was|were|gets?|got) attacked by (?:an? |the |my |their |his |her )?(c\d+|\d+/\d+)(?: creature)?$""").find(c)?.let { r ->

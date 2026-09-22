@@ -12142,5 +12142,18 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "dies-with-equipment-attached",
+    "text": "My Stoneforge Mystic dies with a Batterskull attached. What happens?",
+    "expect": [
+      "Batterskull stays on the battlefield, unattached"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5n"
+    ]
   }
 ]
