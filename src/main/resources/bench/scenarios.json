@@ -12243,5 +12243,28 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "bare-noun-block",
+    "text": "Their guy blocks my guy. What happens?",
+    "expect": [
+      "a creature: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "a guy creature",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "bare-noun-exiled",
+    "text": "My creature is exiled. Does it come back?",
+    "expect": [
+      "a creature: the battlefield → exile"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

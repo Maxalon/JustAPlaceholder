@@ -1416,16 +1416,18 @@ class SituationParser(private val names: NameIndex) {
         // "My 3/3 with first strike blocks a 3/3": the keywords may be said on either creature, and either side
         // may be the one named first; without the "with …" tail the whole clause went unread.
         val kwList = """$kwPhrase(?:(?:,|,? and|,? &) $kwPhrase)*"""
-        Regex("""^($possPrefix|an? )?(c\d+|it|that|they|\d+/\d+)(?: creature)?(?: with ($kwList))? (?:chump[- ]?)?blocks? ($possPrefix|an? )?(?:(c\d+)|(\d+/\d+)((?: (?!with\b)[a-z]+)*)(?: creature)?(?: with ($kwList))?|(it|that))$""").find(c)?.let { r ->
+        Regex("""^($possPrefix|an? )?(c\d+|it|that|they|\d+/\d+|creature|guy|dude|token|blocker)(?: creature)?(?: with ($kwList))? (?:chump[- ]?)?blocks? ($possPrefix|an? )?(?:(c\d+)|(\d+/\d+|creature|guy|dude|token|attacker)((?: (?!with\b)[a-z]+)*)(?: creature)?(?: with ($kwList))?|(it|that))$""").find(c)?.let { r ->
             val blockerRef = r.groupValues[2]
             val attackEvent = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" }
             val blocker = when {
                 blockerRef in setOf("it", "that", "they") -> ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
-                Regex("""^\d+/\d+$""").matches(blockerRef) -> {
+                Regex("""^\d+/\d+$""").matches(blockerRef) || blockerRef in setOf("creature", "guy", "dude", "token", "blocker") -> {
                     // "A 3/3 blocks my 3/3": the side is said on the attacker, so the blocker is the other one.
                     val atkSide = possessiveOwner(r.groupValues[4], ctx, m)
                     val defender = possessiveOwner(r.groupValues[1], ctx, m) ?: atkSide?.let { ctx.other(it) } ?: actor ?: ctx.other(attackEvent?.player ?: "opp") ?: "me"
-                    describedCreatures("a ", blockerRef, "creature", defender, ctx, r.groupValues[3].replace(" and ", ", ").replace(" & ", ", ")).firstOrNull() ?: return@let
+                    val pt = blockerRef.takeIf { Regex("""^\d+/\d+$""").matches(it) } ?: ""
+                    ctx.objects.values.lastOrNull { it.controller == defender && it.zone == "battlefield" && isCreatureName(it.card.name) && (pt.isEmpty() || (it.card.name ?: "").startsWith("a $pt")) }?.id
+                        ?: describedCreatures("a ", pt, "creature", defender, ctx, r.groupValues[3].replace(" and ", ", ").replace(" & ", ", ")).firstOrNull() ?: return@let
                 }
                 else -> m.cards[blockerRef]?.let { objectIdFor(it, ctx) ?: addObject(it, possessiveOwner(r.groupValues[1], ctx, m) ?: possessiveOwner(r.groupValues[4], ctx, m)?.let { a -> ctx.other(a) } ?: "me", false, ctx) } ?: return@let
             }
@@ -1440,7 +1442,9 @@ class SituationParser(private val names: NameIndex) {
                         .map { k -> k.value.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") }.toList()
                         + r.groupValues[8].split(Regex(""",| and | & """)).map { it.trim() }.filter { it.isNotEmpty() }).distinct().joinToString(", ")
                     val kind = Regex("""$creatureKinds""").find(trailer)?.value ?: "creature"
-                    describedCreatures("a ", r.groupValues[6], kind, foe, ctx, kws).firstOrNull() ?: return@let
+                    val pt = r.groupValues[6].takeIf { Regex("""^\d+/\d+$""").matches(it) } ?: ""
+                    ctx.objects.values.lastOrNull { it.controller == foe && it.zone == "battlefield" && isCreatureName(it.card.name) && (pt.isEmpty() || (it.card.name ?: "").startsWith("a $pt")) }?.id
+                        ?: describedCreatures("a ", pt, kind, foe, ctx, kws).firstOrNull() ?: return@let
                 }
             }
             if (attacker == blocker) return@let
@@ -2490,7 +2494,7 @@ class SituationParser(private val names: NameIndex) {
             return true
         }
         // "my creature dies", "a 2/2 dies", "their 3/3 is destroyed": a creature nobody named, by owner or by size.
-        Regex("""^($possPrefix|an? |one )?(?:(\d+/\d+)(?: tokens?)?|(\d+/\d+) ($creatureKinds)|($creatureKinds|tokens?)) (dies|died|is destroyed|gets destroyed|goes to the graveyard|is sacrificed|gets sacrificed)$""").find(c)?.let { r ->
+        Regex("""^($possPrefix|an? |one )?(?:(\d+/\d+)(?: tokens?)?|(\d+/\d+) ($creatureKinds)|($creatureKinds|tokens?|guys?|dudes?)) (dies|died|is destroyed|gets destroyed|goes to the graveyard|is sacrificed|gets sacrificed|is exiled|gets exiled|is bounced|gets bounced|leaves the battlefield)$""").find(c)?.let { r ->
             val who = possessiveOwner(r.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me"
             val pt = r.groupValues[2].ifEmpty { r.groupValues[3] }
             val kind = r.groupValues[4].ifEmpty { r.groupValues[5] }
@@ -2500,7 +2504,7 @@ class SituationParser(private val names: NameIndex) {
                 ?: (if (kind.startsWith("token") || Regex("""\btokens?\b""").containsMatchIn(c)) describedTokens("a ", pt, "creature", who, ctx)
                     else describedCreatures("a ", pt, if (kind == "creature") "" else kind, who, ctx, "")).firstOrNull() ?: return@let
             if (r.groupValues[6].contains("sacrific")) ctx.events += EventSpec("sacrifice", player = who, obj = id)
-            else ctx.events += EventSpec("leave", obj = id, to = "graveyard")
+            else ctx.events += EventSpec("leave", obj = id, to = if (r.groupValues[6].contains("exile")) "exile" else if (r.groupValues[6].contains("bounce")) "hand" else "graveyard")
             ctx.lastMentioned = id; ctx.lastOwner = who; ctx.note(who); return true
         }
         // "I exile their graveyard with Tormod's Crypt": the named permanent's ability, aimed at that player.
