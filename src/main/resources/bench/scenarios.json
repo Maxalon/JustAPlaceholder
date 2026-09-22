@@ -12049,5 +12049,27 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "token-named-by-its-type-has-a-size",
+    "text": "I control a Saproling token and cast Overrun. What are my creatures?",
+    "expect": [
+      "Saproling token is 4/4 with trample"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "soldier-token-is-a-1-1",
+    "text": "I control a Soldier token and cast Giant Growth on it. How big is it?",
+    "expect": [
+      "Soldier token is 4/4"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

@@ -7,10 +7,14 @@ import java.sql.Connection
  * In-memory index of every card name (full and face) for longest-match detection in free text.
  * Tokens are the words of the normalized name; a name is found when a run of input words matches.
  */
-class NameIndex private constructor(private val byNorm: Map<String, Entry>, val maxWords: Int, private val heads: Map<String, List<Entry>> = emptyMap()) {
+class NameIndex private constructor(private val byNorm: Map<String, Entry>, val maxWords: Int, private val heads: Map<String, List<Entry>> = emptyMap(),
+                                    /** "saproling" -> "1/1": the size most printings of that creature token come with. */
+                                    val tokenSizes: Map<String, String> = emptyMap()) {
     data class Entry(val display: String, val oracleId: String, val isCard: Boolean, val kind: String, val typeLine: String = "",
                      /** Other cards this word could have meant ("Atraxa": Praetors' Voice or Grand Unifier). */
-                     val alternatives: List<String> = emptyList()) {
+                     val alternatives: List<String> = emptyList(),
+                     /** Printed size, where the card has one: a token named by its type carries the size it comes with. */
+                     val power: String? = null, val toughness: String? = null) {
         /** An instant or sorcery: it lives in hand or on the stack, never on the battlefield. */
         val isSpellOnly: Boolean get() = (typeLine.contains("Instant") || typeLine.contains("Sorcery")) && !typeLine.contains("Land")
     }
@@ -110,7 +114,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
             val map = HashMap<String, Entry>(80_000)
             var maxWords = 1
             conn.createStatement().executeQuery(
-                """SELECT n.name_norm, n.display, n.oracle_id, n.kind, c.layout, c.type_line FROM card_names n JOIN cards c ON c.oracle_id = n.oracle_id"""
+                """SELECT n.name_norm, n.display, n.oracle_id, n.kind, c.layout, c.type_line, c.power, c.toughness FROM card_names n JOIN cards c ON c.oracle_id = n.oracle_id"""
             ).use { rs ->
                 while (rs.next()) {
                     val norm = rs.getString(1); val kind = rs.getString(4)
@@ -120,7 +124,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
                     // card, whose text is not the one the asker had in mind.
                     if (rs.getString(2).startsWith("A-")) continue
                     val isCard = rs.getString(5) !in mtg.judge.carddb.ingest.ScryfallIngest.nonCardLayouts
-                    val e = Entry(rs.getString(2), rs.getString(3), isCard, kind, rs.getString(6) ?: "")
+                    val e = Entry(rs.getString(2), rs.getString(3), isCard, kind, rs.getString(6) ?: "", power = rs.getString(7), toughness = rs.getString(8))
                     val prev = map[norm]
                     // Prefer real cards over tokens, full names over face names, on collisions.
                     if (prev == null || (!prev.isCard && isCard) || (prev.kind != "full" && kind == "full" && prev.isCard == isCard)) map[norm] = e
@@ -135,7 +139,17 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
                 if (head.contains(' ') || head.length < 4 || head in commonWords || head in stopWords || map[head]?.let { it.kind == "full" && it.isCard } == true) continue
                 heads.getOrPut(head) { mutableListOf() }.let { l -> if (l.none { it.oracleId == e.oracleId }) l += e }
             }
-            return NameIndex(map, minOf(maxWords, 12), heads.mapValues { (_, l) -> l.sortedBy { it.display.lowercase() } })
+            // A creature token type is printed in several sizes ("Soldier" is 1/1 far more often than 2/2). The
+            // size most printings use is the one to assume when the asker doesn't give one.
+            val sizeCounts = HashMap<String, HashMap<String, Int>>()
+            conn.createStatement().executeQuery(
+                """SELECT name_norm, power, toughness FROM cards WHERE type_line LIKE 'Token%' AND type_line LIKE '%Creature%' AND power GLOB '[0-9]*' AND toughness GLOB '[0-9]*'"""
+            ).use { rs -> while (rs.next()) sizeCounts.getOrPut(rs.getString(1)) { HashMap() }.merge("${rs.getString(2)}/${rs.getString(3)}", 1, Int::plus) }
+            val tokenSizes = sizeCounts.mapNotNull { (name, counts) ->
+                val total = counts.values.sum()
+                counts.maxByOrNull { it.value }?.takeIf { it.value * 2 >= total }?.let { name to it.key }
+            }.toMap()
+            return NameIndex(map, minOf(maxWords, 12), heads.mapValues { (_, l) -> l.sortedBy { it.display.lowercase() } }, tokenSizes)
         }
 
         fun tokenize(text: String): List<String> = Names.normalize(text).split(' ').filter { it.isNotEmpty() }

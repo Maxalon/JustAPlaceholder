@@ -1866,6 +1866,11 @@ class SituationParser(private val names: NameIndex) {
             val who = actor ?: subject ?: "me"
             val n = r.groupValues[1].trim().let { if (it.isEmpty()) 1 else number(it) ?: 1 }
             val name = r.groupValues[2].trim().removeSuffix("s").let { if (it.endsWith(" token")) it else "$it token" }
+                // "a Saproling token": the type says which token, and the token has a printed size. Without it the
+                // token had no size, so it wasn't a creature and Overrun pumped nothing.
+                .let { n0 -> if (Regex("""\d+/\d+""").containsMatchIn(n0)) n0 else tokenSize(n0)?.let { sz ->
+                    ctx.notes += "The $n0's size wasn't given; the usual one is $sz. Say the size if yours is different."
+                    "$sz $n0" } ?: n0 }
             // "I make three 1/1 tokens" is something happening, not a board that was already there: without the
             // enter events an Impact Tremors sitting next to them never triggered.
             val made = Regex("""^(?:makes?|made|creates?|created)\b""").containsMatchIn(c)
@@ -4490,6 +4495,13 @@ class SituationParser(private val names: NameIndex) {
         ctx.events += e; ctx.note(defender)
         ctx.notes += "No attack was described, so ${creature.card.name} is read as attacking ${if (defender == "me") "you" else ctx.players[defender] ?: "your opponent"}; the block answers it."
         return e
+    }
+
+    /** "a Saproling token" / "a Soldier token": the size most printings of that creature token come with. */
+    private fun tokenSize(name: String): String? {
+        val word = name.removeSuffix(" token").trim().split(' ').lastOrNull()?.takeIf { it.isNotEmpty() } ?: return null
+        if (word in setOf("creature", "artifact", "treasure", "clue", "food", "blood", "gold", "map", "powerstone", "incubator")) return null
+        return names.tokenSizes[Names.normalize(word)]
     }
 
     private fun objectIdFor(card: NameIndex.Entry, ctx: Ctx): String? = ctx.objects.values.firstOrNull { it.card.oracleId == card.oracleId }?.id
