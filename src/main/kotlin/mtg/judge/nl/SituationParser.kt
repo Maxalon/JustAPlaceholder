@@ -2817,7 +2817,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastActor = who; return true
         }
         // Possession: "have X (on the battlefield|out|in play)", "control X", "X is on the battlefield".
-        Regex("""^(?:have|has|got|control|controls|controlling|'ve got|am playing|is playing|are playing|run|running)\s+(?:an? |the |my |their |(\d+|two|three|four|five) )?(?:(commander )|my commander )?((?:(?:hexproof|indestructible|flying|trample|lifelink|deathtouch|haste|vigilance|reach|menace|shroud|unblockable|tapped|untapped) )*)(c\d+)(?:'s)?(.*)$""").find(c)?.let { r00 ->
+        Regex("""^(?:have|has|got|control|controls|controlling|'ve got|am playing|is playing|are playing|run|running)\s+(?:an? |the |my |their |(\d+|two|three|four|five)(?: copies of| copys of)? )?(?:(commander )|my commander )?((?:(?:hexproof|indestructible|flying|trample|lifelink|deathtouch|haste|vigilance|reach|menace|shroud|unblockable|tapped|untapped) )*)(c\d+)(?:'s)?(.*)$""").find(c)?.let { r00 ->
             val adjectives = r00.groupValues[3].trim().split(' ').filter { it.isNotEmpty() }
             val r0 = object { val groupValues = listOf(r00.groupValues[0], r00.groupValues[1], r00.groupValues[2], r00.groupValues[4], r00.groupValues[5] + (if ("tapped" in adjectives) " tapped" else "")) }
             val isCommander = r0.groupValues[2].isNotEmpty() || r0.groupValues[0].contains("my commander ")

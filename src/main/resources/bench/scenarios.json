@@ -11933,5 +11933,29 @@
       "can't be cast"
     ],
     "cite": []
+  },
+  {
+    "id": "cant-activate-their-permanent",
+    "text": "My opponent has a Llanowar Elves. I tap it for mana. Can I?",
+    "expect": [
+      "You can't activate Llanowar Elves"
+    ],
+    "notExpect": [
+      "add {G}"
+    ],
+    "cite": [
+      "602.1a"
+    ]
+  },
+  {
+    "id": "two-copies-of-a-legend",
+    "text": "I control two copies of Jace, the Mind Sculptor. What happens?",
+    "expect": [
+      "Jace, the Mind Sculptor: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

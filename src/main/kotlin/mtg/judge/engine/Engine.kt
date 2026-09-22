@@ -412,6 +412,11 @@ class Engine(val state: GameState) {
             trace.step("${lock.name} says activated abilities of ${e.filter.raw} can't be activated, and ${obj.name} is ${withArticle(e.filter.raw)}, so ${state.player(playerId).subject.lowercase()} can't begin to activate its ability${if (abilities.any { a -> isManaEffect(a.effect) }) " (mana abilities included: they are activated abilities too)" else ""}.", "602.5", "604.2", "101.2")
             state.outcomes += "${obj.name}'s ability can't be activated (${lock.name})."; return null
         }
+        if (obj.isOnBattlefield() && obj.controller != playerId) {
+            val p = state.player(playerId); val owner = state.player(obj.controller)
+            trace.step("${obj.name} is under ${owner.possessive} control, and only a permanent's controller may activate its abilities, so ${p.subject.lowercase()} can't activate it.", "602.1a", "601.2")
+            state.outcomes += "${p.subject} can't activate ${obj.name} (${owner.subject.lowercase()} ${owner.v("controls", "control")} it)."; return null
+        }
         if (abilities.isEmpty()) {
             // "I tap my Grizzly Bears": a permanent with no activated ability can still be turned sideways, and
             // that is the only thing the words can mean. Saying it is untapped afterwards contradicted the asker.
