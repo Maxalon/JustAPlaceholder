@@ -13398,5 +13398,27 @@
       "You get a Beast token"
     ],
     "cite": []
+  },
+  {
+    "id": "battalion-triggers",
+    "text": "I control Haazda Marshal and two 2/2s and I attack with everything",
+    "expect": [
+      "You get a Soldier token"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "battalion-needs-three",
+    "text": "I control Haazda Marshal and a 2/2 and I attack with everything",
+    "expect": [
+      "opponent takes 1 damage"
+    ],
+    "notExpect": [
+      "You get a Soldier token"
+    ],
+    "cite": []
   }
 ]

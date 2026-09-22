@@ -1446,6 +1446,8 @@ class Engine(val state: GameState) {
                 // they are taken to be of the kind the asker was counting.
                 cast.count { spellMatches(trigger.spellFilter, it) } + maxOf(0, (state.spellsThisTurn[event.item.controller] ?: 0) - cast.size)
             }) == trigger.n
+        is Trigger.ThisAndNOthersAttack -> event is GameEvent.PlayerAttacks && onBf() && event.playerId == obj.controller && obj.attacking != null &&
+            state.objects.values.count { it.attacking != null && it.controller == obj.controller && it !== obj } >= trigger.others
         is Trigger.AttackWithNOrMore -> event is GameEvent.PlayerAttacks && onBf() && event.playerId == obj.controller &&
             state.objects.values.count { it.attacking != null && it.controller == event.playerId && (trigger.filter == null || state.matches(trigger.filter, it, obj.controller, obj)) } >= trigger.n
         is Trigger.SpellCastMvEqualsCounters -> event is GameEvent.SpellCast && onBf() &&

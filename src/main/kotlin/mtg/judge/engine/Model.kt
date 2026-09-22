@@ -101,6 +101,8 @@ sealed interface Trigger {
     data object ThisAttacksSaddled : Trigger
     /** "Whenever one or more +1/+1 counters are put on ~": one trigger for the whole placement, not one each. */
     data class CountersPutOnThis(val kind: String, val atLeast: Int = 1) : Trigger
+    /** Battalion: "~ and at least two other creatures attack" — ~ has to be one of them (702.101a). */
+    data class ThisAndNOthersAttack(val others: Int) : Trigger
     /** "Whenever this creature becomes saddled (for the first time each turn)" (702.166b). */
     data class ThisBecomesSaddled(val firstEachTurn: Boolean = false) : Trigger
     /** "Whenever ~ becomes the target of a spell or ability". */
