@@ -13420,5 +13420,38 @@
       "You get a Soldier token"
     ],
     "cite": []
+  },
+  {
+    "id": "flash-in-a-described-blocker",
+    "text": "It's my turn. I attack with a 5/5. They flash in a 2/2 blocker. What happens?",
+    "expect": [
+      "a 2/2 creature with flash: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "turn-number-heading",
+    "text": "Turn one, I play a Mountain and cast Lightning Bolt. Turn two, what can I do?",
+    "expect": [
+      "Mountain enters the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "subjectless-spell-count",
+    "text": "I have an Aetherflux Reservoir and have cast 5 spells, then I cast a Lightning Bolt",
+    "expect": [
+      "You gain 6 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

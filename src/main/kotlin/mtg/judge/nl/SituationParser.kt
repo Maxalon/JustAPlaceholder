@@ -864,6 +864,8 @@ class SituationParser(private val names: NameIndex) {
         }
         // "it's turn 3" / "on turn 2": the game's turn number.
         Regex("""\b(?:it's|it is|this is|on|during|in) turn (\d+)\b|\bturn (\d+) of the game\b""").find(t2)?.let { r -> ctx.turnNumber = (r.groupValues[1].ifEmpty { r.groupValues[2] }).toInt(); any = true; t2 = t2.removeRange(r.range) }
+        // "Turn one, I play a Mountain": the turn number said as a heading rather than in a sentence of its own.
+        Regex("""^turn (one|\d+)[,:]?\s*""").find(t2)?.let { r -> ctx.turnNumber = (if (r.groupValues[1] == "one") 1 else r.groupValues[1].toInt()); any = true; t2 = t2.removeRange(r.range) }
         Regex("""\b(it's|it is|during|on|in) (my|their|the opponent's|opponent's|my opponent's|@\w+'s) (turn|upkeep|end step|main phase|combat|draw step|beginning of combat)\b""").find(t2)?.let { r ->
             ctx.activePlayer = when { r.groupValues[2] == "my" -> "me"; r.groupValues[2].startsWith("@") -> r.groupValues[2].removePrefix("@").removeSuffix("'s"); else -> "opp" }
             ctx.note(ctx.activePlayer!!); any = true; t2 = t2.removeRange(r.range)
@@ -2319,6 +2321,14 @@ class SituationParser(private val names: NameIndex) {
         var c = c0
         val kwList = """$kwPhrase(?:(?:,|,? and|,? &) $kwPhrase)*"""
         // "two spells are cast this turn": the same statement as "I have cast two spells this turn", in the passive.
+        // "and have cast 5 spells": the subject was said once and left out the second time.
+        Regex("""^(?:has|have|had) (?:already )?cast (a|an|one|two|three|four|five|six|seven|eight|nine|ten|\d+)(?: other| more)? spells?(?: this turn| so far this turn| already)?$""").find(c)?.let { r ->
+            val who = actor ?: subject ?: ctx.lastActor ?: "me"
+            val n = number(r.groupValues[1]) ?: return@let
+            ctx.spellsThisTurn[who] = n
+            ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} cast $n spell${if (n == 1) "" else "s"} this turn; abilities that count spells start from there."
+            ctx.note(who); return true
+        }
         Regex("""^(a|an|one|two|three|four|five|six|seven|eight|nine|ten|\d+) spells? (?:are|is|were|was|have been|has been) (?:already )?cast(?: by (me|them|my opponent|@\w+))?(?: this turn| so far this turn| already)$""").find(c)?.let { r ->
             val who = r.groupValues[2].takeIf { it.isNotEmpty() }?.let { w -> if (w == "me") "me" else if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, "their") } ?: actor ?: subject ?: "me"
             val n = number(r.groupValues[1]) ?: return@let
@@ -4104,14 +4114,16 @@ class SituationParser(private val names: NameIndex) {
         // "exiling a blue card" / "pitching a blue card": Force of Will's alternative cost, already part of the cast.
         if (Regex("""^(?:by )?(?:exiling|pitching|removing) (?:an? )?(?:blue|red|green|white|black|colou?red)? ?card(?: from (?:my|their|his|her) hand)?(?: and paying 1 life| and losing 1 life)?$""").matches(c)) { ctx.notes += "The alternative cost (exiling a card from hand and paying 1 life) is paid as the spell is cast (118.9)."; return true }
         // "flashes in a 0/4 wall and blocks" / "flash in a 2/2 with flash": a described creature cast now (the engine says whether it can be, given flash), then it blocks.
-        Regex("""^(?:flash(?:es)? in|casts?|plays?) (an? |\d+ |two |three )?(\d+/\d+)?(?: ?($kwNouns))? ?($creatureKinds|walls?)?(?: with ([a-z ,&]+?))?( (?:and|then) (?:blocks?|chumps?)(?: (?:it|the attacker|with it))?)?$""").find(c)?.let { r ->
+        Regex("""^(?:flash(?:es)? in|casts?|plays?) (an? |\d+ |two |three )?(\d+/\d+)?(?: ?($kwNouns))? ?($creatureKinds|walls?|(?:chump )?blockers?)?(?: with ([a-z ,&]+?))?( (?:and|then) (?:blocks?|chumps?)(?: (?:it|the attacker|with it))?)?$""").find(c)?.let { r ->
             if (r.groupValues[2].isEmpty() && r.groupValues[4].isEmpty()) return@let
             if (r.groupValues[2].isEmpty() && r.groupValues[5].isEmpty() && r.groupValues[3].isEmpty()) return@let
             val who = actor ?: subject ?: "opp"
             val kw = listOf(r.groupValues[3].let { if (it.isEmpty()) "" else it.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") }, r.groupValues[5]).filter { it.isNotEmpty() }.joinToString(", ")
-            val ids = describedCreatures(r.groupValues[1], r.groupValues[2], r.groupValues[4], who, ctx, if (c.startsWith("flash") && !kw.contains("flash")) (if (kw.isEmpty()) "flash" else "$kw, flash") else kw)
+            // "they flash in a 2/2 blocker": the word says what it is for, so it blocks without being told to.
+            val calledABlocker = Regex("""blockers?$""").containsMatchIn(r.groupValues[4])
+            val ids = describedCreatures(r.groupValues[1], r.groupValues[2], if (calledABlocker) "creature" else r.groupValues[4], who, ctx, if (c.startsWith("flash") && !kw.contains("flash")) (if (kw.isEmpty()) "flash" else "$kw, flash") else kw)
             for (id in ids) { ctx.objects[id] = ctx.objects.getValue(id).copy(zone = "hand"); ctx.events += EventSpec("cast", player = who, obj = id) }
-            if (r.groupValues[6].isNotEmpty()) {
+            if (r.groupValues[6].isNotEmpty() || calledABlocker) {
                 val attacker = ctx.events.lastOrNull { it.verb == "attack" && who in it.targets }?.obj ?: ctx.events.lastOrNull { it.verb == "attack" }?.obj
                 ctx.events += EventSpec("resolveAll"); ids.forEach { ctx.events += EventSpec("block", player = who, obj = it, targets = listOfNotNull(attacker)) }; ctx.lastVerb = "block"
             } else ctx.lastVerb = "cast"
