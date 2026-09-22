@@ -243,7 +243,7 @@ class Engine(val state: GameState) {
         }
         val item = StackItem(state.newStackId(), StackKind.SPELL, playerId, obj, effect, targets, zonesOf(targets), card.oracleText, modes, x = x, kicked = kicked, evoked = evoked && card.has("evoke"), flashback = flashback && card.has("flashback"), choice = choice, targetsUnknown = targetsUnknown)
         state.stack += item
-        if (flashback && !card.has("flashback")) state.assumptions += "${card.name} doesn't have flashback, so something else must be allowing it to be cast from a graveyard (escape, for instance); it is shown going to the graveyard afterwards as usual."
+        if (flashback && !obj.has("flashback")) state.assumptions += "${card.name} doesn't have flashback, so something else must be allowing it to be cast from a graveyard (escape, for instance); it is shown going to the graveyard afterwards as usual."
         if (item.flashback) { obj.zone = Zone.STACK; trace.step("${card.name} is cast from ${player.possessive} graveyard for its flashback cost, an alternative cost paid instead of its mana cost.", "702.34a", "601.2b") }
         if (evoked && !card.has("evoke")) { state.clarifications += Clarification("${card.name}'s evoke", "${card.name} doesn't have evoke, so it can't be cast for an evoke cost; treating it as cast normally.") }
         if (item.evoked) trace.step("${card.name} is cast for its evoke cost, an alternative cost paid instead of its mana cost. It's still a creature spell and resolves normally; its evoke trigger will sacrifice it once it has entered.", "702.74a", "601.2b")
@@ -1356,6 +1356,7 @@ class Engine(val state: GameState) {
         if (muted != null) {
             val what = if (event is GameEvent.EntersBattlefield) "${event.obj.name} entering the battlefield" else "${(event as GameEvent.Dies).obj.name} dying"
             trace.step("${muted.first.name} is on the battlefield, so $what doesn't cause any abilities to trigger (its own \"when this enters\" abilities included).", "603.2", "603.6")
+            state.outcomes += "${what.replaceFirstChar { it.uppercase() }} doesn't trigger any abilities (${muted.first.name})."
             return
         }
         val triggered = mutableListOf<Pair<GameObject, TriggeredAbility>>()

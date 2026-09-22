@@ -43,6 +43,8 @@ data class ObjFilter(
     val notColors: Set<Char> = emptySet(),
     /** "creature with mana value 2 or less" / "if it has mana value 2 or less". */
     val maxManaValue: Int? = null,
+    /** "instant or sorcery card in your graveyard": a card in a graveyard, not a permanent (Snapcaster Mage). */
+    val inGraveyard: Boolean = false,
     val minManaValue: Int? = null,
 ) {
     val verifiable get() = unknownWords.isEmpty()

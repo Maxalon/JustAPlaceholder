@@ -1008,6 +1008,7 @@ object OracleParser {
         Regex("""^you choose an? (?:(?:nonland|noncreature|nonbasic|nonartifact|creature|land|artifact|enchantment|instant or sorcery|instant|sorcery),? )*card from it\.?$""", RegexOption.IGNORE_CASE) to listOf("701.20a"),
         Regex("""^that player discards (?:that card|it|a card|\w+ cards?)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.9a"),
         Regex("""^put (?:a|an|\w+|\d+) cards? from your hand on top of your library(?: in any order)?\.?$""", RegexOption.IGNORE_CASE) to listOf("401.4"),
+        Regex("""^the flashback cost is equal to its mana cost\.?$""", RegexOption.IGNORE_CASE) to listOf("702.34a"),
         Regex("""^scry (\d+)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.22a"),
         Regex("""^surveil (\d+)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.25a"),
         Regex("""^(?:you |target player |each player )?mills? (\w+|\d+) cards?\.?$""", RegexOption.IGNORE_CASE) to listOf("701.17a"),
@@ -1128,6 +1129,11 @@ object OracleParser {
         Regex("""^target (.+?) can't be blocked this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
             val t = target(m.groupValues[1], Kind.CREATURE)
             if (t.filter.verifiable) return Effect.GainKeywords(t, setOf("unblockable"))
+        }
+        // Snapcaster Mage: "target instant or sorcery card in your graveyard gains flashback until end of turn."
+        Regex("""^target ((?:instant|sorcery|creature|instant or sorcery)(?: card)?) in your graveyard gains (flashback|haste|flash) until end of turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            val raw = "${m.groupValues[1].lowercase()} in your graveyard"
+            return Effect.GainKeywords(TargetSpec(ObjFilter(setOf(Kind.CARD), raw = raw, inGraveyard = true), raw), setOf(m.groupValues[2].lowercase()))
         }
         preventNextRe.matchEntire(s)?.let { m ->
             val n = m.groupValues[1].toInt(); val to = m.groupValues[2].ifEmpty { m.groupValues[3] }.lowercase()
@@ -1511,6 +1517,8 @@ object OracleParser {
             controller = when (m.groupValues[1]) { "you control" -> Who.YOU; else -> Who.OPPONENT }
             core = core.removeRange(m.range)
         }
+        var inGraveyard = false
+        Regex("""\s+(?:in|from) (?:your|a|an opponent's|their) graveyard$""").find(core)?.let { m -> inGraveyard = true; core = core.removeRange(m.range) }
         val kinds = mutableSetOf<Kind>(); val notKinds = mutableSetOf<Kind>(); val unknown = mutableListOf<String>()
         val subtypes = mutableSetOf<String>(); val keywords = mutableSetOf<String>(); val notKeywords = mutableSetOf<String>(); val notSubtypes = mutableListOf<String>()
         var attacking: Boolean? = null; var tapped: Boolean? = null; var token: Boolean? = null; var legendary: Boolean? = null; var attachedToSource = false
@@ -1587,6 +1595,6 @@ object OracleParser {
         if (kinds.isEmpty() && notKinds.isNotEmpty()) kinds += defaultKind ?: Kind.PERMANENT
         if (kinds.isEmpty() && defaultKind != null) kinds += defaultKind
         if (kinds.isEmpty() && notSubtypes.isNotEmpty()) kinds += defaultKind ?: Kind.CREATURE
-        return ObjFilter(kinds, notKinds, notSubtypes, controller, attacking, tapped, unknown, desc, subtypes, keywords, notKeywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1, colors = colors, notColors = notColors, maxManaValue = maxManaValue, minManaValue = minManaValue)
+        return ObjFilter(kinds, notKinds, notSubtypes, controller, attacking, tapped, unknown, desc, subtypes, keywords, notKeywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1, colors = colors, notColors = notColors, maxManaValue = maxManaValue, minManaValue = minManaValue, inGraveyard = inGraveyard)
     }
 }

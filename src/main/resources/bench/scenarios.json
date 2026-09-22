@@ -13924,5 +13924,135 @@
       "assuming it may attack"
     ],
     "cite": []
+  },
+  {
+    "id": "snapcaster-gives-flashback-then-flashback-it",
+    "text": "I cast Snapcaster targeting Bolt in my graveyard, then flashback it at their 2/2",
+    "expect": [
+      "Lightning Bolt has flashback until end of turn.",
+      "a 2/2 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "doesn't have flashback"
+    ],
+    "cite": [
+      "702.34a"
+    ]
+  },
+  {
+    "id": "chalice-on-one-counters-bolt",
+    "text": "I have Chalice of the Void on 1 and they cast Lightning Bolt",
+    "expect": [
+      "Lightning Bolt is countered."
+    ],
+    "notExpect": [
+      "You take 3 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "chalice-on-zero-misses-probe",
+    "text": "chalice on 0 and they cast Gitaxian Probe for life",
+    "expect": [
+      "opponent draws 1 card."
+    ],
+    "notExpect": [
+      "is countered"
+    ],
+    "cite": []
+  },
+  {
+    "id": "with-my-avacyn-out-is-mine",
+    "text": "they cast Toxic Deluge for 5 with my Avacyn out",
+    "expect": [
+      "Avacyn, Angel of Hope is 3/3 until end of turn."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "with-my-two-creatures-out-are-mine",
+    "text": "they cast Toxic Deluge for 5 with my Avacyn and my Grizzly Bears out",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "opponent's graveyard"
+    ],
+    "cite": []
+  },
+  {
+    "id": "finks-with-counter-dies-stays-dead",
+    "text": "Kitchen Finks with a -1/-1 counter dies",
+    "expect": [
+      "Kitchen Finks: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "comes back"
+    ],
+    "cite": []
+  },
+  {
+    "id": "can-i-cast-it-with-four-lands",
+    "text": "I have 4 lands and cast Cryptic Command choosing counter and draw, can I?",
+    "expect": [
+      "Cryptic Command costs {1}{U}{U}{U} — 4 mana. Nothing on the battlefield changes it. You have 4 available, enough."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "heroic-intervention-in-hand-saves-the-team",
+    "text": "I have Heroic Intervention and they cast Damnation, do my creatures die",
+    "expect": [
+      "a creature is indestructible and isn't destroyed."
+    ],
+    "notExpect": [
+      "a creature: the battlefield → your graveyard"
+    ],
+    "cite": []
+  },
+  {
+    "id": "flash-in-snapcaster-to-block",
+    "text": "they attack with a 5/5 and I flash in a Snapcaster to block",
+    "expect": [
+      "Snapcaster Mage: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "You take 5 damage",
+      "can't block"
+    ],
+    "cite": []
+  },
+  {
+    "id": "notion-thief-on-their-side",
+    "text": "I cast Brainstorm with Notion Thief out on their side",
+    "expect": [
+      "You skip 3 draws (Notion Thief); opponent draws instead."
+    ],
+    "notExpect": [
+      "You draw 3 cards"
+    ],
+    "cite": []
+  },
+  {
+    "id": "force-of-will-pitching-keeps-its-target",
+    "text": "I cast Force of Will pitching a blue card on their Thoughtseize",
+    "expect": [
+      "Thoughtseize is countered."
+    ],
+    "notExpect": [
+      "a spell is countered"
+    ],
+    "cite": []
+  },
+  {
+    "id": "torpor-orb-outcome-line",
+    "text": "my opponent has Torpor Orb, I cast Solemn Simulacrum",
+    "expect": [
+      "Solemn Simulacrum entering the battlefield doesn't trigger any abilities (Torpor Orb)."
+    ],
+    "notExpect": [],
+    "cite": []
   }
 ]

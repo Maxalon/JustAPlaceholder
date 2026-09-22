@@ -429,13 +429,17 @@ class GameState(
 
     /** Whether a permanent matches a filter, relative to [controller] (the source's controller). Mirrors Engine.filterMatches for battlefield objects. */
     fun matches(f: ObjFilter, o: GameObject, controller: String, source: GameObject? = null, anyZone: Boolean = false): Boolean {
-        if (!anyZone && !o.isOnBattlefield()) return false
+        // "instant or sorcery card in your graveyard": a card there, its owner's, never a permanent.
+        if (f.inGraveyard) { if (o.zone != Zone.GRAVEYARD) return false; if (f.controller == null && o.owner != controller) return false }
+        else if (!anyZone && !o.isOnBattlefield()) return false
         if (f.attachedToSource && (source == null || source.attachedTo != o.id)) return false
         if (f.other && source != null && source === o) return false
         val typeOk = f.kinds.any { k -> when (k) {
             Kind.CREATURE -> isCreature(o); Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types
             Kind.LAND -> "Land" in o.def.types; Kind.PLANESWALKER -> "Planeswalker" in o.def.types; Kind.BATTLE -> "Battle" in o.def.types
-            Kind.PERMANENT -> true; Kind.CARD -> !o.token; else -> false
+            Kind.PERMANENT -> true; Kind.CARD -> !o.token
+            // A card in a graveyard described as an instant or sorcery (a card, not a spell on the stack).
+            Kind.SPELL -> f.inGraveyard && ("Instant" in o.def.types || "Sorcery" in o.def.types); else -> false
         } }
         val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> isCreature(o); Kind.LAND -> "Land" in o.def.types; Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types; else -> false } }
         val notSubOk = f.notSubtypes.none { st -> o.def.subtypes.any { it.equals(st, true) } || ((st == "basic" || st == "snow") && o.def.supertypes.any { it.equals(st, true) }) }

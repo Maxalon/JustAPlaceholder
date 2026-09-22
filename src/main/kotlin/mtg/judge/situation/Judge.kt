@@ -168,6 +168,9 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 // A commander cast without saying which object it is: the card sitting in the command zone is it,
                 // which is what carries the commander tax and what Drannith Magistrate is looking at.
                 val existing = e.obj?.let { state.objects[it] }
+                    // "flashback it": the card is the one in the caster's graveyard (with the flashback Snapcaster gave it).
+                    ?: e.card?.takeIf { e.to == "flashback" }?.let { c -> state.objects.values.lastOrNull { o -> o.zone == Zone.GRAVEYARD && o.owner == player &&
+                        (c.oracleId?.let { it == o.def.oracleId } ?: o.def.name.equals(c.name ?: "", true)) } }
                     ?: e.card?.let { c -> state.objects.values.firstOrNull { o -> o.zone == Zone.COMMAND && o.controller == player &&
                         (c.oracleId?.let { it == o.def.oracleId } ?: o.def.name.equals(c.name ?: "", true)) } }
                 val def = existing?.def ?: cardDef(e.card ?: throw JudgeException("cast needs a card"), state) ?: return
