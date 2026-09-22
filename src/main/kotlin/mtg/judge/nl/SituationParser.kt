@@ -1467,6 +1467,25 @@ class SituationParser(private val names: NameIndex) {
             }
             ctx.life[who] = to; return true
         }
+        // "my opponent gains control of my creature", "they steal my Bears": a control change with no card
+        // named. Unread, the creature stayed on the asker's side and the question about it was answered wrong.
+        Regex("""^(?:gains?|gained|takes?|took|steals?|stole) (?:control of )?(?:$possPrefix|an? |the )?(c\d+|\d+/\d+|creature|guy|dude|it|that)(?: creature)?(?: (?:until end of turn|this turn|for the turn|permanently))?$""").find(c)?.let { r ->
+            if (!Regex("""^(?:gains?|gained|takes?|took|steals?|stole) (?:control|my|their|the|an?|c\d+|\d+/\d+|it|that)""").containsMatchIn(c)) return@let
+            val who = actor ?: ctx.lastActor ?: "opp"
+            val from = ctx.other(who) ?: "me"
+            val ph = r.groupValues[1]
+            val id = when {
+                ph in setOf("it", "that") -> ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                cardRef.matches(ph) -> m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, from, false, ctx) } ?: return@let
+                Regex("""^\d+/\d+$""").matches(ph) -> ctx.objects.values.lastOrNull { it.controller == from && (it.card.name ?: "").startsWith("a $ph") }?.id
+                    ?: describedCreatures("a ", ph, "creature", from, ctx).firstOrNull() ?: return@let
+                else -> ctx.objects.values.lastOrNull { it.controller == from && isCreatureName(it.card.name) }?.id
+                    ?: describedCreatures("a ", "", "creature", from, ctx).firstOrNull() ?: return@let
+            }
+            val eot = Regex("""\b(?:until end of turn|this turn|for the turn)\b""").containsMatchIn(c)
+            ctx.events += EventSpec("gainControl", player = who, obj = id, to = if (eot) "eot" else null)
+            ctx.lastActor = who; ctx.lastMentioned = id; ctx.note(who); return true
+        }
         // "I lose the flip" / "they win the coin flip" / "the coin comes up tails": a coin flip the asker settled.
         Regex("""^(?:lose[sd]?|los[et]|win[s]?|won)(?: the)?(?: coin)? flip$|^(?:the )?(?:coin )?flip is (?:lost|won)$|^(?:the coin )?comes? up (?:heads|tails)$""").find(c)?.let {
             val lost = Regex("""\blos|\btails\b""").containsMatchIn(c)
@@ -1729,6 +1748,12 @@ class SituationParser(private val names: NameIndex) {
             val rest = r.groupValues[5].trim()
             if (rest.isNotEmpty()) return readClause("it $rest", m, ctx)
             return true
+        }
+        // "I have a creature with indestructible and one without": the second creature, described by contrast
+        // with the first. Left unread the board was a creature short and a sweeper killed nothing.
+        Regex("""^(?:and )?(?:one|another|a second)(?: creature)? without(?: (?:it|that|$kwNouns))?$""").find(c)?.let {
+            val who = actor ?: ctx.lastOwner ?: "me"
+            describedCreatures("a ", "", "creature", who, ctx).firstOrNull()?.let { id -> ctx.lastMentioned = id; ctx.lastOwner = who; ctx.note(who); return true }
         }
         // "Both have first strike" / "mine has deathtouch" / "the blocker has trample": keywords on creatures already described.
         Regex("""^(both|both of them|they both|all of them|mine|theirs|yours|his|hers|the attacker|the blocker|my creature|their creature|(?:my opponent's |the opponent's |opponent's |their |his |her |my )?(?:creature|token|guy|dude)|it) (?:has|have|gets?|gained?|is|are) ($kwNouns)(?:,? (?:and )?($kwNouns))?$""").find(c)?.let { r ->
@@ -3761,7 +3786,7 @@ class SituationParser(private val names: NameIndex) {
         // "does my Blood Artist trigger?": a permanent named only in the question is on the battlefield under that player.
         Regex("""\b(my|their|his|her|@\w+'s) (c\d+)\b""").findAll(clause0).forEach { q -> val card = m.cards.getValue(q.groupValues[2]); if (objectIdFor(card, ctx) == null && !card.isSpellOnly && card.display !in ctx.castCards) addObject(card, when (val w = q.groupValues[1]) { "my" -> "me"; "their", "his", "her" -> pronounPlayer(ctx, w); else -> w.removePrefix("@").removeSuffix("'s") }, false, ctx) }
         if (askQuestion(clause0, m, ctx)) return true
-        if (Regex("""^(?:does|do|did|is|are|will|would|can|could|should|what|who|which|how)\b""").containsMatchIn(clause0) && Regex("""\b(?:come back|comes back|return|returns|survive|survives|die|dies|dead|trigger|triggers|resolve|resolves|happen|happens|work|works|count|counts|still|get|gets|win|wins|lose|loses|legal|allowed|left|remain|remains|go|goes|stay|stays|assign|assigned|pay|have to|must|need|gain|gains|take|takes|deal|deals|how much|how many|order|first)\b""").containsMatchIn(clause0)) {
+        if (Regex("""^(?:does|do|did|is|are|will|would|can|could|should|what|who|whose|which|how)\b""").containsMatchIn(clause0) && Regex("""\b(?:graveyard|come back|comes back|return|returns|survive|survives|die|dies|dead|trigger|triggers|resolve|resolves|happen|happens|work|works|count|counts|still|get|gets|win|wins|lose|loses|legal|allowed|left|remain|remains|go|goes|stay|stays|assign|assigned|pay|have to|must|need|gain|gains|take|takes|deal|deals|how much|how many|order|first)\b""").containsMatchIn(clause0)) {
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."
             return true
         }

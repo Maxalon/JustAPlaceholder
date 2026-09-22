@@ -408,6 +408,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             }
             "pass" -> engine.resolveTop()
             "enter" -> engine.enter(e.obj ?: throw JudgeException("enter needs an object"), e.to)
+            // "My opponent gains control of my creature": a control change with no card behind it.
+            "gaincontrol" -> engine.gainControl(e.player ?: throw JudgeException("gainControl needs a player"), e.obj ?: throw JudgeException("gainControl needs an object"), e.to == "eot")
             // "I lose the flip": the coin flip a card asks for, said rather than randomised (705.2).
             "flip" -> state.coinFlips += (e.to ?: "lose").lowercase()
             // "I play a land": counted against the one land a player may play each turn (305.2).
@@ -475,6 +477,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "enter" -> "${state.objects[e.obj]?.name ?: e.obj} enters the battlefield"
             "playland" -> "${who ?: "you"} play${if (who == null || who == "you") "" else "s"} ${state.objects[e.obj]?.name ?: e.obj}"
             "flip" -> "${who ?: "you"} ${e.to ?: "lose"} the coin flip"
+            "gaincontrol" -> "${who ?: "you"} gain${if (who == null || who == "you") "" else "s"} control of ${state.objects[e.obj]?.name ?: e.obj}"
             "leave" -> "${state.objects[e.obj]?.name ?: e.obj} goes to ${e.to}"
             "damage" -> "${e.source} deals ${e.amount} damage${tg.replace(" targeting ", " to ")}"
             "attack" -> "${who ?: "you"} attack${if (who == null || who == "you") "" else "s"} with ${state.objects[e.obj]?.name ?: e.obj}$tg"

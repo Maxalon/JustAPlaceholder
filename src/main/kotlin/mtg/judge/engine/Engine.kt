@@ -560,6 +560,20 @@ class Engine(val state: GameState) {
         onEvent(GameEvent.EntersBattlefield(obj))
     }
 
+    /**
+     * "My opponent gains control of my creature": a control change the situation states outright, with no card
+     * behind it. Layer 2; the permanent doesn't change zones, so it is summoning sick for its new controller.
+     */
+    fun gainControl(playerId: String, objectId: String, untilEndOfTurn: Boolean) {
+        val o = state.obj(objectId); val p = state.player(playerId); val was = state.player(o.controller)
+        if (o.controller == playerId) { trace.step("${o.name} is already under ${p.possessive} control.", "613.1b"); return }
+        if (untilEndOfTurn && o.controlRevertsTo == null) o.controlRevertsTo = o.controller
+        o.controller = playerId
+        if (o.def.isCreature) o.summoningSick = true
+        trace.step("${p.subject} ${p.v("gains", "gain")} control of ${o.name}${if (untilEndOfTurn) " until end of turn" else ""} (it was ${was.possessive}). A control-changing effect applies in layer 2; the permanent doesn't change zones, so it isn't summoning sick only if it has haste or has been under its new controller's control since the turn began.", "613.1b", "611.2a", "302.6")
+        state.outcomes += "${p.subject} ${p.v("controls", "control")} ${o.name}${if (untilEndOfTurn) " until end of turn" else ""}."
+    }
+
     /** "I discard Vengevine": a named card goes from its owner's hand to their graveyard (701.9a). */
     fun discard(playerId: String, objectId: String) {
         val obj = state.obj(objectId)

@@ -12085,5 +12085,28 @@
     "cite": [
       "601.2f"
     ]
+  },
+  {
+    "id": "control-change-with-no-card",
+    "text": "My opponent gains control of my Grizzly Bears and it dies. Whose graveyard does it go to?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "one-without-the-keyword",
+    "text": "My opponent casts Damnation and I have a creature with indestructible and one without. What happens?",
+    "expect": [
+      "a creature: the battlefield → your graveyard",
+      "isn't destroyed"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
