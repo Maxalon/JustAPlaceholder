@@ -375,7 +375,7 @@ sealed interface StaticEffect {
     data class LoseAbilitiesSetPt(val filter: ObjFilter, val power: Int, val toughness: Int) : StaticEffect
     /** "~ enters tapped" (614.1c replacement on entering). */
     /** "~ enters tapped" / "~ enters tapped unless [condition]". */
-    data class EntersTapped(val unless: Condition? = null, val onlyIf: Condition? = null) : StaticEffect
+    data class EntersTapped(val unless: Condition? = null, val onlyIf: Condition? = null, val unlessPayLife: Int? = null) : StaticEffect
     /** Blind Obedience, Urabrask, Kismet: "[Permanents] your opponents control enter tapped." */
     data class OthersEnterTapped(val filter: ObjFilter, val opponentsOnly: Boolean) : StaticEffect
     /** "~ enters with N +1/+1 counters on it" (614.1c). count null = X. */

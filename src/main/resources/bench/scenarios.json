@@ -12855,5 +12855,117 @@
       "Viscera Seer: the battlefield → your graveyard"
     ],
     "cite": []
+  },
+  {
+    "id": "commander-tax-unnamed",
+    "text": "my commander died twice, what does it cost now",
+    "expect": [
+      "The commander tax adds {4}"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "mana-needed-for-a-card",
+    "text": "how much mana do I need for Emrakul, the Aeons Torn",
+    "expect": [
+      "Emrakul, the Aeons Torn costs {15}"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "mana-total-is-that",
+    "text": "I have a Sol Ring and a Mana Crypt, how much mana is that",
+    "expect": [
+      "You can make 4 mana right now"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "mana-question-with-a-board-after",
+    "text": "how much mana does Cabal Coffers make with six Swamps",
+    "expect": [
+      "{B}{B}{B}{B}{B}{B} right now"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "how-much-damage-to-me",
+    "text": "how much damage does a 3/3 with lifelink deal to me",
+    "expect": [
+      "You take 3 damage"
+    ],
+    "notExpect": [
+      "opponent takes 3 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "shockland-pays-the-life",
+    "text": "I play Steam Vents",
+    "expect": [
+      "Steam Vents enters untapped"
+    ],
+    "notExpect": [
+      "Steam Vents enters tapped"
+    ],
+    "cite": [
+      "614.1c"
+    ]
+  },
+  {
+    "id": "shockland-declines-the-life",
+    "text": "I play Steam Vents and I don't pay the life",
+    "expect": [
+      "Steam Vents enters tapped"
+    ],
+    "notExpect": [
+      "enters untapped"
+    ],
+    "cite": []
+  },
+  {
+    "id": "shockland-lethal-life",
+    "text": "I am at 2 life and I play Steam Vents",
+    "expect": [
+      "Steam Vents enters tapped"
+    ],
+    "notExpect": [
+      "enters untapped"
+    ],
+    "cite": []
+  },
+  {
+    "id": "can-i-pay-for-it",
+    "text": "I have 3 lands untapped, can I pay for Cryptic Command?",
+    "expect": [
+      "so it can't be cast"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "only-untapped-land",
+    "text": "my only untapped land is a Mountain, can I pay for Counterspell?",
+    "expect": [
+      "Counterspell costs {U}{U}"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

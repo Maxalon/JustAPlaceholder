@@ -2473,7 +2473,27 @@ class Engine(val state: GameState) {
         }
         for (e in o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }) when (e) {
             is StaticEffect.EntersTapped -> {
-                if (e.unless != null && state.conditionHolds(e.unless, o)) trace.step("${o.name} would enter tapped unless its condition is met; it is, so it enters untapped.", "614.1c", "614.12")
+                // The shocklands: the payment is made as it enters, so nothing can be done in between. Said
+                // nothing, the choice the card offers is taken (the life is paid), unless that would be lethal.
+                if (e.unlessPayLife != null) {
+                    val p = state.player(o.controller)
+                    val life = p.life
+                    val pays = when { o.controller in state.wontPay -> false
+                                      o.controller in state.willPay -> true
+                                      life != null && life <= e.unlessPayLife -> false
+                                      else -> true }
+                    if (pays) {
+                        p.life = life?.minus(e.unlessPayLife)
+                        trace.step("${p.subject} ${p.v("pays", "pay")} ${e.unlessPayLife} life as ${o.name} enters${p.life?.let { " ($it)" } ?: ""}, so it enters untapped.", "614.1c", "614.12", "119.4")
+                        state.outcomes += "${p.subject} ${p.v("pays", "pay")} ${e.unlessPayLife} life; ${o.name} enters untapped."
+                        if (o.controller !in state.willPay) state.assumptions += "${p.subject} ${p.v("pays", "pay")} the ${e.unlessPayLife} life for ${o.name} (the card offers the choice as it enters); say so outright for the other choice."
+                    } else {
+                        o.tapped = true
+                        trace.step("${p.subject} ${p.v("doesn't", "don't")} pay the ${e.unlessPayLife} life${if (life != null && life <= e.unlessPayLife) " (it would be lethal)" else ""}, so ${o.name} enters tapped.", "614.1c", "614.12")
+                        state.outcomes += "${o.name} enters tapped (the ${e.unlessPayLife} life wasn't paid)."
+                    }
+                }
+                else if (e.unless != null && state.conditionHolds(e.unless, o)) trace.step("${o.name} would enter tapped unless its condition is met; it is, so it enters untapped.", "614.1c", "614.12")
                 else if (e.onlyIf != null && !state.conditionHolds(e.onlyIf, o)) trace.step("${o.name} enters tapped only if ${state.describeCondition(e.onlyIf)}, which isn't so, so it enters untapped.", "614.1c", "614.12")
                 else { o.tapped = true; trace.step("${o.name} enters tapped (a replacement effect on how it enters${if (e.unless != null) "; its condition isn't met" else if (e.onlyIf != null) "; its condition is met" else ""}).", "614.1c", "614.12") }
             }
@@ -2796,6 +2816,11 @@ class Engine(val state: GameState) {
     /** "How much does my Lightning Bolt cost?" — the printed cost plus every tax and reduction on the battlefield (601.2f). */
     fun spellCost(objId: String): String {
         val obj = state.obj(objId); val card = obj.def; val p = state.player(obj.controller)
+        // A commander nobody named has no printed cost to add the tax to — the stand-in card's own cost is not
+        // the card's — but the tax is the answer the question asks for, so give that and ask for the name.
+        if (obj.commander && card.name.equals("a commander", true))
+            return if (obj.commanderCasts > 0) "The commander tax adds {${2 * obj.commanderCasts}} to its mana cost (903.8), because it has been cast from the command zone ${obj.commanderCasts} time${if (obj.commanderCasts == 1) "" else "s"}. Name the card for the total."
+                   else "It has not been cast from the command zone yet, so there is no commander tax (903.8): it costs its mana cost. Name the card for the total."
         val printed = card.manaCost ?: return "${card.name} has no mana cost, so it can't be cast for mana."
         val taxes = state.objects.values.filter { it.isOnBattlefield() }
             .flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CostTax>()
@@ -2805,7 +2830,9 @@ class Engine(val state: GameState) {
         val self = selfReduction(obj)
         val tax = taxes.sumOf { it.second.amount } + commanderTax - self.first
         val total = maxOf(colouredPips(printed), card.manaValue.toInt() + tax)
-        if (taxes.isEmpty() && commanderTax == 0 && self.first == 0) return "${card.name} costs $printed — $total mana. Nothing on the battlefield changes it."
+        if (taxes.isEmpty() && commanderTax == 0 && self.first == 0) return "${card.name} costs $printed — $total mana. Nothing on the battlefield changes it." +
+            // "I have 3 lands untapped, can I pay for Cryptic Command?": the cost alone doesn't answer that.
+            (p.mana?.let { avail -> if (avail >= total) " ${p.subject} ${p.v("has", "have")} $avail available, enough." else " ${p.subject} ${p.v("has", "have")} only $avail available, so it can't be cast." } ?: "")
         val parts = taxes.map { (o, t) -> "${o.name} makes it cost {${kotlin.math.abs(t.amount)}} ${if (t.amount < 0) "less" else "more"}" } +
             (if (self.first > 0) listOf("its own text makes it cost {${self.first}} less (${self.second})") else emptyList()) +
             (if (commanderTax > 0) listOf("the commander tax adds {$commanderTax}") else emptyList())

@@ -62,6 +62,9 @@ fun main(args: Array<String>) {
                 println("I couldn't find any cards or actions in that. Try naming the cards and what happens to them, e.g.")
                 println("  \"I have Rhystic Study. My opponent casts Sol Ring and Stifles the trigger.\"")
                 if (parsed.unread.isNotEmpty()) println("Not understood: " + parsed.unread.joinToString(" | "))
+                // A note may be the whole answer here ("\"fetchland\" names a cycle, not a card"), so it is the
+                // one thing worth printing when nothing else was understood.
+                if (parsed.notes.isNotEmpty()) { println(); println("Parser notes:"); parsed.notes.forEach { println("  ~ $it") } }
                 exitProcess(1)
             }
             val answer = mtg.judge.situation.Judge(cards, rules).answer(parsed.situation)

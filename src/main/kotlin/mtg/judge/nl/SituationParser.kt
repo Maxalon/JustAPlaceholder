@@ -95,9 +95,26 @@ class SituationParser(private val names: NameIndex) {
     fun debugMark(text: String): List<String> = splitSentences(text).let { ss -> val short = shortNames(ss); val named = playerNames(ss); ss.map { s -> val m = mark(s, short, named); m.text + "   " + m.cards.map { (k, v) -> "$k=${v.display}" } + (if (m.players.isEmpty()) "" else "   players=" + m.players.values) + "   clauses=" + m.text.split(clauseSplit).map { it.trim() } } }
     private val clauseSplit = Regex("""\s*(?:,|\band\b|\bbut\b(?= (?:i|we|they|he|she|my|their|his|her|the|it)\b))\s+""")
 
+    /** Words that name a cycle of lands rather than a card. Picking a member for the asker would be guessing. */
+    private val landCycles = mapOf(
+        "fetchland" to "Flooded Strand, Wooded Foothills, …", "fetch land" to "Flooded Strand, Wooded Foothills, …",
+        "fetchlands" to "Flooded Strand, Wooded Foothills, …", "fetch lands" to "Flooded Strand, Wooded Foothills, …",
+        "shockland" to "Steam Vents, Blood Crypt, …", "shock land" to "Steam Vents, Blood Crypt, …",
+        "shocklands" to "Steam Vents, Blood Crypt, …", "shock lands" to "Steam Vents, Blood Crypt, …",
+        "triome" to "Raugrin Triome, Zagoth Triome, …", "triomes" to "Raugrin Triome, Zagoth Triome, …",
+        "painland" to "Adarkar Wastes, Karplusan Forest, …", "pain land" to "Adarkar Wastes, Karplusan Forest, …",
+        "checkland" to "Glacial Fortress, Rootbound Crag, …", "fastland" to "Seachrome Coast, Blackcleave Cliffs, …",
+        "manland" to "Celestial Colonnade, Raging Ravine, …", "creature land" to "Celestial Colonnade, Raging Ravine, …")
+
     fun parse(text: String): Parsed {
         val ctx = Ctx()
         val sentences = splitSentences(text)
+        // "I crack a fetchland": the word names a cycle, and every member does something different. Saying which
+        // card it was read as would be picking one for the asker, so the answer asks instead.
+        for ((word, examples) in landCycles) if (Regex("""(?i)\b${Regex.escape(word)}\b""").containsMatchIn(text)) {
+            ctx.notes += "\"$word\" names a cycle of lands, not a card, and they don't all do the same thing — name the one you have ($examples)."
+            break
+        }
         val short = shortNames(sentences)
         val named = playerNames(sentences)
         for (sentence in sentences) {
@@ -722,6 +739,26 @@ class SituationParser(private val names: NameIndex) {
                 val who = if (r.groupValues[1] == "their" || r.groupValues[1] == "his" || r.groupValues[1] == "her") "they" else "i"
                 "can $who tap ${r.groupValues[1]} ${r.groupValues[2]} for mana"
             } }
+            // "How much damage does a 3/3 with lifelink deal to me?": the creature is attacking, and what it
+            // deals is what the answer is about.
+            .let { t0 -> Regex("""^how much damage (?:does|do|would|will|can|could) ((?:$possPrefix|an? )?(?:c\d+|\d+/\d+)(?:(?: with)? [a-z+/ ]+?)?) deal (?:to )?(me|us|them|him|her|my opponent|the opponent|@\w+)\??$""").replace(t0) { r ->
+                // Dealing it to me makes it the other player's creature, unless the asker already said whose.
+                val toMe = r.groupValues[2] == "me" || r.groupValues[2] == "us"
+                val spec = if (toMe && Regex("""^(?:an? )""").containsMatchIn(r.groupValues[1])) "their " + r.groupValues[1].replaceFirst(Regex("""^an? """), "") else r.groupValues[1]
+                "$spec attacks ${r.groupValues[2]}"
+            } }
+            // "My only untapped land is a Mountain": the board, said as what is left rather than what is there.
+            .let { t0 -> Regex("""\b(my|our|their|his|her) only untapped (?:land|permanent|mana source|creature) is ((?:an? |the )?c\d+)""").replace(t0) { r ->
+                (if (r.groupValues[1] == "my" || r.groupValues[1] == "our") "i have " else "they have ") + r.groupValues[2] + " untapped"
+            } }
+            // "Can I pay for Counterspell?" / "can I afford it?": the cost answer says whether the mana is there.
+            .replace(Regex("""\bcan (?:i|we|they|he|she|my opponent|the opponent|@\w+) (?:pay for|afford) ((?:$possPrefix|an? )?c\d+)\??$"""), "how much does $1 cost")
+            // "How much mana do I need for Emrakul?": the cost question said from the payer's side.
+            .replace(Regex("""^how (?:much|many)(?: mana)? (?:do|does|would|will) (?:i|we|they|he|she|my opponent|the opponent|@\w+) need(?: to (?:cast|pay for)| for| to pay for)? ((?:$possPrefix|an? )?c\d+)\??$"""), "how much does $1 cost")
+            // "…, how much mana is that?" / "how much is that in total?": the mana the speaker can make.
+            .replace(Regex("""(?:^|(?<=[,;] ))how (?:much|many)(?: mana)?(?: is| does) (?:that|this|those|these)(?: (?:give me|add up to|come to))?(?: in total| total| all together| altogether)?\??$"""), "how much mana do i have")
+            // "How much mana does Cabal Coffers make with six Swamps?": the board said after the question.
+            .replace(Regex("""^((?:how (?:much|many)|what|does|do|will|would|can|could|is|are)\b.*?) with (\d+ (?:$possPrefix)?c\d+s?)\??$"""), "i have $2, $1")
             // "Does indestructible save my creature from Doom Blade?": a keyword question asked with no board.
             // It is the same question as giving a creature the keyword and letting the spell at it.
             .replace(Regex("""^does(?:n't| not)? ($kwPhrase) (?:save|protect|defend|help|stop|keep|prevent) (?:my |the |an? )?(creature|guy|dude|\d+/\d+|c\d+)(?: creature)? (?:from|against) (?:an? |the )?(c\d+)\??$"""), "my $2 has $1, they cast $3 on it")
@@ -1221,10 +1258,17 @@ class SituationParser(private val names: NameIndex) {
             // "My commander is Atraxa … how much does it cost now?": the card was named earlier in the question.
             // A card the asker said they hold is the one they are about to cast; then a commander waiting in the
             // command zone; only then whatever was mentioned last.
+            val fallback = ctx.objects.values.lastOrNull { it.zone == "command" } ?: ctx.lastMentioned?.let { ctx.objects[it] } ?: ctx.objects.values.lastOrNull()
             val card = m.cards[q.groupValues[2]]
                 ?: ctx.inHand[who]?.lastOrNull()
-                ?: (ctx.objects.values.lastOrNull { it.zone == "command" } ?: ctx.lastMentioned?.let { ctx.objects[it] } ?: ctx.objects.values.lastOrNull())
-                    ?.card?.name?.let { n -> names.lookup(Names.normalize(n)) } ?: return@let
+                ?: fallback?.card?.name?.let { n -> names.lookup(Names.normalize(n)) }
+                // "my commander died twice, what does it cost now?": nobody named the card, so there is no cost
+                // to add the tax to — but the tax itself is what the question is about, and is still an answer.
+                ?: run {
+                    val gid = fallback?.takeIf { it.commander }?.id ?: return@let
+                    ctx.asks += EventSpec("ask", obj = gid, to = "spellCost")
+                    ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+                }
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx).also { ctx.objects[it] = ctx.objects.getValue(it).copy(zone = "hand") }
             ctx.asks += EventSpec("ask", obj = id, to = "spellCost")
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
@@ -2552,7 +2596,13 @@ class SituationParser(private val names: NameIndex) {
         // "it has been countered twice" / "Kaalia was countered once": the commander tax.
         // "it died twice" says the same thing in the active voice, and went unread, so the tax came out as {0}.
         Regex("""^(?:(?:my |their |his |her )?commander )?(?:(?:my |their |his |her )?(c\d+)|it|that)? ?(?:(?:has been|was|got|has already been|had been|have been) (?:countered|killed|cast)|died|has died|have died|was sacrificed|went to the command zone) (once|twice|three times|four times|\d+ times?)(?: (?:already|before|so far|this game))?$""").find(c)?.let { r ->
-            val id = r.groupValues[1].takeIf { it.isNotEmpty() }?.let { m.cards.getValue(it) }?.let { objectIdFor(it, ctx) ?: addObject(it, actor ?: "me", false, ctx) } ?: ctx.objects.values.lastOrNull { it.commander } ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+            // "my commander died twice, what does it cost now?": the card was never named, so make the commander
+            // the question is about. Without one the clause was dropped and the tax came out as {0}.
+            val id = r.groupValues[1].takeIf { it.isNotEmpty() }?.let { m.cards.getValue(it) }?.let { objectIdFor(it, ctx) ?: addObject(it, actor ?: "me", false, ctx) } ?: ctx.objects.values.lastOrNull { it.commander } ?: ctx.lastMentioned?.takeIf { it in ctx.objects }
+                ?: (if (!c.contains("commander")) null else (actor ?: subject ?: "me").let { who ->
+                    var cid = "commander"; var k = 2; while (ctx.objects.containsKey(cid)) cid = "commander_" + (k++)
+                    ctx.objects[cid] = ObjectSpec(cid, CardRef(name = "a commander"), controller = who, commander = true, zone = "command"); ctx.note(who); cid
+                }) ?: return@let
             val n = when (val w = r.groupValues[2]) { "once" -> 1; "twice" -> 2; "three times" -> 3; "four times" -> 4; else -> w.substringBefore(' ').toIntOrNull() ?: 1 }
             val idStr = if (id is String) id else (id as ObjectSpec).id
             ctx.objects[idStr] = ctx.objects.getValue(idStr).copy(commander = true, commanderCasts = n, zone = if (r.groupValues[0].contains(" cast ")) ctx.objects.getValue(idStr).zone else "command"); ctx.notes += "${ctx.objects.getValue(idStr).card.name} has been cast from the command zone $n time${if (n == 1) "" else "s"} already, so the commander tax applies (903.8)."; return true
@@ -3118,6 +3168,11 @@ class SituationParser(private val names: NameIndex) {
             if (lastAttack >= 0 && ctx.events.drop(lastAttack + 1).all { it.verb == "attack" || it.verb == "attackAll" }) ctx.events.add(lastAttack, pay)
             // "Then they pay the 1": the payment is part of resolving what's on the stack, so it goes before the "then" resolution.
             else if (ctx.events.lastOrNull()?.verb == "resolveAll" && ctx.events.getOrNull(ctx.events.lastIndex - 1)?.verb in setOf("cast", "activate", "trigger")) ctx.events.add(ctx.events.lastIndex, pay)
+            // "I play Steam Vents and pay 2 life": a shockland's payment is made as the land enters, so nothing
+            // can happen in between; said after the land play it has to go before it to be made at all.
+            else if (ctx.events.lastOrNull()?.let { e -> e.player == who && (e.verb == "playLand" || (e.verb == "cast" &&
+                (e.card?.name ?: ctx.objects[e.obj]?.card?.name)?.let { n -> names.lookup(Names.normalize(n))?.typeLine?.contains("Land", true) } == true)) } == true)
+                ctx.events.add(ctx.events.lastIndex, pay)
             else ctx.events += pay
             ctx.lastActor = who; return true
         }
