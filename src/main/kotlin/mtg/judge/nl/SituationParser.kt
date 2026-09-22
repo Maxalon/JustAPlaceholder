@@ -572,6 +572,11 @@ class SituationParser(private val names: NameIndex) {
             // "is it legal to bolt it?" / "am I allowed to block?": the question is about the action, so it is
             // read as the asker taking it and the answer says whether it works.
             .replace(Regex("""^(?:is it (?:legal|ok|okay|allowed|fine) (?:to|for me to)|am i allowed to|may i|can i legally|would it be legal to) """, RegexOption.IGNORE_CASE), "can i ")
+            // "My creature blocks", "their guy blocks": the same, for a block with no attacker named.
+            .let { t0 -> Regex("""\b(my opponent's|the opponent's|opponent's|their|his|her|my|the) (creature|guy|dude|token) (?:blocks|block|is blocking|blocked)\b(?! (?:my|their|his|her|the|an?|it|that|\d)\b)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                val theirs = Regex("""^(?:my opponent's|the opponent's|opponent's|their|his|her)$""", RegexOption.IGNORE_CASE).matches(r.groupValues[1])
+                (if (theirs) "they block with a " else "i block with a ") + r.groupValues[2]
+            } }
             // "My opponent's creature attacks" / "my guy attacks": a creature given by nothing but the word.
             .let { t0 -> Regex("""\b(my opponent's|the opponent's|opponent's|their|his|her|my|the) (creature|guy|dude|token) (?:attacks|attack|is attacking|attacked)\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 val theirs = Regex("""^(?:my opponent's|the opponent's|opponent's|their|his|her)$""", RegexOption.IGNORE_CASE).matches(r.groupValues[1])

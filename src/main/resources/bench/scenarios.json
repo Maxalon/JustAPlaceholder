@@ -12288,5 +12288,16 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "bare-noun-blocker-no-attacker-named",
+    "text": "Their creature blocks my Grizzly Bears. What happens?",
+    "expect": [
+      "a creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
