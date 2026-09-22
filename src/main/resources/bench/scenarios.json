@@ -12299,5 +12299,16 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "urza-lands-by-short-name",
+    "text": "I control Urza's Tower, Mine and Power Plant. How much mana?",
+    "expect": [
+      "You can make 7 mana"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

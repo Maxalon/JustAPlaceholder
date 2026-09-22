@@ -360,6 +360,29 @@ class SituationParser(private val names: NameIndex) {
                 (normWords.getOrNull(f.start - 1) in setOf("with", "and", "&", "gains", "gain", "has", "have", "granted") || Regex("""^\d+(?:/\d+)?$""").matches(normWords.getOrNull(f.start - 1) ?: "") || Regex("""^\d+/\d+$""").matches(rawWords.getOrNull(f.start - 1) ?: ""))) }
             // A first name that could mean several cards ("Jace") means the one named in full earlier, however it was matched.
             .map { f -> if (f.end - f.start == 1 && f.entry.alternatives.isNotEmpty()) short[normWords[f.start]]?.let { f.copy(entry = it) } ?: f else f }
+            // "Urza's Tower, Mine and Power Plant": once a card whose name starts with a possessive is named,
+            // the same possessive is tried on the names that follow it. Without this "Mine" was a clause of its
+            // own and "Power Plant" was taken for a player's name.
+            .let { fs ->
+                val prefixes = fs.mapNotNull { f -> Regex("""^(\w+ s)\b""").find(Names.normalize(f.entry.display))?.groupValues?.get(1) }.distinct()
+                if (prefixes.isEmpty()) fs else {
+                    val taken = fs.flatMap { it.start until it.end }.toMutableSet()
+                    val extra = mutableListOf<NameIndex.Found>()
+                    var i = 0
+                    while (i < normWords.size) {
+                        if (i in taken) { i++; continue }
+                        var hit: NameIndex.Found? = null
+                        for (len in minOf(3, normWords.size - i) downTo 1) {
+                            if ((i until i + len).any { it in taken }) continue
+                            val span = (i until i + len).joinToString(" ") { normWords[it] }
+                            val e = prefixes.firstNotNullOfOrNull { p -> names.lookup("$p $span")?.takeIf { it.isCard } }
+                            if (e != null) { hit = NameIndex.Found(i, i + len, e); break }
+                        }
+                        if (hit != null) { extra += hit; (hit.start until hit.end).forEach { taken += it }; i = hit.end } else i++
+                    }
+                    fs + extra
+                }
+            }
             // "I cast Explore": a keyword-action word is kept out of the name index so the grammar can use it
             // ("the creature explores"), but a capital right after a cast verb means the card of that name.
             .let { fs -> fs + normWords.indices.filter { i -> i !in fs.flatMap { it.start until it.end }.toSet() &&
