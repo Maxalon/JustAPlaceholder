@@ -1117,6 +1117,19 @@ class SituationParser(private val names: NameIndex) {
                 ctx.events.indexOfLast { it.verb == "cast" }.takeIf { it >= 0 }?.let { i -> ctx.events[i] = ctx.events[i].copy(targets = listOf(victim)) }
                 ctx.asks += EventSpec("ask", obj = victim, to = "die"); ctx.lastMentioned = victim; return true
             }
+            // "can it attack the turn it comes down?" / "can I tap it for mana the turn I play it?": the tail says
+            // it came under its controller's control this turn. Ignored, the answer assumed it had been there
+            // since the turn began and said the attack went through.
+            Regex("""^(.*?),? (?:the (?:same )?turn (?:it|i|they|he|she) (?:comes? down|came down|plays? it|played it|casts? it|cast it|enters?(?: the battlefield)?|entered)|the turn it came into play)$""").find(r.groupValues[1])?.let { q ->
+                val id = Regex("""c\d+""").find(q.groupValues[1])?.value?.let { ph -> m.cards[ph]?.let { objectIdFor(it, ctx) } }
+                    ?: ctx.lastMentioned?.takeIf { it in ctx.objects }
+                    ?: ctx.objects.values.lastOrNull { it.zone == "battlefield" && isCreatureName(it.card.name) }?.id
+                if (id != null) {
+                    ctx.objects[id] = ctx.objects.getValue(id).copy(summoningSick = true)
+                    ctx.notes += "\"${restore(clause0, m)}?\" asks about the turn ${ctx.objects.getValue(id).card.name ?: "it"} came down, so it is summoning sick."
+                }
+                return readClause(clause0.removeRange(clause0.length - (r.groupValues[1].length - q.groupValues[1].length), clause0.length), m, ctx)
+            }
             // "can I still block with it?" / "can my Bears attack?": a yes/no about that creature, answered once everything has resolved.
             if (askQuestion(clause0, m, ctx)) return true
             // "do I lose 2 life?" / "does my opponent take 3 damage?" / "do I draw a card?": a question about an amount, which the outcome answers; never an action.
@@ -2822,6 +2835,10 @@ class SituationParser(private val names: NameIndex) {
             val otherSide = ctx.objects.values.any { it.card.oracleId == hostCard.oracleId && it.zone == "battlefield" && it.controller != owner }
             val hostId = addObject(hostCard, owner, tapped = rest.contains("tapped") && !rest.contains("untapped"), ctx, allowDuplicate = otherSide)
             if (isCommander) ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(commander = true)
+            // "a Llanowar Elves that just came down" / "with summoning sickness": it came under its controller's
+            // control this turn. Without this the tap ability was answered as if it had been there all along.
+            if (Regex("""\bthat (?:i|they|he|she) just (?:played|cast)\b|\bthat just came down\b|\b(?:i|they) just played\b|\bwith summoning sickness\b|\bthat (?:just )?(?:came down|entered|hit the battlefield) this turn\b|\bcast this turn\b|\bplayed this turn\b""").containsMatchIn(rest))
+                ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(summoningSick = true)
             // "Meddling Mage naming Lightning Bolt" / "Pithing Needle on Sensei's Divining Top" (named): the chosen card name.
             Regex("""\b(?:naming|that names|which names|named on|set to|choosing|on) (?:the number )?(\d+)\b""").find(rest)?.let { n ->
                 ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(named = n.groupValues[1])

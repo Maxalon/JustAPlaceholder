@@ -11709,5 +11709,51 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "tap-for-mana-the-turn-it-comes-down",
+    "text": "I have a Deathrite Shaman. Can I tap it for mana the turn it comes down?",
+    "expect": [
+      "can't be activated (summoning sickness)"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "302.6"
+    ]
+  },
+  {
+    "id": "attack-the-turn-it-comes-down",
+    "text": "I have a Grizzly Bears. Can it attack the turn it comes down?",
+    "expect": [
+      "Grizzly Bears can't attack (summoning sick)"
+    ],
+    "notExpect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "haste-attacks-the-turn-it-comes-down",
+    "text": "I have a Grizzly Bears with haste. Can it attack the turn it comes down?",
+    "expect": [
+      "opponent takes 2 damage"
+    ],
+    "notExpect": [
+      "can't attack"
+    ],
+    "cite": []
+  },
+  {
+    "id": "creature-that-just-came-down",
+    "text": "I have a Llanowar Elves that just came down. Can I tap it for mana?",
+    "expect": [
+      "can't be activated (summoning sickness)"
+    ],
+    "notExpect": [
+      "add {G}"
+    ],
+    "cite": []
   }
 ]
