@@ -167,6 +167,8 @@ class GameState(
     var activePlayer: String? = null,
     /** The player who is the monarch, if any (725.1). No monarch until an effect makes one. */
     var monarch: String? = null,
+    /** Players who can't lose the game this turn (Angel's Grace); cleared in the cleanup step. */
+    val cantLoseThisTurn: MutableSet<String> = mutableSetOf(),
     var phase: String? = null,
     var step: String? = null,
 ) {

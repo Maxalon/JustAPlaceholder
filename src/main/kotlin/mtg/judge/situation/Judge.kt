@@ -192,6 +192,16 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "untap" -> engine.untapObject(e.obj ?: throw JudgeException("untap needs an object"))
             "mill" -> engine.millCards(e.player ?: throw JudgeException("mill needs a player"), e.amount ?: 1)
             "proliferate" -> engine.proliferate(e.player ?: state.players.first().id)
+            // "I cast Angel's Grace and go to 0 life": a life total said after something happened is where that
+            // player ends up, not where they started — set at setup the game would have ended before the spell.
+            "setlife" -> {
+                val p = state.player(e.player ?: throw JudgeException("setLife needs a player"))
+                val to = e.amount ?: throw JudgeException("setLife needs a life total")
+                val from = p.life
+                p.life = to
+                state.trace.step("${p.subject} ${p.v("is", "are")} at $to life" + (from?.let { " (from $it)" } ?: "") + ".", "118.5")
+                engine.stateBasedActions()
+            }
             // "my opponent is the monarch": the monarch draws at their end step and loses it to combat damage (725).
             "monarch" -> {
                 val p = state.player(e.player ?: throw JudgeException("monarch needs a player"))
@@ -440,6 +450,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "untap" -> "${state.objects[e.obj]?.name ?: e.obj} untaps"
             "mill" -> "${who ?: "the player"} ${if (who == "you") "mill" else "mills"} ${e.amount ?: 1} card${if ((e.amount ?: 1) == 1) "" else "s"}"
             "proliferate" -> "${who ?: "the player"} ${if (who == "you") "proliferate" else "proliferates"}"
+            "setlife" -> "${who ?: "the player"} ${if (who == "you") "go" else "goes"} to ${e.amount ?: "?"} life"
             "monarch" -> "${who ?: "the player"} ${if (who == "you") "are" else "is"} the monarch"
             "setpt" -> "${state.objects[e.obj]?.name ?: e.obj} becomes ${e.to ?: "?"}"
             "concede" -> "${who ?: "the player"} ${if (who == "you") "concede" else "concedes"}"

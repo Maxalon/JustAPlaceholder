@@ -1354,7 +1354,19 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:at |with |on |am at |is at |are at )?(\d+) life$""").find(c)?.let { r -> val who = actor ?: ctx.lastActor ?: "me"; ctx.life[who] = r.groupValues[1].toInt(); ctx.note(who); ctx.lastStat = "life"; ctx.lastStatWho = who; return true }
         // "I control Platinum Angel and go to -5 life": said as a second clause the subject is left out, so the
         // sentence-level reading of "I go to N life" never saw it and the life change was dropped.
-        Regex("""^(?:go(?:es)?|went|drops?|dropped|falls?|fell)(?: down)? to (-?\d+)(?: life)?$""").find(c)?.let { r -> val who = actor ?: ctx.lastActor ?: "me"; ctx.life[who] = r.groupValues[1].toInt(); ctx.note(who); ctx.lastStat = "life"; ctx.lastStatWho = who; return true }
+        Regex("""^(?:go(?:es)?|went|drops?|dropped|falls?|fell)(?: down)? to (-?\d+)(?: life)?$""").find(c)?.let { r ->
+            val who = actor ?: ctx.lastActor ?: "me"; val to = r.groupValues[1].toInt()
+            ctx.note(who); ctx.lastStat = "life"; ctx.lastStatWho = who
+            // Said after something has already happened it is where that player ends up, not where they started:
+            // set at setup, a spell cast in the same sentence would resolve after the game had already ended.
+            if (ctx.events.any { it.verb !in setOf("resolveAll", "ask") }) {
+                // "I cast Angel's Grace and go to 0 life": the life total is where the player stands once the
+                // spell has resolved, not while it is still on the stack.
+                if (ctx.events.lastOrNull()?.verb in setOf("cast", "activate", "trigger")) ctx.events += EventSpec("resolveAll")
+                ctx.events += EventSpec("setLife", player = who, amount = to); return true
+            }
+            ctx.life[who] = to; return true
+        }
         // "tries to Murder it", "attempts to cast Bolt on it": the attempt is the action.
         // "goes to combat" is a step, not an attempt to do something: without the guard "goes to" was stripped and
         // the step word was left as a clause of its own.

@@ -145,6 +145,7 @@ What happens next, in order. The engine applies these to the described state.
 | `proliferate` | `player` (one more of each kind of counter already there, 701.34a) |
 | `monarch` | `player` (that player is the monarch, 725.1) |
 | `setPt` | `object`, `to`: `"4/4"` (a base size set outright — layer 7b, so counters still apply on top) |
+| `setLife` | `player`, `amount` (that player's life total becomes that number, 118.5). Use it, rather than the player's starting life, for a total the question states *after* something has already happened — "I cast Angel's Grace and go to 0 life" is where the player ends up, so setting it at setup would end the game before the spell resolved. |
 
 `activate` also accepts `to: "mana"` (the object's mana ability) or a loyalty cost such as `"+1"`.
 An object's `card` may name a generic token: `"5/5 Zombie token"`, `"Treasure token"`, `"1/1 white Soldier creature token"`.

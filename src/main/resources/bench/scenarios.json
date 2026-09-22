@@ -11385,5 +11385,40 @@
       "Yes: a 4/4 creature died"
     ],
     "cite": []
+  },
+  {
+    "id": "angels-grace-at-zero-life",
+    "text": "I cast Angel's Grace and go to 0 life. Do I lose?",
+    "expect": [
+      "No: You are still in the game"
+    ],
+    "notExpect": [
+      "Yes: You have lost the game",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "angels-grace-lethal-attack",
+    "text": "I'm at 2 life. I cast Angel's Grace and my opponent attacks with a 5/5. Do I lose?",
+    "expect": [
+      "No: You are still in the game"
+    ],
+    "notExpect": [
+      "Yes: You have lost the game",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "life-total-said-after-a-spell",
+    "text": "I control Platinum Angel and go to -5 life. Do I lose?",
+    "expect": [
+      "No: You are still in the game"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
