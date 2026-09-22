@@ -13453,5 +13453,61 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "target-described-with-a-counter",
+    "text": "they cast Shock on my 1/1 with a +1/+1 counter",
+    "expect": [
+      "a 1/1 creature: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "You take 2 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "target-described-with-two-counters",
+    "text": "they cast Shock on my 1/1 with two +1/+1 counters",
+    "expect": [
+      "a 1/1 creature has 2 damage marked"
+    ],
+    "notExpect": [
+      "You take 2 damage",
+      "the battlefield → your graveyard"
+    ],
+    "cite": []
+  },
+  {
+    "id": "target-a-coloured-creature",
+    "text": "I cast a Doom Blade on their black creature",
+    "expect": [
+      "Doom Blade can't target a black creature"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "purpose-tail-to-gain-life",
+    "text": "I Swords my own creature to gain life",
+    "expect": [
+      "You gain 1 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "can-i-make-mana-with-it",
+    "text": "I have a Deathrite Shaman and they have a land in their graveyard, can I make mana",
+    "expect": [
+      "a {T} ability of a creature needs that or haste"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

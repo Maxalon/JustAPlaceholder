@@ -793,6 +793,8 @@ class SituationParser(private val names: NameIndex) {
                 val who = if (r.groupValues[1] == "their" || r.groupValues[1] == "his" || r.groupValues[1] == "her") "they" else "i"
                 "can $who tap ${r.groupValues[1]} ${r.groupValues[2]} for mana"
             } }
+            // "can I make mana (with it)?": whether the last mana source named can be tapped for mana now.
+            .replace(Regex("""\bcan (?:i|we) (?:make|produce|tap for|get) (?:any |some )?mana(?: (?:with|off|from|using) (?:it|that|this))?\??$""", RegexOption.IGNORE_CASE), "can it tap for mana")
             // "How much damage does a 3/3 with lifelink deal to me?": the creature is attacking, and what it
             // deals is what the answer is about.
             .let { t0 -> Regex("""^how much damage (?:does|do|would|will|can|could) ((?:$possPrefix|an? )?(?:c\d+|\d+/\d+)(?:(?: with)? [a-z+/ ]+?)?) deal (?:to )?(me|us|them|him|her|my opponent|the opponent|@\w+)\??$""").replace(t0) { r ->
@@ -1318,6 +1320,10 @@ class SituationParser(private val names: NameIndex) {
         }
         // "After damage, does Serra Angel untap?": the time phrase adds nothing the ordering doesn't already say.
         clause0 = clause0.replace(Regex("""^(?:after|once|when) (?:combat )?(?:damage|blockers|blocks|combat|that|this|it resolves|everything resolves)(?: is dealt| are declared)?,?\s+"""), "")
+        // "I Swords my own creature to gain life": why they did it is not part of what happened.
+        clause0 = clause0.replace(Regex("""\s+to (?:gain (?:some |the |a little )?life|save (?:it|myself|my creature)|get (?:the |some )?value|be safe|reset it|draw (?:a card|cards)|dig)$"""), "")
+        // "I have a Bears and" — a conjunction left dangling once the clause after it was read elsewhere.
+        clause0 = clause0.replace(Regex("""\s+(?:and|but|then|so)$"""), "")
         // "I pump it with Giant Growth after blockers": a timing phrase at the end says when, not what, and left
         // on the clause it stopped every rule that anchors at the end from matching.
         clause0 = clause0.replace(Regex("""\s+(?:after (?:blockers|blocks|attackers|attacks)(?: are declared)?|before (?:combat )?damage(?: is dealt)?|during combat|after combat|in combat|post[- ]?blocks?)$"""), "")
@@ -4817,23 +4823,31 @@ class SituationParser(private val names: NameIndex) {
             ctx.objects.values.lastOrNull { o -> (o.card.name ?: "").let { n -> n.startsWith("a ") && Regex("""\b${Regex.escape(w)}s?\b""").containsMatchIn(n) } }?.let { o -> out += o.id; return out }
         }
         // "a 4/4" / "their 2/2 flier": a described creature nobody put on the battlefield yet.
-        Regex("""^(?:(my|their|his|her|my opponent's|the opponent's|opponent's|an?|the) )?(\d+/\d+)((?: [a-z]+)*)$""").find(seg)?.let { r ->
+        Regex("""^(?:(my|their|his|her|my opponent's|the opponent's|opponent's|an?|the) )?(\d+/\d+)((?: (?!with\b)[a-z]+)*)(?: with (an? |one |two |three |four |\d+ )?([+-]\d+/[+-]\d+) counters?(?: on it)?)?$""").find(seg)?.let { r ->
             val pt = r.groupValues[2]
             val extra = r.groupValues[3].trim()
+            // "on my 1/1 with a +1/+1 counter": the counter is part of the description. Left unread, the spell had
+            // no target at all and was aimed at a player instead.
+            val counterN = r.groupValues[5].takeIf { it.isNotEmpty() }?.let { number(r.groupValues[4].trim().ifEmpty { "one" }) ?: 1 }
+            val counterKind = r.groupValues[5]
             val head = r.groupValues[1]
             val owner = when (head) { "my" -> "me"; "their", "his", "her", "my opponent's", "the opponent's", "opponent's" -> pronounPlayer(ctx, "their"); else -> pronounPlayer(ctx, "their") }
             val kw = Regex("""$kwNouns""").find(extra)?.value?.let { k -> k.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") } ?: ""
             val kind = Regex("""$creatureKinds""").find(extra)?.value ?: ""
-            ctx.objects.values.lastOrNull { o -> o.controller == owner && (o.card.name ?: "").startsWith("a $pt") }?.let { o -> out += o.id; return out }
+            ctx.objects.values.lastOrNull { o -> o.controller == owner && (o.card.name ?: "").startsWith("a $pt") && (counterN == null || (o.counters[counterKind] ?: 0) >= counterN) }?.let { o -> out += o.id; return out }
             val ids = describedCreatures("a ", pt, kind, owner, ctx, kw)
-            if (ids.isNotEmpty()) { out += ids.first(); ctx.note(owner); return out }
+            if (ids.isNotEmpty()) {
+                if (counterN != null) ctx.objects[ids.first()] = ctx.objects.getValue(ids.first()).let { o -> o.copy(counters = o.counters + (counterKind to ((o.counters[counterKind] ?: 0) + counterN))) }
+                out += ids.first(); ctx.note(owner); return out
+            }
         }
         // "on my own land", "on my opponent's creature": a permanent nobody named, given only by its type. The
         // target was dropped, so the spell had none and the answer was "nothing changes".
-        Regex("""^(?:(my own|my|their|his|her|my opponent's|the opponent's|opponent's|an?|the) )?(creatures?|lands?|artifacts?|enchantments?|permanents?|planeswalkers?|guys?|dudes?)$""").find(seg)?.let { r ->
+        Regex("""^(?:(my own|my|their|his|her|my opponent's|the opponent's|opponent's|an?|the) )?(?:(white|blue|black|red|green|colorless) )?(creatures?|lands?|artifacts?|enchantments?|permanents?|planeswalkers?|guys?|dudes?)$""").find(seg)?.let { r ->
             val head = r.groupValues[1]
             val owner = when (head) { "my", "my own" -> "me"; "their", "his", "her", "my opponent's", "the opponent's", "opponent's" -> pronounPlayer(ctx, "their"); else -> pronounPlayer(ctx, "their") }
-            val kind = r.groupValues[2].removeSuffix("s")
+            // "on their black creature": the colour is what a Doom Blade question is about, so it is kept.
+            val kind = (r.groupValues[2].takeIf { it.isNotEmpty() }?.let { "$it " } ?: "") + r.groupValues[3].removeSuffix("s")
             ctx.objects.values.lastOrNull { o -> o.controller == owner && o.zone == "battlefield" &&
                 (if (kind in setOf("creature", "guy", "dude")) isCreatureName(o.card.name) else (o.card.name ?: "").contains(kind, true)) }?.let { o -> out += o.id; return out }
             if (kind in setOf("creature", "guy", "dude")) describedCreatures("a ", "", "creature", owner, ctx).firstOrNull()?.let { out += it; ctx.note(owner); return out }
