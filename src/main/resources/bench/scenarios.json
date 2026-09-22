@@ -11957,5 +11957,28 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "target-given-only-by-type",
+    "text": "I cast Beast Within on my own land. What happens?",
+    "expect": [
+      "a basic land: the battlefield → your graveyard",
+      "Beast token"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "their-artifact-as-a-target",
+    "text": "I cast Naturalize on their artifact. What happens?",
+    "expect": [
+      "an artifact: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]

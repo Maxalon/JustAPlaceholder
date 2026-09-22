@@ -4215,6 +4215,20 @@ class SituationParser(private val names: NameIndex) {
             val ids = describedCreatures("a ", pt, kind, owner, ctx, kw)
             if (ids.isNotEmpty()) { out += ids.first(); ctx.note(owner); return out }
         }
+        // "on my own land", "on my opponent's creature": a permanent nobody named, given only by its type. The
+        // target was dropped, so the spell had none and the answer was "nothing changes".
+        Regex("""^(?:(my own|my|their|his|her|my opponent's|the opponent's|opponent's|an?|the) )?(creatures?|lands?|artifacts?|enchantments?|permanents?|planeswalkers?|guys?|dudes?)$""").find(seg)?.let { r ->
+            val head = r.groupValues[1]
+            val owner = when (head) { "my", "my own" -> "me"; "their", "his", "her", "my opponent's", "the opponent's", "opponent's" -> pronounPlayer(ctx, "their"); else -> pronounPlayer(ctx, "their") }
+            val kind = r.groupValues[2].removeSuffix("s")
+            ctx.objects.values.lastOrNull { o -> o.controller == owner && o.zone == "battlefield" &&
+                (if (kind in setOf("creature", "guy", "dude")) isCreatureName(o.card.name) else (o.card.name ?: "").contains(kind, true)) }?.let { o -> out += o.id; return out }
+            if (kind in setOf("creature", "guy", "dude")) describedCreatures("a ", "", "creature", owner, ctx).firstOrNull()?.let { out += it; ctx.note(owner); return out }
+            var id = slug("a $kind"); var k = 2; while (ctx.objects.containsKey(id)) id = slug("a $kind") + "_" + (k++)
+            ctx.objects[id] = ObjectSpec(id, CardRef(name = if (kind == "land") "a basic land" else "a $kind"), controller = owner)
+            ctx.notes += "\"$seg\" names no card, so an unnamed $kind of ${if (owner == "me") "yours" else "theirs"} is taken as read; name it for a precise answer."
+            out += id; ctx.note(owner); return out
+        }
         // "a creature with protection from red" / "their creature with flying": a target described by what it
         // has rather than by its size. Without this the target was dropped and the spell hit a player instead.
         Regex("""^(?:(my|their|his|her|my opponent's|the opponent's|opponent's|an?|the) )?($creatureKinds) with ([a-z][a-z ,]*)$""").find(seg)?.let { r ->
