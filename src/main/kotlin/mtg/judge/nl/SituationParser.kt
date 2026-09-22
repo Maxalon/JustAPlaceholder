@@ -747,6 +747,12 @@ class SituationParser(private val names: NameIndex) {
                 val spec = if (toMe && Regex("""^(?:an? )""").containsMatchIn(r.groupValues[1])) "their " + r.groupValues[1].replaceFirst(Regex("""^an? """), "") else r.groupValues[1]
                 "$spec attacks ${r.groupValues[2]}"
             } }
+            // "I blink my creature with a counter on it": the counter is part of the board, not of the blinking.
+            .replace(Regex("""\b(i|we|they|he|she|my opponent|the opponent|@\w+) (blinks?|flickers?) ((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude)) with ((?:an? |one |two |three |\d+ )?(?:[+-]\d+/[+-]\d+ |[a-z]+ )?counters?(?: on it)?)"""), "$3 has $4, $1 $2 it")
+            // "My 2/2 with a Rancor on it dies" / "my creature dies with a Rancor on it": the attachment is part
+            // of the board, not of the dying, and said either way round it left the whole clause unread.
+            .replace(Regex("""\b((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude|token)) with (?:an? |the )?(c\d+)(?: on it| attached(?: to it)?)? (dies|died|is destroyed|gets destroyed|is sacrificed|is exiled|leaves the battlefield)\b"""), "$1 has $2 on it and it $3")
+            .replace(Regex("""\b((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude|token)) (dies|died|is destroyed|gets destroyed|is sacrificed|is exiled|leaves the battlefield) with (?:an? |the )?(c\d+)(?: on it| attached(?: to it)?)?"""), "$1 has $3 on it and it $2")
             // "My only untapped land is a Mountain": the board, said as what is left rather than what is there.
             .let { t0 -> Regex("""\b(my|our|their|his|her) only untapped (?:land|permanent|mana source|creature) is ((?:an? |the )?c\d+)""").replace(t0) { r ->
                 (if (r.groupValues[1] == "my" || r.groupValues[1] == "our") "i have " else "they have ") + r.groupValues[2] + " untapped"
@@ -2751,7 +2757,11 @@ class SituationParser(private val names: NameIndex) {
             return true
         }
         // "my creature dies", "a 2/2 dies", "their 3/3 is destroyed": a creature nobody named, by owner or by size.
-        Regex("""^($possPrefix|an? |one )?(?:(\d+/\d+)(?: tokens?)?|(\d+/\d+) ($creatureKinds)|($creatureKinds|tokens?|guys?|dudes?)) (dies|died|is destroyed|gets destroyed|goes to the graveyard|is sacrificed|gets sacrificed|is exiled|gets exiled|is bounced|gets bounced|leaves the battlefield)(?: to (?:my |their |his |her |a |an )?(?:removal(?: spell)?|removal spells?|it|that|combat damage|damage|a spell|the spell))?$""").find(c)?.let { r ->
+        val c0x = c
+        Regex("""^($possPrefix|an? |one )?(?:(\d+/\d+)(?: tokens?)?|(\d+/\d+) ($creatureKinds)|($creatureKinds|tokens?|guys?|dudes?))(?: with ($kwPhrase(?:(?:,|,? and) $kwPhrase)*))? (dies|died|is destroyed|gets destroyed|goes to the graveyard|is sacrificed|gets sacrificed|is exiled|gets exiled|is bounced|gets bounced|leaves the battlefield)(?: to (?:my |their |his |her |a |an )?(?:removal(?: spell)?|removal spells?|it|that|combat damage|damage|a spell|the spell))?$""").find(c0x)?.let { r0x ->
+            // "my creature with persist dies": the keyword describes the creature, and the verb is still the event.
+            val r = object { val groupValues = listOf(r0x.groupValues[0], r0x.groupValues[1], r0x.groupValues[2], r0x.groupValues[3], r0x.groupValues[4], r0x.groupValues[5], r0x.groupValues[7]) }
+            val kws = r0x.groupValues[6]
             val who = possessiveOwner(r.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me"
             val pt = r.groupValues[2].ifEmpty { r.groupValues[3] }
             val kind = r.groupValues[4].ifEmpty { r.groupValues[5] }
@@ -2759,10 +2769,31 @@ class SituationParser(private val names: NameIndex) {
             val id = ctx.objects.values.lastOrNull { o -> o.controller == who && o.zone == "battlefield" && (o.card.name ?: "").startsWith("a ") &&
                 (pt.isEmpty() || (o.card.name ?: "").startsWith("a $pt")) }?.id
                 ?: (if (kind.startsWith("token") || Regex("""\btokens?\b""").containsMatchIn(c)) describedTokens("a ", pt, "creature", who, ctx)
-                    else describedCreatures("a ", pt, if (kind == "creature") "" else kind, who, ctx, "")).firstOrNull() ?: return@let
+                    else describedCreatures("a ", pt, if (kind == "creature") "" else kind, who, ctx, kws)).firstOrNull() ?: return@let
             if (r.groupValues[6].contains("sacrific")) ctx.events += EventSpec("sacrifice", player = who, obj = id)
             else ctx.events += EventSpec("leave", obj = id, to = if (r.groupValues[6].contains("exile")) "exile" else if (r.groupValues[6].contains("bounce")) "hand" else "graveyard")
             ctx.lastMentioned = id; ctx.lastOwner = who; ctx.note(who); return true
+        }
+        // "I flicker my Wall of Omens" / "they blink it": exiling and returning it at once, with no card named.
+        Regex("""^(?:blinks?|blinked|blinking|flickers?|flickered|flickering) ($possPrefix|an? )?(c\d+|it|that|creature|guy|dude|\d+/\d+)(?: creature)?$""").find(c)?.let { r ->
+            val who = possessiveOwner(r.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me"
+            val id = when (val w = r.groupValues[2]) {
+                "it", "that" -> ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                "creature", "guy", "dude" -> ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id
+                    ?: describedCreatures("a ", "", "creature", who, ctx).firstOrNull() ?: return@let
+                else -> if (Regex("""^\d+/\d+$""").matches(w)) describedCreatures("a ", w, "creature", who, ctx).firstOrNull() ?: return@let
+                        else m.cards[w]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) } ?: return@let
+            }
+            ctx.events += EventSpec("blink", player = ctx.objects[id]?.controller ?: who, obj = id)
+            ctx.lastActor = actor ?: who; ctx.lastMentioned = id; return true
+        }
+        // "I have two Solemn Simulacrums and both die": every creature that side controls goes at once.
+        Regex("""^(?:both|both of them|all of them|they all|all three|all four|everything|all my creatures|all of my creatures) (?:dies|die|died|are destroyed|is destroyed|get destroyed|gets destroyed)$""").find(c)?.let {
+            val who = actor ?: subject ?: ctx.lastOwner ?: "me"
+            val ids = ctx.objects.values.filter { o -> o.controller == who && o.zone == "battlefield" && isCreatureName(o.card.name) }.map { it.id }
+            if (ids.isEmpty()) return@let
+            for (id in ids) ctx.events += EventSpec("leave", obj = id, to = "graveyard")
+            ctx.lastActor = who; ctx.lastMentioned = ids.last(); return true
         }
         // "I exile their graveyard with Tormod's Crypt": the named permanent's ability, aimed at that player.
         Regex("""^(?:exiles?|exiled|wipes?|hoses?|hits?) ($possPrefix)?graveyards?(?: with| using| via) (?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->

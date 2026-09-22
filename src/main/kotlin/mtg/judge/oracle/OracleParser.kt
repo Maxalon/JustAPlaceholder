@@ -1272,6 +1272,11 @@ object OracleParser {
         Regex("""^put (?:a|an) ((?:[A-Z][a-z]+, )*(?:[A-Z][a-z]+,? or [A-Z][a-z]+ )?(?:creature|land|artifact|permanent|enchantment|Equipment|Aura|Vehicle|Fortification)) card(?: with mana value equal to the number of (charge|\w+) counters on ~)? from your hand onto the battlefield( tapped)?( and attacking(?: that opponent| that player)?)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             return Effect.PutFromHand(parseFilter(m.groupValues[1], Kind.PERMANENT), m.groupValues[2].ifEmpty { null }, tapped = m.groupValues[3].isNotEmpty(), attacking = m.groupValues[4].isNotEmpty())
         }
+        // Reanimate, Animate Dead, Exhume: "Put target creature card from a graveyard onto the battlefield…"
+        Regex("""^put target (.+?) card from (?:a|your|an opponent's|target player's) graveyard onto the battlefield( tapped)?(?: under your control)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val f = parseFilter(m.groupValues[1], Kind.PERMANENT)
+            if (f.verifiable) return Effect.PutFromHand(f, null, tapped = m.groupValues[2].isNotEmpty(), fromGraveyard = true)
+        }
         zurRe.matchEntire(s)?.let { m -> zurEffect(m)?.let { return it } }
         // Sun Titan: "return target permanent card with mana value 3 or less from your graveyard to the battlefield"
         Regex("""^return target (.+?) card(?: with mana value (\d+) or less)? from your graveyard to the battlefield(?: tapped)?(?: under your control)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->

@@ -102,6 +102,19 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         engine.emptyGraveyardsUnderReplacement()
         // The described state may already call for state-based actions (a 1/1 under an opposing Elesh Norn).
         engine.stateBasedActions()
+        // "I cast Reanimate on my Grizzly Bears": nobody reanimates a creature that is already on the battlefield,
+        // so the creature the question names is read as being in the graveyard the spell takes it from. Left where
+        // it was, the spell found nothing to put and the answer said nothing changed.
+        val fromGraveyard = Regex("""from (?:a|your|an opponent's|target player's) graveyard (?:onto|to) the battlefield""", RegexOption.IGNORE_CASE)
+        for (e in sit.events) {
+            if (e.verb != "cast" || e.targets.isEmpty()) continue
+            val def = e.card?.let { cardDef(it, state) } ?: continue
+            if (!fromGraveyard.containsMatchIn(def.oracleText)) continue
+            for (t in e.targets) state.objects[t]?.takeIf { it.zone == mtg.judge.engine.Zone.BATTLEFIELD }?.let { o ->
+                o.zone = mtg.judge.engine.Zone.GRAVEYARD
+                state.assumptions += "${o.name} is read as being in the graveyard: ${def.name} puts a card from a graveyard onto the battlefield, so a creature already there is not what it means."
+            }
+        }
         var attackBatchEnd = -1
         val deferredAsks = mutableListOf<Pair<Int, EventSpec>>()
         var lastStep: EventSpec? = null
@@ -230,6 +243,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "poison" -> engine.addPoison(e.player ?: throw JudgeException("poison needs a player"), e.amount ?: 1)
             "gainlife" -> engine.gainLifeEvent(e.player ?: throw JudgeException("gainLife needs a player"), e.amount ?: 1)
             "loselife" -> engine.loseLifeEvent(e.player ?: throw JudgeException("loseLife needs a player"), e.amount ?: 1)
+            "blink" -> { val o = state.obj(e.obj ?: throw JudgeException("blink needs an object")); engine.blinkObject(o, e.player ?: o.controller) }
             "regenerate" -> { val o = state.obj(e.obj ?: throw JudgeException("regenerate needs an object")); state.shields += mtg.judge.engine.Shield(mtg.judge.engine.Replacement.Regenerate, o.id, null, 1, "a regeneration effect") }
             "pay" -> {
                 val who = e.player ?: throw JudgeException("pay needs a player")
@@ -464,6 +478,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "poison" -> "${who ?: "the player"} ${if (who == "you") "get" else "gets"} ${e.amount ?: 1} poison counter${if ((e.amount ?: 1) == 1) "" else "s"}"
             "trigger" -> "${state.objects[e.obj]?.name ?: e.obj}'s ability triggers$tg"
             "choose" -> "${who ?: "controller"} ${if (who == "you") "choose" else "chooses"} ${e.to?.substringAfter(':')?.let { state.objects[it]?.name ?: it } ?: "?"} for ${state.objects[e.obj]?.name ?: e.obj}'s ability"
+            "blink" -> "${state.objects[e.obj]?.name ?: e.obj} is exiled and returned to the battlefield"
             "regenerate" -> "${state.objects[e.obj]?.name ?: e.obj} has a regeneration shield"
             "sacrifice" -> "${who ?: "controller"} ${if (who == "you") "sacrifice" else "sacrifices"} ${state.objects[e.obj]?.name ?: e.obj}"
             "fight" -> "${state.objects[e.obj]?.name ?: e.obj} fights ${e.targets.firstOrNull()?.let { state.objects[it]?.name ?: it } ?: "?"}"

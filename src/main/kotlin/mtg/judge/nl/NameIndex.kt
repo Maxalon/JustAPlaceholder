@@ -76,7 +76,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
             "bolt" to "lightning bolt", "bears" to "grizzly bears", "swords" to "swords to plowshares", "path" to "path to exile",
             "rhystic" to "rhystic study", "tithe" to "smothering tithe", "sol" to "sol ring", "wrath" to "wrath of god", "damnation" to "damnation",
             "cyc rift" to "cyclonic rift", "rift" to "cyclonic rift", "tutor" to "demonic tutor", "demonic" to "demonic tutor", "vamp tutor" to "vampiric tutor",
-            "mana crypt" to "mana crypt", "crypt" to "mana crypt", "vault" to "mana vault", "sdt" to "sensei s divining top", "divining top" to "sensei s divining top",
+            "mana crypt" to "mana crypt", "crypt" to "mana crypt", "vault" to "mana vault", "goyf" to "tarmogoyf", "sdt" to "sensei s divining top", "divining top" to "sensei s divining top",
             "farewell" to "farewell", "teferi s protection" to "teferi s protection", "tefprot" to "teferi s protection",
             // "drain" on its own is the verb for what Blood Artist and Exsanguinate do far more often than it is
             // the counterspell, and read as the card it put a Mana Drain on a battlefield nobody said it was on.
@@ -109,6 +109,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
             "one", "two", "three", "four", "five", "first", "second", "last", "next", "now", "still", "also", "just", "only", "again", "before", "after",
             // Mechanic words a player types meaning the mechanic, never the legend whose name starts with it.
             "monstrosity", "monstrous", "ninjutsu", "bushido", "landfall", "prowess", "cascade", "proliferate", "populate", "investigate", "adapt", "amass", "explore", "surveil", "scry", "morph", "megamorph", "mutate", "escape", "embalm", "eternalize", "delve", "madness", "bestow", "rebound",
+            "leave", "leaves", "left", "enter", "enters", "entered", "return", "returns", "bounce", "bounces",
             "everything", "all", "nothing", "everyone", "nobody", "blockers", "attackers", "response", "responses", "counters", "loyalty", "marked", "regeneration", "regenerate", "shield", "flash", "sacrifice", "sac", "attacking", "blocking", "wear", "tear", "begin", "start", "time", "enchanted", "equipped", "poison", "unblocked", "alone", "x", "give", "gives", "grant", "elves", "goblins", "zombies", "tokens", "creatures",
         )
 

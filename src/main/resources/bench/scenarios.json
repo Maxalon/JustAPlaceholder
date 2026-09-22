@@ -12967,5 +12967,117 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "reanimate-a-creature",
+    "text": "I cast Reanimate on my Grizzly Bears",
+    "expect": [
+      "Grizzly Bears enters the battlefield"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "reanimate-from-the-graveyard",
+    "text": "I have a Serra Angel in my graveyard and I cast Reanimate on it",
+    "expect": [
+      "Serra Angel enters the battlefield"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "dies-with-an-aura-said-after",
+    "text": "my creature dies with a Rancor on it, where does the Rancor go",
+    "expect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "dies-with-an-aura-said-before",
+    "text": "my 2/2 with a Rancor on it dies, where does the Rancor go",
+    "expect": [
+      "Rancor: your graveyard → your hand"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "goyf-is-tarmogoyf",
+    "text": "my graveyard has a land, an instant, and a creature, how big is my Goyf",
+    "expect": [
+      "Tarmogoyf is 3/4"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "leave-is-a-verb",
+    "text": "my token leaves the battlefield, does it come back",
+    "expect": [
+      "the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Leave"
+    ],
+    "cite": []
+  },
+  {
+    "id": "flicker-with-no-card",
+    "text": "I flicker my Wall of Omens",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "701.13a"
+    ]
+  },
+  {
+    "id": "blink-loses-counters",
+    "text": "I blink my creature with a +1/+1 counter on it, does it keep the counter",
+    "expect": [
+      "with no +1/+1 counters on it"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "persist-on-a-described-creature",
+    "text": "my creature with persist dies",
+    "expect": [
+      "comes back with a -1/-1 counter (persist)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "both-of-them-die",
+    "text": "I have two Solemn Simulacrums and both die",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

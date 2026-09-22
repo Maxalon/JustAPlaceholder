@@ -310,6 +310,23 @@ class Engine(val state: GameState) {
     fun loseLifeEvent(playerId: String, amount: Int) { val p = state.player(playerId); p.life = p.life?.minus(amount); trace.step("${p.subject} ${p.v("loses", "lose")} $amount life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} $amount life."; stateBasedActions() }
 
     /** A player draws cards outside any effect ("my opponent draws a card"): each draw is an event triggers can see. */
+    /**
+     * Exile a permanent and return it at once (701.13a): a new object, with none of the old one's counters,
+     * damage, attachments or tapped state, and summoning sick again. "I flicker my Wall of Omens" says exactly
+     * this with no card behind it, and Cloudshift and its kin do it through [Effect.Blink].
+     */
+    fun blinkObject(o: GameObject, newController: String) {
+        if (!o.isOnBattlefield()) { trace.step("${o.name} isn't on the battlefield, so there's nothing to exile and return.", "608.2b"); return }
+        val hadCounters = o.counters.filterValues { it > 0 }; val wasAttached = state.objects.values.filter { it.isOnBattlefield() && it.attachedTo == o.id }.map { it.name }
+        move(o, Zone.EXILE, "${o.name} is exiled.", "701.13a")
+        val back = state.add(GameObject(freshObjectId(o.def.name), o.def, Zone.BATTLEFIELD, newController, o.owner)); back.timestamp = state.tick(); back.summoningSick = o.def.isCreature; o.successor = back.id
+        trace.step("${o.def.name} returns to the battlefield at once, under ${state.player(back.controller).possessive} control, as a new object with no memory of its previous existence: untapped, with no damage, no counters${if (hadCounters.isNotEmpty()) " (the ${hadCounters.entries.joinToString(", ") { (k, n) -> "$n $k" }} are gone)" else ""}${if (wasAttached.isNotEmpty()) ", and ${wasAttached.joinToString(", ")} no longer attached to it" else ""}${if (o.def.isCreature) ", and summoning sick again" else ""}. Anything that was targeting the old object no longer has a legal target.", "400.7", "701.13a", "302.6")
+        // "Does it keep the counter?" is the usual question, so the outcome says it, not only the trace.
+        state.outcomes += "${o.def.name} is exiled and returns as a new object (${state.player(back.controller).possessive} control)" +
+            (if (hadCounters.isEmpty()) "." else ", with no ${hadCounters.keys.joinToString(" or ")} counters on it.")
+        applyEntersReplacements(back); onEvent(GameEvent.EntersBattlefield(back)); stateBasedActions()
+    }
+
     fun draw(playerId: String, count: Int) { drawCards(state.player(playerId), count); stateBasedActions() }
 
     /** Draws, tracking the library size when it's known; drawing from an empty library flags the player for 704.5b. */
@@ -2090,7 +2107,9 @@ class Engine(val state: GameState) {
             is Effect.PutFromHand -> {
                 val you = state.player(item.controller)
                 val fromZone = if (effect.fromLibrary) Zone.LIBRARY else if (effect.fromGraveyard) Zone.GRAVEYARD else Zone.HAND; val zoneName = if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"
-                val chosen = (item.choice ?: state.pendingChoices.remove(item.source.id))?.let { c -> state.objects[c] } ?: state.objects.values.firstOrNull { it.zone == fromZone && it.controller == item.controller && state.matches(effect.filter, it, item.controller, anyZone = true) }
+                // Reanimate and Sun Titan name the card as a target; with several in the graveyard, that is the one.
+                val chosen = item.targets.filterIsInstance<Ref.Obj>().firstOrNull()?.let { state.objects[it.id] }?.takeIf { it.zone == fromZone }
+                    ?: (item.choice ?: state.pendingChoices.remove(item.source.id))?.let { c -> state.objects[c] } ?: state.objects.values.firstOrNull { it.zone == fromZone && it.controller == item.controller && state.matches(effect.filter, it, item.controller, anyZone = true) }
                     // A basic land fetched from the library: nobody needs to name it; assume one is there.
                     ?: if (effect.fromLibrary && effect.filter.raw.contains("basic land", true)) Generic.spell("basic land")?.let { def -> state.add(GameObject(freshObjectId("basic land"), def, Zone.LIBRARY, item.controller)).also { state.assumptions += "${item.source.name} finds a basic land (${you.possessive} library has one)." } } else null
                 if (chosen == null) { state.clarifications += Clarification("${item.source.name}'s card", "${item.source.name} puts ${withArticle(effect.filter.raw)} from ${you.possessive} $zoneName onto the battlefield; which card? (none was named, so nothing is put)"); trace.step("No ${effect.filter.raw} in ${you.possessive} $zoneName was named for ${item.source.name}; nothing is put onto the battlefield${if (effect.fromLibrary) " (the library is still shuffled)" else ""}.") }
@@ -2197,13 +2216,7 @@ class Engine(val state: GameState) {
             }
             is Effect.Exile -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { move(it, Zone.EXILE, "${it.name} is exiled.", "701.13a") } }
             is Effect.Blink -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o ->
-                if (!o.isOnBattlefield()) { trace.step("${o.name} isn't on the battlefield, so there's nothing to exile and return.", "608.2b"); return@let }
-                val hadCounters = o.counters.filterValues { it > 0 }; val wasAttached = state.objects.values.filter { it.isOnBattlefield() && it.attachedTo == o.id }.map { it.name }
-                move(o, Zone.EXILE, "${o.name} is exiled.", "701.13a")
-                val back = state.add(GameObject(freshObjectId(o.def.name), o.def, Zone.BATTLEFIELD, if (effect.ownersControl) o.owner else item.controller, o.owner)); back.timestamp = state.tick(); back.summoningSick = o.def.isCreature; o.successor = back.id
-                trace.step("${o.def.name} returns to the battlefield at once, under ${state.player(back.controller).possessive} control, as a new object with no memory of its previous existence: untapped, with no damage, no counters${if (hadCounters.isNotEmpty()) " (the ${hadCounters.entries.joinToString(", ") { (k, n) -> "$n $k" }} are gone)" else ""}${if (wasAttached.isNotEmpty()) ", and ${wasAttached.joinToString(", ")} no longer attached to it" else ""}${if (o.def.isCreature) ", and summoning sick again" else ""}. Anything that was targeting the old object no longer has a legal target.", "400.7", "701.13a", "302.6")
-                state.outcomes += "${o.def.name} is exiled and returns as a new object (${state.player(back.controller).possessive} control)."
-                applyEntersReplacements(back); onEvent(GameEvent.EntersBattlefield(back))
+                blinkObject(o, if (effect.ownersControl) o.owner else item.controller)
             } }
             is Effect.Tap -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { trace.step("${it.name} becomes tapped.", "701.26a"); tap(it); state.outcomes += "${it.name} is tapped." } }
             is Effect.Untap -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { it.tapped = false; trace.step("${it.name} becomes untapped.", "701.26b"); state.outcomes += "${it.name} is untapped." } }
