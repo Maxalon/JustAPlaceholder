@@ -99,7 +99,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
             "one", "two", "three", "first", "second", "last", "next", "new", "old", "big", "small", "up", "down", "out", "off", "over", "under", "back", "again", "now", "then", "here", "there",
             "life", "death", "damage", "counter", "target", "attack", "block", "draw", "hand", "deck", "library", "graveyard", "exile", "battlefield", "stack", "response", "trigger", "ability", "poison", "commander", "cards", "card",
             "they", "them", "he", "she", "we", "you", "i", "me", "re", "ve", "ll", "m", "s", "d", "t", "don", "doesn", "can", "won", "isn", "aren")
-        private val stopWords = setOf(
+        private val stopWords = setOf("speed", 
             "counter", "target", "turn", "attack", "block", "cast", "play", "draw", "damage", "life", "control", "survive", "survives", "dead", "alive", "die", "dies", "grow", "resolve", "experience", "energy", "storm", "sacrifice", "sacrificed", "top", "bottom", "overload", "overloaded", "kick", "kicked", "evoke", "convoke", "cycle", "flashback", "recast", "replay",
             "creature", "spell", "ability", "trigger", "stack", "response", "resolve", "resolves", "tap", "untap", "exile", "destroy", "sacrifice",
             "discard", "hand", "library", "graveyard", "battlefield", "token", "copy", "end", "step", "upkeep", "combat", "main", "phase", "pay",

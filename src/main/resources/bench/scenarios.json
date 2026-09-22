@@ -14054,5 +14054,132 @@
     ],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "flashback-cast-is-exiled",
+    "text": "I cast Snapcaster targeting Bolt in my graveyard, then flashback it at their 2/2",
+    "expect": [
+      "Lightning Bolt is exiled (flashback)."
+    ],
+    "notExpect": [],
+    "cite": [
+      "702.34a"
+    ]
+  },
+  {
+    "id": "fireball-split-between-two",
+    "text": "I Fireball for 4 split between their two 2/2s",
+    "expect": [
+      "a 2/2 creature: the battlefield → opponent's graveyard. (×2)"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "fireball-x-six-to-face",
+    "text": "I cast Fireball with X=6 at their face",
+    "expect": [
+      "opponent takes 6 damage."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "banefire-five-cant-be-countered",
+    "text": "I cast Banefire for 5 at them and they Counterspell it",
+    "expect": [
+      "Banefire isn't countered (X = 5: it can't be).",
+      "opponent takes 5 damage."
+    ],
+    "notExpect": [
+      "Banefire is countered."
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "banefire-four-is-countered",
+    "text": "I cast Banefire for 4 at them and they Counterspell it",
+    "expect": [
+      "Banefire is countered."
+    ],
+    "notExpect": [
+      "opponent takes 4 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "at-two-with-platinum-angel",
+    "text": "I'm at 2 with Platinum Angel and they Bolt me twice, then Shatter the Angel",
+    "expect": [
+      "You stay in the game: Platinum Angel keeps you from losing.",
+      "You lose the game."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "attack-me-for-thirty",
+    "text": "I have Platinum Angel and they attack me for 30",
+    "expect": [
+      "You take 30 damage."
+    ],
+    "notExpect": [
+      "You lose the game"
+    ],
+    "cite": []
+  },
+  {
+    "id": "vigilance-creature-question",
+    "text": "does my vigilance creature tap when it attacks",
+    "expect": [
+      "a creature with vigilance is untapped (vigilance: attacking didn't tap it)."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "two-named-die-at-the-same-time",
+    "text": "my Blood Artist and their Grizzly Bears die at the same time",
+    "expect": [
+      "opponent loses 1 life. (×2)",
+      "You gain 1 life. (×2)"
+    ],
+    "notExpect": [],
+    "cite": [
+      "603.10a"
+    ]
+  },
+  {
+    "id": "double-blocked-by-two-sizes",
+    "text": "my 3/3 is double blocked by a 2/2 and a 1/1",
+    "expect": [
+      "a 2/2 creature: the battlefield → opponent's graveyard.",
+      "a 1/1 creature: the battlefield → opponent's graveyard.",
+      "a 3/3 creature: the battlefield → your graveyard."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "vial-in-a-snapcaster",
+    "text": "I have Aether Vial on 2 and put in a Snapcaster at instant speed",
+    "expect": [
+      "Snapcaster Mage enters the battlefield."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "heroic-intervention-with-nothing-described",
+    "text": "they cast Wrath and I respond with Heroic Intervention",
+    "expect": [
+      "Heroic Intervention had nothing to protect: no permanents of yours were described. Any there are would have hexproof and indestructible until end of turn."
+    ],
+    "notExpect": [],
+    "cite": []
   }
 ]

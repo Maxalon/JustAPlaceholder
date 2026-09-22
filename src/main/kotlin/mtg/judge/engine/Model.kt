@@ -162,7 +162,9 @@ sealed interface Effect {
      *  a rider on the prevention shield the same spell just made (Comeuppance, Deflecting Palm). */
     data class ReflectPrevented(val toCreature: Boolean, val toController: Boolean) : Effect
     /** "~ deals N damage divided as you choose among one or two targets" (601.2d). */
-    data class DamageDivided(val amount: Int, val target: TargetSpec, val maxTargets: Int?) : Effect
+    data class DamageDivided(val amount: Int, val target: TargetSpec, val maxTargets: Int?,
+                             /** Fireball: X damage, divided evenly and rounded down among any number of targets. */
+                             val x: Boolean = false, val evenly: Boolean = false) : Effect
     /** Storm: copy the spell this trigger came from once for each spell cast before it this turn (702.40a). */
     data object StormCopy : Effect
     /** Thassa's Oracle: "look at the top X cards … where X is your devotion to [color] … If X is greater than or equal to the number of cards in your library, you win the game." */

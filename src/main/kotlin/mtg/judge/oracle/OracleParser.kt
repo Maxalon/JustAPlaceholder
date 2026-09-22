@@ -1123,6 +1123,9 @@ object OracleParser {
             if (t.filter.verifiable) return Effect.DamageDivided(m.groupValues[1].toInt(), t, max)
         }
         Regex("""^monstrosity (\d+)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Monstrosity(it.groupValues[1].toInt()) }
+        // Fireball: "~ deals X damage divided evenly, rounded down, among any number of targets."
+        if (Regex("""^~ deals x damage divided evenly, rounded down, among any number of targets\.?$""", RegexOption.IGNORE_CASE).matches(s.trim()))
+            return Effect.DamageDivided(0, target("any target"), null, x = true, evenly = true)
         // "Target creature can't be blocked this turn" — a keyword grant for the turn, checked with the rest of
         // the blocking restrictions.
         if (Regex("""^(?:~|it) can't be blocked this turn\.?$""", RegexOption.IGNORE_CASE).matches(s.trim())) return Effect.GainKeywordsSelf(setOf("unblockable"))
