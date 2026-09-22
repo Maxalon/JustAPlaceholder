@@ -216,6 +216,53 @@ class PhrasingFamiliesTest {
             ),
         ),
         Family(
+            "a creature attacked into, said as attacking the creature", "",
+            "a 2/2 creature: the battlefield \u2192 your graveyard",
+            listOf(
+                "Their 4/4 attacks my 2/2.", "A 4/4 attacks my 2/2.", "Their 4/4 attacks into my 2/2.",
+                "Their 4/4 is attacking my 2/2.", "Their 4/4 swings at my 2/2.",
+                "They attack with a 4/4 and I block with a 2/2.", "They attack with a 4/4, I block it with my 2/2.",
+                "I block their 4/4 with my 2/2.", "My 2/2 blocks their 4/4.",
+            ),
+        ),
+        Family(
+            "a creature that dies wearing something", "",
+            "Rancor: your graveyard \u2192 your hand",
+            listOf(
+                "My 2/2 with a Rancor on it dies.", "My 2/2 dies with a Rancor on it.",
+                "My 2/2 has a Rancor on it and it dies.", "My 2/2 is enchanted with Rancor and it dies.",
+                "I have a 2/2 with Rancor attached and it dies.",
+                "My 2/2 wearing a Rancor dies.",
+            ),
+        ),
+        Family(
+            "a past-tense retelling", "I control Grizzly Bears. ",
+            "Grizzly Bears: the battlefield \u2192 your graveyard",
+            listOf(
+                "My opponent killed my Grizzly Bears.", "My buddy killed my Grizzly Bears.",
+                "They destroyed my Grizzly Bears.", "They blew up my Grizzly Bears.",
+                "My opponent has killed my Grizzly Bears.",
+            ),
+        ),
+        Family(
+            "a tag at the end asking for confirmation", "I control Grizzly Bears. They cast Doom Blade on it. ",
+            "Yes: Grizzly Bears died",
+            listOf(
+                "Does it die?", "It dies?", "It dies right?", "It dies, correct?", "It dies, yeah?",
+                "It dies. Is that right?",
+            ),
+        ),
+        Family(
+            "a keyword question with no board at all", "",
+            "isn't destroyed",
+            listOf(
+                "Does indestructible save my creature from Doom Blade?",
+                "Does indestructible stop a Doom Blade on my creature?",
+                "My creature has indestructible, they cast Doom Blade on it.",
+                "I have a creature with indestructible and they Doom Blade it.",
+            ),
+        ),
+        Family(
             "a running total carried into \"2 more\"", "", "8",
             listOf(
                 "My opponent is at 5 life and gains 3 more. What happens?",

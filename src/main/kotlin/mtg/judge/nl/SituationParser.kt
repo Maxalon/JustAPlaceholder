@@ -510,6 +510,8 @@ class SituationParser(private val names: NameIndex) {
             .let { t0 -> Regex("""\b(i|we|they|he|she|it|my opponent|the opponent|opponent) had\b(?! (?:cast|played|attacked|blocked|activated|been)\b)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 r.groupValues[1] + (if (r.groupValues[1].lowercase() in setOf("he", "she", "it", "opponent", "my opponent", "the opponent")) " has" else " have")
             } }
+            // "they blew up my Bears": table talk for destroying it, in any tense.
+            .replace(Regex("""\bbl(?:ow|ows|ew)(?:n)? up\b""", RegexOption.IGNORE_CASE), "destroys")
             .replace(Regex("""\bcasted\b"""), "cast")
             // "my opponent played a Bears and I killed it": the simple past is how a player recounts what
             // happened, and the answer is the same as for the present. Only right after a subject, so a passive
@@ -612,7 +614,7 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""^with (?:the |an? |my |their )?c\d+ (?:still )?on the stack,? """), "in response ")
             .replace(Regex("""^before (?:it|that|the spell) resolves,? """), "in response ")
             // "I attack with an 8/8 trampler into a 2/2 blocker": the thing attacked into is the blocker.
-            .let { t0 -> Regex("""\b(attacks?|attacking|swings?|swinging)((?: with)? .+?) into ((?:an? |the |their |his |her )?(?:untapped |tapped |fresh )?(?:\d+/\d+|c\d+)(?:\s+(?!blocker)[a-z]+)*)(?:\s+blockers?)?(?=[.,]|$)""").replace(t0) { r ->
+            .let { t0 -> Regex("""\b(attacks?|attacking|swings?|swinging)((?: with)? .+?) into ((?:an? |the |their |his |her |my |our )?(?:untapped |tapped |fresh )?(?:\d+/\d+|c\d+)(?:\s+(?!blocker)[a-z]+)*)(?:\s+blockers?)?(?=[.,]|$)""").replace(t0) { r ->
                 r.groupValues[1] + r.groupValues[2] + ", they block with " + r.groupValues[3].replace(Regex("""\b(?:untapped|fresh) """), "")
             } }
             // "a 4/4 attacks my 2/2": the attacker is said without an owner, but a creature of mine blocking it
@@ -621,12 +623,14 @@ class SituationParser(private val names: NameIndex) {
             // "their 4/4 attacks my 2/2": nobody attacks a creature, so the creature named after the verb is the
             // blocker. Whose it is says who blocks. A planeswalker really can be attacked, so a named card only
             // reads this way when it is a creature.
-            .let { t0 -> Regex("""\b(attacks?|attacking|swings?|swinging) (my|our|their|his|her|the opponent's|my opponent's) ((?:untapped |tapped |fresh )?(?:(\d+/\d+)|(c\d+))(?:\s+(?!blockers?\b|and\b|or\b|plus\b|but\b)[a-z]+)*)(?:\s+blockers?)?(?=[.,]|$)""").replace(t0) { r ->
+            .let { t0 -> Regex("""\b(attacks?|attacking|swings? at|swings?|swinging)(?: (?:in)?to| at)? (my|our|their|his|her|the opponent's|my opponent's) ((?:untapped |tapped |fresh )?(?:(\d+/\d+)|(c\d+))(?:\s+(?!blockers?\b|and\b|or\b|plus\b|but\b)[a-z]+)*)(?:\s+blockers?)?(?=[.,]|$)""").replace(t0) { r ->
                 val spec = r.groupValues[3].replace(Regex("""\b(?:untapped|fresh) """), "")
                 val isCreature = r.groupValues[4].isNotEmpty() || m.cards[r.groupValues[5]]?.typeLine?.contains("Creature", true) == true
                 val mine = r.groupValues[2] == "my" || r.groupValues[2] == "our"
+                // "swings at my 2/2": the verb carries the preposition, which the attack rules don't want.
+                val verb = r.groupValues[1].removeSuffix(" at")
                 if (!isCreature) r.value
-                else r.groupValues[1] + if (mine) ", i block with $spec" else ", they block with $spec"
+                else verb + if (mine) ", i block with $spec" else ", they block with $spec"
             } }
             // "when it connects", "if my Skirge connects": table talk for dealing combat damage to a player.
             .replace(Regex("""\b(?:when|if|after) ((?:their |his |her )c\d+) connects\b"""), "and $1 deals combat damage to me")
@@ -2088,7 +2092,7 @@ class SituationParser(private val names: NameIndex) {
         }
         // "a creature enchanted with Pacifism", "a 2/2 equipped with Bonesplitter": a creature nobody named,
         // carrying something that is named.
-        Regex("""^(?:(?:have|has|got|controls?|controlling)\s+)?(an? |\d+ |two |three )?(?:(\d+/\d+)s?\s*)?($creatureKinds)?\s*(?:enchanted with|equipped with|wearing|carrying) (?:an? |the |my |their )?(c\d+)((?: .+)?)$""").find(c)?.let { r ->
+        Regex("""^(?:(?:have|has|got|controls?|controlling)\s+)?(an? |\d+ |two |three )?(?:(\d+/\d+)s?\s*)?($creatureKinds)?\s*(?:(?:is|are|was|were|gets?|got|has|have) )?(?:enchanted with|equipped with|wearing|carrying) (?:an? |the |my |their )?(c\d+)((?: .+)?)$""").find(c)?.let { r ->
             if (r.groupValues[2].isEmpty() && r.groupValues[3].isEmpty()) return@let
             val who = actor ?: subject ?: ctx.lastOwner ?: "me"
             val ids = describedCreatures(r.groupValues[1], r.groupValues[2], r.groupValues[3], who, ctx)
