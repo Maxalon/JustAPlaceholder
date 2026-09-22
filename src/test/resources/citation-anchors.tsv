@@ -5,7 +5,9 @@
 101.4	if multiple players would make choices
 103.6	some cards allow a player to
 104.2b	an effect may state that a
+104.3a	a player can concede the game
 104.3b	if a player s life total
+104.4a	if all the players remaining in
 105.2a	a monocolored object is exactly one
 106.4	when an effect instructs a player
 106.6	some spells or abilities that produce
@@ -74,6 +76,7 @@
 500.1	a turn consists of five phases
 500.2	a phase or step in which
 500.4	as a step or phase begins
+500.7	some effects can give a player
 502.3	third the active player determines which
 502.4	no player receives priority during the
 503.1	the upkeep step has no turn
@@ -301,5 +304,6 @@
 707.10a	if a copy of a spell
 707.10c	some effects copy a spell or
 714.4	if the number of lore counters
+800.4a	when a player leaves the game
 903.8	a player may cast a commander
 903.10a	a player who s been dealt

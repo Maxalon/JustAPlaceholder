@@ -57,6 +57,11 @@ class RulesAnswersTest {
         "If both creatures have first strike do they trade?" to "702.7b",
         "Can I activate a creature's tap ability the turn it enters?" to "302.6",
         "Can I sacrifice a creature in response to it being exiled?" to "608.2b",
+        "If both players are at 0 life who wins?" to "104.4a",
+        "If both of us go to 0 life at once, who wins the game?" to "104.4a",
+        "When can a player concede?" to "104.3a",
+        "They scoop in response to my spell, what happens?" to "104.3a",
+        "When does an extra turn happen?" to "500.7",
     )
 
     @Test
