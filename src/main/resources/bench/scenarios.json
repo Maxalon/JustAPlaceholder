@@ -12310,5 +12310,17 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "dies-to-removal",
+    "text": "I have a Blood Artist and their creature dies to removal. What happens?",
+    "expect": [
+      "opponent loses 1 life",
+      "You gain 1 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

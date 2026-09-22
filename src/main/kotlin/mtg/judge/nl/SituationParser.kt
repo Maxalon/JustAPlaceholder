@@ -2529,7 +2529,7 @@ class SituationParser(private val names: NameIndex) {
             return true
         }
         // "my creature dies", "a 2/2 dies", "their 3/3 is destroyed": a creature nobody named, by owner or by size.
-        Regex("""^($possPrefix|an? |one )?(?:(\d+/\d+)(?: tokens?)?|(\d+/\d+) ($creatureKinds)|($creatureKinds|tokens?|guys?|dudes?)) (dies|died|is destroyed|gets destroyed|goes to the graveyard|is sacrificed|gets sacrificed|is exiled|gets exiled|is bounced|gets bounced|leaves the battlefield)$""").find(c)?.let { r ->
+        Regex("""^($possPrefix|an? |one )?(?:(\d+/\d+)(?: tokens?)?|(\d+/\d+) ($creatureKinds)|($creatureKinds|tokens?|guys?|dudes?)) (dies|died|is destroyed|gets destroyed|goes to the graveyard|is sacrificed|gets sacrificed|is exiled|gets exiled|is bounced|gets bounced|leaves the battlefield)(?: to (?:my |their |his |her |a |an )?(?:removal(?: spell)?|removal spells?|it|that|combat damage|damage|a spell|the spell))?$""").find(c)?.let { r ->
             val who = possessiveOwner(r.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me"
             val pt = r.groupValues[2].ifEmpty { r.groupValues[3] }
             val kind = r.groupValues[4].ifEmpty { r.groupValues[5] }
