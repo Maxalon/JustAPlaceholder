@@ -743,7 +743,10 @@ class SituationParser(private val names: NameIndex) {
         }
         // "they reveal Counterspell and Forest" / "my hand is Bolt, Bears and Forest": cards in hand, kept together before the clause split.
         Regex("""\b(?:reveals?|revealing|shows? me|(?:my|their|his|her) hand (?:is|has|contains)|(?:i'm|i am|they're|they are) holding|holds?|holding) ((?:an? |the |two |three |four |\d+ )?c\d+s?(?:,? (?:and )?(?:an? |the |two |three |four |\d+ )?c\d+s?)*)$""").find(t2)?.let { r ->
-            val who = actorOfClause(t2.trim()) ?: (if (Regex("""\b(?:my|i'm|i am|i)\b""").containsMatchIn(t2.substring(0, r.range.first))) "me" else if (Regex("""\b(?:they|their|he|she|his|her|opponent)\b""").containsMatchIn(t2.substring(0, r.range.first))) pronounPlayer(ctx, "they") else ctx.lastActor ?: "opp")
+            val before = t2.substring(0, r.range.first)
+            val lastWord = Regex("""\b(i|my|i'm|i am|i've|we|they|their|he|she|his|her|my opponent|the opponent|opponent)\b""").findAll(before).lastOrNull()?.groupValues?.get(1)
+            val who = (lastWord?.let { w -> if (w in setOf("i", "my", "i'm", "i am", "i've", "we")) "me" else pronounPlayer(ctx, "they") })
+                ?: actorOfClause(t2.trim()) ?: ctx.lastActor ?: "opp"
             val cards = Regex("""(?:(two|three|four|five|\d+) )?(c\d+)""").findAll(r.groupValues[1]).flatMap { mm ->
                 val n = mm.groupValues[1].let { if (it.isEmpty()) 1 else number(it) ?: it.toIntOrNull() ?: 1 }
                 List(n) { mm.groupValues[2] }
@@ -2998,6 +3001,7 @@ class SituationParser(private val names: NameIndex) {
             if (((rest.contains("in hand") || rest.contains("in my hand")) && !Regex("""\bcards? in (?:their |my |his |her )?hand\b""").containsMatchIn(rest)) || m.cards.getValue(r.groupValues[2]).isSpellOnly) {
                 ctx.notes += "${m.cards.getValue(r.groupValues[2]).display} noted as in hand (hidden zones are only tracked when you cast from them)."
                 ctx.inHand.getOrPut(owner) { mutableListOf() } += m.cards.getValue(r.groupValues[2])
+                addObject(m.cards.getValue(r.groupValues[2]), owner, false, ctx, zone = "hand", allowDuplicate = true)
                 ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner
                 return true
             }

@@ -12390,5 +12390,27 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "duress-with-a-known-hand",
+    "text": "They cast Duress and I have a Mountain and a Lightning Bolt in hand. What do I discard?",
+    "expect": [
+      "Lightning Bolt: your hand → your graveyard"
+    ],
+    "notExpect": [
+      "which one depends on your hand"
+    ],
+    "cite": []
+  },
+  {
+    "id": "duress-with-only-lands",
+    "text": "They cast Duress and I have two Mountains in hand. What do I discard?",
+    "expect": [
+      "You discard nothing"
+    ],
+    "notExpect": [
+      "which one depends on your hand"
+    ],
+    "cite": []
   }
 ]
