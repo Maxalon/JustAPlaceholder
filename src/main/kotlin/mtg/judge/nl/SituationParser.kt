@@ -3396,7 +3396,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "$n unnamed ${r.groupValues[2]} assumed to be 1/1 tokens; name them for a precise answer."
             ctx.lastActor = who; ctx.lastVerb = "attack"; return true
         }
-        Regex("""^(?:attacks?|attacking|swings?|swinging)(?: (@\w+|me|them|him|her|my opponent|the opponent|opponent|(?:$possPrefix)?c\d+|it|that))?(?: with)?\s+(an? |the |my |their |\d+ |two |three |four |five )?(?:(\d+/\d+)s?\s*)?(?:(red|green|white|blue|black|colorless|flying) )?(?:($kwNouns)\b ?)?($creatureKinds)?( tokens?)?(?: with ([a-z ,&]+?))?(?: plus .*)?(?: but .*| and .*)?$""").find(c)?.let { r0 ->
+        Regex("""^(?:attacks?|attacking|swings?|swinging)(?: (@\w+|me|them|him|her|my opponent|the opponent|opponent|(?:$possPrefix)?c\d+|it|that))?(?: with)?\s+(an? |the |my |their |\d+ |two |three |four |five )?(?:(\d+/\d+)s?\s*)?(?:(red|green|white|blue|black|colorless|flying) )?(?:($kwNouns)\b ?)?($creatureKinds)?( tokens?)?(?: with ([a-z ,&]+?))?(?: plus .*)?((?: but .*| and .*)?)$""").find(c)?.let { r0 ->
             val kwNoun = r0.groupValues[5].let { if (it.isEmpty()) "" else it.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink").replace("striker", "strike") }
             val r = object { val groupValues = listOf(r0.groupValues[0], r0.groupValues[1], r0.groupValues[2], r0.groupValues[3], (r0.groupValues[4] + " " + r0.groupValues[6].ifEmpty { if (r0.groupValues[4].isEmpty() && kwNoun.isEmpty()) "" else "creature" }).trim(), r0.groupValues[7], listOf(r0.groupValues[8], kwNoun).filter { it.isNotEmpty() }.joinToString(", ")) }
             val who = actor ?: subject ?: "opp"
@@ -3431,7 +3431,10 @@ class SituationParser(private val names: NameIndex) {
             val attackers = if (payFor != null && payFor < ids.size) ids.take(payFor).also { ctx.notes += "Only $payFor of the ${ids.size} attack taxes can be paid, so only $payFor creatures attack (an attack whose cost can't be paid is illegal, 508.1c)."; ctx.events += EventSpec("pay", player = who, to = "yes") } else ids
             attackers.forEach { ctx.events += EventSpec("attack", player = who, obj = it, targets = listOf(defender)) }
             Regex("""\bonly ha(?:s|ve) (\d+) mana\b|\bha(?:s|ve) only (\d+) mana\b|\bwith (\d+) mana\b""").find(c)?.let { mm -> ctx.notes += "${if (who == "me") "You have" else "They have"} ${mm.groupValues.drop(1).first { it.isNotEmpty() }} mana available; the engine doesn't track mana, so whether a tax can be paid for every attacker is stated as an assumption." }
-            ctx.lastActor = who; ctx.lastVerb = "attack"; return true
+            ctx.lastActor = who; ctx.lastVerb = "attack"
+            val tail = r0.groupValues[9].trim().removePrefix("but ").removePrefix("and ").trim()
+            if (tail.isNotEmpty() && payFor == null && !Regex("""\bmana\b|\bpay\b|\bafford\b""").containsMatchIn(tail) && !isNoise(tail)) readClause(tail, m, ctx)
+            return true
         }
         Regex("""^(?:attacks?|attacking|swings?|swinging)(?: with)?\s+(\d+|two|three|four|five) (c\d+)(.*)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"

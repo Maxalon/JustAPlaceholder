@@ -12435,5 +12435,16 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "attack-tail-after-but",
+    "text": "I attack with a 2/2 but they have a blocker. What happens?",
+    "expect": [
+      "a creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
