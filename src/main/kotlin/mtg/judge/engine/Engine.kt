@@ -65,6 +65,10 @@ class Engine(val state: GameState) {
                 trace.step("${teferi.name} says ${state.player(playerId).subject.lowercase()} can cast spells only any time ${state.player(playerId).subject.lowercase()} could cast a sorcery: during ${state.player(playerId).possessive} own main phase with an empty stack. ${card.name} can't be cast now${if (state.stack.isNotEmpty()) " (something is on the stack)" else ""}.", "307.1", "117.1a")
                 state.outcomes += "${card.name} can't be cast (${teferi.name}: sorcery speed only)."; return null
             }
+            // Whose turn it is decides this, and the question may not have said. Left silent, the answer read as
+            // if Teferi weren't there at all.
+            if (state.activePlayer == null) state.clarifications += Clarification("whose turn it is",
+                "${teferi.name} lets ${state.player(playerId).subject.lowercase()} cast spells only at sorcery speed — during ${state.player(playerId).possessive} own main phase with an empty stack. Whose turn is it? ${card.name} is taken as cast at a legal time.")
         }
         state.objects.values.firstOrNull { it.isOnBattlefield() && it.controller != playerId && it.controller == state.activePlayer && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { s -> s is StaticEffect.OpponentsLockedOnYourTurn } }?.let { ab ->
             trace.step("It's ${state.player(ab.controller).possessive} turn and ${ab.name} says ${state.player(ab.controller).possessive} opponents can't cast spells during it. ${card.name} can't be cast now; it could be cast on ${state.player(playerId).possessive} own turn (or another opponent's).", "101.2")
@@ -1428,7 +1432,15 @@ class Engine(val state: GameState) {
             Who.YOU -> event.item.controller == obj.controller
             Who.OPPONENT -> event.item.controller != obj.controller
             else -> true
-        } && (state.spellsThisTurn[event.item.controller] ?: 0) == trigger.n
+        } && (trigger.spellFilter == null || filterMatchesSpell(trigger.spellFilter, event.item, obj.controller)) &&
+            // Esper Sentinel's "first noncreature spell each turn" counts only the spells of that kind, so a
+            // creature spell cast earlier in the turn doesn't use the trigger up.
+            (if (trigger.spellFilter == null) (state.spellsThisTurn[event.item.controller] ?: 0) else {
+                val cast = state.matchingSpellsThisTurn[event.item.controller] ?: emptyList()
+                // Spells the question only counted ("their second noncreature spell") have no card to match, so
+                // they are taken to be of the kind the asker was counting.
+                cast.count { spellMatches(trigger.spellFilter, it) } + maxOf(0, (state.spellsThisTurn[event.item.controller] ?: 0) - cast.size)
+            }) == trigger.n
         is Trigger.AttackWithNOrMore -> event is GameEvent.PlayerAttacks && onBf() && event.playerId == obj.controller &&
             state.objects.values.count { it.attacking != null && it.controller == event.playerId && (trigger.filter == null || state.matches(trigger.filter, it, obj.controller, obj)) } >= trigger.n
         is Trigger.SpellCastMvEqualsCounters -> event is GameEvent.SpellCast && onBf() &&

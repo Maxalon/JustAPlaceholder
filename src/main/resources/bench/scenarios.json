@@ -13301,5 +13301,47 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "teferi-refuses-on-my-turn",
+    "text": "It is my turn. I control Teferi, Time Raveler and my opponent casts Lightning Bolt",
+    "expect": [
+      "can't be cast (Teferi, Time Raveler: sorcery speed only)"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "first-noncreature-spell",
+    "text": "I control Esper Sentinel and they cast their first noncreature spell",
+    "expect": [
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "ordinal-keeps-the-kind",
+    "text": "they cast their third instant",
+    "expect": [
+      "casts a instant"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "esper-sentinel-second-spell",
+    "text": "I control Esper Sentinel and they cast their second noncreature spell",
+    "expect": [],
+    "notExpect": [
+      "You draw 1 card"
+    ],
+    "cite": []
   }
 ]

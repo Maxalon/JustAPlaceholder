@@ -326,10 +326,16 @@ object OracleParser {
         Regex("""^an? (?:player|opponent) casts a spell with mana value equal to the number of (\w+) counters on ~$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
             return Trigger.SpellCastMvEqualsCounters(m.groupValues[1].lowercase())
         }
-        // "you cast your second spell each turn" / "an opponent casts their second spell each turn"
-        Regex("""^(you|an opponent|a player) cast(?:s)? (?:your|their) (second|third|fourth) spell each turn$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
+        // "you cast your second spell each turn" / "an opponent casts their first noncreature spell each turn":
+        // the ordinal says which spell of the turn it is, and a kind before "spell" says which ones are counted.
+        Regex("""^(you|an opponent|a player) cast(?:s)? (?:your|their) (first|second|third|fourth) (.*?)(?: ?spell)? each turn$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
             val who = when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "an opponent" -> Who.OPPONENT; else -> Who.ANY_PLAYER }
-            return Trigger.NthSpellEachTurn(mapOf("second" to 2, "third" to 3, "fourth" to 4).getValue(m.groupValues[2].lowercase()), who)
+            val n = mapOf("first" to 1, "second" to 2, "third" to 3, "fourth" to 4).getValue(m.groupValues[2].lowercase())
+            val what = m.groupValues[3].trim().lowercase()
+            val filter = if (what.isEmpty() || what == "spell") null
+                         else parseFilter(what, Kind.SPELL).let { if (Kind.SPELL in it.kinds) it else it.copy(kinds = it.kinds + Kind.SPELL) }
+            if (filter != null && !filter.verifiable) return@let
+            return Trigger.NthSpellEachTurn(n, who, filter)
         }
         // "you attack with two or more creatures" / "with one or more Elves"
         Regex("""^you attack with (one|two|three|four|five|\d+) or more (.+?)$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->

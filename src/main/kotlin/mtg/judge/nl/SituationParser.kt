@@ -2337,16 +2337,24 @@ class SituationParser(private val names: NameIndex) {
             if (lastPlayWasALand(ctx)) { playALand(who, 1, ctx); return true }
             ctx.events += EventSpec("cast", player = who, card = CardRef(name = "a spell")); ctx.lastActor = who; ctx.lastVerb = "cast"; return true
         }
-        Regex("""^(?:$castVerbs)\s+(?:my |their |his |her |the )?(?:(a|an|another|\d+|two|three|four|five)(?: more| other)? )?(spells?|instants?|sorcer(?:y|ies)|creature spells?|creatures?|noncreature spells?|artifacts?|enchantments?|one|(?:second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)(?: one| spell)?)(?: this turn| in a row| in one turn| on their turn| on my turn)?((?:,? (?:paying for none of them|paying for nothing|without paying|not paying|and pays? for none|never paying|declining to pay each time|and doesn't pay|and never pays)(?: for (?:any|each|all) of them)?)?)$""").find(c)?.let { r ->
+        Regex("""^(?:$castVerbs)\s+(?:my |their |his |her |the )?(?:(a|an|another|\d+|two|three|four|five)(?: more| other)? )?(spells?|instants?|sorcer(?:y|ies)|creature spells?|creatures?|noncreature spells?|artifacts?|enchantments?|one|(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)(?: one| spell| noncreature spell| creature spell| instant| sorcery| artifact| enchantment)?)(?: this turn| in a row| in one turn| on their turn| on my turn)?((?:,? (?:paying for none of them|paying for nothing|without paying|not paying|and pays? for none|never paying|declining to pay each time|and doesn't pay|and never pays)(?: for (?:any|each|all) of them)?)?)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             // "casts their second spell this turn": the ordinal says how many came before it, and this is one cast.
-            val ordinal = mapOf("second" to 2, "third" to 3, "fourth" to 4, "fifth" to 5, "sixth" to 6, "seventh" to 7, "eighth" to 8, "ninth" to 9, "tenth" to 10)[r.groupValues[2].substringBefore(' ')]
+            val ordinal = mapOf("first" to 1, "second" to 2, "third" to 3, "fourth" to 4, "fifth" to 5, "sixth" to 6, "seventh" to 7, "eighth" to 8, "ninth" to 9, "tenth" to 10)[r.groupValues[2].substringBefore(' ')]
             // Only when nothing was cast earlier in the situation: "I cast five spells, then a sixth one" has
             // already played out the five, and stating the count as well would count them twice.
-            if (ordinal != null && ctx.events.none { it.verb == "cast" && it.player == who }) { ctx.spellsThisTurn[who] = ordinal - 1; ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} cast ${ordinal - 1} spell${if (ordinal == 2) "" else "s"} this turn already; this one is the ${r.groupValues[2].substringBefore(' ')}." }
+            if (ordinal != null && ctx.events.none { it.verb == "cast" && it.player == who }) {
+                ctx.spellsThisTurn[who] = ordinal - 1
+                // "their first spell" says nothing came before it, which needs no note.
+                if (ordinal > 1) ctx.notes += "${if (who == "me") "You have" else (ctx.players[who] ?: "Your opponent") + " has"} cast ${ordinal - 1} spell${if (ordinal == 2) "" else "s"} this turn already; this one is the ${r.groupValues[2].substringBefore(' ')}."
+            }
             val n = if (ordinal != null) 1 else number(r.groupValues[1]) ?: 1
             if (r.groupValues[3].isNotEmpty()) ctx.events += EventSpec("pay", player = who, to = "no")
-            val kind = r.groupValues[2].removeSuffix("s").replace("sorceries", "sorcery").replace(Regex("""^(?:second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)(?: (?:one|spell))?$"""), "spell").replace(Regex("""^(?:one|spell)$"""), "spell").let { if (it == "creature" || it == "artifact" || it == "enchantment") "$it spell" else it }
+            // "their first noncreature spell": the ordinal says which spell of the turn it is, and anything after
+            // it says what kind of spell. Without this the kind was thrown away with the ordinal.
+            val afterOrdinal = if (ordinal == null) r.groupValues[2]
+                else r.groupValues[2].substringAfter(' ', "").trim().takeIf { it.isNotEmpty() && it != "one" } ?: "spell"
+            val kind = afterOrdinal.removeSuffix("s").replace("sorceries", "sorcery").replace(Regex("""^(?:one|spell)$"""), "spell").let { if (it == "creature" || it == "artifact" || it == "enchantment") "$it spell" else it }
             repeat(n) { ctx.events += EventSpec("cast", player = who, card = CardRef(name = "a $kind")) }
             ctx.lastActor = who; ctx.lastVerb = "cast"; return true
         }
