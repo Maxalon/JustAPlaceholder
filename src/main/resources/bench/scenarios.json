@@ -13213,5 +13213,93 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "past-tense-recounted",
+    "text": "so my buddy played a Grizzly Bears and i killed it with a bolt",
+    "expect": [
+      "Grizzly Bears enters the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "table-talk-doom-bladed",
+    "text": "bro they just Doom Bladed my Serra Angel",
+    "expect": [
+      "Serra Angel: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "both-tapped-out",
+    "text": "we're both tapped out and I cast a Grizzly Bears",
+    "expect": [
+      "only 0 mana available"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "bare-chump",
+    "text": "i swing with a 5/5 and they chump",
+    "expect": [
+      "a creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "had-in-the-past",
+    "text": "hypothetically what if I had a Platinum Angel at 0 life",
+    "expect": [
+      "Platinum Angel keeps you from losing"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "when-a-spell-resolves",
+    "text": "whats up with my Bears when a Wrath resolves",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "described-creatures-fight",
+    "text": "tell me what happens when a 3/3 fights a 2/2",
+    "expect": [
+      "a 2/2 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "who-wins-described-fight",
+    "text": "who wins the fight between a 3/3 and a 2/2",
+    "expect": [
+      "a 2/2 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

@@ -446,7 +446,7 @@ class SituationParser(private val names: NameIndex) {
 
     // "my opponent's Bears": the clause opens with "my" but the player it names is the opponent, and taking the
     // "my" off left a possessive ("opponent's …") that the rules' own owner lists didn't have.
-    private val actorMe = Regex("""^(i've|i'm|i|me|my|we)\b(?!'s)(?! opponent)""")
+    private val actorMe = Regex("""^(i've|i'm|we're|we've|we|i|me|my)\b(?!'s)(?! opponent)""")
     private val actorOpp = Regex("""^(?:(they|he|she)'re|(they|he|she)'s(?= )|(my opponent|the opponent|opponent|opp|they|their|he|she|his|her|them))\b(?!'s)""")
 
     private fun actorOfClause(c: String): String? = when { actorOpp.containsMatchIn(c) -> "opp"; actorMe.containsMatchIn(c) -> "me"; Regex("""^@(\w+)""").containsMatchIn(c) -> Regex("""^@(\w+)""").find(c)!!.groupValues[1]; else -> null }
@@ -503,7 +503,29 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\s+(?:by )?(pitching|exiling) (?=(?:an?|one|two) )"""), ", $1 ")
             // Tense and mood: the judge's answer is the same whether the asker says it happened, has happened,
             // will happen or is happening. Said any way but the plain present, the clause went unread.
+            // "my buddy played a Grizzly Bears": the other player, said the way people say it at the table.
+            // Before the tense rules below, which only know the words a subject can be.
+            .replace(Regex("""\bmy (?:buddy|mate|friend|pal|bud|teammate|roommate)\b""", RegexOption.IGNORE_CASE), "my opponent")
+            // "I had a Platinum Angel at 0 life": recounted in the past, answered in the present.
+            .let { t0 -> Regex("""\b(i|we|they|he|she|it|my opponent|the opponent|opponent) had\b(?! (?:cast|played|attacked|blocked|activated|been)\b)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                r.groupValues[1] + (if (r.groupValues[1].lowercase() in setOf("he", "she", "it", "opponent", "my opponent", "the opponent")) " has" else " have")
+            } }
             .replace(Regex("""\bcasted\b"""), "cast")
+            // "my opponent played a Bears and I killed it": the simple past is how a player recounts what
+            // happened, and the answer is the same as for the present. Only right after a subject, so a passive
+            // ("is blocked by") and a card name that ends in one of these words are left alone.
+            .let { t0 -> Regex("""(?<!\bis )(?<!\bare )(?<!\bwas )(?<!\bwere )(?<!\bgets )(?<!\bget )(?<!\bgot )(?<!\bbe )(?<!\bbeen )\b(i|we|they|he|she|it|my opponent|the opponent|opponent|@\w+) (played|killed|destroyed|exiled|countered|blocked|attacked|sacrificed|bounced|tapped(?! out)|untapped|targeted|activated|drew|discarded|milled|equipped|regenerated|flickered|blinked|pumped|removed|swung|gained|created|made|dealt)\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                val present = when (val v = r.groupValues[2].lowercase()) {
+                    "played" -> "plays"; "killed" -> "kills"; "destroyed" -> "destroys"; "exiled" -> "exiles"
+                    "countered" -> "counters"; "blocked" -> "blocks"; "attacked" -> "attacks"; "sacrificed" -> "sacrifices"
+                    "bounced" -> "bounces"; "tapped" -> "taps"; "untapped" -> "untaps"; "targeted" -> "targets"
+                    "activated" -> "activates"; "drew" -> "draws"; "discarded" -> "discards"; "milled" -> "mills"
+                    "equipped" -> "equips"; "regenerated" -> "regenerates"; "flickered" -> "flickers"; "blinked" -> "blinks"
+                    "pumped" -> "pumps"; "removed" -> "removes"; "swung" -> "swings"; "gained" -> "gains"
+                    "created" -> "creates"; "made" -> "makes"; "dealt" -> "deals"; else -> v
+                }
+                r.groupValues[1] + " " + present
+            } }
             // "I have cast four spells this turn" is a count the situation states, not four casts to play out;
             // dropping the "have" made it the second, and five Aetherflux triggers instead of one.
             .replace(Regex("""\b(?:has|have|had) (?!cast (?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|\d+)(?: other| more)? spells?\b)(?=(?:cast|played|attacked|blocked|activated|targeted|countered|killed|destroyed|exiled|sacrificed|bounced|drawn|discarded|tapped|untapped)\b)"""), "")
@@ -669,11 +691,37 @@ class SituationParser(private val names: NameIndex) {
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:so|ok|okay|alright|all right|hey|hi|right|well|anyway|anyways|actually)[,:]? +""", RegexOption.IGNORE_CASE), "")
             .replace(Regex("""^(?:quick question|question|my question is|one more|another one|new question|a question)[,:]? +(?:whether |if |about )?""", RegexOption.IGNORE_CASE), "")
+            // Typed without their apostrophes, and the short forms people speak in. Done before anything reads
+            // the words, so every rule below sees the same text whichever way it was typed.
+            .replace(Regex("""\b(?:im)\b""", RegexOption.IGNORE_CASE), "i'm")
+            .replace(Regex("""\b(?:ive)\b""", RegexOption.IGNORE_CASE), "i've")
+            .replace(Regex("""\b(?:dont)\b""", RegexOption.IGNORE_CASE), "don't")
+            .replace(Regex("""\b(?:doesnt)\b""", RegexOption.IGNORE_CASE), "doesn't")
+            .replace(Regex("""\b(?:isnt)\b""", RegexOption.IGNORE_CASE), "isn't")
+            .replace(Regex("""\b(?:cant)\b""", RegexOption.IGNORE_CASE), "can't")
+            .replace(Regex("""\b(?:wont)\b""", RegexOption.IGNORE_CASE), "won't")
+            .replace(Regex("""\b(?:didnt)\b""", RegexOption.IGNORE_CASE), "didn't")
+            .replace(Regex("""\b(?:theyre)\b""", RegexOption.IGNORE_CASE), "they're")
+            .replace(Regex("""\b(?:whats)\b""", RegexOption.IGNORE_CASE), "what's")
+            .replace(Regex("""\b(?:wanna|wanted to|want to)\b""", RegexOption.IGNORE_CASE), "want to")
+            .replace(Regex("""\b(?:gonna|going to)\b""", RegexOption.IGNORE_CASE), "want to")
+            .replace(Regex("""\blemme\b""", RegexOption.IGNORE_CASE), "let me")
+            .replace(Regex("""^(?:bro|dude|man|guys|y'all|folks|hey guys|help|halp|hi all)[,:]? +""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""^(?:ok |okay )?(?:here's the thing|heres the thing|the thing is|the situation is|situation)[,:]? +""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""^(?:quick q|q|qq)[,:.]? +""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""^(?:what's|whats|what is) the deal (?:when|with|if)[,:]? +""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""^(?:what's|whats|what is) up with[,:]? +""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""^let me know (?:what happens )?(?:if|when|whether)[,:]? +""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""^(?:my opponent|he|she|they|my teammate) says?[,:]? +(?:that )?""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""^(?:so like|like)[,:]? +""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""^i have a question about[,:]? +""", RegexOption.IGNORE_CASE), "")
+            // "what happens to my Bears when a Wrath resolves": the spell resolving is its own clause.
+            .replace(Regex("""\s+when ((?:an? |the |my |their )?c\d+) resolves\b""", RegexOption.IGNORE_CASE), ", $1 resolves")
             .replace(Regex("""^(?:just to check|just checking|to check|to be clear|for clarity)[,:]? +""", RegexOption.IGNORE_CASE), "")
             .replace(Regex("""^(?:can you (?:tell me|explain|say)|tell me|explain|i'd like to know|i would like to know|i want to know|i wonder|wondering)[,:]? +(?:what happens |whether |if |about )?(?:when |if )?""", RegexOption.IGNORE_CASE), "")
             .replace(Regex("""^(?:is it true that|is it right that|am i right that|what's the ruling (?:when|if|on)|what is the ruling (?:when|if|on)|how does it work (?:when|if))[,:]? +""", RegexOption.IGNORE_CASE), "")
             // "…, both die right?" / "…, correct?" / "…, yeah?": a tag asking for confirmation, not part of the board.
-            .let { t0 -> Regex("""\s*[,;]?\s*(?:right|correct|yeah|isn't it|isnt it|is that right|am i right|is that correct|is this correct|true)\s*(\??)$""", RegexOption.IGNORE_CASE).replace(t0) { r -> r.groupValues[1] } }
+            .let { t0 -> Regex("""\s*[,;]?\s*(?:right|correct|yeah|isn't it|isnt it|is that right|am i right|is that correct|is this correct|is he right|is she right|are they right|is that so|true)\s*(\??)$""", RegexOption.IGNORE_CASE).replace(t0) { r -> r.groupValues[1] } }
             .replace(Regex("""\?\s*(?:yes or no|y/n)\?*$""", RegexOption.IGNORE_CASE), "?")
             .replace(Regex("""\s*[,.]?\s*(?:yes or no|y/n)\?*$""", RegexOption.IGNORE_CASE), "")
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?""", RegexOption.IGNORE_CASE), "")
@@ -693,8 +741,8 @@ class SituationParser(private val names: NameIndex) {
             } }
             // "Who wins the fight between Grizzly Bears and Hill Giant?": a fight with no card making it happen.
             // The "and" would otherwise break the sentence and leave the second creature as a clause of its own.
-            .replace(Regex("""^(?:who|which(?: creature| one)?) (?:wins|survives|comes out on top|lives)(?: the fight| a fight| in a fight| the combat)?(?: (?:between|with)) ((?:$possPrefix|an? )?c\d+) (?:and|vs\.?|versus) ((?:$possPrefix|an? )?c\d+)\??$"""), "$1 fights $2, does $1 die, does $2 die")
-            .replace(Regex("""^(?:what happens )?(?:if|when) ((?:$possPrefix|an? )?c\d+) fights ((?:$possPrefix|an? )?c\d+)\??$"""), "$1 fights $2, does $1 die, does $2 die")
+            .replace(Regex("""^(?:who|which(?: creature| one)?) (?:wins|survives|comes out on top|lives)(?: the fight| a fight| in a fight| the combat)?(?: (?:between|with)) ((?:$possPrefix|an? )?(?:c\d+|\d+/\d+)) (?:and|vs\.?|versus) ((?:$possPrefix|an? )?(?:c\d+|\d+/\d+))\??$"""), "$1 fights $2, does $1 die, does $2 die")
+            .replace(Regex("""^(?:what happens )?(?:if|when) ((?:$possPrefix|an? )?(?:c\d+|\d+/\d+)) fights ((?:$possPrefix|an? )?(?:c\d+|\d+/\d+))\??$"""), "$1 fights $2, does $1 die, does $2 die")
             // "Does Doom Blade kill Serra Angel?" / "will my Bears die to Lightning Bolt?": a card against a card,
             // with nothing else said. The spell is cast at the creature and the question is whether it dies.
             // "Is Lightning Bolt enough to kill a Serra Angel?" asks the same thing the long way round.
@@ -3755,7 +3803,7 @@ class SituationParser(private val names: NameIndex) {
         }
         // "Grizzly Bears fights Hill Giant": the fight itself, with no card named as what caused it. Each creature
         // goes on the battlefield, on opposite sides of the table unless the asker said whose they are (701.14a).
-        Regex("""^($possPrefix|an? )?(c\d+|it|that) (?:fights?|fought) ($possPrefix|an? )?(c\d+)$""").find(c)?.let { r ->
+        Regex("""^($possPrefix|an? )?(c\d+|it|that|\d+/\d+)(?: creature)? (?:fights?|fought) ($possPrefix|an? )?(c\d+|\d+/\d+)(?: creature)?$""").find(c)?.let { r ->
             fun side(word: String, fallback: String) = when (val w = word.trim()) {
                 "my", "own" -> "me"
                 "their", "his", "her" -> pronounPlayer(ctx, w)
@@ -3764,10 +3812,13 @@ class SituationParser(private val names: NameIndex) {
                 else -> w.removePrefix("@").removeSuffix("'s")
             }
             val whoA = side(r.groupValues[1], "me")
+            // "a 3/3 fights a 2/2": either side may be described by its size rather than named.
             val aId = if (r.groupValues[2] in setOf("it", "that")) ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+                      else if (Regex("""^\d+/\d+$""").matches(r.groupValues[2])) describedCreatures("a ", r.groupValues[2], "creature", whoA, ctx).firstOrNull() ?: return@let
                       else m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, whoA, false, ctx) } ?: return@let
             val whoB = side(r.groupValues[3], ctx.other(ctx.objects[aId]?.controller ?: whoA) ?: "opp")
-            val bId = m.cards[r.groupValues[4]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, whoB, false, ctx) } ?: return@let
+            val bId = if (Regex("""^\d+/\d+$""").matches(r.groupValues[4])) describedCreatures("a ", r.groupValues[4], "creature", whoB, ctx).firstOrNull() ?: return@let
+                      else m.cards[r.groupValues[4]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, whoB, false, ctx) } ?: return@let
             if (aId == bId) return@let
             ctx.events += EventSpec("fight", obj = aId, targets = listOf(bId))
             ctx.lastVerb = "fight"; ctx.lastMentioned = bId; return true
@@ -3871,6 +3922,12 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("mill", player = target, amount = n); ctx.note(target); return true
         }
         // "my opponent taps out": they spent their mana, so there is none left for a tax or a response.
+        // "we're both tapped out": both players, not just the speaker.
+        if (Regex("""^(?:we(?:'re| are)? )?both (?:are |is )?tapped out$|^(?:everyone|everybody|all of us) (?:is|are) tapped out$""").matches(c)) {
+            for (pid in ctx.playerIds()) ctx.mana[pid] = 0
+            ctx.notes += "Both players are read as having no mana available."
+            return true
+        }
         Regex("""^taps? out(?: for (?:it|that|everything))?$|^(?:is|are) tapped out$""").find(c)?.let {
             val who = actor ?: ctx.lastActor ?: "opp"
             ctx.mana[who] = 0; ctx.note(who)
@@ -3946,6 +4003,8 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "No attack was described, so ${ctx.objects[id]?.card?.name ?: "the creature"} is read as attacking ${if (defender == "me") "you" else ctx.players[defender] ?: "your opponent"}; the block answers it."
             return readClause((if (defender == "me") "i " else if (defender == "opp") "they " else "@$defender ") + "blocks with " + r.groupValues[4], m, ctx)
         }
+        // "they chump": chump-blocking with nothing said about the blocker, which is what the word is for.
+        if (Regex("""^chumps?(?: it| that| the attacker)?$""").matches(c)) return readClause("chump blocks", m, ctx)
         // "blocks with two 2/2s", "chump blocks with a 1/1 goblin": described creatures block the last attacker (all of them the same one).
         Regex("""^(?:(?:chump[- ]?)?(?:blocks?|blocking)|chumps?)(?: it| that| the attacker)?(?: with)?\s+(an? |the |my |their |\d+ |two |three |four |five )?(?:(\d+/\d+)s?\s*)?(?:(red|green|white|blue|black|colorless|flying) )?(?:($kwNouns)\b ?)?($creatureKinds)?( tokens?)?(?: with ([a-z ,&]+?))?(?: plus .*)?$""").find(c)?.let { r0 ->
             val kwNoun = r0.groupValues[4].let { if (it.isEmpty()) "" else it.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample").replace("deathtoucher", "deathtouch").replace("lifelinker", "lifelink").replace("striker", "strike") }
