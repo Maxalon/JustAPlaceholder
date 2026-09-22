@@ -11547,5 +11547,86 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "wrath-with-a-described-creature-out",
+    "text": "I cast Wrath of God with an indestructible creature out. Does it die?",
+    "expect": [
+      "No:",
+      "indestructible and isn't destroyed"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "block-names-the-attacker",
+    "text": "I block their 3/3 with two 2/2s. How do they assign damage?",
+    "expect": [
+      "a 3/3 creature: the battlefield → opponent's graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "bare-permanent-then-a-question",
+    "text": "My Tarmogoyf with an instant and a creature in the graveyard. How big?",
+    "expect": [
+      "Tarmogoyf is 2/3"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "does-it-die-to-a-spell",
+    "text": "My Grizzly Bears. Does it die to Lightning Bolt?",
+    "expect": [
+      "Yes: Grizzly Bears died"
+    ],
+    "notExpect": [
+      "No: Grizzly Bears is still on the battlefield",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "does-it-die-to-a-spell-no",
+    "text": "My Serra Angel. Does it die to Lightning Bolt?",
+    "expect": [
+      "No: Serra Angel is still on the battlefield"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "block-question-implies-the-attack",
+    "text": "Their Serra Angel. Can my 2/2 block it?",
+    "expect": [
+      "can't block Serra Angel (flying)"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "kird-ape-with-no-forest",
+    "text": "I have Kird Ape and no Forest. What are its stats?",
+    "expect": [
+      "Kird Ape is 1/1"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
