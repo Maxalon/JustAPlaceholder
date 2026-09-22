@@ -11755,5 +11755,54 @@
       "add {G}"
     ],
     "cite": []
+  },
+  {
+    "id": "tapped-before-combat-cant-block",
+    "text": "They tap my 2/2 before combat. Can I still block?",
+    "expect": [
+      "can't block (tapped)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "block-question-with-no-attacker-named",
+    "text": "I have a creature and they tap it. Can I block?",
+    "expect": [
+      "can't block (tapped)"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "token-dies-ceases-to-exist",
+    "text": "My token dies. Does it go to the graveyard?",
+    "expect": [
+      "the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5d"
+    ]
+  },
+  {
+    "id": "is-it-legal-to",
+    "text": "Is it legal to cast Lightning Bolt targeting a creature with protection from red?",
+    "expect": [
+      "can't target a creature with protection from red"
+    ],
+    "notExpect": [
+      "opponent takes 3 damage",
+      "Not understood"
+    ],
+    "cite": [
+      "702.16b"
+    ]
   }
 ]
