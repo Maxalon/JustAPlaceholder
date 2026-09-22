@@ -12232,5 +12232,16 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "bare-creature-attacks",
+    "text": "My opponent's creature attacks and I cast Swords to Plowshares on it after blockers. Does it deal damage?",
+    "expect": [
+      "a creature: the battlefield → exile"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
