@@ -1831,8 +1831,11 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:sacrifices?|sacs?|sacrificing|saccing) (?:an? |the |my |one |another )?(c\d+|it|itself|(?:\d+/\d+)(?: (?!to\b|into\b|targeting\b|at\b|on\b)[a-z]+)*)(?: (?:to|into) (?:an? |the |my )?(c\d+|it|that)(?:'s ability)?)?(.*)$""").find(c.replace(Regex("""\s+(?:in response(?: to (?:it|that|the spell))?|for mana|for value|instead|first|before it resolves|with (?:the )?(?:trigger|spell) on the stack)(?=\s|$)"""), ""))?.let { r ->
             val who = actor ?: subject ?: "me"
             val what = r.groupValues[1]
+            // "I sacrifice it to Viscera Seer": the Seer is the outlet, never the thing being fed to it. Without
+            // this "it" took the last thing named — the Seer — and the answer sacrificed the outlet to itself.
+            val outletId = r.groupValues[2].takeIf { cardRef.matches(it) }?.let { ph -> m.cards[ph]?.let { objectIdFor(it, ctx) } }
             // Only your own permanents can be sacrificed, so "it" is the actor's rather than the last one named.
-            val id = if (what == "it" || what == "itself") (ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller == who } ?: ctx.events.lastOrNull { it.verb == "cast" && it.player == who }?.card?.name?.let { slug(it) } ?: ctx.events.lastOrNull { it.verb == "cast" || it.verb == "activate" }?.targets?.firstOrNull { it in ctx.objects && ctx.objects.getValue(it).controller == who } ?: ctx.objects.values.lastOrNull { it.controller == who }?.id ?: return@let)
+            val id = if (what == "it" || what == "itself") (ctx.lastMentioned?.takeIf { it in ctx.objects && it != outletId && ctx.objects.getValue(it).controller == who } ?: ctx.events.lastOrNull { it.verb == "cast" && it.player == who }?.card?.name?.let { slug(it) }?.takeIf { it != outletId } ?: ctx.events.lastOrNull { it.verb == "cast" || it.verb == "activate" }?.targets?.firstOrNull { it in ctx.objects && it != outletId && ctx.objects.getValue(it).controller == who } ?: ctx.objects.values.lastOrNull { it.controller == who && it.id != outletId }?.id ?: return@let)
                      else if (Regex("""^\d+/\d+""").containsMatchIn(what)) {
                          // "sacrifice a 2/2": a creature nobody named, already on the battlefield or described now.
                          val pt = Regex("""^(\d+/\d+)""").find(what)!!.groupValues[1]

@@ -12721,5 +12721,16 @@
       "Mana Drain"
     ],
     "cite": []
+  },
+  {
+    "id": "sacrifice-it-to-an-outlet",
+    "text": "I have a Grizzly Bears and a Viscera Seer, I sacrifice it to Viscera Seer in response",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard"
+    ],
+    "notExpect": [
+      "Viscera Seer: the battlefield → your graveyard"
+    ],
+    "cite": []
   }
 ]
