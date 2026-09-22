@@ -12108,5 +12108,39 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "creature-described-by-a-relative-clause",
+    "text": "I attack with a 2/2 that has a +1/+1 counter and lifelink. How much life?",
+    "expect": [
+      "You gain 3 life"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "give-a-keyword-to-a-named-permanent",
+    "text": "I give my Grizzly Bears protection from red and they cast Lightning Bolt on it. What happens?",
+    "expect": [
+      "Lightning Bolt can't target Grizzly Bears"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "equipment-on-a-creature-that-connects",
+    "text": "I have a Sword of Fire and Ice on my Grizzly Bears and it hits them. What happens?",
+    "expect": [
+      "opponent takes 4 damage",
+      "You draw 1 card"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

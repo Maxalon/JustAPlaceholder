@@ -491,6 +491,8 @@ class SituationParser(private val names: NameIndex) {
             // blocked. Only a described creature, never a card: "Lightning Bolt hits my opponent" is a spell,
             // and so is "I hit my opponent for 3 with Lightning Bolt".
             .replace(Regex("""\b((?:\d+/\d+|creatures?|tokens?|dudes?|guys?|beaters?)s?)\s+(?:hits|hit|connects with|connected with)\s+(me|them|him|her|my opponent|the opponent|@\w+)\b(?!(?:\s+for \d+)?\s+with\b)"""), "$1 attacks $2 unblocked")
+            // "it hits them" / "they connect with me": the same, with the creature said as a pronoun.
+            .replace(Regex("""\b(it|they)\s+(?:hits|hit|connects with|connected with)\s+(me|them|him|her|my opponent|the opponent|@\w+)\b(?!(?:\s+for \d+)?\s+with\b)"""), "$1 attacks $2 unblocked")
             .replace(Regex("""\b(?:they are|they're|he is|he's|she is|she's) attacking\b"""), "they attack")
             .replace(Regex("""\bdeclares? ((?:$possPrefix|an? )?c\d+) as an attacker\b"""), "attacks with $1")
             .replace(Regex("""\bturns? ((?:$possPrefix|an? )?c\d+) sideways\b"""), "attacks with $1")
@@ -570,6 +572,18 @@ class SituationParser(private val names: NameIndex) {
             // "is it legal to bolt it?" / "am I allowed to block?": the question is about the action, so it is
             // read as the asker taking it and the answer says whether it works.
             .replace(Regex("""^(?:is it (?:legal|ok|okay|allowed|fine) (?:to|for me to)|am i allowed to|may i|can i legally|would it be legal to) """, RegexOption.IGNORE_CASE), "can i ")
+            // "a 2/2 that has a +1/+1 counter and lifelink": the relative clause describes the creature, the same
+            // way "with" does. Left as it was, the whole clause went unread.
+            .replace(Regex("""\b(\d+/\d+|creature|token) (?:that|which) (?:has|have|carries) """), "$1 with ")
+            // "with a +1/+1 counter and lifelink": the counter is read at the end of the list, so a keyword after
+            // it went unread. Said the other way round ("with lifelink and a +1/+1 counter") it already worked.
+            .let { t0 -> Regex("""\bwith (an? |one |two |three |\d+ )?([+-]\d+/[+-]\d+) counters?(?: on it)? and ($kwPhrase(?:(?:,|,? and) $kwPhrase)*)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                "with ${r.groupValues[3]} and ${r.groupValues[1].ifEmpty { "a " }}${r.groupValues[2]} counter"
+            } }
+            // "I give my Bears protection from red", "they grant it flying": a keyword handed to a permanent by a
+            // player, with no card named. Where a card grants it ("I give it protection" off Mother of Runes)
+            // the activation says so, so this only fires when the permanent is named.
+            .replace(Regex("""\b(?:i|we|they|he|she|my opponent|the opponent|@\w+) (?:gives?|gave|grants?|granted) ((?:$possPrefix)(?:c\d+|\d+/\d+|creature)) (?=(?:$kwPhrase)\b)"""), "$1 has ")
             // "suppose they …", "say they …", "what if they …": a hypothetical is the same question.
             .replace(Regex("""^(?:suppose|say|let's say|lets say|imagine|assume|what if|hypothetically,?) (?:that )?"""), "")
             // "Who wins the fight between Grizzly Bears and Hill Giant?": a fight with no card making it happen.
