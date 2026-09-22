@@ -12368,5 +12368,27 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "target-a-player-with-a-spell",
+    "text": "I have a Shalai and they target me with Thoughtseize. Legal?",
+    "expect": [
+      "Thoughtseize can't target you"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "trailer-with-n-creatures-out",
+    "text": "I cast Blasphemous Act with five creatures on the battlefield. What happens?",
+    "expect": [
+      "a creature: the battlefield → your graveyard. (×5)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

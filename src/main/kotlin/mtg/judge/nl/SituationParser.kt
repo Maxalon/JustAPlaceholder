@@ -920,7 +920,7 @@ class SituationParser(private val names: NameIndex) {
         return false
     }
 
-    private fun isNoise(clause: String) = Regex("""(?i)^(what happens|what now|so|then|now|ok|okay|right|they're|they are|i'm|i am|he's|she's|we're|it's|does it wear off|do(?:es)? (?:it|that|they) (?:wear off|go away|end|stay)|after (?:combat )?damage|after blockers|after blocks|after combat|after that|after this|before damage|i don't respond|they don't respond|i do(?:n't| not) respond|no response|no responses|nobody responds|no one responds|i pass|they pass|everyone passes|all players pass|does it work|is that right|correct|and|but|also|too|as well|no wait|wait|never mind|nevermind|sorry|hmm|uh|um|actually|they durdle|i durdle|durdles?|they do nothing|i do nothing|nothing happens)\??$""").matches(clause.trim()) ||
+    private fun isNoise(clause: String) = Regex("""(?i)^(what happens|what now|so|then|now|ok|okay|right|they're|they are|i'm|i am|he's|she's|we're|it's|does it wear off|do(?:es)? (?:it|that|they) (?:wear off|go away|end|stay)|after (?:combat )?damage|after blockers|after blocks|after combat|after that|after this|before damage|i don't respond|they don't respond|i do(?:n't| not) respond|no response|no responses|nobody responds|no one responds|i pass|they pass|everyone passes|all players pass|does it work|is that right|correct|legal|is that legal|is it legal|allowed|is that allowed|and|but|also|too|as well|no wait|wait|never mind|nevermind|sorry|hmm|uh|um|actually|they durdle|i durdle|durdles?|they do nothing|i do nothing|nothing happens)\??$""").matches(clause.trim()) ||
         (!Regex("""c\d+""").containsMatchIn(clause) && Regex("""^(?:do|does|did|can|could|will|would|is|are|was|were|what|who|which|how|should|when|why|am)\b""").matches(clause.trim().substringBefore(' ')) &&
             // "is blocked by a 1/1", "was countered": a passive statement whose subject was left out opens with
             // the same word a question does, and dropping it as noise lost the block with nothing said about it.
@@ -1084,8 +1084,8 @@ class SituationParser(private val names: NameIndex) {
         // Trailing "with an indestructible creature out" / "with two 2/2s in play": the same as the card version
         // above, for a creature given by its size or its keywords. Without it the whole clause went unread.
         while (true) {
-            val r = Regex("""\s+with (an? |\d+ |two |three |four |five )((?:\d+/\d+ ?)?(?:$kwNouns ?)*)(?:creatures?|permanents?)?s? (?:out|in play|on the battlefield|on board|on the field)$""").find(clause0) ?: break
-            if (r.groupValues[2].isBlank()) break
+            val r = Regex("""\s+with (an? |\d+ |two |three |four |five )((?:\d+/\d+ ?)?(?:$kwNouns ?)*)(creatures?|permanents?)?s? (?:out|in play|on the battlefield|on board|on the field)$""").find(clause0) ?: break
+            if (r.groupValues[2].isBlank() && r.groupValues[3].isBlank()) break
             val size = Regex("""\d+/\d+""").find(r.groupValues[2])?.value ?: ""
             val kws = r.groupValues[2].replace(Regex("""\d+/\d+"""), "").trim().split(Regex("""\s+""")).filter { it.isNotEmpty() }.joinToString(", ")
             val owner = actorOfClause(clause0) ?: ctx.lastActor ?: "me"
@@ -1548,6 +1548,13 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:lose[sd]?|los[et]|win[s]?|won)(?: the)?(?: coin)? flip$|^(?:the )?(?:coin )?flip is (?:lost|won)$|^(?:the coin )?comes? up (?:heads|tails)$""").find(c)?.let {
             val lost = Regex("""\blos|\btails\b""").containsMatchIn(c)
             ctx.events += EventSpec("flip", player = actor ?: ctx.lastActor ?: "me", to = if (lost) "lose" else "win"); return true
+        }
+        // "they target me with Thoughtseize": the spell is cast at that player.
+        Regex("""^(?:targets?|targeted|aims? at|points? at) (me|them|him|her|my opponent|the opponent|@\w+) with (?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->
+            val caster = actor ?: ctx.lastActor ?: "opp"
+            val victim = when (val w = r.groupValues[1]) { "me" -> "me"; "them", "him", "her", "my opponent", "the opponent" -> pronounPlayer(ctx, w.substringAfterLast(' ')); else -> w.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } }
+            val card = m.cards[r.groupValues[2]] ?: return@let
+            emitCast(caster, card, " targeting $victim", m, ctx); ctx.note(victim); return true
         }
         // "tries to Murder it", "attempts to cast Bolt on it": the attempt is the action.
         // "goes to combat" is a step, not an attempt to do something: without the guard "goes to" was stripped and
