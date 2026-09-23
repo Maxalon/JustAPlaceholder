@@ -18737,5 +18737,105 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "kaalia-attack-with-everything-put-avacyn",
+    "text": "I control Kaalia of the Vast and attack. Can I put Avacyn, Angel of Hope onto the battlefield?",
+    "expect": [
+      "Avacyn, Angel of Hope enters the battlefield.",
+      "Avacyn, Angel of Hope is attacking opponent.",
+      "opponent takes 8 damage."
+    ],
+    "notExpect": [
+      "Not understood",
+      "which card?"
+    ],
+    "cite": []
+  },
+  {
+    "id": "grave-pact-my-creature-dies",
+    "text": "My opponent has Grave Pact. I sacrifice my Sakura-Tribe Elder. Do they sacrifice too?",
+    "expect": [
+      "No: opponent sacrifices nothing. Grave Pact triggers only when a creature its own controller controls dies, and then it is the other players who sacrifice; you losing a creature doesn't trigger it."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "zulaport-three-sacrifices-to-altar",
+    "text": "I control Zulaport Cutthroat and sacrifice three creatures to Ashnod's Altar. How much life do they lose?",
+    "expect": [
+      "Ashnod's Altar's mana ability: add {C}{C}. (×3)",
+      "opponent loses 3 life in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "craterhoof-how-much-do-i-swing-for",
+    "text": "I have Craterhoof Behemoth in hand and 5 creatures. If I cast it, how much damage do I swing for?",
+    "expect": [
+      "a creature is 7/7 with trample until end of turn. (×5)",
+      "Yes: opponent takes 46 damage in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "four-attackers-into-two-blockers",
+    "text": "I attack with 4 creatures into their 2 blockers. How many get through?",
+    "expect": [
+      "2 of your 4 attackers are unblocked: a creature, a creature."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "impact-tremors-storm-count",
+    "text": "I have Impact Tremors and cast Empty the Warrens with storm count 4. How much damage?",
+    "expect": [
+      "Storm puts 4 copies of Empty the Warrens on the stack, above the original.",
+      "You get a Goblin token. (×10)",
+      "opponent takes 1 damage. (×10)"
+    ],
+    "notExpect": [
+      "Not understood",
+      "token ceases to exist"
+    ],
+    "cite": [
+      "702.40a"
+    ]
+  },
+  {
+    "id": "two-mentors-how-many-can-i-draw",
+    "text": "I control two Mentor of the Meek and cast a 1/1. How many cards can I draw?",
+    "expect": [
+      "You draw 1 card. (×2)",
+      "Yes: You draw 2 cards in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "ensnaring-bridge-which-can-attack",
+    "text": "My opponent controls Ensnaring Bridge with 1 card in hand. I have a 1/1 and a 3/3. Which can attack?",
+    "expect": [
+      "Yes: a 1/1 creature can attack.",
+      "No: a 3/3 creature can't attack (Ensnaring Bridge: opponent has 1 card in hand and a 3/3 creature's power is 3, 508.1c)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

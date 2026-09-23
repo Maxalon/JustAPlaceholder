@@ -326,7 +326,10 @@ object OracleParser {
         Regex("""^(?:Landfall — )?(?:whenever )?(another |one or more |a |an )?(.+?) (?:enters|enter)(?: the battlefield)?(?: under your control)?$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
             if (m.groupValues[2].equals("~", true)) return Trigger.ThisEnters
             val underYou = c.contains("under your control", true)
-            val f = parseFilter(m.groupValues[2], Kind.PERMANENT).let { if (underYou && it.controller == null) it.copy(controller = Who.YOU) else it }
+            // "creature you control with power 2 or less" (Mentor of the Meek): the power bound sits after the filter words.
+            val pw = Regex("""^(.+?) with power (\d+) or (less|greater)$""", RegexOption.IGNORE_CASE).find(m.groupValues[2])
+            val f = parseFilter(pw?.groupValues?.get(1) ?: m.groupValues[2], Kind.PERMANENT).let { f0 -> if (pw == null) f0 else if (pw.groupValues[3].equals("less", true)) f0.copy(maxPower = pw.groupValues[2].toInt(), raw = m.groupValues[2]) else f0.copy(minPower = pw.groupValues[2].toInt(), raw = m.groupValues[2]) }
+                .let { if (underYou && it.controller == null) it.copy(controller = Who.YOU) else it }
             if (!f.verifiable) return Trigger.Unknown(c)
             return Trigger.PermanentEnters(f, m.groupValues[1].trim().equals("another", true))
         }
