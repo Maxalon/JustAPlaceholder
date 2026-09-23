@@ -17884,5 +17884,89 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "bogle-with-two-auras-doom-blade",
+    "text": "My opponent's Slippery Bogle is enchanted with Ethereal Armor and Daybreak Coronet. I cast Doom Blade on it. What happens?",
+    "expect": [
+      "Doom Blade can't target Slippery Bogle.",
+      "Why: Slippery Bogle has hexproof and can't be the target of spells or abilities its controller's opponents control."
+    ],
+    "notExpect": [
+      "Not understood",
+      "Daybreak Coronet: the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "does-anything-die-wall-blocks",
+    "text": "I attack with a 2/2 and my opponent blocks with Wall of Omens. Does anything die?",
+    "expect": [
+      "Wall of Omens has 2 damage marked.",
+      "No: Wall of Omens is still on the battlefield.",
+      "No: a 2/2 creature is still on the battlefield."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "abrupt-decay-goyf-size-said-in-passing",
+    "text": "Opponent casts Abrupt Decay on my Tarmogoyf. It's a 4/5. What happens?",
+    "expect": [
+      "Tarmogoyf: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "wurmcoil-pathed-do-i-get-tokens",
+    "text": "My Wurmcoil Engine dies to Path to Exile. Do I get tokens?",
+    "expect": [
+      "Wurmcoil Engine: the battlefield → exile.",
+      "No: no token was created by what was described."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "terminus-with-opponent-having-a-creature",
+    "text": "I cast Terminus with my opponent having a Wurmcoil Engine. What happens?",
+    "expect": [
+      "Wurmcoil Engine: the battlefield → opponent's library."
+    ],
+    "notExpect": [
+      "Not understood",
+      "affects nothing"
+    ],
+    "cite": []
+  },
+  {
+    "id": "emrakul-cant-be-countered",
+    "text": "My opponent casts Emrakul, the Aeons Torn and I Counterspell it. Does it work?",
+    "expect": [
+      "Emrakul, the Aeons Torn isn't countered (it can't be).",
+      "Emrakul, the Aeons Torn enters the battlefield."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "snapcaster-under-rest-in-peace",
+    "text": "I have Rest in Peace and cast Snapcaster Mage. Can I target anything?",
+    "expect": [
+      "Snapcaster Mage's trigger has no legal target (Rest in Peace keeps graveyards empty) and does nothing."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
