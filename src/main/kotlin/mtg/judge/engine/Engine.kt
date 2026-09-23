@@ -558,6 +558,16 @@ class Engine(val state: GameState) {
             if (p.life != null && p.life!! < n) { trace.step("${p.subject} ${p.v("has", "have")} ${p.life} life and can't pay $n life, so the ability can't be activated.", "118.3", "119.4"); state.outcomes += "${obj.name}'s ability can't be activated (not enough life)."; return null }
             p.life = p.life?.minus(n); trace.step("${p.subject} ${p.v("pays", "pay")} $n life${p.life?.let { " ($it)" } ?: ""} as part of the cost.", "119.4", "602.2b"); state.outcomes += "${p.subject} ${p.v("pays", "pay")} $n life."
         }
+        // "Remove a +1/+1 counter from ~:" (Walking Ballista, Triskelion): the counter comes off as the cost, before
+        // the ability is even on the stack. Without this the Ballista pinged for free and kept its counters.
+        Regex("""^Remove (a|an|one|two|three|four|\d+) ((?:[+-]\d+/[+-]\d+|[a-z]+)) counters? from (?:~|this\b|${Regex.escape(obj.name)})""", RegexOption.IGNORE_CASE).find(ability.cost)?.let { m ->
+            val n = when (m.groupValues[1].lowercase()) { "a", "an", "one" -> 1; "two" -> 2; "three" -> 3; "four" -> 4; else -> m.groupValues[1].toIntOrNull() ?: 1 }
+            val kind = m.groupValues[2]; val have = obj.counters[kind] ?: 0; val p = state.player(playerId)
+            if (have < n) { trace.step("${obj.name} has ${if (have == 0) "no" else "$have"} $kind counter${if (have == 1) "" else "s"} and its ability costs removing $n, so the cost can't be paid and the ability can't be activated.", "602.2b", "118.3"); state.outcomes += "${obj.name}'s ability can't be activated (not enough $kind counters to remove)."; return null }
+            val left = have - n; if (left == 0) obj.counters.remove(kind) else obj.counters[kind] = left
+            trace.step("${p.subject} ${p.v("removes", "remove")} $n $kind counter${if (n == 1) "" else "s"} from ${obj.name} as the cost ($left left${if (obj.def.isCreature && obj.isOnBattlefield()) "; it's now ${obj.power}/${obj.toughness}" else ""}). A cost is paid as the ability is activated, so the counter is gone before the ability resolves.", "602.2b", "122.5")
+            state.outcomes += "${obj.name}: $n $kind counter${if (n == 1) "" else "s"} removed as the cost ($left left)."
+        }
         ability.loyaltyCost?.let { lc ->
             if (obj.id in state.loyaltyUsedThisTurn) {
                 trace.step("One of ${obj.name}'s loyalty abilities has already been activated this turn, and a planeswalker's loyalty abilities can be activated only once per turn in total. ${ability.cost} can't be activated now.", "606.3")
@@ -700,8 +710,16 @@ class Engine(val state: GameState) {
         obj.counters[kind] = (obj.counters[kind] ?: 0) + placed
         trace.step("$placed $kind counter${if (placed == 1) "" else "s"} ${if (placed == 1) "is" else "are"} put on ${obj.name}${if (obj.def.isCreature) "; it is now ${state.describePt(obj)}" else ""}.", "122.1", "614.1a")
         state.outcomes += "${obj.name} has ${obj.counters[kind]} $kind counter${if (obj.counters[kind] == 1) "" else "s"}."
+        if (kind == "level") levelBandNote(obj)
         onEvent(GameEvent.CountersPut(obj, kind, placed))
         stateBasedActions()
+    }
+    /** A leveler: the band it is in now (702.87b), which is what the level counters are for. */
+    private fun levelBandNote(obj: GameObject) {
+        val b = state.levelBand(obj) ?: run { trace.step("${obj.name} has ${obj.counters["level"] ?: 0} level counter${if (obj.counters["level"] == 1) "" else "s"}, below its first LEVEL band, so its printed characteristics still apply.", "702.87b"); return }
+        val band = "LEVEL ${b.min}${b.max?.let { "-$it" } ?: "+"}"
+        trace.step("With ${obj.counters["level"]} level counters ${obj.name} is in its $band band: it's ${b.power}/${b.toughness}${if (b.keywords.isEmpty()) "" else " with " + b.keywords.joinToString(" and ")}.", "702.87b")
+        state.outcomes += "${obj.name} is ${obj.power}/${obj.toughness}${if (b.keywords.isEmpty()) "" else " with " + b.keywords.joinToString(" and ")} ($band)."
     }
 
     /** "they tap my Grizzly Bears down": tapping a permanent, which is not the same as using a {T} ability. */
@@ -2466,6 +2484,7 @@ class Engine(val state: GameState) {
                         o.counters[effect.kind] = (o.counters[effect.kind] ?: 0) + n
                         trace.step("$n ${effect.kind} counter${if (n > 1) "s are" else " is"} put on ${o.name}${if (o.def.isCreature) "; it's now ${o.power}/${o.toughness}" else ""}.", "122.1a", "122.6")
                         state.outcomes += "${o.name} has ${o.counters[effect.kind]} ${effect.kind} counter${if (o.counters[effect.kind]!! > 1) "s" else ""}."
+                        if (effect.kind == "level") levelBandNote(o)
                         onEvent(GameEvent.CountersPut(o, effect.kind, n))
                     }
                 }
@@ -3412,7 +3431,9 @@ class Engine(val state: GameState) {
             if (opp != null && problem != null) {
                 trace.step("${item.describe} says \"target player\" and no target was named. ${problem.first.replaceFirstChar { it.uppercase() }}, so it couldn't have been cast targeting ${if (opp.you) "you" else opp.name}; the only player it could target is its own controller.", problem.second, "115.1")
                 state.outcomes += "${item.describe} can't target ${if (opp.you) "you" else opp.name} (hexproof)."
-                return@run null
+                state.outcomes += "The only player ${item.describe} could be cast targeting is ${state.player(item.controller).let { if (it.you) "you" else it.name }}."
+                state.assumptions += "${item.describe} is read as targeting its own controller, the only legal choice; the answer to whether it can hit ${if (opp.you) "you" else opp.name} is no."
+                return@run state.player(item.controller)
             }
             if (opp != null) state.assumptions += "${item.describe} targets ${if (opp.you) "you" else opp.name} (\"target player\" wasn't specified; assuming the opponent)."
             // Several opponents and nothing says which: with one it is assumed above, with two it is a real choice,

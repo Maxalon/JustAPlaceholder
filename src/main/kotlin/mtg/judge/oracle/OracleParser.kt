@@ -54,6 +54,11 @@ object OracleParser {
                 if (rider != null) lines += rider
                 lines += header + " " + modes.joinToString(" ") { "• $it" }
                 i0 = j
+            } else if (Regex("""^LEVEL \d+(?:-\d+|\+)$""").matches(l.trim())) {
+                // "LEVEL 2-6" / "3/3" / "First strike": one band of a leveler (702.87), gathered into one line.
+                var j = i0 + 1; val parts = mutableListOf(l.trim())
+                while (j < rawLines.size && (Regex("""^\d+/\d+$""").matches(rawLines[j].trim()) || keywordsIn(rawLines[j]) != null)) { parts += rawLines[j].trim(); j++ }
+                lines += parts.joinToString(" "); i0 = j
             } else { lines += l; i0++ }
         }
         val abilities = mutableListOf<Ability>()
@@ -702,6 +707,9 @@ object OracleParser {
         Regex("""^~'s toughness is equal to (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.PtCda(null, parseCount(m.groupValues[1]))) }
         if (Regex("""^(As ~ enters, choose (a|an) .+|As ~ enters, .+)$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("614.1c")))
         if (Regex("""^(You may choose not to untap ~ during your untap step|~ doesn't untap during your untap step|Enchanted (creature|permanent) doesn't untap during its controller's untap step)\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("502.3")))
+        Regex("""^LEVEL (\d+)(?:-(\d+)|\+) (\d+)/(\d+)(?: (.*))?$""").matchEntire(line)?.let { m ->
+            return listOf(StaticEffect.LevelBand(m.groupValues[1].toInt(), m.groupValues[2].toIntOrNull(), m.groupValues[3].toInt(), m.groupValues[4].toInt(), m.groupValues[5].takeIf { it.isNotEmpty() }?.let { keywordsIn(it) } ?: emptySet()))
+        }
         if (Regex("""^(LEVEL \d+.*|\d+/\d+|\{[^}]+\}(?:\{[^}]+\})* — \d+/\d+.*)$""").matches(line)) return listOf(StaticEffect.Note(line, listOf("702.87a")))
         if (Regex("""^If ~ is in your opening hand, you may begin the game with it on the battlefield\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("103.6")))
         // "If you control a commander, you may cast this spell without paying its mana cost" (Fierce Guardianship

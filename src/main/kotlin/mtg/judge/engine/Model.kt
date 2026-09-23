@@ -489,6 +489,8 @@ sealed interface StaticEffect {
     data class CantCastFromZone(val zones: Set<String>, val opponentsOnly: Boolean) : StaticEffect
     /** Recognised static text the engine cites but has no game model for (level-up stats, "look at the top card any time", …). */
     data class Note(val text: String, val rules: List<String>) : StaticEffect
+    /** "LEVEL 2-6 3/3 First strike": what a leveler is while it has that many level counters (702.87b). max null = "and up". */
+    data class LevelBand(val min: Int, val max: Int?, val power: Int, val toughness: Int, val keywords: Set<String>) : StaticEffect
     /** A continuous replacement or prevention effect from a static ability (614, 615). */
     data class Replace(val replacement: Replacement) : StaticEffect
 }

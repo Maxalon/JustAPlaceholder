@@ -353,8 +353,10 @@ class GameState(
         return null
     }
 
-    private fun basePower(obj: GameObject): Int? = obj.animatedAs?.power ?: obj.basePt?.first ?: abilitiesLostOn(obj)?.second?.power ?: cdaOf(obj)?.let { c -> if (c.power != null) cdaValue(obj, c.power)?.plus(c.plus) else obj.def.power } ?: obj.def.power
-    private fun baseToughness(obj: GameObject): Int? = obj.animatedAs?.toughness ?: obj.basePt?.second ?: abilitiesLostOn(obj)?.second?.toughness ?: cdaOf(obj)?.let { c -> if (c.toughness != null) cdaValue(obj, c.toughness)?.plus(c.toughnessPlus ?: c.plus) else obj.def.toughness } ?: obj.def.toughness
+    /** The level band a leveler is in for its level counters (702.87b); null below the first band or for other creatures. */
+    fun levelBand(obj: GameObject): StaticEffect.LevelBand? { val n = obj.counters["level"] ?: 0; return obj.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.LevelBand>().firstOrNull { n >= it.min && (it.max == null || n <= it.max) } }
+    private fun basePower(obj: GameObject): Int? = obj.animatedAs?.power ?: obj.basePt?.first ?: levelBand(obj)?.power ?: abilitiesLostOn(obj)?.second?.power ?: cdaOf(obj)?.let { c -> if (c.power != null) cdaValue(obj, c.power)?.plus(c.plus) else obj.def.power } ?: obj.def.power
+    private fun baseToughness(obj: GameObject): Int? = obj.animatedAs?.toughness ?: obj.basePt?.second ?: levelBand(obj)?.toughness ?: abilitiesLostOn(obj)?.second?.toughness ?: cdaOf(obj)?.let { c -> if (c.toughness != null) cdaValue(obj, c.toughness)?.plus(c.toughnessPlus ?: c.plus) else obj.def.toughness } ?: obj.def.toughness
 
     /** "~ gets -X/-X, where X is your life total": the amount, recomputed each time it's asked for. */
     fun selfCountPt(obj: GameObject, toughness: Boolean = false): Int {
@@ -381,6 +383,7 @@ class GameState(
         val k = keyword.lowercase()
         val stripped = abilitiesLostOn(obj) != null
         if (!stripped && (obj.def.has(k) || k in obj.tempKeywords)) return true
+        if (!stripped && levelBand(obj)?.keywords?.contains(k) == true) return true   // 702.87b: the band's abilities while it has that many level counters
         if (k in keywordCounters && (obj.counters[k] ?: 0) > 0) return true   // 122.1b: a keyword counter grants the keyword, and isn't an ability of the creature
         return staticEffectsOn(obj).any { (src, e) ->
             e is StaticEffect.KeywordGrant && k in e.keywords && (e.filter.raw != "~" || src === obj) && conditionalKeywordOk(src, e) &&

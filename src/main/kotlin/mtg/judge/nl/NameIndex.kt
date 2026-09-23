@@ -45,6 +45,11 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
                 // an everyday word here, so "it is exiled" is table talk, not a card being cast.
                 val ordinary = (span.flatMap { it.split(' ') }.all { it in commonWords || it.removeSuffix("s") in commonWords } ||
                     sing?.split(' ')?.all { it in commonWords || it.removeSuffix("s") in commonWords } == true) && key !in aliases && sing !in aliases
+                // "level up my Student of Warfare" / "Student's level up ability": the keyword action, not the Aura named Level Up.
+                if (key == "level up" && (words.getOrNull(i - 1) in setOf("s", "its", "the", "i", "we", "they", "you", "he", "she", "then", "can", "to", "opponent")
+                        || words.getOrNull(i + len) in setOf("my", "their", "the", "a", "an", "it", "him", "her", "ability", "twice", "once")
+                        || words.getOrNull(i + len)?.let { Regex("""^c\d+$""").matches(it) } == true
+                        || (1..maxWords).any { l -> i + len + l <= words.size && byNorm[words.subList(i + len, i + len + l).joinToString(" ")]?.isCard == true })) continue
                 if (e != null && !ordinary && (len > 1 || isSafeSingleWord(key, e) || key in aliases || sing in aliases)) { hit = Found(i, i + len, e); break }
             }
             if (hit != null) { found += hit; i = hit.end } else i++

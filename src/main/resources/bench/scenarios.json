@@ -14871,5 +14871,156 @@
       "a 2/2 creature: the battlefield → your graveyard"
     ],
     "cite": []
+  },
+  {
+    "id": "level-up-twice-reaches-band",
+    "text": "Can I level up my Student of Warfare twice in one turn?",
+    "expect": [
+      "Student of Warfare has 2 level counters.",
+      "Student of Warfare is 3/3 with first strike (LEVEL 2-6)."
+    ],
+    "notExpect": [
+      "Level Up enters"
+    ],
+    "cite": [
+      "702.87b"
+    ]
+  },
+  {
+    "id": "level-up-verb-before-a-name",
+    "text": "I level up Student of Warfare three times, then attack. They block with a 3/3. What happens?",
+    "expect": [
+      "a 3/3 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "Level Up enters",
+      "Not understood"
+    ],
+    "cite": [
+      "702.7b"
+    ]
+  },
+  {
+    "id": "ballista-to-ping-picks-the-damage-ability",
+    "text": "My opponent activates Walking Ballista to ping my 1/1. Can I respond with Giant Growth?",
+    "expect": [
+      "a 1/1 creature is 4/4 until end of turn.",
+      "a 1/1 creature has 1 damage marked."
+    ],
+    "notExpect": [
+      "a 1/1 creature: the battlefield → your graveyard.",
+      "Put a +1/+1 counter on Walking Ballista.\" (not"
+    ],
+    "cite": []
+  },
+  {
+    "id": "ballista-counter-comes-off-as-cost",
+    "text": "Opponent has Walking Ballista with 3 counters. They remove two counters from Ballista to kill my 2/2.",
+    "expect": [
+      "Walking Ballista: 1 +1/+1 counter removed as the cost (2 left).",
+      "Walking Ballista: 1 +1/+1 counter removed as the cost (1 left).",
+      "a 2/2 creature: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "5 +1/+1 counters"
+    ],
+    "cite": [
+      "602.2b"
+    ]
+  },
+  {
+    "id": "ballista-cast-then-pinged-resolves-first",
+    "text": "I cast Walking Ballista for X=3 and ping their 1/1 three times",
+    "expect": [
+      "Walking Ballista enters with 3 +1/+1 counters.",
+      "a 1/1 creature: the battlefield → opponent's graveyard.",
+      "Walking Ballista: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "can't be activated"
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "leyline-thoughtseize-only-self-target",
+    "text": "I cast Thoughtseize. My opponent has Leyline of Sanctity. Can I target them?",
+    "expect": [
+      "Thoughtseize can't target opponent (hexproof).",
+      "The only player Thoughtseize could be cast targeting is you."
+    ],
+    "notExpect": [
+      "opponent discards"
+    ],
+    "cite": []
+  },
+  {
+    "id": "bridge-stops-counter-grown-creature-when-hand-empty",
+    "text": "Does Ensnaring Bridge stop my 0/0 with three +1/+1 counters from attacking if I have no cards in hand?",
+    "expect": [
+      "a 0/0 creature can't attack (Ensnaring Bridge)."
+    ],
+    "notExpect": [
+      "opponent takes 3 damage",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "attack-with-my-sized-creature-with-counters",
+    "text": "I attack with my 0/0 with three +1/+1 counters.",
+    "expect": [
+      "opponent takes 3 damage."
+    ],
+    "notExpect": [
+      "a 0/0 creature: the battlefield → your graveyard."
+    ],
+    "cite": []
+  },
+  {
+    "id": "thoughtseize-into-only-lands",
+    "text": "Opponent cast Thoughtseize on me. I have only lands in hand. What happens?",
+    "expect": [
+      "You discard nothing (no nonland card in hand).",
+      "opponent loses 2 life."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "how-much-more-does-their-spell-cost",
+    "text": "I control Thalia, Guardian of Thraben. How much more does my opponent's Lightning Bolt cost?",
+    "expect": [
+      "Lightning Bolt costs {R} plus {1} (Thalia, Guardian of Thraben makes it cost {1} more) — 2 mana in all."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "fireball-split-over-their-two-creatures",
+    "text": "If I cast Fireball with X=4 targeting their two creatures, how much damage does each take?",
+    "expect": [
+      "a creature has 2 damage marked. (×2)"
+    ],
+    "notExpect": [
+      "opponent takes 4 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "restated-counters-do-not-add-up",
+    "text": "My Hangarback Walker has 2 counters. It gets another +1/+1 counter. How big is it?",
+    "expect": [
+      "Hangarback Walker is 3/3"
+    ],
+    "notExpect": [
+      "Hangarback Walker is 2/2"
+    ],
+    "cite": []
   }
 ]

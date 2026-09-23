@@ -62,6 +62,13 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         it.counters[e.kind] = n
                         state.assumptions += "${def.name} entered with $n ${e.kind} counter${if (n == 1) "" else "s"} on it, as its own text says; say the counters outright if it has a different number now."
                     }
+                // Walking Ballista, Hangarback Walker: "enters with X counters" and nothing said how many. A 0/0
+                // with none would have died already, so it has at least one; one it is, said out loud.
+                if (it.isOnBattlefield() && o.counters.isEmpty() && def.power == 0 && def.toughness == 0) def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }
+                    .filterIsInstance<StaticEffect.EntersWithCounters>().firstOrNull { e -> e.count == null && e.per == null && !e.onlyIfKicked }?.let { e ->
+                        it.counters[e.kind] = 1
+                        state.assumptions += "${def.name}'s ${e.kind} counters weren't stated; assuming 1 (it's a 0/0 without any). Say the number for a precise answer."
+                    }
             }
         }
         for (s in sit.stack) {
@@ -266,6 +273,9 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "activate" -> {
                 val objId = e.obj ?: throw JudgeException("activate needs an object")
                 val obj = state.obj(objId)
+                // "I cast Walking Ballista for X=3 and ping their 1/1": the Ballista has to resolve and be on the
+                // battlefield before its ability can be activated; the pings come after, not in response to itself.
+                if (obj.zone == mtg.judge.engine.Zone.STACK && state.stack.any { it.source === obj }) { state.trace.step("${obj.name} is still a spell on the stack; a permanent's activated ability can be activated only once it's on the battlefield, so the spell resolves first.", "113.6", "601.2a"); engine.resolveAll() }
                 // "sacrifice a Forest to Gitrog": nothing to activate on it, so it's just a sacrifice (its triggers still see it).
                 e.to?.takeIf { it.startsWith("sacrifice:") }?.removePrefix("sacrifice:")?.let { sacId ->
                     if (obj.def.abilities.filterIsInstance<ActivatedAbility>().none { a -> a.cost.contains("sacrifice", true) }) { engine.sacrifice(e.player ?: state.obj(sacId).controller, sacId); return }
@@ -276,6 +286,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     // meant — not Nykthos's plain "{T}: Add {C}", which was picked first and ignored the devotion.
                     ?: e.to?.takeIf { it.startsWith("color:") }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> a.effect is Effect.AddManaDevotion || (a.effect as? Effect.Seq)?.effects?.any { it is Effect.AddManaDevotion } == true }.takeIf { it >= 0 } }
                     ?: e.to?.takeIf { it == "mana" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> a.effect is Effect.AddMana || a.effect is Effect.AddManaPer || (a.effect as? Effect.Seq)?.effects?.any { it is Effect.AddMana || it is Effect.AddManaPer } == true }.takeIf { it >= 0 } }
+                    ?: e.to?.takeIf { it == "levelup" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> a.cost.startsWith("Level up", true) }.takeIf { it >= 0 } }
                     ?: e.to?.takeIf { it == "saddle" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> a.effect is Effect.SaddleSelf }.takeIf { it >= 0 } }
                     ?: e.to?.takeIf { it == "ultimate" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().withIndex().filter { (_, a) -> Regex("""^[\u2212-]\d+$""").matches(a.cost) }.minByOrNull { (_, a) -> a.cost.replace('\u2212', '-').toInt() }?.index }
                     ?: e.to?.let { cost -> obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { it.cost.replace('\u2212', '-') == cost.replace('\u2212', '-') }.takeIf { it >= 0 } }

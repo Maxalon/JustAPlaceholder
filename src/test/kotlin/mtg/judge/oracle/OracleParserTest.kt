@@ -65,3 +65,17 @@ class OracleParserTest {
         assertTrue(flyer.has("Flying"))
     }
 }
+
+class LevelUpParseTest {
+    @Test
+    fun levelBandsAreParsed() {
+        val d = OracleParser.parse("x", "Student of Warfare", "Creature — Human Knight", "{W}", 1.0, "W", "1", "1", listOf("Level up", "First strike", "Double strike"),
+            "Level up {W} ({W}: Put a level counter on this. Level up only as a sorcery.)\nLEVEL 2-6\n3/3\nFirst strike\nLEVEL 7+\n4/4\nDouble strike")
+        val bands = d.abilities.filterIsInstance<mtg.judge.engine.StaticAbility>().flatMap { it.effects }.filterIsInstance<mtg.judge.engine.StaticEffect.LevelBand>()
+        println("ABILITIES: " + d.abilities.joinToString(" | ") { it.toString() })
+        assertEquals(2, bands.size, "two level bands")
+        assertEquals(mtg.judge.engine.StaticEffect.LevelBand(2, 6, 3, 3, setOf("first strike")), bands[0])
+        assertEquals(mtg.judge.engine.StaticEffect.LevelBand(7, null, 4, 4, setOf("double strike")), bands[1])
+        assertTrue(d.abilities.filterIsInstance<mtg.judge.engine.ActivatedAbility>().any { it.cost.startsWith("Level up") }, "level up ability")
+    }
+}
