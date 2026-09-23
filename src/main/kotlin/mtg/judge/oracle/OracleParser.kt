@@ -734,6 +734,7 @@ object OracleParser {
             val inner = parseTriggered(m.groupValues[2].trimEnd('.').replace("this creature", "~").replace("this permanent", "~"))
             if (inner is TriggeredAbility) return listOf(StaticEffect.GrantTriggered(parseFilter(m.groupValues[1].lowercase().replace(Regex("""s(?= you control|$)"""), ""), Kind.PERMANENT), inner))
         }
+        if (Regex("""^Spells and abilities your opponents control can't cause you to sacrifice permanents\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.CantBeMadeToSacrifice)
         // Mox Diamond.
         if (Regex("""^If ~ would enter, you may discard a land card instead\. If you do, put ~ onto the battlefield\. If you don't, put it into its owner's graveyard\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.EntersUnlessDiscard(parseFilter("land card", Kind.PERMANENT)))
         Regex("""^(Combat )?damage that would be dealt by (creatures|sources) you control can't be prevented\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.DamageCantBePrevented(m.groupValues[1].isNotEmpty(), m.groupValues[2].equals("creatures", true))) }

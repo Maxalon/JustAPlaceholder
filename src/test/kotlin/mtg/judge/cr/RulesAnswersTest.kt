@@ -65,6 +65,7 @@ class RulesAnswersTest {
         "Does deathtouch work on a planeswalker?" to "702.2b",
         "my commander dies, can I put it back in the command zone" to "903.9a",
         "Can I respond to my own spell?" to "117.3c",
+        "Can my opponent respond to my Thassa's Oracle trigger by making me draw?" to "603.3",
         "Does my Commander's color identity include the mana symbols in its text box?" to "903.4",
         "Can I sacrifice my commander to Diabolic Intent and put it in the command zone?" to "903.9a",
         "My commander gets copied by my opponent's Clone. Is the Clone a commander?" to "903.3",

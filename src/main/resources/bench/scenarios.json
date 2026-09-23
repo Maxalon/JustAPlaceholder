@@ -5530,7 +5530,7 @@
     "id": "wrath-spares-a-god-that-is-not-a-creature",
     "text": "I control Heliod, God of the Sun. My opponent casts Wrath of God. What happens?",
     "expect": [
-      "Nothing changes"
+      "Wrath of God affects nothing: nothing on the battlefield is a creature to destroy."
     ],
     "notExpect": [
       "Heliod, God of the Sun is destroyed"
@@ -15671,6 +15671,106 @@
     ],
     "notExpect": [
       "summoning sick"
+    ],
+    "cite": []
+  },
+  {
+    "id": "teferis-protection-creatures-survive-damnation",
+    "text": "My opponent casts Damnation. I have Teferi's Protection in hand and 3 white sources. Do my creatures survive?",
+    "expect": [
+      "a creature phases out (back at the start of your next turn).",
+      "No: a creature is phased out"
+    ],
+    "notExpect": [
+      "a creature: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "702.26b"
+    ]
+  },
+  {
+    "id": "safekeeper-what-do-i-do",
+    "text": "I control Sylvan Safekeeper and a Forest. My opponent casts Doom Blade on my Tarmogoyf. What do I do?",
+    "expect": [
+      "Forest: the battlefield → your graveyard.",
+      "Tarmogoyf has shroud until end of turn.",
+      "Doom Blade doesn't resolve (all targets illegal)."
+    ],
+    "notExpect": [
+      "Tarmogoyf: the battlefield → your graveyard."
+    ],
+    "cite": []
+  },
+  {
+    "id": "respond-with-bauble-activates-it",
+    "text": "My opponent casts Thoughtseize. I respond with Mishra's Bauble. What happens?",
+    "expect": [
+      "Mishra's Bauble: the battlefield → your graveyard.",
+      "opponent loses 2 life."
+    ],
+    "notExpect": [
+      "no flash"
+    ],
+    "cite": []
+  },
+  {
+    "id": "thragtusk-gets-pathed",
+    "text": "I cast Thragtusk and it gets Path to Exiled. Do I get a Beast?",
+    "expect": [
+      "You gain 5 life.",
+      "Thragtusk: the battlefield → exile.",
+      "You get a Beast token."
+    ],
+    "notExpect": [
+      "still a spell on the stack"
+    ],
+    "cite": []
+  },
+  {
+    "id": "oracle-in-hand-empty-library-draw-step",
+    "text": "I have Thassa's Oracle in hand, 0 cards in library, and it's my draw step. Do I lose?",
+    "expect": [
+      "You lose the game (drew from an empty library).",
+      "Yes: You have lost the game."
+    ],
+    "notExpect": [
+      "You draw 1 card."
+    ],
+    "cite": [
+      "704.5b"
+    ]
+  },
+  {
+    "id": "sigarda-stops-lilianas-edict",
+    "text": "I have Sigarda, Host of Herons. My opponent casts Liliana of the Veil and uses her -2. Do I sacrifice?",
+    "expect": [
+      "You sacrifice nothing (Sigarda, Host of Herons)."
+    ],
+    "notExpect": [
+      "Rules text not modeled",
+      "Sigarda, Host of Herons: the battlefield → your graveyard."
+    ],
+    "cite": []
+  },
+  {
+    "id": "gaaiv-taxes-a-three-mana-spell",
+    "text": "I control Grand Arbiter Augustin IV. My opponent casts a 3 mana spell. How much does it cost?",
+    "expect": [
+      "a 3 mana spell costs {3} plus {1} (Grand Arbiter Augustin IV makes it cost {1} more) — 4 mana in all."
+    ],
+    "notExpect": [
+      "Grand Arbiter Augustin IV costs"
+    ],
+    "cite": []
+  },
+  {
+    "id": "rift-on-my-own-token-refused",
+    "text": "If I cast Cyclonic Rift on my own token, what happens?",
+    "expect": [
+      "Cyclonic Rift can't target a 1/1 token (not a nonland permanent you don't control)."
+    ],
+    "notExpect": [
+      "Own token"
     ],
     "cite": []
   }

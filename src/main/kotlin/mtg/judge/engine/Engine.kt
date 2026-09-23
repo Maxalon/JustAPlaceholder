@@ -2437,6 +2437,9 @@ class Engine(val state: GameState) {
                 }
             }
             is Effect.SacrificeEach -> for (p in resolvePlayers(effect.who, item)) {
+                // Sigarda, Host of Herons: an opponent's spell or ability can't make her controller sacrifice anything.
+                val sigarda = state.objects.values.firstOrNull { it.isOnBattlefield() && it.controller == p.id && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { e -> e is StaticEffect.CantBeMadeToSacrifice } }
+                if (sigarda != null && item.controller != p.id) { trace.step("${sigarda.name} says spells and abilities ${p.possessive} opponents control can't cause ${p.subject.lowercase()} to sacrifice permanents, and ${item.describe} is controlled by an opponent, so ${p.subject.lowercase()} ${p.v("sacrifices", "sacrifice")} nothing.", "701.21a"); state.outcomes += "${p.subject} ${p.v("sacrifices", "sacrifice")} nothing (${sigarda.name})."; continue }
                 val mine = state.objects.values.filter { it.isOnBattlefield() && it.controller == p.id && state.matches(effect.filter, it, p.id) }
                 when {
                     mine.isEmpty() -> trace.step("${p.subject} ${p.v("controls", "control")} no ${effect.filter.raw}, so ${p.subject.lowercase()} ${p.v("sacrifices", "sacrifice")} nothing.", "701.21a")
@@ -2717,7 +2720,7 @@ class Engine(val state: GameState) {
             is Effect.ForAll -> {
                 val affected = state.objects.values.filter { state.matches(effect.filter, it, item.controller) }
                 item.lastCount = affected.size
-                if (affected.isEmpty()) trace.step("Nothing matches \"${effect.filter.raw}\", so ${effect.action} affects nothing.")
+                if (affected.isEmpty()) { trace.step("Nothing matches \"${effect.filter.raw}\", so ${effect.action} affects nothing.${if (state.objects.values.any { it.phasedOut }) " Phased-out permanents are treated as though they don't exist, so they aren't destroyed." else ""}", "702.26b"); state.outcomes += "${item.source.name} affects nothing: nothing on the battlefield is ${withArticle(effect.filter.raw.removeSuffix("s"))} to ${effect.action}${if (state.objects.values.any { it.phasedOut }) " (the phased-out permanents aren't there for it)" else ""}." }
                 // Everything leaves at once: abilities of permanents leaving simultaneously still see the others go (603.10a).
                 if (effect.action in setOf("destroy", "exile", "bounce", "tuck") && affected.size > 1) { leavingTogether = affected.map { it.id }.toSet(); trace.step("All of them leave the battlefield simultaneously, so abilities that trigger on creatures dying or leaving look back and see every one of them.", "603.10a") }
                 try { for (o in affected) when (effect.action) {

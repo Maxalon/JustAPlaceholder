@@ -345,7 +345,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     if (made != null) return
                     state.outcomes += engine.manaAvailable(e.player ?: throw JudgeException("ask needs a player")); return
                 }
-                if (e.to == "spellCost") { state.outcomes += engine.spellCost(e.obj ?: throw JudgeException("ask needs an object")); return }
+                if (e.to == "spellCost") { state.outcomes += engine.spellCost(e.obj ?: e.card?.name?.let { n -> state.objects.values.lastOrNull { it.def.name.equals(n, true) }?.id } ?: throw JudgeException("ask needs an object")); return }
                 if (e.to == "monarch") { state.outcomes += (state.monarch?.let { mid -> val p = state.player(mid); "${p.subject} ${p.v("is", "are")} the monarch." } ?: "Nobody is the monarch."); return }
                 if (e.to == "playerSurvive" || e.to == "playerDie" || e.to == "playerWin") { state.outcomes += playerAnswer(e.to, state.player(e.player ?: throw JudgeException("ask needs a player")), state); return }
                 // "do I draw?" / "how many cards do I draw?": every card that player drew while this played out.
@@ -481,7 +481,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     "tapped" -> state.outcomes += if (o.tapped == true) "${o.name} is tapped." else "${o.name} is untapped${if (state.hasKeyword(o, "vigilance") && state.trace.steps.any { it.text.startsWith("${o.name} attacks") || it.text.contains("attack with ${o.name}") }) " (vigilance: attacking didn't tap it)" else ""}."
                     "survive", "die" -> {
                         val where = when (o.zone) { mtg.judge.engine.Zone.GRAVEYARD -> "the graveyard"; mtg.judge.engine.Zone.EXILE -> "exile"; mtg.judge.engine.Zone.HAND -> "its owner's hand"; mtg.judge.engine.Zone.LIBRARY -> "its owner's library"; mtg.judge.engine.Zone.COMMAND -> "the command zone"; else -> o.zone.name.lowercase() }
-                        state.outcomes += if (e.to == "die") { if (o.isOnBattlefield()) "No: ${o.name} is still on the battlefield." else if (o.zone == mtg.judge.engine.Zone.GRAVEYARD) "Yes: ${o.name} died (it's in the graveyard)." else "No: ${o.name} didn't die, but it left the battlefield; it's in $where." }
+                        state.outcomes += if (o.phasedOut) "No: ${o.name} is phased out — treated as though it doesn't exist until it phases in at its controller's next untap step, so nothing happened to it." else if (e.to == "die") { if (o.isOnBattlefield()) "No: ${o.name} is still on the battlefield." else if (o.zone == mtg.judge.engine.Zone.GRAVEYARD) "Yes: ${o.name} died (it's in the graveyard)." else "No: ${o.name} didn't die, but it left the battlefield; it's in $where." }
                         else { if (o.isOnBattlefield()) "Yes: ${o.name} is still on the battlefield." else "No: ${o.name} is in $where." }
                     }
                     else -> {}
