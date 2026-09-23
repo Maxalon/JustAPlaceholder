@@ -17789,5 +17789,100 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "laboratory-maniac-draw-from-empty-library",
+    "text": "My opponent has Laboratory Maniac and 0 cards in library. They draw. What happens?",
+    "expect": [
+      "opponent wins the game (Laboratory Maniac)."
+    ],
+    "notExpect": [
+      "Not understood",
+      "loses the game"
+    ],
+    "cite": [
+      "614.1a",
+      "704.5b"
+    ]
+  },
+  {
+    "id": "wheel-of-fortune-hand-after",
+    "text": "I have 3 cards in hand and cast Wheel of Fortune. How many cards do I have after?",
+    "expect": [
+      "You discard your hand (3 cards).",
+      "You draw 7 cards.",
+      "You have 7 cards in hand."
+    ],
+    "notExpect": [
+      "Not understood",
+      "not tracked in detail"
+    ],
+    "cite": [
+      "701.9a"
+    ]
+  },
+  {
+    "id": "thoughtseize-myself",
+    "text": "I Thoughtseize myself. What happens?",
+    "expect": [
+      "You lose 2 life."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "windfall-with-hand-sizes",
+    "text": "I cast Windfall with 4 cards in hand and my opponent has 7. What happens?",
+    "expect": [
+      "You discard your hand (4 cards).",
+      "opponent discards their hand (7 cards).",
+      "You draw 7 cards.",
+      "opponent draws 7 cards."
+    ],
+    "notExpect": [
+      "Not understood",
+      "hand sizes needed"
+    ],
+    "cite": []
+  },
+  {
+    "id": "milled-to-zero-does-not-lose-yet",
+    "text": "I mill my opponent with Glimpse the Unthinkable while they have 8 cards in their library. Do they lose?",
+    "expect": [
+      "opponent mills 8 cards (0 left in library).",
+      "No: opponent is still in the game. An empty library isn't a loss by itself: opponent loses only when opponent would draw from it, at the next state-based check (704.5b)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "ancestral-on-myself-one-card-left",
+    "text": "I cast Ancestral Recall on myself with 1 card left in my library. Do I lose?",
+    "expect": [
+      "You draw 1 card and can't draw the rest (empty library).",
+      "Yes: You have lost the game."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5b"
+    ]
+  },
+  {
+    "id": "consecrated-sphinx-opponent-draw-step",
+    "text": "I control Consecrated Sphinx and my opponent draws for their turn. How many cards do I draw?",
+    "expect": [
+      "You draw 2 cards.",
+      "Yes: You draw 2 cards in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

@@ -205,6 +205,10 @@ sealed interface Effect {
     data class DealsPowerTo(val mine: TargetSpec, val theirs: TargetSpec) : Effect
     /** "Target player discards X cards at random" / "each player discards two cards". */
     data class Discard(val who: Who, val count: Int, val x: Boolean = false, val random: Boolean = false) : Effect
+    /** "Each player discards their hand" (Wheel of Fortune, Windfall). */
+    data class DiscardHand(val who: Who) : Effect
+    /** "then draws cards equal to the greatest number of cards a player discarded this way" (Windfall). */
+    data object WindfallDraw : Effect
     /** "Counter that spell": the spell whose casting made this trigger. */
     data object CounterThatSpell : Effect
     /** Cabal Therapy: "Choose a nonland card name. Target player reveals their hand and discards all cards with that name." */
@@ -360,7 +364,7 @@ sealed interface Effect {
         is Repeat -> body.targets()
         is LoseLifeUnlessSacOrDiscard -> emptyList()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
-        is ProtectionUntilNextTurn, is PhaseOutAll, is ExileSelfSpell, is LoseKeywordsAll, is ExileInsteadOfGraveyardThisTurn, is LivingEnd, is PutBackFromHand -> emptyList()
+        is ProtectionUntilNextTurn, is PhaseOutAll, is ExileSelfSpell, is LoseKeywordsAll, is ExileInsteadOfGraveyardThisTurn, is LivingEnd, is PutBackFromHand, is DiscardHand, is WindfallDraw -> emptyList()
         is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is GainLifeLostThisWay, is GainLifeEqualToToughness, is Discard, is ExileIfDamagedDies, is RevealTopToHand, is LoseLifeEqualToRevealedMv, is PutSelfOnLibraryTop, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
     }
 

@@ -480,6 +480,15 @@ class Engine(val state: GameState) {
         val lib = who.librarySize
         if (lib != null && lib < count) {
             if (lib > 0) { trace.step("${who.subject} ${who.v("draws", "draw")} $lib card${if (lib > 1) "s" else ""}, emptying ${who.possessive} library.", "121.1"); repeat(lib) { who.drew += 1; who.drewThisTurn += 1; onEvent(GameEvent.Drew(who.id)) } }
+            // Laboratory Maniac / Jace, Wielder of Mysteries: the draw from an empty library is a win instead.
+            val maniac = state.objects.values.firstOrNull { o -> o.isOnBattlefield() && o.controller == who.id && Regex("""(?i)would draw a card while your library has no cards in it, (?:you win the game instead|instead you win the game)""").containsMatchIn(o.def.oracleText) }
+            if (maniac != null) {
+                who.librarySize = 0
+                trace.step("${who.subject} would draw a card with no cards in ${who.possessive} library. ${maniac.name} replaces that draw: ${who.subject.lowercase()} ${who.v("wins", "win")} the game instead. No card is drawn and ${who.subject.lowercase()} ${who.v("doesn't", "don't")} lose for it: the replacement applies before the draw would happen, so there is no failed draw for the state-based action to see.", "614.1a", "104.2a", "704.5b")
+                state.players.filter { it.id != who.id }.forEach { it.lost = true }
+                state.outcomes += "${who.subject} ${who.v("wins", "win")} the game (${maniac.name})."
+                return
+            }
             who.librarySize = 0; who.drewFromEmpty = true
             trace.step("${who.subject} ${who.v("attempts", "attempt")} to draw ${count - lib} card${if (count - lib > 1) "s" else ""} from a library with no cards in it. No card is drawn, and ${who.subject.lowercase()} will lose the game the next time a player would receive priority.", "121.4", "704.5b")
             state.outcomes += if (lib == 0) "${who.subject} can't draw: ${who.possessive} library is empty." else "${who.subject} ${who.v("draws", "draw")} $lib card${if (lib == 1) "" else "s"} and can't draw the rest (empty library)."
@@ -2660,6 +2669,22 @@ class Engine(val state: GameState) {
             } }
             is Effect.GainLife -> resolvePlayers(effect.who, item).forEach { p -> gainLife(p, effect.amount) }
             is Effect.LoseLife -> { val n = if (effect.x) (item.x ?: 0) else effect.amount; resolvePlayers(effect.who, item).forEach { p -> p.life = p.life?.minus(n); item.lifeLost += n; trace.step("${p.subject} ${p.v("loses", "lose")} $n life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} $n life." } }
+            is Effect.DiscardHand -> {
+                var most = 0; var unknown = false
+                for (p in resolvePlayers(effect.who, item)) {
+                    val hand = p.handSize
+                    val poss = if (p.you) "your" else "their"
+                    if (hand == null) { unknown = true; trace.step("${p.subject} ${p.v("discards", "discard")} $poss hand (its size wasn't given).", "701.9a"); state.outcomes += "${p.subject} ${p.v("discards", "discard")} $poss hand." }
+                    else { p.handSize = 0; most = maxOf(most, hand); trace.step("${p.subject} ${p.v("discards", "discard")} $poss hand: $hand card${if (hand == 1) "" else "s"}.", "701.9a"); state.outcomes += "${p.subject} ${p.v("discards", "discard")} $poss hand ($hand card${if (hand == 1) "" else "s"})." }
+                }
+                item.lastCount = if (unknown) null else most
+            }
+            is Effect.WindfallDraw -> {
+                val n = item.lastCount
+                if (n == null) state.clarifications += Clarification("hand sizes", "${item.source.name} has each player discard their hand and draw that many; how many cards did each player have?")
+                if (n == null) { trace.step("Each player draws as many cards as the most any one player discarded; the hand sizes weren't all given, so the number isn't known.", "608.2h"); state.outcomes += "Each player draws cards equal to the greatest number discarded (hand sizes needed)." }
+                else { trace.step("The most any one player discarded was $n, so each player draws $n card${if (n == 1) "" else "s"}.", "608.2h"); for (p in state.players.filter { !it.lost }) draw(p.id, n) }
+            }
             is Effect.Discard -> for (p in resolvePlayers(effect.who, item)) {
                 val n = if (effect.x) (item.x ?: 0) else effect.count
                 if (effect.x && item.x == null) state.clarifications += Clarification("${item.source.name}'s X", "${item.source.name} makes a player discard X cards; what was X? (assuming 0)")
@@ -3931,6 +3956,7 @@ class Engine(val state: GameState) {
         is Effect.May -> "may " + describe(effect.effect, item); is Effect.UnlessPays -> describe(effect.effect, item) + " unless ${effect.cost} is paid"
         is Effect.ExileSelfSpell -> "exile ${item.source.name}"; is Effect.ProtectionUntilNextTurn -> "until your next turn your life total can't change and you have protection from everything"; is Effect.PhaseOutAll -> "${effect.filter.raw} phase out"
         is Effect.ExtractNamed -> "exile ${effect.target.raw} and every card with its name"; is Effect.LivingEnd -> "each player exiles the creature cards in their graveyard, sacrifices their creatures and returns the exiled cards"; is Effect.PutBackFromHand -> "put ${effect.count} cards from your hand on top of your library"; is Effect.ExileIfMvAtMostX -> "exile ${effect.target.raw} if its mana value is at most the colours spent"; is Effect.Transmogrify -> "${effect.target.raw} loses all abilities and becomes a ${effect.power}/${effect.toughness} ${effect.subtype}"; is Effect.SpellCantBeCountered -> "target spell can't be countered"
+        is Effect.DiscardHand -> "${if (effect.who == Who.EACH_PLAYER) "each player discards their hand" else "discard your hand"}"; is Effect.WindfallDraw -> "each player draws cards equal to the greatest number discarded"
         is Effect.Seq -> effect.effects.joinToString(", then ") { describe(it, item) }; is Effect.Unparsed -> "\"${effect.text}\""
     }
     private fun unparsedText(e: Effect): String = when (e) { is Effect.Unparsed -> e.text; is Effect.May -> unparsedText(e.effect); is Effect.UnlessPays -> unparsedText(e.effect); is Effect.Seq -> e.effects.filter { it.hasUnparsed() }.joinToString(" | ") { unparsedText(it) }; is Effect.Modal -> e.modes.filter { it.hasUnparsed() }.joinToString(" | ") { "mode \"" + unparsedText(it) + "\"" }; else -> "" }

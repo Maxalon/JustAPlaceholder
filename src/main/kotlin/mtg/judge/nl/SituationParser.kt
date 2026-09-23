@@ -846,6 +846,13 @@ class SituationParser(private val names: NameIndex) {
             // "does Wrath of God kill a creature with regenerate": the creature is regenerated as the sweeper resolves.
             .replace(Regex("""^(?:does|will|would|can) (c\d+) (?:kill|destroy|get past|beat) (?:a |an |my |their )?creature with (?:regenerate|regeneration|a regeneration shield)\s*\??$""", RegexOption.IGNORE_CASE), "they have a creature, i cast $1 and they regenerate it")
             // "they chump with a token": a block of the asker's attack, which stands in when none was described.
+            // "I cast Windfall with 4 cards in hand": the hand size is the board, said before the cast.
+            .let { t0 -> Regex("""^(i|we|they|he|she|my opponent|the opponent|opponent) (casts?|plays?) ((?:an? |the )?c\d+) with (\d+|one|two|three|four|five|six|seven) cards? in (?:my |their |his |her )?hand\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                val s = r.groupValues[1].lowercase(); val have = if (s in setOf("i", "we", "they")) "have" else "has"
+                "${r.groupValues[1]} $have ${r.groupValues[4]} cards in hand and ${r.groupValues[1]} ${r.groupValues[2]} ${r.groupValues[3]}" } }
+            // "I Thoughtseize myself": a card used as a verb, aimed at the speaker.
+            .let { t0 -> Regex("""^(i|we) (c\d+) (myself|ourselves)\??$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                if (m.cards[r.groupValues[2]]?.isSpellOnly == true) "${r.groupValues[1]} cast ${r.groupValues[2]} targeting myself" else r.value } }
             // "Then the turn ends." / "At the end of the turn, …": until-end-of-turn effects end in the cleanup step (514.2).
             .replace(Regex("""^(?:then |and then )?(?:(?:the |this )?turn (?:ends|is over|passes)|(?:at |during |by )?(?:the )?end of (?:the |this )?turn|at (?:the )?end of turn|after (?:the |this )?turn(?: ends)?)(?=[,.?]|$)""", RegexOption.IGNORE_CASE), "at the cleanup step")
             // "I animate Mutavault": a manland's animation is its activated ability.
@@ -1757,6 +1764,12 @@ class SituationParser(private val names: NameIndex) {
             while (ctx.events.size > idx) ctx.events.removeAt(ctx.events.size - 1)
             emitCast(ev.player ?: "me", card, " targeting " + r.groupValues[1], m, ctx); return true
         }
+        // "I cast Windfall with 4 cards in hand and my opponent has 7": the count carries on from the hand just given.
+        Regex("""^(?:has|have|got|holds?) (\d+)$""").find(c)?.let { r ->
+            if (ctx.handSize.isEmpty()) return@let
+            val who = actor ?: ctx.lastActor ?: return@let
+            ctx.handSize[who] = r.groupValues[1].toInt(); ctx.note(who); ctx.lastVerb = "have"; return true
+        }
         // "… Bile Blight on their Elf Warrior token while they have four of them": that many of the permanent just named.
         Regex("""^(?:have|has|control|controls|got) (\d+|two|three|four|five|six) of (?:them|those|these)$""").find(c)?.let { r ->
             val n = numberWords[r.groupValues[1]] ?: r.groupValues[1].toInt()
@@ -2032,7 +2045,9 @@ class SituationParser(private val names: NameIndex) {
         if (readEarlyQuestions(clause0, m, ctx)) return true
         // "how many counters does it have?" has its own answer further down; this catch-all would take it first.
         if (Regex("""^how (?:much|many)(?: (?:combat )?(?:damage|life|cards?|mana|counters?))? (?:does|do|did|will|would|is|are)\b.*\b(?:cost|costs|pay|gain|lose|deal|draw|get|have|left)\b.*$""").matches(clause0)
-            && !Regex("""^how many (?:[+-]\d+/[+-]\d+ |[a-z]+ )?counters?\b""").containsMatchIn(clause0) && !Regex("""\bdamage (?:do|does|will|would) .*\b(?:take|receive|suffer)\b""").containsMatchIn(clause0)) {
+            && !Regex("""^how many (?:[+-]\d+/[+-]\d+ |[a-z]+ )?counters?\b""").containsMatchIn(clause0) && !Regex("""\bdamage (?:do|does|will|would) .*\b(?:take|receive|suffer)\b""").containsMatchIn(clause0)
+            // "how many cards do I have after?" is a count of the hand, answered further down.
+            && !Regex("""^how many cards (?:do|does|will|would) (?:i|we|they|he|she|my opponent|the opponent) (?:have|hold|end up with|be holding)\b""").containsMatchIn(clause0)) {
             // "… if I attack with everything": the attack is made so the answer can be shown.
             Regex("""\bif (i|they|my opponent|the opponent|@\w+) attacks? with (?:everything|all|both|my team|all my creatures|the team)\b""").find(clause0)?.let { a ->
                 val who = when (val w = a.groupValues[1]) { "i" -> "me"; else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w.substringAfterLast(' ')) }
@@ -2082,8 +2097,9 @@ class SituationParser(private val names: NameIndex) {
             ctx.asks += EventSpec("ask", card = CardRef(name = name), player = "me", to = "hitsOwn"); return true
         }
         // "What's my hand size after?": the cards in hand once everything is done.
-        Regex("""^what(?:'s| is| will be) (my|their|his|her) hand size(?: after(?: that| this)?| now| then| afterwards)?$""").find(clause0)?.let { r ->
-            val who = if (r.groupValues[1] == "my") "me" else ctx.other("me") ?: "opp"
+        Regex("""^what(?:'s| is| will be) (my|their|his|her) hand size(?: after(?: that| this)?| now| then| afterwards)?$|^how many cards (?:do|does|will|would) (i|we|they|he|she|my opponent|the opponent) (?:have|hold|end up with|be holding)(?: in (?:my |their |his |her )?hand)?(?: after(?: that| this)?| now| then| afterwards| at the end| left)?$""").find(clause0)?.let { r ->
+            val w = r.groupValues[1].ifEmpty { r.groupValues[2] }
+            val who = if (w in setOf("my", "i", "we")) "me" else ctx.other("me") ?: "opp"
             ctx.asks += EventSpec("ask", player = who, to = "count:cards in hand"); ctx.note(who); return true
         }
         // "Do I draw twice when they cast a spell?" with two Rhystic Studies: a spell is cast and the draws counted.

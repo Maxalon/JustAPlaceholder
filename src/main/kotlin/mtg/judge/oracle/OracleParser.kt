@@ -1362,7 +1362,11 @@ object OracleParser {
         Regex("""^return (?:all|each) (.+?) to (?:their owners?' hands?|its owner's hand|their owner's hands?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[1], Kind.PERMANENT); if (f.verifiable) return Effect.ForAll(f, "bounce") }
         // "Each player discards their hand, then draws seven cards." (Wheel of Fortune, Windfall-style)
         Regex("""^each player discards (?:their|his or her) hand, then draws (\w+|\d+) cards?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
-            number(m.groupValues[1])?.let { return Effect.Seq(listOf(Effect.Narrated("each player discards their hand", listOf("701.9a")), Effect.Draw(Who.EACH_PLAYER, it))) }
+            number(m.groupValues[1])?.let { return Effect.Seq(listOf(Effect.DiscardHand(Who.EACH_PLAYER), Effect.Draw(Who.EACH_PLAYER, it))) }
+        }
+        // "Each player discards their hand, then draws cards equal to the greatest number of cards a player discarded this way." (Windfall)
+        Regex("""^each player discards (?:their|his or her) hand, then draws cards equal to the greatest number of cards a player discarded this way\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let {
+            return Effect.Seq(listOf(Effect.DiscardHand(Who.EACH_PLAYER), Effect.WindfallDraw))
         }
         Regex("""^you may (search your library for .+)$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> zurRe.matchEntire(m.groupValues[1])?.let { z -> zurEffect(z)?.let { return Effect.May(it) } } }
         Regex("""^(that player|its controller|you|target player) may search (?:their|your) library for (.+?)(?:, then shuffle)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
