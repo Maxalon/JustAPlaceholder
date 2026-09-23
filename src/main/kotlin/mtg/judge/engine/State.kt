@@ -100,6 +100,8 @@ class GameObject(
     val tempKeywords = mutableSetOf<String>()
     /** Keywords taken away until end of turn (Arcane Lighthouse): checked before anything that would grant them. */
     val lostKeywords = mutableSetOf<String>()
+    /** The card as printed: a copy effect (Clone) changes [def] only while it is on the battlefield (400.7). */
+    val printedDef: CardDef = def
     /** Mox Diamond with no land to discard: it never enters, and goes to the graveyard instead. */
     var mustGoToGraveyard = false
     /** The mana its caster could pay with as it was cast, for "can I?" asked afterwards. */

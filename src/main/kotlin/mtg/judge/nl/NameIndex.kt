@@ -136,6 +136,9 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
                     // indexed they took the whole phrase: the Blood Artist on the battlefield was the rebalanced
                     // card, whose text is not the one the asker had in mind.
                     if (rs.getString(2).startsWith("A-")) continue
+                    // Jumpstart pack front cards ("Liliana", "Gigantic", "Surprise!") are memorabilia with the type line
+                    // "Card" and no game text. Indexed, "Liliana" was one of them instead of a planeswalker.
+                    if (rs.getString(6) == "Card") continue
                     val isCard = rs.getString(5) !in mtg.judge.carddb.ingest.ScryfallIngest.nonCardLayouts
                     val e = Entry(rs.getString(2), rs.getString(3), isCard, kind, rs.getString(6) ?: "", power = rs.getString(7), toughness = rs.getString(8))
                     val prev = map[norm]

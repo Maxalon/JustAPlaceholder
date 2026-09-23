@@ -725,12 +725,23 @@ class Engine(val state: GameState) {
     }
 
     /** "I discard Vengevine": a named card goes from its owner's hand to their graveyard (701.9a). */
+    /** Anger, Wonder, Bridge from Below: an ability that works while the card is in a graveyard, noted as it lands there. */
+    private fun graveyardAbilityNote(obj: GameObject) {
+        val texts = obj.def.abilities.mapNotNull { a -> when (a) { is UnparsedAbility -> a.text; is StaticAbility -> a.text; else -> null } }
+            .filter { Regex("""^As long as (?:~|this card|${Regex.escape(obj.def.name)}) is in your graveyard""", RegexOption.IGNORE_CASE).containsMatchIn(it) }
+        if (texts.isEmpty()) return
+        val t = texts.first().replace("~", obj.def.name)
+        trace.step("${obj.def.name}'s ability works from the graveyard: \"$t\" An ability that says it functions from a graveyard does so there, not on the battlefield.", "113.6")
+        state.outcomes += "${obj.def.name} is in the graveyard, where its ability applies: $t"
+    }
+
     fun discard(playerId: String, objectId: String) {
         val obj = state.obj(objectId)
         val p = state.player(playerId)
         if (obj.zone != Zone.HAND) { trace.step("${obj.name} isn't in ${p.possessive} hand, so it can't be discarded.", "701.9a"); state.outcomes += "${obj.name} can't be discarded (it isn't in ${p.possessive} hand)."; return }
         move(obj, Zone.GRAVEYARD, "${p.subject} ${p.v("discards", "discard")} ${obj.name}: it goes from ${p.possessive} hand to ${p.possessive} graveyard.", "701.9a")
         p.handSize = p.handSize?.minus(1)?.coerceAtLeast(0)
+        graveyardAbilityNote(obj)
         obj.def.abilities.filterIsInstance<StaticAbility>().firstOrNull { it.keyword == "madness" }?.let {
             trace.step("${obj.name} has madness, so it is still discarded, but it is exiled instead of going to the graveyard; its owner may then cast it for the madness cost, and if they don't, it goes to the graveyard after all — which is where this answer leaves it.", "702.35a")
             state.assumptions += "${obj.name}'s madness cost was not paid, so it ends up in the graveyard (702.35a)."
@@ -1643,6 +1654,8 @@ class Engine(val state: GameState) {
         Trigger.ThisCast -> event is GameEvent.SpellCast && event.item.source === obj
         is Trigger.BeginningOfStep -> event is GameEvent.StepBegins && event.step == trigger.step && onBf() && when (trigger.whose) {
             Who.YOU -> event.activePlayer == obj.controller; Who.OPPONENT -> event.activePlayer != obj.controller; else -> true }
+        is Trigger.EnchantedDealsDamage -> event is GameEvent.DamageDealt && onBf() && obj.attachedTo != null && event.source.id == obj.attachedTo && (!trigger.combatOnly || event.combat) &&
+            event.target is Ref.Player && (!trigger.toOpponent || event.target.id != obj.controller)
         is Trigger.ThisDealsDamage -> event is GameEvent.DamageDealt && event.source === obj && (!trigger.combatOnly || event.combat) &&
             (trigger.toPlayer == null || trigger.toPlayer == (event.target is Ref.Player))
         is Trigger.PermanentEnters -> event is GameEvent.EntersBattlefield && onBf() && !(trigger.other && event.obj === obj) && state.matches(trigger.filter, event.obj, obj.controller)
@@ -2454,7 +2467,7 @@ class Engine(val state: GameState) {
                 if (sigarda != null && item.controller != p.id) { trace.step("${sigarda.name} says spells and abilities ${p.possessive} opponents control can't cause ${p.subject.lowercase()} to sacrifice permanents, and ${item.describe} is controlled by an opponent, so ${p.subject.lowercase()} ${p.v("sacrifices", "sacrifice")} nothing.", "701.21a"); state.outcomes += "${p.subject} ${p.v("sacrifices", "sacrifice")} nothing (${sigarda.name})."; continue }
                 val mine = state.objects.values.filter { it.isOnBattlefield() && it.controller == p.id && state.matches(effect.filter, it, p.id) }
                 when {
-                    mine.isEmpty() -> trace.step("${p.subject} ${p.v("controls", "control")} no ${effect.filter.raw}, so ${p.subject.lowercase()} ${p.v("sacrifices", "sacrifice")} nothing.", "701.21a")
+                    mine.isEmpty() -> { trace.step("${p.subject} ${p.v("controls", "control")} no ${effect.filter.raw}, so ${p.subject.lowercase()} ${p.v("sacrifices", "sacrifice")} nothing.", "701.21a"); state.outcomes += "${p.subject} ${p.v("has", "have")} no ${effect.filter.raw} to sacrifice to ${item.source.name}; with one, ${p.subject.lowercase()} would have to." }
                     mine.size == 1 -> move(mine[0], Zone.GRAVEYARD, "${p.subject} ${p.v("sacrifices", "sacrifice")} ${mine[0].name} (${p.possessive} only ${effect.filter.raw}).", "701.21a")
                     effect.greatestPower -> {
                         val top = mine.maxOf { it.power ?: 0 }; val best = mine.filter { (it.power ?: 0) == top }; val pick = best.first()
@@ -2881,6 +2894,11 @@ class Engine(val state: GameState) {
     }
 
     private fun moveRaw(obj: GameObject, to: Zone) {
+        if (obj.zone == Zone.BATTLEFIELD && to != Zone.BATTLEFIELD && obj.def !== obj.printedDef) {
+            trace.step("${obj.printedDef.name} was a copy of ${obj.def.name}; the copy effect ends as it leaves the battlefield, so in its new zone it is ${obj.printedDef.name} again, a new object with no memory of what it was.", "400.7", "707.2")
+            state.outcomes += "${obj.printedDef.name} stops being a copy of ${obj.def.name} as it leaves the battlefield."
+            obj.def = obj.printedDef
+        }
         if (obj.isOnBattlefield()) {
             // A control-changing Aura leaving gives the creature back (the effect ends, 611.2b).
             if (obj.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.ControlEnchanted }) obj.attachedTo?.let { state.objects[it] }?.let { host ->
@@ -3108,6 +3126,13 @@ class Engine(val state: GameState) {
             gainLife(c, amount)
         }
         if (source != null && target !is Ref.Stack) onEvent(GameEvent.DamageDealt(source, target, amount, inCombatDamage))
+        if (source != null && target is Ref.Player) for (aura in state.objects.values.filter { it.isOnBattlefield() && it.attachedTo == source.id }) {
+            for (ta in aura.def.abilities.filterIsInstance<TriggeredAbility>()) {
+                val t = ta.trigger as? Trigger.EnchantedDealsDamage ?: continue
+                if (t.toOpponent && target.id == aura.controller) trace.step("${aura.name}'s ability triggers on the enchanted creature dealing damage to an opponent of ${aura.name}'s controller. This damage was dealt to ${state.player(target.id).subject.lowercase()}, its controller, so it doesn't trigger.", "603.2")
+                else if (t.combatOnly && !inCombatDamage) trace.step("${aura.name}'s ability triggers only on combat damage, and this damage isn't combat damage, so it doesn't trigger.", "603.2")
+            }
+        }
         if (source != null && inCombatDamage) monarchCombatDamage(source, target)
         return amount
     }

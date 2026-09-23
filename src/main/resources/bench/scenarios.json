@@ -15884,5 +15884,136 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "sword-wearer-connects",
+    "text": "I attack with a 3/3 wearing Sword of Fire and Ice. It connects. What happens?",
+    "expect": [
+      "opponent takes 5 damage.",
+      "opponent takes 2 damage.",
+      "You draw 1 card."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "control-magic-whose-creature",
+    "text": "My opponent casts Control Magic on my Grizzly Bears. Whose creature is it now?",
+    "expect": [
+      "Grizzly Bears is under opponent's control."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "613.1b"
+    ]
+  },
+  {
+    "id": "bounced-clone-is-a-clone",
+    "text": "I bounce my own Clone that's copying Grave Titan. What is it in my hand?",
+    "expect": [
+      "It's Clone in your hand: a copy effect lasts only while the permanent is on the battlefield (400.7)."
+    ],
+    "notExpect": [
+      "Grave Titan: the battlefield"
+    ],
+    "cite": [
+      "400.7",
+      "707.2"
+    ]
+  },
+  {
+    "id": "liliana-plus-one-anger",
+    "text": "My opponent discards Anger with Liliana's +1. Does anything happen?",
+    "expect": [
+      "Anger: opponent's hand → opponent's graveyard.",
+      "Anger is in the graveyard, where its ability applies: As long as Anger is in your graveyard and you control a Mountain, creatures you control have haste."
+    ],
+    "notExpect": [
+      "Liliana is tapped"
+    ],
+    "cite": []
+  },
+  {
+    "id": "ophidian-eye-on-their-creature-hits-me",
+    "text": "I have Ophidian Eye on my opponent's creature. It deals damage to me. Do I draw?",
+    "expect": [
+      "No: You don't draw."
+    ],
+    "notExpect": [
+      "Ophidian Eye can't attack"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "grave-pact-empty-board-across",
+    "text": "I control Grave Pact and sacrifice a creature to Viscera Seer. Does my opponent sacrifice?",
+    "expect": [
+      "opponent has no creature to sacrifice to Grave Pact; with one, opponent would have to."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "701.21a"
+    ]
+  },
+  {
+    "id": "stifle-the-land-drop",
+    "text": "Opponent plays a land. Can I Stifle the land drop?",
+    "expect": [
+      "No: playing a land is a special action that doesn't use the stack, so it can't be countered, Stifled or responded to (116.2a, 305.1). Its being played can trigger abilities (landfall), and those can be Stifled."
+    ],
+    "notExpect": [
+      "you cast Stifle"
+    ],
+    "cite": [
+      "116.2a",
+      "305.1"
+    ]
+  },
+  {
+    "id": "rancor-disenchanted-comes-back",
+    "text": "My Rancor is on my 2/2. My opponent Disenchants the Rancor. Does it come back?",
+    "expect": [
+      "Rancor: your graveyard → your hand."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "113.7a"
+    ]
+  },
+  {
+    "id": "finks-persists-gains-again",
+    "text": "My Kitchen Finks persists. Does it gain me 2 life again?",
+    "expect": [
+      "Kitchen Finks comes back with a -1/-1 counter (persist); it's now 2/1.",
+      "You gain 2 life."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "selfless-spirit-vs-wrath",
+    "text": "Opponent casts Wrath. I have Selfless Spirit and two Grizzly Bears. Do my creatures survive?",
+    "expect": [
+      "Grizzly Bears is indestructible and isn't destroyed. (×2)",
+      "No: Grizzly Bears is still on the battlefield. (×2)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.12b"
+    ]
   }
 ]

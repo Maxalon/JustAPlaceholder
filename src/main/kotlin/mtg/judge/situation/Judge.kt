@@ -290,6 +290,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 val target = state.obj(e.obj ?: throw JudgeException("save needs an object"))
                 fun protective(eff: Effect?): Boolean = when (eff) {
                     is Effect.GainKeywords -> eff.keywords.any { k -> k.startsWith("protection") || k in setOf("hexproof", "shroud", "indestructible") }
+                    is Effect.PumpAll -> eff.keywords.any { k -> k in setOf("hexproof", "shroud", "indestructible") } && eff.filter.controller == mtg.judge.engine.Who.YOU
                     is Effect.Regenerate, is Effect.CreateShield -> true
                     is Effect.Seq -> eff.effects.any { protective(it) }
                     is Effect.Modal -> eff.modes.any { protective(it) }
@@ -302,7 +303,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 }
                 val onBoard = state.objects.values.filter { it.isOnBattlefield() && it.controller == player }.firstNotNullOfOrNull { o ->
                     o.def.abilities.withIndex().filter { it.value is ActivatedAbility }.map { it.index to it.value as ActivatedAbility }
-                        .firstOrNull { (_, a) -> protective(a.effect) && (targeted(a.effect) || o.id == target.id) }?.let { (_, a) -> o to a }
+                        .firstOrNull { (_, a) -> protective(a.effect) && (targeted(a.effect) || o.id == target.id || a.effect is Effect.PumpAll) }?.let { (_, a) -> o to a }
                 }
                 if (onBoard != null) {
                     val (o, a) = onBoard
@@ -321,6 +322,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     engine.cast(player, inHand.def, listOf(Ref.Obj(target.id)), objectId = inHand.id)
                     return
                 }
+                if (e.to == "quiet") return
                 state.clarifications += mtg.judge.engine.Clarification("saving ${target.name}", "nothing described that ${state.player(player).subject.lowercase()} ${state.player(player).v("controls", "control")} or ${state.player(player).v("holds", "hold")} would protect ${target.name} (an ability that grants protection, hexproof, shroud, indestructible or regeneration, or such an instant in hand). Say what you have for an answer.")
             }
             "pay" -> {
@@ -363,6 +365,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     state.outcomes += engine.manaAvailable(e.player ?: throw JudgeException("ask needs a player")); return
                 }
                 if (e.to == "spellCost") { state.outcomes += engine.spellCost(e.obj ?: e.card?.name?.let { n -> state.objects.values.lastOrNull { it.def.name.equals(n, true) }?.id } ?: throw JudgeException("ask needs an object")); return }
+                if (e.to == "identity") { val o = state.obj(e.obj ?: throw JudgeException("ask needs an object")); val where = o.zone.name.lowercase().replace('_', ' '); state.outcomes += "It's ${o.def.name} in ${if (o.zone == Zone.HAND) "${state.player(o.controller).possessive} hand" else where}${if (state.trace.steps.any { it.text.contains("stops being a copy") || it.text.contains("was a copy of") }) ": a copy effect lasts only while the permanent is on the battlefield (400.7)" else ""}."; return }
+                if (e.to?.startsWith("text:") == true) { state.outcomes += e.to.removePrefix("text:"); return }
                 if (e.to == "monarch") { state.outcomes += (state.monarch?.let { mid -> val p = state.player(mid); "${p.subject} ${p.v("is", "are")} the monarch." } ?: "Nobody is the monarch."); return }
                 if (e.to == "playerSurvive" || e.to == "playerDie" || e.to == "playerWin") { state.outcomes += playerAnswer(e.to, state.player(e.player ?: throw JudgeException("ask needs a player")), state); return }
                 // "do I draw?" / "how many cards do I draw?": every card that player drew while this played out.
@@ -443,6 +447,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     }
                     "isCreature" -> state.outcomes += state.notACreatureBecause(o)?.let { why -> "No: ${o.name} isn't a creature — ${state.player(o.controller).possessive} $why. It's still an enchantment on the battlefield, it keeps its other abilities, and it can't attack, block, or be targeted by anything that needs a creature." }
                         ?: if (!o.isOnBattlefield()) "${o.name} isn't on the battlefield." else if (o.def.isCreature || o.animatedAs != null) "Yes: ${o.name} is a creature (${state.describePt(o)})${if (o.animatedAs != null) " until end of turn" else ""}." else "No: ${o.name} isn't a creature; it's ${o.def.types.joinToString(" ").lowercase()}."
+                    "controller" -> { val p = state.player(o.controller); state.outcomes += "${o.name} is under ${p.possessive} control${if (!o.isOnBattlefield()) " (it's in ${o.zone.name.lowercase().replace('_', ' ')})" else ""}.${o.controlRevertsTo?.let { " That lasts until end of turn, then it goes back to ${state.player(it).possessive} control." } ?: ""}" }
                     "control" -> {
                         // "Do I get it back?": the turn is played out to its cleanup step first, once combat is done.
                         if (o.controlRevertsTo != null) engine.beginStep("cleanup", e.targets.firstOrNull()?.takeIf { t -> state.players.any { it.id == t } } ?: state.activePlayer ?: o.controller)
@@ -577,7 +582,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "pay" -> "${who ?: "the player"} ${if (e.to == "no") "${if (who == "you") "don't" else "doesn't"} pay" else "${if (who == "you") "pay" else "pays"}"}"
             "resolve", "pass" -> "the top of the stack resolves"
             "resolveall" -> "everything on the stack resolves"
-            "ask" -> if (e.to == "playerDraw") "question: ${if (who == "you") "do you" else "does $who"} draw?" else if (e.to == "playerLife") "question: what ${if (who == "you") "is your" else "is $who's"} life total?" else if (e.to == "playerSurvive") "question: ${if (who == "you") "do you" else "does $who"} survive?" else if (e.to == "playerDie") "question: ${if (who == "you") "do you" else "does $who"} lose?" else if (e.to == "playerWin") "question: ${if (who == "you") "do you" else "does $who"} win?" else if (e.to == "playerDamage") "question: ${if (who == "you") "do you" else "does $who"} take damage?" else "question: ${if (e.to == "block" || e.to == "attack") "can" else "does"} ${state.objects[e.obj]?.name ?: e.obj} ${if (e.to == "damage") "deal damage to ${e.targets.firstOrNull()?.let { t -> state.players.firstOrNull { it.id == t }?.let { if (it.you) "you" else it.name } } ?: "the player"}" else e.to}?"
+            "ask" -> if (e.to?.startsWith("text:") == true) "question: answered in the outcome" else if (e.to == "playerDraw") "question: ${if (who == "you") "do you" else "does $who"} draw?" else if (e.to == "playerLife") "question: what ${if (who == "you") "is your" else "is $who's"} life total?" else if (e.to == "playerSurvive") "question: ${if (who == "you") "do you" else "does $who"} survive?" else if (e.to == "playerDie") "question: ${if (who == "you") "do you" else "does $who"} lose?" else if (e.to == "playerWin") "question: ${if (who == "you") "do you" else "does $who"} win?" else if (e.to == "playerDamage") "question: ${if (who == "you") "do you" else "does $who"} take damage?" else if (e.to == "controller") "question: who controls ${state.objects[e.obj]?.name ?: e.obj}?" else if (e.to == "identity") "question: what is ${state.objects[e.obj]?.name ?: e.obj} now?" else "question: ${if (e.to == "block" || e.to == "attack") "can" else "does"} ${state.objects[e.obj]?.name ?: e.obj} ${if (e.to == "damage") "deal damage to ${e.targets.firstOrNull()?.let { t -> state.players.firstOrNull { it.id == t }?.let { if (it.you) "you" else it.name } } ?: "the player"}" else e.to}?"
             "enter" -> "${state.objects[e.obj]?.name ?: e.obj} enters the battlefield"
             "playland" -> "${who ?: "you"} play${if (who == null || who == "you") "" else "s"} ${state.objects[e.obj]?.name ?: e.obj}"
             "flip" -> "${who ?: "you"} ${e.to ?: "lose"} the coin flip"

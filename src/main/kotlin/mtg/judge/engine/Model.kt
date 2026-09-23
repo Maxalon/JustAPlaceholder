@@ -69,6 +69,8 @@ sealed interface Trigger {
     data class BeginningOfStep(val step: String, val whose: Who) : Trigger
     /** "Whenever ~ deals combat damage to a player" (toPlayer) / "deals damage to a creature" etc. */
     data class ThisDealsDamage(val combatOnly: Boolean, val toPlayer: Boolean?) : Trigger
+    /** Ophidian Eye, Curiosity: "Whenever enchanted creature deals damage to an opponent (a player)". */
+    data class EnchantedDealsDamage(val combatOnly: Boolean, val toOpponent: Boolean) : Trigger
     /** "Whenever a [filter] enters (the battlefield under your control)" incl. landfall. */
     data class PermanentEnters(val filter: ObjFilter, val other: Boolean) : Trigger
     /** "Whenever you attack" / "Whenever you attack with one or more creatures". */

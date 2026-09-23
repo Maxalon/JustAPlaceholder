@@ -387,6 +387,7 @@ object OracleParser {
             return Trigger.CountersPutOnThis(m.groupValues[2], n)
         }
         Regex("""^chapter (\d+)$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m -> return Trigger.Chapter(m.groupValues[1].toInt()) }
+        Regex("""^enchanted creature deals (combat )?damage to (a player|an opponent|you)$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m -> return Trigger.EnchantedDealsDamage(m.groupValues[1].isNotEmpty(), m.groupValues[2].equals("an opponent", true)) }
         Regex("""^~ has no ([a-z+/0-9-]+) counters on it$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
             return Trigger.NoCountersOnThis(m.groupValues[1].lowercase())
         }
