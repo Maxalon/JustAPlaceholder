@@ -17605,5 +17605,90 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "mana-drain-how-much-next-turn",
+    "text": "I cast Sol Ring and my opponent has Mana Drain. If they counter it, how much mana do they get next turn?",
+    "expect": [
+      "Sol Ring is countered.",
+      "opponent adds 1 colorless mana ({C} × 1, Sol Ring's mana value) at the beginning of opponent's next main phase, from Mana Drain's delayed trigger; it's added then, not now, and lasts until that phase ends."
+    ],
+    "notExpect": [
+      "Not understood",
+      "a counterspell"
+    ],
+    "cite": []
+  },
+  {
+    "id": "kill-source-with-trigger-on-stack",
+    "text": "My opponent's Blood Artist trigger is on the stack. Can I kill the Blood Artist in response to stop it?",
+    "expect": [
+      "Yes: Blood Artist's ability was already on the stack, and an ability on the stack exists independently of its source. Removing Blood Artist doesn't counter it; it resolves using Blood Artist's last known information (113.7a)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "113.7a"
+    ]
+  },
+  {
+    "id": "two-blood-artists-wrath",
+    "text": "Two Blood Artists. I Wrath. How much life do they lose?",
+    "expect": [
+      "opponent loses 4 life in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "snapcaster-flashback-next-turn",
+    "text": "I flash in Snapcaster Mage and target Lightning Bolt in my graveyard. Can I cast it next turn?",
+    "expect": [
+      "No. Snapcaster Mage gives Lightning Bolt flashback only until end of turn (611.2a), so next turn Lightning Bolt is an ordinary card in your graveyard with no way to cast it. To use it, cast it this turn with flashback, paying its mana cost (702.34a); it is exiled as it resolves."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "cryptic-modes-by-opponent-respond-by-sacrificing",
+    "text": "Opponent casts Cryptic Command countering my spell and bouncing my creature. Can I respond by sacrificing the creature?",
+    "expect": [
+      "a creature: the battlefield → your graveyard.",
+      "a spell is countered."
+    ],
+    "notExpect": [
+      "Not understood",
+      "your hand"
+    ],
+    "cite": []
+  },
+  {
+    "id": "reb-on-counterspell-bolt-resolves",
+    "text": "I cast Lightning Bolt at my opponent's face. They respond with Counterspell. I respond with Red Elemental Blast on the Counterspell. What happens?",
+    "expect": [
+      "Counterspell is countered.",
+      "opponent takes 3 damage."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "stifle-sakura-tribe-elder",
+    "text": "I stifle the Sakura-Tribe Elder ability. Does it still get sacrificed?",
+    "expect": [
+      "Sakura-Tribe Elder: the battlefield → opponent's graveyard.",
+      "Sakura-Tribe Elder's activated ability is countered."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

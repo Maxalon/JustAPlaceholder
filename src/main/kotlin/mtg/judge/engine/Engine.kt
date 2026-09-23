@@ -502,7 +502,7 @@ class Engine(val state: GameState) {
     }
 
     /** Whether an ability's effect adds mana, so it's a mana ability that doesn't use the stack (605.1a). */
-    private fun isManaEffect(e: Effect?): Boolean = e is Effect.AddMana || e is Effect.AddManaPer || e is Effect.AddManaDevotion ||
+    fun isManaEffect(e: Effect?): Boolean = e is Effect.AddMana || e is Effect.AddManaPer || e is Effect.AddManaDevotion ||
         ((e as? Effect.Seq)?.effects?.firstOrNull()?.let { it is Effect.AddMana || it is Effect.AddManaPer || it is Effect.AddManaDevotion } == true)
 
     /** A player's devotion to a colour: the colour's symbols in the mana costs of the permanents they control (700.5). */
