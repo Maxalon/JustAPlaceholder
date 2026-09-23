@@ -308,6 +308,8 @@ sealed interface Effect {
     data class ExtractNamed(val target: TargetSpec) : Effect
     /** Oko: "Target artifact or creature loses all abilities and becomes a green Elk creature with base power and toughness 3/3." */
     data class Transmogrify(val target: TargetSpec, val power: Int, val toughness: Int, val subtype: String, val color: Char?) : Effect
+    /** Brainstorm: "Put two cards from your hand on top of your library in any order." */
+    data class PutBackFromHand(val count: Int) : Effect
     /** Living End: each player exiles the creature cards in their graveyard, sacrifices their creatures, then puts the exiled cards onto the battlefield. */
     data object LivingEnd : Effect
     /** Prismatic Ending (converge): exile the target if its mana value is at most X, the colours of mana spent. */
@@ -356,7 +358,7 @@ sealed interface Effect {
         is Repeat -> body.targets()
         is LoseLifeUnlessSacOrDiscard -> emptyList()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
-        is ProtectionUntilNextTurn, is PhaseOutAll, is ExileSelfSpell, is LoseKeywordsAll, is ExileInsteadOfGraveyardThisTurn, is LivingEnd -> emptyList()
+        is ProtectionUntilNextTurn, is PhaseOutAll, is ExileSelfSpell, is LoseKeywordsAll, is ExileInsteadOfGraveyardThisTurn, is LivingEnd, is PutBackFromHand -> emptyList()
         is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is GainLifeLostThisWay, is GainLifeEqualToToughness, is Discard, is ExileIfDamagedDies, is RevealTopToHand, is LoseLifeEqualToRevealedMv, is PutSelfOnLibraryTop, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
     }
 
@@ -495,6 +497,8 @@ sealed interface StaticEffect {
     data class NotACreatureUnlessDevotion(val colour: Char, val threshold: Int) : StaticEffect
     /** Thalia: "Noncreature spells cost {1} more to cast." (a tax on spells matching the filter; `yours` limits it to the controller's / opponents' spells) */
     data class CostTax(val filter: ObjFilter, val amount: Int, val whose: Who? = null) : StaticEffect
+    /** Trinisphere: a spell that would cost less than [amount] costs [amount] instead, while the source is untapped if [whileUntapped]. */
+    data class CostFloor(val amount: Int, val whileUntapped: Boolean) : StaticEffect
     /** Cost modifiers and additional costs: narrated when the spell is cast (601.2b, 601.2f). */
     data class CostText(val text: String) : StaticEffect
     /** Blasphemous Act: "This spell costs {1} less to cast for each creature on the battlefield." */
@@ -544,7 +548,7 @@ sealed interface Replacement {
     /** "If a source (you control) would deal damage …, it deals double that damage instead." */
     data class DamageMultiplier(val factor: Int, val sourceControl: Who?) : Replacement
     /** Mana Reflection / Nyxbloom Ancient ("produces twice/three times as much"), Kinnan ("add one mana of any type that permanent produced"). */
-    data class ManaBoost(val factor: Int, val plus: Int, val nonlandOnly: Boolean, val trigger: Boolean) : Replacement
+    data class ManaBoost(val factor: Int, val plus: Int, val nonlandOnly: Boolean, val trigger: Boolean, val anyPlayer: Boolean = false, val landOnly: Boolean = false) : Replacement
     /** "If you would gain life, you gain twice that much life instead." */
     data class LifeGainMultiplier(val factor: Int, val anyPlayer: Boolean = false) : Replacement
     /** "If an effect would place one or more counters on a permanent you control, it places twice that many instead." (Doubling Season) */

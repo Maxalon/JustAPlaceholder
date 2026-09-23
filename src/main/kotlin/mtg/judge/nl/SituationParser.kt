@@ -759,9 +759,11 @@ class SituationParser(private val names: NameIndex) {
                 else "my opponent casts ${r.groupValues[5]} on ${r.groupValues[3]}, can ${r.groupValues[1]} ${r.groupValues[2]} it${r.groupValues[4]} in response"
             } }
             // "casts Hymn to Tourach on me with one card in my hand": the hand size is a fact about the board, said apart.
-            .let { t0 -> Regex("""^(.+?) with (an?|one|\d+|two|three|four|five|six|seven|no) cards? in (my|their|his|her|our) hand$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+            .let { t0 -> Regex("""^(.+?) with (an?|one|\d+|two|three|four|five|six|seven|no) cards? in (?:(my|their|his|her|our) )?hand$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 val n = r.groupValues[2].lowercase().let { if (it == "a" || it == "an") "one" else it }
-                "${r.groupValues[1]}, ${if (r.groupValues[3].lowercase() in setOf("my", "our")) "i have" else "they have"} $n card${if (n == "one" || n == "1") "" else "s"} in hand"
+                // "I cast Brainstorm with two cards in hand": no owner said, so the hand is the sentence's subject's.
+                val mine = when (r.groupValues[3].lowercase()) { "my", "our" -> true; "" -> Regex("""^(?:i|we)\b""", RegexOption.IGNORE_CASE).containsMatchIn(r.groupValues[1].trim()); else -> false }
+                "${r.groupValues[1]}, ${if (mine) "i have" else "they have"} $n card${if (n == "one" || n == "1") "" else "s"} in hand"
             } }
             // "casts Ephemerate on their Solitude targeting my Bears": both are the spell's targets as far as the words go;
             // the engine hands the second to the blinked creature's enters trigger.
@@ -1625,6 +1627,14 @@ class SituationParser(private val names: NameIndex) {
             }
             return true
         }
+        // "I create a Treasure" / "I make two 1/1 Soldier tokens": tokens the situation itself makes, through the doublers.
+        Regex("""^(?:(i|we|they|my opponent|the opponent) )?(?:creates?|makes?) (an? |\d+ |two |three |four |five |six )?((?:\d+/\d+ )?(?:(?:white|blue|black|red|green|colorless|artifact|creature|legendary) )*[a-z]+(?: (?:creature|artifact))?)(?: tokens?)?$""").find(clause0)?.let { r ->
+            val desc = r.groupValues[3].trim()
+            if (mtg.judge.engine.Generic.token(if (desc.endsWith("token")) desc else "$desc token") == null) return@let
+            val who = when (r.groupValues[1]) { "", "i", "we" -> "me"; else -> ctx.other("me") ?: "opp" }
+            val n = r.groupValues[2].trim().let { if (it.isEmpty() || it == "a" || it == "an") 1 else number(it) ?: 1 }
+            ctx.events += EventSpec("token", player = who, card = CardRef(name = desc), amount = n); ctx.lastActor = who; ctx.note(who); return true
+        }
         // "Do I gain 5?" / "how much life do they lose?": life gained or lost by that player over everything that happened.
         Regex("""^(?:(?:do|does|will|would|did) (i|we|they|my opponent|the opponent|opponent|he|she|@\w+) (?:still |even |actually )?(gain|lose) (?:the |any |that |all )?(\d+)?(?: life)?|how much life (?:do|does|did|will|would) (i|we|they|my opponent|the opponent|opponent|he|she|@\w+) (gain|lose)(?: in (?:all|total)| overall| from (?:that|this|it))?)$""").find(clause0)?.let { q ->
             val w = q.groupValues[1].ifEmpty { q.groupValues[4] }; val verb = q.groupValues[2].ifEmpty { q.groupValues[5] }
@@ -1680,6 +1690,10 @@ class SituationParser(private val names: NameIndex) {
         // MTG_DEBUG_CLAUSE=1 prints every clause as the rules see it. A clause that is read by the wrong rule
         // leaves no note behind, so seeing the exact text is the quickest way to find which rule took it.
         if (System.getenv("MTG_DEBUG_CLAUSE") != null) System.err.println("clause: [$clauseIn]")
+        // "I have Reliquary Tower and 9 cards": the bare count after a "have" is the hand.
+        Regex("""^(\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve) cards$""").find(clauseIn.trim())?.let { r ->
+            if (ctx.lastVerb == "have" && ctx.lastOwner != null && ctx.clauseIndex > 0) return readClause("${if (ctx.lastOwner == "me") "i have" else "they have"} ${r.groupValues[1]} cards in hand", m, ctx)
+        }
         // "I have Sensei's Divining Top and Counterbalance": the second name, left alone by the split, is had by the same player.
         Regex("""^(?:an? |the |my |their )?(c\d+)$""").find(clauseIn.trim())?.let { r ->
             if (ctx.lastVerb == "have" && ctx.lastOwner != null && ctx.clauseIndex > 0) return readClause("${if (ctx.lastOwner == "me") "i have" else "they have"} ${r.groupValues[1]}", m, ctx)
@@ -1946,8 +1960,20 @@ class SituationParser(private val names: NameIndex) {
             val name = r.groupValues[1].takeIf { it.isNotEmpty() }?.let { m.cards[it]?.display } ?: ctx.events.lastOrNull { it.verb == "cast" }?.card?.name ?: return@let
             ctx.asks += EventSpec("ask", card = CardRef(name = name), player = "me", to = "hitsOwn"); return true
         }
+        // "What's my hand size after?": the cards in hand once everything is done.
+        Regex("""^what(?:'s| is| will be) (my|their|his|her) hand size(?: after(?: that| this)?| now| then| afterwards)?$""").find(clause0)?.let { r ->
+            val who = if (r.groupValues[1] == "my") "me" else ctx.other("me") ?: "opp"
+            ctx.asks += EventSpec("ask", player = who, to = "count:cards in hand"); ctx.note(who); return true
+        }
+        // "Do I draw twice when they cast a spell?" with two Rhystic Studies: a spell is cast and the draws counted.
+        Regex("""^(?:do|will|would) (?:i|we) (?:draw|get) (?:twice|two cards|2 cards|double|two triggers|two|both) (?:when|if|whenever|every time|each time) (?:they|my opponent|the opponent) casts? (?:a |their |one )?spell$""").find(clause0)?.let {
+            val opp = ctx.other("me") ?: "opp"
+            if (ctx.events.lastOrNull()?.verb in setOf("cast", "activate", "trigger")) ctx.events += EventSpec("resolveAll")
+            ctx.events += EventSpec("cast", player = opp, card = CardRef(name = "a spell")); ctx.events += EventSpec("pay", player = opp, to = "no"); ctx.lastActor = opp; ctx.note(opp)
+            ctx.asks += EventSpec("ask", player = "me", to = "playerDraw"); ctx.notes += "Read as: your opponent casts a spell and doesn't pay."; return true
+        }
         // "How many creatures do I have?" after a Damnation: counted once everything has resolved.
-        Regex("""^how many (creatures|permanents|lands|artifacts|tokens|cards in hand|cards) (?:do|does|did|will|would) (i|we|they|my opponent|the opponent|he|she|@\w+) (?:have|control|end up with|have left|still have|get to keep|keep)(?: left| now| then| after that| afterwards| on the battlefield| in play| in hand)?$""").find(clause0)?.let { r ->
+        Regex("""^how many ([a-z]+|cards in hand|cards) (?:do|does|did|will|would) (i|we|they|my opponent|the opponent|he|she|@\w+) (?:have|control|end up with|have left|still have|get to keep|keep)(?: left| now| then| after that| afterwards| on the battlefield| in play| in hand)?$""").find(clause0)?.let { r ->
             val who = when (val w = r.groupValues[2]) { "i", "we" -> "me"; else -> if (w.startsWith("@")) w.removePrefix("@") else ctx.other("me") ?: "opp" }
             ctx.asks += EventSpec("ask", player = who, to = "count:${r.groupValues[1]}"); ctx.note(who); return true
         }
@@ -5033,6 +5059,11 @@ class SituationParser(private val names: NameIndex) {
             val card = m.cards.getValue(r.groupValues[2])
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
             if (r.groupValues[1].isNotEmpty()) ctx.objects[id] = ctx.objects.getValue(id).copy(commander = true)
+            // "attack with Krenko with 4 Goblins": the others are on the battlefield beside it, not attacking.
+            Regex("""^ with (an?|one|two|three|four|five|six|seven|eight|\d+) ($creatureKinds)$""").find(r.groupValues[3])?.let { a ->
+                describedCreatures("${number(a.groupValues[1]) ?: 1} ", "", a.groupValues[2], who, ctx, "")
+                ctx.events += EventSpec("attack", player = who, obj = id, targets = listOf(ctx.other(who) ?: "opp")); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
+            }
             val r = object { val groupValues = listOf(r.groupValues[0], r.groupValues[2], r.groupValues[3]) }
             ctx.events += EventSpec("attack", player = who, obj = id, targets = targetsIn(r.groupValues[2], m, ctx).ifEmpty { listOf(ctx.other(who) ?: "opp") }); ctx.lastActor = who; ctx.lastVerb = "attack"; ctx.lastMentioned = id; return true
         }

@@ -272,6 +272,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 }
             }
             "discardcount" -> engine.discardCount(e.player ?: throw JudgeException("discard needs a player"), e.amount ?: 1)
+            // "I create a Treasure": tokens the situation makes, through the doublers.
+            "token" -> engine.createTokens(e.player ?: "me", e.card?.name ?: throw JudgeException("token needs a description"), e.amount ?: 1)
             // "I have 2 lands untapped" said after a cast: the mana available from here on, whatever was spent before.
             "mananow" -> { val p = state.player(e.player ?: throw JudgeException("manaNow needs a player")); p.mana = e.amount; p.manaSpent = 0 }
             "poison" -> engine.addPoison(e.player ?: throw JudgeException("poison needs a player"), e.amount ?: 1)
@@ -435,7 +437,9 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         "lands" -> mine.count { "Land" in it.def.types }
                         "artifacts" -> mine.count { "Artifact" in it.def.types }
                         "tokens" -> mine.count { it.token }
-                        else -> p.handSize ?: state.objects.values.count { it.zone == Zone.HAND && it.controller == p.id }
+                        "cards", "cards in hand" -> p.handSize ?: state.objects.values.count { it.zone == Zone.HAND && it.controller == p.id }
+                        // "how many Goblins do I have?": creatures of that type, by subtype or by the generic name.
+                        else -> mine.count { o -> o.def.subtypes.any { st -> st.equals(what.removeSuffix("s"), true) } || o.def.name.lowercase().contains(" ${what.removeSuffix("s")}") }
                     }
                     val noun = if (what.startsWith("cards")) "card${if (n == 1) "" else "s"} in hand" else if (n == 1) what.removeSuffix("s") else what
                     state.outcomes += "${p.subject} ${p.v("has", "have")} $n $noun${if (n == 0 && !what.startsWith("cards")) " left" else ""}."
@@ -684,6 +688,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "concede" -> "${who ?: "the player"} ${if (who == "you") "concede" else "concedes"}"
             "discardcount" -> "${who ?: "the player"} ${if (who == "you") "discard" else "discards"} ${e.amount ?: 1} card${if ((e.amount ?: 1) == 1) "" else "s"}"
             "mananow" -> "${who ?: "the player"} ${if (who == "you") "have" else "has"} ${e.amount} mana available from here"
+            "token" -> "${who ?: "you"} ${if (who == null || who == "you") "create" else "creates"} ${e.amount ?: 1} ${e.card?.name}${if ((e.amount ?: 1) == 1) "" else "s"}"
             "poison" -> "${who ?: "the player"} ${if (who == "you") "get" else "gets"} ${e.amount ?: 1} poison counter${if ((e.amount ?: 1) == 1) "" else "s"}"
             "trigger" -> "${state.objects[e.obj]?.name ?: e.obj}'s ability triggers$tg"
             "choose" -> "${who ?: "controller"} ${if (who == "you") "choose" else "chooses"} ${e.to?.substringAfter(':')?.let { state.objects[it]?.name ?: it } ?: "?"} for ${state.objects[e.obj]?.name ?: e.obj}'s ability"

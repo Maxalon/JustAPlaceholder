@@ -66,6 +66,7 @@ class RulesAnswersTest {
         "my commander dies, can I put it back in the command zone" to "903.9a",
         "My commander is dealt lethal damage. Can I put it in the command zone?" to "903.9a",
         "My opponent has Opalescence and Humility. What happens?" to "613.6",
+        "I sacrifice a Treasure to pay for a spell. Does that count as a permanent leaving for revolt?" to "207.2c",
         "Can I respond to my own spell?" to "117.3c",
         "Can a spell that says any target hit a planeswalker?" to "115.4",
         "Can my opponent respond to my Thassa's Oracle trigger by making me draw?" to "603.3",

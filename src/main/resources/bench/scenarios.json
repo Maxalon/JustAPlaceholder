@@ -13761,7 +13761,7 @@
     "text": "they cast Brainstorm",
     "expect": [
       "opponent draws 3 cards.",
-      "Brainstorm: opponent puts two cards from their hand on top of their library in any order (not tracked in detail)."
+      "opponent puts 2 cards from their hand back on top of their library."
     ],
     "notExpect": [
       "from your hand"
@@ -17149,5 +17149,223 @@
       "Tarmogoyf: the battlefield → exile."
     ],
     "cite": []
+  },
+  {
+    "id": "ancient-tomb-life",
+    "text": "I tap Ancient Tomb for mana. How much life do I lose?",
+    "expect": [
+      "Ancient Tomb's mana ability: add {C}{C}, then it deals 2 damage to you.",
+      "You lose 2 life in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sphere-taxes-their-bolt",
+    "text": "I have Sphere of Resistance. How much does my opponent's Lightning Bolt cost?",
+    "expect": [
+      "Lightning Bolt costs {R} plus {1} (Sphere of Resistance makes it cost {1} more) — 2 mana in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "601.2f"
+    ]
+  },
+  {
+    "id": "trinisphere-bolt-cast",
+    "text": "I control Trinisphere and cast Lightning Bolt. What do I pay?",
+    "expect": [
+      "Lightning Bolt costs 3 mana in all (Trinisphere: a spell that would cost less than 3 costs 3)."
+    ],
+    "notExpect": [
+      "Rules text not modeled"
+    ],
+    "cite": [
+      "601.2f"
+    ]
+  },
+  {
+    "id": "trinisphere-bolt-question",
+    "text": "I have Trinisphere. How much does Lightning Bolt cost?",
+    "expect": [
+      "Lightning Bolt would cost 1 mana, but Trinisphere is untapped and makes each spell that would cost less than 3 cost 3: 1 → 3 mana in all (the extra is generic)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "gaaiv-taxes-my-counterspell",
+    "text": "My opponent has Grand Arbiter Augustin IV. How much does my Counterspell cost?",
+    "expect": [
+      "Counterspell costs {U}{U} plus {1} (Grand Arbiter Augustin IV makes it cost {1} more) — 3 mana in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "helm-of-awakening-wrath",
+    "text": "I have Helm of Awakening. How much does Wrath of God cost?",
+    "expect": [
+      "Wrath of God costs {2}{W}{W} minus {1} (Helm of Awakening makes it cost {1} less) — 3 mana in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "fireball-x3-cost",
+    "text": "I cast Fireball for X=3. How much does it cost?",
+    "expect": [
+      "Fireball costs {X}{R} — 4 mana. Nothing on the battlefield changes it."
+    ],
+    "notExpect": [
+      "— 1 mana"
+    ],
+    "cite": [
+      "107.3a"
+    ]
+  },
+  {
+    "id": "mana-flare-mountain",
+    "text": "I control Mana Flare and tap a Mountain. How much mana do I get?",
+    "expect": [
+      "Mountain's mana ability: add {R}{R}."
+    ],
+    "notExpect": [
+      "add {R}."
+    ],
+    "cite": []
+  },
+  {
+    "id": "copied-rhystic-two-draws",
+    "text": "I copy my Rhystic Study with Copy Enchantment. Do I draw twice when they cast a spell?",
+    "expect": [
+      "You draw 1 card. (×2)",
+      "Yes: You draw 2 cards in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "anointed-procession-titan-attack",
+    "text": "I have Anointed Procession and my Grave Titan attacks. How many Zombies do I get?",
+    "expect": [
+      "You get a Zombie token. (×4)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "krenko-tapped-by-attacking",
+    "text": "I attack with Krenko, Mob Boss with 4 Goblins and tap him. How many Goblins do I have?",
+    "expect": [
+      "Krenko, Mob Boss's {T} ability can't be activated (already tapped).",
+      "You have 5 goblins."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "rite-of-replication-kicked-titan",
+    "text": "I cast Rite of Replication kicked on my opponent's Grave Titan. How many tokens?",
+    "expect": [
+      "You get a token copy of Grave Titan. (×5)",
+      "You get a Zombie token. (×10)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "parallel-lives-doubling-season-treasure",
+    "text": "I have Parallel Lives and Doubling Season. I create a Treasure. How many do I get?",
+    "expect": [
+      "You get 4 Treasure tokens (1 made, doubled)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "614.6"
+    ]
+  },
+  {
+    "id": "coffers-six-swamps-total",
+    "text": "I have Cabal Coffers and 6 Swamps. How much mana can I make?",
+    "expect": [
+      "You can make 12 mana right now: Cabal Coffers → {B}{B}{B}{B}{B}{B}; Swamp → {B}; Swamp → {B}; Swamp → {B}; Swamp → {B}; Swamp → {B}; Swamp → {B}."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "mana-vault-tap-no-damage",
+    "text": "My opponent taps Mana Vault. How much damage do they take?",
+    "expect": [
+      "Mana Vault's mana ability: add {C}{C}{C}.",
+      "No: opponent takes no damage."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "brainstorm-hand-size-after",
+    "text": "I cast Brainstorm with two cards in hand. What's my hand size after?",
+    "expect": [
+      "You put 2 cards from your hand back on top of your library (3 in hand now).",
+      "You have 3 cards in hand."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "eight-cards-end-of-turn",
+    "text": "I have 8 cards in hand at end of turn. What happens?",
+    "expect": [
+      "You discard 1 card to hand size in the cleanup step that follows, not during the end step."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "514.1"
+    ]
+  },
+  {
+    "id": "reliquary-tower-nine-cards",
+    "text": "I have Reliquary Tower and 9 cards. Do I discard?",
+    "expect": [
+      "You discard nothing to hand size: Reliquary Tower gives you no maximum hand size (9 cards kept)."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "514.1"
+    ]
   }
 ]

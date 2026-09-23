@@ -543,6 +543,14 @@ object OracleParser {
         Regex("""^if you tap a (permanent|nonland permanent) for mana, it produces (twice|two times|three times|thrice) as much of that mana instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             return StaticEffect.Replace(Replacement.ManaBoost(if (m.groupValues[2].lowercase().startsWith("th")) 3 else 2, 0, m.groupValues[1].startsWith("nonland", true), trigger = false))
         }
+        // Mana Flare: "Whenever a player taps a land for mana, that player adds one additional mana of any type that land produced."
+        Regex("""^whenever a player taps a land for mana, that player adds one (?:additional )?mana of any type that land produced\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let {
+            return StaticEffect.Replace(Replacement.ManaBoost(1, 1, false, trigger = true, anyPlayer = true, landOnly = true))
+        }
+        // Trinisphere.
+        Regex("""^as long as ~ is untapped, each spell that would cost less than (three|\d+) mana to cast costs (?:three|\d+) mana to cast\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            return StaticEffect.CostFloor(if (m.groupValues[1].lowercase() == "three") 3 else m.groupValues[1].toInt(), whileUntapped = true)
+        }
         // Kinnan, Bonder Prodigy: "Whenever you tap a nonland permanent for mana, add one mana of any type that permanent produced."
         Regex("""^whenever you tap a (permanent|nonland permanent) for mana, add one (?:additional )?mana of any type that permanent produced\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             return StaticEffect.Replace(Replacement.ManaBoost(1, 1, m.groupValues[1].startsWith("nonland", true), trigger = true))
@@ -1458,6 +1466,10 @@ object OracleParser {
             if (Generic.token(a) != null && Generic.token(b) != null) return Effect.Seq(listOf(Effect.CreateToken(w, 1, a), Effect.CreateToken(w, 1, b)))
         }
         if (Regex("""^if a card would be put into your graveyard from anywhere this turn, exile that card instead\.?$""", RegexOption.IGNORE_CASE).matches(s.trim())) return Effect.ExileInsteadOfGraveyardThisTurn
+        // Brainstorm: cards put back from hand.
+        Regex("""^put (two|three|one|a|\d+) cards? from your hand on top of your library(?: in any order)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            return Effect.PutBackFromHand(when (m.groupValues[1].lowercase()) { "a", "one" -> 1; "two" -> 2; "three" -> 3; else -> m.groupValues[1].toInt() })
+        }
         // Living End.
         Regex("""^each player exiles all creature cards from their graveyard, then sacrifices all creatures they control, then puts all cards they exiled this way onto the battlefield\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.LivingEnd }
         // Prismatic Ending (converge).
