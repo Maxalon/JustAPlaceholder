@@ -34,7 +34,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
                 val sing = singularize(span)
                 // Exact name, then nickname, then singularized forms; a nickname beats a token that happens to share the word ("bears" -> Grizzly Bears, not a Bear token).
                 // "Jace" is a planeswalker token as well as a nickname for Jace, the Mind Sculptor: the token never wins over the nickname.
-                val exact = byNorm[key]?.takeIf { it.isCard || key !in aliases }
+                val exact = byNorm[key]?.takeIf { (it.isCard && it.kind == "full") || key !in aliases }
                 val e0 = exact ?: alias(key) ?: sing?.let { alias(it) } ?: sing?.let { byNorm[it] }
                     ?: (if (len >= 2) byNorm["the $key"] ?: sing?.let { byNorm["the $it"] } else null)
                 // A first name shared by several legendary creatures ("Sheoldred", "Atraxa"): the front face of a transforming card
@@ -82,7 +82,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
     companion object {
         /** Common nicknames -> normalized card names. Grow this by hand; it is not data from any card source. */
         val aliases: Map<String, String> = mapOf(
-            "bolt" to "lightning bolt", "maze" to "maze of ith", "chalice" to "chalice of the void", "snapcaster" to "snapcaster mage", "jace" to "jace the mind sculptor", "liliana" to "liliana of the veil", "lili" to "liliana of the veil", "elspeth" to "elspeth sun s champion", "gideon" to "gideon ally of zendikar", "ballista" to "walking ballista", "hangarback" to "hangarback walker", "craterhoof" to "craterhoof behemoth", "settle" to "settle the wreckage", "deluge" to "toxic deluge", "helix" to "lightning helix", "hailfire" to "torment of hailfire", "hoof" to "craterhoof behemoth", "snappy" to "snapcaster mage", "snap" to "snapcaster mage", "bears" to "grizzly bears", "swords" to "swords to plowshares", "path" to "path to exile",
+            "bolt" to "lightning bolt", "maze" to "maze of ith", "chalice" to "chalice of the void", "snapcaster" to "snapcaster mage", "jace" to "jace the mind sculptor", "liliana" to "liliana of the veil", "elesh norn" to "elesh norn grand cenobite", "lili" to "liliana of the veil", "elspeth" to "elspeth sun s champion", "gideon" to "gideon ally of zendikar", "ballista" to "walking ballista", "hangarback" to "hangarback walker", "craterhoof" to "craterhoof behemoth", "settle" to "settle the wreckage", "deluge" to "toxic deluge", "helix" to "lightning helix", "hailfire" to "torment of hailfire", "hoof" to "craterhoof behemoth", "snappy" to "snapcaster mage", "snap" to "snapcaster mage", "bears" to "grizzly bears", "swords" to "swords to plowshares", "path" to "path to exile",
             "rhystic" to "rhystic study", "tithe" to "smothering tithe", "sol" to "sol ring", "wrath" to "wrath of god", "damnation" to "damnation",
             "cyc rift" to "cyclonic rift", "rift" to "cyclonic rift", "tutor" to "demonic tutor", "demonic" to "demonic tutor", "vamp tutor" to "vampiric tutor",
             "mana crypt" to "mana crypt", "crypt" to "mana crypt", "vault" to "mana vault", "goyf" to "tarmogoyf", "sdt" to "sensei s divining top", "divining top" to "sensei s divining top",

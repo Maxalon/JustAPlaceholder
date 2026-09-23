@@ -1453,6 +1453,16 @@ object OracleParser {
             if (Generic.token(a) != null && Generic.token(b) != null) return Effect.Seq(listOf(Effect.CreateToken(w, 1, a), Effect.CreateToken(w, 1, b)))
         }
         if (Regex("""^if a card would be put into your graveyard from anywhere this turn, exile that card instead\.?$""", RegexOption.IGNORE_CASE).matches(s.trim())) return Effect.ExileInsteadOfGraveyardThisTurn
+        // Surgical Extraction / Extirpate: the target card and every card with its name are exiled.
+        Regex("""^choose target card in a graveyard other than a basic land card\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let {
+            val raw = "card in a graveyard other than a basic land card"
+            return Effect.ExtractNamed(TargetSpec(ObjFilter(setOf(Kind.CARD), raw = raw, inGraveyard = true), raw))
+        }
+        Regex("""^search its owner's graveyard, hand, and library for any number of cards with the same name as that card and exile them\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Seq(emptyList()) }
+        // Vexing Shusher: the spell can't be countered.
+        Regex("""^target spell can't be countered\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let {
+            return Effect.SpellCantBeCountered(TargetSpec(ObjFilter(setOf(Kind.SPELL), raw = "spell"), "spell"))
+        }
         // Deathrite Shaman: "Exile target land card from a graveyard" — a targeted exile of a card in a graveyard,
         // which is what makes the ability use the stack rather than be a mana ability (605.1a).
         Regex("""^exile target ((?:land|instant|sorcery|creature|artifact|enchantment|instant or sorcery|nonland|permanent)(?: card)?) from (?:a|your|an opponent's|their) graveyard\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->

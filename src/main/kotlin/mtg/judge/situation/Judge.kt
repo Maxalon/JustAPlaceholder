@@ -172,6 +172,18 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         when (e.verb.lowercase()) {
             "cast" -> {
                 val player = e.player ?: state.players.first().id
+                // "Can I counter it?" with Glen Elendra Archmage out: the permanent's own counter ability, not a spell nobody named.
+                if (e.card?.name == "a counterspell" && e.obj == null) {
+                    val spellRef = e.targets.firstOrNull()?.let { parseRef(it, state) }
+                    val spellItem = (spellRef as? Ref.Stack)?.let { r -> state.stack.firstOrNull { it.id == r.id } }
+                    val found = state.objects.values.filter { it.isOnBattlefield() && it.controller == player }.firstNotNullOfOrNull { o ->
+                        o.def.abilities.filterIsInstance<ActivatedAbility>().withIndex().firstOrNull { (_, a) -> (a.effect as? Effect.Counter)?.let { c -> spellItem == null || !(mtg.judge.engine.Kind.CREATURE in c.target.filter.notKinds && spellItem.source.def.isCreature) && (mtg.judge.engine.Kind.CREATURE !in c.target.filter.kinds || spellItem.source.def.isCreature) } == true }?.let { (i, _) -> o to i }
+                    }
+                    if (found != null && spellRef != null) {
+                        state.trace.step("\"Can ${state.player(player).subject.lowercase()} counter it?\": ${found.first.name} has an ability that counters, so it's activated rather than a counterspell nobody named.", "602.2")
+                        engine.activate(player, found.first.id, found.second, listOf(spellRef)); return
+                    }
+                }
                 // A commander cast without saying which object it is: the card sitting in the command zone is it,
                 // which is what carries the commander tax and what Drannith Magistrate is looking at.
                 val existing = e.obj?.let { state.objects[it] }
@@ -542,8 +554,10 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     "activate" -> {
                         val tapAbilities = o.def.abilities.filterIsInstance<mtg.judge.engine.ActivatedAbility>().filter { it.cost.contains("{T}") }
                         val any = o.def.abilities.filterIsInstance<mtg.judge.engine.ActivatedAbility>()
+                        val lock = engine.activationLock(o)
                         state.outcomes += when {
                             !o.isOnBattlefield() -> "No: ${o.name} isn\'t on the battlefield, so its abilities can\'t be activated."
+                            lock != null && any.isNotEmpty() -> "No: ${lock.name} says ${o.name}\'s activated abilities can\'t be activated${if (lock.def.oracleText.contains("mana abilit", true)) " (mana abilities excepted, as it says)" else ""}."
                             any.isEmpty() -> "${o.name} has no activated abilities."
                             o.tapped == true && tapAbilities.isNotEmpty() && tapAbilities.size == any.size -> "No: ${o.name} is already tapped, and every one of its abilities costs {T}."
                             tapAbilities.isNotEmpty() && o.def.isCreature && o.summoningSick == true && !state.hasKeyword(o, "haste") ->

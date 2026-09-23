@@ -164,6 +164,8 @@ class StackItem(
 ) {
     /** Life lost by players as this resolves ("the life lost this way"). */
     var lifeLost: Int = 0
+    /** Made uncounterable while on the stack (Vexing Shusher). */
+    var cantBeCountered: Boolean = false
     /** Objects this item dealt damage to ("a creature dealt damage this way"). */
     val damaged = mutableSetOf<String>()
     /** How many objects the last "all …" part of this item affected ("that many"). */

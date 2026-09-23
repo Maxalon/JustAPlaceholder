@@ -16546,5 +16546,173 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "chalice-one-thalia-thoughtseize",
+    "text": "My opponent casts Thoughtseize and I have Chalice on 1 and Thalia. What happens?",
+    "expect": [
+      "Thoughtseize is countered."
+    ],
+    "notExpect": [
+      "Thalia, Guardian of Thraben enters the battlefield."
+    ],
+    "cite": []
+  },
+  {
+    "id": "baneslayer-blocked-by-dragon",
+    "text": "I attack with Baneslayer Angel. My opponent blocks with a Dragon. What happens?",
+    "expect": [
+      "a dragon creature has 5 damage marked.",
+      "You gain 5 life."
+    ],
+    "notExpect": [
+      "can't block Baneslayer Angel (flying)"
+    ],
+    "cite": []
+  },
+  {
+    "id": "shusher-answers-counter",
+    "text": "I have Vexing Shusher. My opponent tries to counter my spell. What happens?",
+    "expect": [
+      "a spell can't be countered (Vexing Shusher).",
+      "a spell isn't countered (it can't be)."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "cursed-totem-mother",
+    "text": "My opponent controls Cursed Totem. Can I activate Mother of Runes?",
+    "expect": [
+      "No: Cursed Totem says Mother of Runes's activated abilities can't be activated."
+    ],
+    "notExpect": [
+      "Yes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "null-rod-vial",
+    "text": "I control Null Rod and my opponent has Aether Vial on 2. Can they use it?",
+    "expect": [
+      "No: Null Rod says Aether Vial's activated abilities can't be activated."
+    ],
+    "notExpect": [
+      "Yes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "needle-names-the-top",
+    "text": "I control Pithing Needle naming Sensei's Divining Top. Can my opponent use the Top?",
+    "expect": [
+      "No: Pithing Needle says Sensei's Divining Top's activated abilities can't be activated (mana abilities excepted, as it says)."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "surgical-on-graveyard-snapcaster",
+    "text": "My opponent casts Surgical Extraction on my graveyard's Snapcaster Mage. What happens?",
+    "expect": [
+      "Snapcaster Mage: your graveyard → exile.",
+      "Surgical Extraction: every Snapcaster Mage in your graveyard, hand and library is exiled (1 known here)."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "701.23a"
+    ]
+  },
+  {
+    "id": "rip-blanks-yawgmoths-will",
+    "text": "I have Rest in Peace and cast Yawgmoth's Will. What happens?",
+    "expect": [
+      "Rest in Peace keeps your graveyard empty (cards go to exile instead), so Yawgmoth's Will has nothing there to play or cast."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "elesh-norn-two-tokens",
+    "text": "I control Elesh Norn and my opponent has two 2/2 tokens. What happens to them?",
+    "expect": [
+      "a 2/2 token: the battlefield → opponent's graveyard. (×2)"
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "anger-of-the-gods-finks",
+    "text": "I cast Anger of the Gods with Kitchen Finks on the battlefield. Does it persist?",
+    "expect": [
+      "Kitchen Finks: the battlefield → exile (replaced by Anger of the Gods's \"exile it instead\").",
+      "Kitchen Finks's persist doesn't return it: it was exiled instead of going to the graveyard, and persist returns it only from the graveyard (702.79a)."
+    ],
+    "notExpect": [
+      "comes back"
+    ],
+    "cite": []
+  },
+  {
+    "id": "humility-grave-titan-no-zombies",
+    "text": "I have Humility out. My opponent casts Grave Titan. Does it make Zombies?",
+    "expect": [
+      "Grave Titan enters the battlefield.",
+      "Grave Titan's ability doesn't trigger (Humility has taken its abilities away)."
+    ],
+    "notExpect": [
+      "Zombie token"
+    ],
+    "cite": [
+      "613.1f"
+    ]
+  },
+  {
+    "id": "spellskite-redirect-option",
+    "text": "My opponent has Spellskite and I Bolt their Tarmogoyf. What happens?",
+    "expect": [
+      "Spellskite's controller can respond: paying {U/P} changes Lightning Bolt's target to Spellskite (a 0/4), if Lightning Bolt could target it."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "two-rhystic-studies-how-many-cards",
+    "text": "I control two Rhystic Studies. My opponent casts a spell and doesn't pay. How many cards?",
+    "expect": [
+      "Yes: You draw 2 cards in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "glen-elendra-counters-wrath",
+    "text": "I have Glen Elendra Archmage. My opponent casts Wrath of God. Can I counter it?",
+    "expect": [
+      "Glen Elendra Archmage comes back with a -1/-1 counter (persist); it's now 1/1.",
+      "Wrath of God is countered."
+    ],
+    "notExpect": [
+      "No counterspell was named"
+    ],
+    "cite": [
+      "702.79a"
+    ]
   }
 ]
