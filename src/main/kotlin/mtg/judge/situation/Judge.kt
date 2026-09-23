@@ -318,8 +318,12 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 }
                 val inHand = state.objects.values.firstOrNull { it.zone == Zone.HAND && it.controller == player && it.def.isInstantOrSorcery && protective(it.def.spellEffect) }
                 if (inHand != null) {
-                    state.trace.step("\"Can ${state.player(player).subject.lowercase()} save ${target.name}?\": ${inHand.name} in hand would protect it, so it's cast targeting ${target.name} in response.", "117.3c")
-                    engine.cast(player, inHand.def, listOf(Ref.Obj(target.id)), objectId = inHand.id)
+                    val spell = inHand.def.spellEffect
+                    val modeIdx = (spell as? Effect.Modal)?.modes?.indexOfFirst { protective(it) }?.takeIf { it >= 0 }
+                    val chosen = modeIdx?.let { (spell as Effect.Modal).modes[it] } ?: spell
+                    val aimed = targeted(chosen)
+                    state.trace.step("\"Can ${state.player(player).subject.lowercase()} save ${target.name}?\": ${inHand.name} in hand would protect it, so it's cast in response${if (aimed) " targeting ${target.name}" else ""}${modeIdx?.let { ", choosing its mode \"${(chosen as? Effect.PumpAll)?.let { pa -> "${pa.filter.raw} gain ${pa.keywords.joinToString(" and ")} until end of turn" } ?: "the one that protects it"}\"" } ?: ""}.", "117.3c")
+                    engine.cast(player, inHand.def, if (aimed) listOf(Ref.Obj(target.id)) else emptyList(), objectId = inHand.id, modes = modeIdx?.let { listOf(it + 1) } ?: emptyList())
                     return
                 }
                 if (e.to == "quiet") return

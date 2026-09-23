@@ -816,6 +816,22 @@ class Engine(val state: GameState) {
     }
 
     /** "I get a poison counter": ten or more and that player loses (704.5c). */
+    /** Grafdigger's Cage / Containment Priest against an effect that is only narrated: what stops the creatures entering. */
+    private fun enterBlockersNote(item: StackItem, text: String) {
+        if (!Regex("""(?i)\bonto the battlefield\b""").containsMatchIn(text) || !Regex("""(?i)\bcreature""").containsMatchIn(text + " " + item.source.def.oracleText)) return
+        val fromHidden = Regex("""(?i)\b(?:library|libraries|graveyards?|among them|exiled this way|from exile)\b""").containsMatchIn(text + " " + item.source.def.oracleText)
+        for (o in state.objects.values.filter { it.isOnBattlefield() }) for (s in o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }) {
+            if (s is StaticEffect.CantEnterFrom && fromHidden && state.outcomes.none { it.startsWith("${o.name}: no creature card enters") }) {
+                trace.step("${o.name} says creature cards in graveyards and libraries can't enter the battlefield, so the creature cards ${item.source.name} would put onto the battlefield stay where they are; the rest of it still happens.", "614.1a")
+                state.outcomes += "${o.name}: no creature card enters the battlefield from ${item.source.name} (creature cards in graveyards and libraries can't enter)."
+            }
+            if (s is StaticEffect.ExileIfEntersUncast && state.outcomes.none { it.startsWith("${o.name}: the creatures") }) {
+                trace.step("${o.name} says a nontoken creature that would enter without being cast is exiled instead, so each creature ${item.source.name} would put onto the battlefield is exiled instead of entering.", "614.1a")
+                state.outcomes += "${o.name}: the creatures ${item.source.name} would put onto the battlefield are exiled instead (they weren't cast)."
+            }
+        }
+    }
+
     /** Aven Mindcensor: an opponent's search looks at only the top four cards of the library (614.1a). */
     private fun searchLimitNote(searcher: String, what: String) {
         val censor = state.objects.values.firstOrNull { it.isOnBattlefield() && it.controller != searcher && it.def.abilities.any { a -> a is UnparsedAbility && a.text.contains("searches the top four cards of that library instead", ignoreCase = true) } } ?: return
@@ -2775,6 +2791,7 @@ class Engine(val state: GameState) {
                 else trace.step("${you.subject} ${thirdPerson(effectText(effect.text, item), you)}.", *effect.rules.toTypedArray())
                 val said = if (ownSubject || you.you) effect.text.replace("~", item.source.name).replaceFirstChar { it.uppercase() } else "${you.subject} ${thirdPerson(effectText(effect.text, item), you)}"
                 if (Regex("""(?i)\bsearch(?:es)? (?:your|their|his or her) library\b""").containsMatchIn(effect.text)) searchLimitNote(you.id, "the card it looks for")
+                enterBlockersNote(item, effect.text)
                 state.outcomes += "${item.source.name}: ${said.trimEnd('.')} (not tracked in detail)."
             }
             is Effect.ForAll -> {
@@ -2812,6 +2829,14 @@ class Engine(val state: GameState) {
             }
             is Effect.Unparsed -> {
                 trace.step("(Not modeled: \"${effect.text}\")")
+                enterBlockersNote(item, effect.text)
+                // Counterbalance: the spell is countered if the revealed card's mana value matches it.
+                if (Regex("""(?i)^counter that spell if it has the same mana value as the revealed card\.?$""").matches(effect.text)) {
+                    val spell = state.stack.firstOrNull { it.kind == StackKind.SPELL && it !== item }
+                    val mv = spell?.source?.def?.manaValue?.toInt()
+                    val top = state.objects.values.firstOrNull { it.isOnBattlefield() && it.controller == item.controller && it.def.name == "Sensei's Divining Top" }
+                    state.outcomes += "${item.source.name}: ${spell?.source?.name ?: "the spell"}${mv?.let { " (mana value $it)" } ?: ""} is countered if the revealed top card's mana value ${mv?.let { "is $it" } ?: "matches it"} (a land on top has mana value 0).${top?.let { " With ${it.name} out, activate it in response to look at the top three cards and put one${mv?.let { n -> " with mana value $n" } ?: ""} on top first." } ?: ""}"
+                }
                 // Chain Lightning: "that player or that permanent's controller may pay {R}{R}. If the player does, they may copy ~…"
                 Regex("""^that player or that permanent's controller may pay (\{[^}]+\}(?:\{[^}]+\})*)\.?$""", RegexOption.IGNORE_CASE).find(effect.text)?.let { cc ->
                     state.outcomes += "${item.source.name}: the player it hit (or the controller of the permanent it hit) may pay ${cc.groupValues[1]} as it resolves to copy it and choose a new target for the copy — it can be chained back at ${state.player(item.controller).subject.lowercase()}, and that copy can be chained again (707.10)."

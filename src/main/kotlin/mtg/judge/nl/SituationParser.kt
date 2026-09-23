@@ -180,6 +180,8 @@ class SituationParser(private val names: NameIndex) {
             val card = names.lookup(Names.normalize(held.card.name ?: "")) ?: continue
             // A whole sentence of the asker's own statements ("I have Bolt in hand. Can I kill it?") is a question about an option, not a play.
             if (ctx.asks.any { it.to == "canKill" || it.to == "kill" }) continue
+            // "Can I save it?" casts the card itself, choosing the mode that protects; casting it here first chose none.
+            if (ctx.events.any { it.verb == "save" && it.player == who }) continue
             ctx.events.add(lastOther + 1, EventSpec("cast", player = who, obj = held.id))
             ctx.notes += "${card.display} is in ${if (who == "me") "your" else (ctx.players[who] ?: "your opponent") + "'s"} hand; assuming ${if (who == "me") "you cast" else "they cast"} it in response. Say it stays in hand if not."
         }
@@ -753,6 +755,17 @@ class SituationParser(private val names: NameIndex) {
                 if (spell == null || !spell.isSpellOnly || needsSpellTarget(spell)) r.value
                 else "my opponent casts ${r.groupValues[5]} on ${r.groupValues[3]}, can ${r.groupValues[1]} ${r.groupValues[2]} it${r.groupValues[4]} in response"
             } }
+            // "casts Hymn to Tourach on me with one card in my hand": the hand size is a fact about the board, said apart.
+            .let { t0 -> Regex("""^(.+?) with (an?|one|\d+|two|three|four|five|six|seven|no) cards? in (my|their|his|her|our) hand$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                val n = r.groupValues[2].lowercase().let { if (it == "a" || it == "an") "one" else it }
+                "${r.groupValues[1]}, ${if (r.groupValues[3].lowercase() in setOf("my", "our")) "i have" else "they have"} $n card${if (n == "one" || n == "1") "" else "s"} in hand"
+            } }
+            // "my opponent Stifles my Wasteland activation": the activation, then the Stifle at the ability.
+            .let { t0 -> Regex("""\b(they|he|she|my opponent|the opponent|i|we) (c\d+)s? (my|the|their) (c\d+)(?:'s)? (?:activation|activated ability|ability)\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                val mine = r.groupValues[1].lowercase() in setOf("i", "we")
+                if (m.cards[r.groupValues[2]]?.isSpellOnly != true) r.value
+                else "${if (mine) "they activate" else "i activate"} ${r.groupValues[4]}, ${r.groupValues[1]} ${r.groupValues[2]} the ability"
+            } }
             // "I bounce my own Clone that's copying Grave Titan": the Clone came in as that copy, then leaves.
             .let { t0 -> Regex("""\b(i|we|they) (bounces?|blinks?|flickers?|sacrifices?|kills?|exiles?) (?:my |their )?(?:own )?(c\d+) that(?:'s| is) copying (?:my |their |the )?(c\d+)\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 val mine = r.groupValues[1].lowercase() in setOf("i", "we")
@@ -782,7 +795,7 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(attacks?|attacking|attacked|swings?|swinging|hits?) (me|us) at (\d+)(?: life)?\b""", RegexOption.IGNORE_CASE), "$1 $2 and i am at $3 life")
             .replace(Regex("""\b(attacks?|attacking|attacked|swings?|swinging|hits?) (them|him|her) at (\d+)(?: life)?\b""", RegexOption.IGNORE_CASE), "$1 $2 and they are at $3 life")
             // "a 1 drop", "a 3-drop": a creature spell of that mana value.
-            .replace(Regex("""\b(an? |the |their |my )(\d+)[- ]drop\b""", RegexOption.IGNORE_CASE), "$1creature with mana value $2")
+            .replace(Regex("""\b(an? |the |their |my )(\d+)[- ]drop\b""", RegexOption.IGNORE_CASE), "$1$2 mana creature")
             // "my pro-red creature", "a pro-white 2/2": protection, said the short way.
             .replace(Regex("""\bpro[- ]?(red|white|blue|black|green) (\d+/\d+|creature|guy|dude|blocker|attacker)\b""", RegexOption.IGNORE_CASE), "$2 with protection from $1")
             .replace(Regex("""\b(\d+/\d+|creature|guy|dude) (?:with )?pro[- ]?(red|white|blue|black|green)\b""", RegexOption.IGNORE_CASE), "$1 with protection from $2")
@@ -1525,6 +1538,10 @@ class SituationParser(private val names: NameIndex) {
         // MTG_DEBUG_CLAUSE=1 prints every clause as the rules see it. A clause that is read by the wrong rule
         // leaves no note behind, so seeing the exact text is the quickest way to find which rule took it.
         if (System.getenv("MTG_DEBUG_CLAUSE") != null) System.err.println("clause: [$clauseIn]")
+        // "I have Sensei's Divining Top and Counterbalance": the second name, left alone by the split, is had by the same player.
+        Regex("""^(?:an? |the |my |their )?(c\d+)$""").find(clauseIn.trim())?.let { r ->
+            if (ctx.lastVerb == "have" && ctx.lastOwner != null && ctx.clauseIndex > 0) return readClause("${if (ctx.lastOwner == "me") "i have" else "they have"} ${r.groupValues[1]}", m, ctx)
+        }
         // "… with a Wall of Omens out" left on its own once the life total was taken out of the sentence: it says
         // what is on the battlefield, the same as "I have a Wall of Omens out".
         Regex("""^(?:\s*with (?:$possPrefix|an? )?c\d+(?:,? (?:and )?(?:$possPrefix|an? )?c\d+)*(?: out| on the battlefield| in play| on board| on the field))+$""").find(clauseIn.trim())?.let {
@@ -1809,6 +1826,12 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^can (my opponent|the opponent|opponent|they|he|she|@\w+) (?:even |still )?(?:counter|respond to|stifle|interact with|answer) (?:my|the|this|that|it)(?: spells?| creature| play| stuff| that)?(?: now| at all| this turn| in response)?$""").find(clause0)?.let { r ->
             val who = r.groupValues[1].let { if (it.startsWith("@")) it.removePrefix("@") else ctx.other("me") ?: "opp" }
             ctx.asks += EventSpec("ask", player = who, to = "canCounter"); ctx.note(who); return true
+        }
+        // "Does damage go through?" after a block: what the defending player takes.
+        Regex("""^(?:does|will|would|did) (?:any |the |combat |its |my )?damage (?:go|get|make it|come) through(?: to (?:them|him|her|my opponent|the opponent|me|@\w+))?$""").find(clause0)?.let {
+            val attack = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" } ?: return@let
+            val defender = attack.targets.firstOrNull { t -> t in ctx.playerIds() } ?: ctx.other(attack.player ?: "me") ?: "opp"
+            ctx.asks += EventSpec("ask", player = defender, to = "playerDamage"); ctx.note(defender); return true
         }
         // "How much trample damage goes through?": the attacker has trample, and the question is what the defender takes.
         Regex("""^how much (?:(trample) )?damage (?:goes|gets|tramples|comes) (?:through|over)(?: to (?:me|them|him|her|my opponent|the opponent|@\w+))?$""").find(clause0)?.let { r ->
@@ -4189,6 +4212,7 @@ class SituationParser(private val names: NameIndex) {
                 w in setOf("it", "that", "them", "him", "her") -> ctx.events.lastOrNull { it.verb == "cast" || it.verb == "activate" }?.targets?.firstOrNull { t -> t in ctx.objects }?.takeIf { ctx.objects.getValue(it).controller == who }
                     ?: ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller == who && isCreatureName(ctx.objects.getValue(it).card.name) }
                     ?: ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id
+                    ?: describedCreatures("a ", "", "creature", who, ctx).firstOrNull()?.also { ctx.notes += "No creature of ${if (who == "me") "yours" else "theirs"} was described; a creature stands in so the answer says what would save one." }
                 else -> targetsIn("targeting $w", m, ctx).firstOrNull()
             } ?: return@let
             Regex("""\bwith (?:my |the )?(c\d+)$""").find(c)?.let { s -> m.cards[s.groupValues[1]]?.let { card -> emitCast(who, card, " targeting $id", m, ctx); return true } }

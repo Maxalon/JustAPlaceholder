@@ -16416,5 +16416,135 @@
     "cite": [
       "702.12b"
     ]
+  },
+  {
+    "id": "cage-blanks-coco",
+    "text": "I control Grafdigger's Cage. My opponent casts Collected Company. What happens?",
+    "expect": [
+      "Grafdigger's Cage: no creature card enters the battlefield from Collected Company (creature cards in graveyards and libraries can't enter)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "bolt-the-wall-after-blocks",
+    "text": "I attack with a 2/2 and my opponent blocks with a 0/4 wall. I Bolt the wall after blocks. Does damage go through?",
+    "expect": [
+      "a 0/4 wall creature: the battlefield → opponent's graveyard.",
+      "No: opponent takes no damage."
+    ],
+    "notExpect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "boros-charm-saves-team",
+    "text": "My opponent casts Damnation. I have Boros Charm in hand. What do I do?",
+    "expect": [
+      "a creature has indestructible until end of turn.",
+      "a creature is indestructible and isn't destroyed."
+    ],
+    "notExpect": [
+      "a creature: the battlefield → your graveyard."
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "top-counterbalance-two-drop",
+    "text": "I have Sensei's Divining Top and Counterbalance. My opponent casts a 2-drop. What happens?",
+    "expect": [
+      "Counterbalance: a 2 mana creature (mana value 2) is countered if the revealed top card's mana value is 2 (a land on top has mana value 0). With Sensei's Divining Top out, activate it in response to look at the top three cards and put one with mana value 2 on top first."
+    ],
+    "notExpect": [
+      "Nothing changes",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "stifled-wasteland-activation",
+    "text": "My opponent Stifles my Wasteland activation. What happens to my Wasteland?",
+    "expect": [
+      "Wasteland: the battlefield → your graveyard.",
+      "Wasteland's activated ability is countered."
+    ],
+    "notExpect": [
+      "Stifle can't target Wasteland"
+    ],
+    "cite": [
+      "601.2h"
+    ]
+  },
+  {
+    "id": "priest-vs-living-death",
+    "text": "I have Containment Priest. My opponent casts Living Death. What happens to their creatures?",
+    "expect": [
+      "Containment Priest: the creatures Living Death would put onto the battlefield are exiled instead (they weren't cast)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "hymn-one-card-in-hand",
+    "text": "My opponent casts Hymn to Tourach on me with one card in my hand. What happens?",
+    "expect": [
+      "You discard 1 card (1 → 0 in hand)."
+    ],
+    "notExpect": [
+      "You discard 2 cards."
+    ],
+    "cite": []
+  },
+  {
+    "id": "ghostly-prison-three-mana",
+    "text": "I have Ghostly Prison. My opponent attacks with two creatures and has 3 mana. What happens?",
+    "expect": [
+      "opponent pays {2} for Ghostly Prison (a creature attacks).",
+      "a creature can't attack (can't pay {2} for Ghostly Prison).",
+      "You take 1 damage."
+    ],
+    "notExpect": [
+      "You take 2 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "krosan-grip-vs-vial",
+    "text": "I cast Krosan Grip on my opponent's Aether Vial. Can they respond with the Vial?",
+    "expect": [
+      "Aether Vial's ability can't be activated while Krosan Grip is on the stack (split second).",
+      "Aether Vial: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.61a"
+    ]
+  },
+  {
+    "id": "approach-second-cast-wins",
+    "text": "I cast Approach of the Second Sun for the second time this game. Do I win?",
+    "expect": [
+      "You win the game.",
+      "Yes: You have won the game."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
