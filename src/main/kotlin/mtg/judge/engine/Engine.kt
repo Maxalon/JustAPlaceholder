@@ -328,7 +328,7 @@ class Engine(val state: GameState) {
         val players = state.players.filter { it.poison > 0 && it.id != playerId }
         if (objs.isEmpty() && players.isEmpty()) { trace.step("Nothing ${you.subject.lowercase()} would want to proliferate has a counter.", "701.34a"); state.outcomes += "Proliferate does nothing: nothing ${you.subject.lowercase()} would choose has a counter on it." }
         for (o in objs) { o.counters.keys.toList().forEach { k -> o.counters[k] = o.counters.getValue(k) + 1 }; trace.step("${you.subject} ${you.v("proliferates", "proliferate")} ${o.name}: one more of each kind of counter it has (${o.counters.entries.joinToString(", ") { "${it.value} ${it.key}" }}).", "701.34a"); state.outcomes += "${o.name} has ${o.counters.entries.joinToString(", ") { "${it.value} ${it.key}" }} counters." }
-        for (p in players) { p.poison += 1; trace.step("${p.subject} ${p.v("gets", "get")} another poison counter (${p.poison}).", "701.34a"); state.outcomes += "${p.subject} ${p.v("has", "have")} ${p.poison} poison counters." }
+        for (p in players) { p.poison += 1; trace.step("${p.subject} ${p.v("gets", "get")} another poison counter (${p.poison}).", "701.34a"); poisonLine(p) }
         if (objs.isNotEmpty() || players.isNotEmpty()) state.assumptions += "Proliferate: ${you.subject.lowercase()} ${you.v("chooses", "choose")} all ${you.possessive} own permanents with counters${if (players.isNotEmpty()) " and each opponent with poison counters" else ""} (701.34a lets ${you.subject.lowercase()} choose any number)."
         stateBasedActions()
     }
@@ -807,11 +807,17 @@ class Engine(val state: GameState) {
     }
 
     /** "I get a poison counter": ten or more and that player loses (704.5c). */
+    /** "You have 5 poison counters.": the running total, replacing the line from the last hit. */
+    private fun poisonLine(p: Player) {
+        state.outcomes.removeAll { Regex("""^${Regex.escape(p.subject)} (?:has|have) \d+ poison counters?\.$""").matches(it) }
+        state.outcomes += "${p.subject} ${p.v("has", "have")} ${p.poison} poison counter${if (p.poison == 1) "" else "s"}."
+    }
+
     fun addPoison(playerId: String, count: Int) {
         val p = state.player(playerId)
         p.poison = (p.poison ?: 0) + count
         trace.step("${p.subject} ${p.v("gets", "get")} $count poison counter${if (count == 1) "" else "s"} (${p.poison} in all).", "122.1a", "704.5c")
-        state.outcomes += "${p.subject} ${p.v("has", "have")} ${p.poison} poison counter${if (p.poison == 1) "" else "s"}."
+        poisonLine(p)
         stateBasedActions()
     }
 
@@ -2206,6 +2212,7 @@ class Engine(val state: GameState) {
                 trace.step("${target.describe} is countered: it's removed from the stack and none of its effects happen" +
                     (if (target.kind == StackKind.SPELL) "; $where" else "") + ".", "701.6a")
                 state.outcomes += "${target.describe} is countered."
+                if (target.kind == StackKind.TRIGGERED) state.outcomes += "Countering ${target.source.name}'s trigger doesn't remove the ability: it triggers again the next time its event happens (603.2)."
             }
             is Effect.Destroy -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { destroy(it, "${it.name} is destroyed and put into its owner's graveyard.", "701.8a", canRegenerate = !effect.noRegen) } }
             is Effect.Bounce -> {
@@ -2775,7 +2782,13 @@ class Engine(val state: GameState) {
                     for (o in ps) state.outcomes += "${o.name} phases out (back at the start of ${you.possessive} next turn)."
                 }
             }
-            is Effect.Unparsed -> trace.step("(Not modeled: \"${effect.text}\")")
+            is Effect.Unparsed -> {
+                trace.step("(Not modeled: \"${effect.text}\")")
+                // Chain Lightning: "that player or that permanent's controller may pay {R}{R}. If the player does, they may copy ~…"
+                Regex("""^that player or that permanent's controller may pay (\{[^}]+\}(?:\{[^}]+\})*)\.?$""", RegexOption.IGNORE_CASE).find(effect.text)?.let { cc ->
+                    state.outcomes += "${item.source.name}: the player it hit (or the controller of the permanent it hit) may pay ${cc.groupValues[1]} as it resolves to copy it and choose a new target for the copy — it can be chained back at ${state.player(item.controller).subject.lowercase()}, and that copy can be chained again (707.10)."
+                }
+            }
         }
     }
 
@@ -3097,11 +3110,11 @@ class Engine(val state: GameState) {
         }
         when (target) {
             is Ref.Player -> { val p = state.player(target.id)
-                if (infect) { p.poison += amount; trace.step("$sourceName has infect, so instead of losing life ${if (p.you) "you get" else p.name + " gets"} $amount poison counter${if (amount > 1) "s" else ""} (${p.poison} total).", "702.90b", "120.3b"); state.outcomes += "${p.subject} ${p.v("has", "have")} ${p.poison} poison counter${if (p.poison > 1) "s" else ""}." }
+                if (infect) { p.poison += amount; trace.step("$sourceName has infect, so instead of losing life ${if (p.you) "you get" else p.name + " gets"} $amount poison counter${if (amount > 1) "s" else ""} (${p.poison} total).", "702.90b", "120.3b"); poisonLine(p) }
                 else { p.life = p.life?.minus(amount); trace.step("$sourceName deals $amount damage to ${if (p.you) "you" else p.name}, ${if (p.you) "and you lose" else "who loses"} $amount life${p.life?.let { " ($it)" } ?: ""}.", "120.3a"); state.outcomes += "${p.subject} ${p.v("takes", "take")} $amount damage." }
                 val toxic = source?.takeIf { inCombatDamage }?.let { src -> Regex("""\bToxic (\d+)""").findAll(src.def.oracleText).sumOf { it.groupValues[1].toInt() } } ?: 0
                 if (source?.commander == true && inCombatDamage) { val total = (p.commanderDamage[source.id] ?: 0) + amount; p.commanderDamage[source.id] = total; trace.step("${source.name} is a commander: ${if (p.you) "you have" else p.name + " has"} now been dealt $total combat damage by it this game (21 or more loses the game).", "903.10a"); state.outcomes += "${p.subject} ${p.v("has", "have")} taken $total commander damage from ${source.name}." }
-                if (toxic > 0) { p.poison += toxic; trace.step("$sourceName has toxic $toxic, so ${if (p.you) "you also get" else p.name + " also gets"} $toxic poison counter${if (toxic > 1) "s" else ""} (${p.poison} total).", "702.164c", "120.3g"); state.outcomes += "${p.subject} ${p.v("has", "have")} ${p.poison} poison counter${if (p.poison > 1) "s" else ""}." } }
+                if (toxic > 0) { p.poison += toxic; trace.step("$sourceName has toxic $toxic, so ${if (p.you) "you also get" else p.name + " also gets"} $toxic poison counter${if (toxic > 1) "s" else ""} (${p.poison} total).", "702.164c", "120.3g"); poisonLine(p) } }
             is Ref.Obj -> { val o = state.obj(target.id)
                 // 702.2b is about damage, not only combat damage: a fight or a ping from a deathtouch source is
                 // just as lethal. Without this a deathtouch creature won a fight it should have traded.
@@ -3226,6 +3239,7 @@ class Engine(val state: GameState) {
             val saga = "Saga" in land.def.subtypes
             trace.step("${moon.name} makes ${land.name} a Mountain: it loses its other land types and every ability from its rules text${if (saga) ", chapter abilities included," else ""} and has only \"{T}: Add {R}\" (a type-changing effect, layer 4).${if (saga) " It's still an enchantment and a Saga; its lore counters stay, and with no chapter abilities it is neither sacrificed nor able to do anything." else ""}", "613.1d", "305.7", *(if (saga) arrayOf("714.4") else emptyArray()))
             state.outcomes += "${land.name} is a Mountain with no abilities (${moon.name})."
+            if (saga) state.outcomes += "${land.name} stays on the battlefield: the Saga sacrifice check applies only to a Saga with chapter abilities, and it has none now (714.4)."
             state.unsupported.removeAll { it.what == land.name }
         }
     }

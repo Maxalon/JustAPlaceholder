@@ -16015,5 +16015,162 @@
     "cite": [
       "702.12b"
     ]
+  },
+  {
+    "id": "trample-damage-after-giant-growth",
+    "text": "My opponent blocks my 4/4 with a 2/2. I cast Giant Growth on my attacker. How much trample damage goes through?",
+    "expect": [
+      "opponent takes 5 damage.",
+      "Yes: opponent takes 5 damage in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.19b"
+    ]
+  },
+  {
+    "id": "snapcaster-cast-bolt-this-turn",
+    "text": "I flash in Snapcaster Mage targeting Lightning Bolt in my graveyard. Can I cast the Bolt this turn?",
+    "expect": [
+      "Yes: Lightning Bolt has flashback until end of turn, so you can cast it from your graveyard for its flashback cost (its mana cost) with the usual timing for its type. It's exiled as it resolves or is countered (702.34a)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.34a"
+    ]
+  },
+  {
+    "id": "path-own-bloodghast-land",
+    "text": "I cast Path to Exile on my own Bloodghast. Do I get a land?",
+    "expect": [
+      "Yes: the search is yours. The card gives it to the exiled creature's controller, which is you; you may search for a basic land card and put it onto the battlefield tapped."
+    ],
+    "notExpect": [
+      "No: nothing here has you search"
+    ],
+    "cite": []
+  },
+  {
+    "id": "stifled-landfall-triggers-again",
+    "text": "I play a land. My opponent Stifles Bloodghast's trigger. Does it come back later?",
+    "expect": [
+      "Bloodghast's triggered ability is countered.",
+      "Countering Bloodghast's trigger doesn't remove the ability: it triggers again the next time its event happens (603.2)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "603.2"
+    ]
+  },
+  {
+    "id": "rip-stops-persist",
+    "text": "I have Rest in Peace. My opponent's Kitchen Finks dies. Does it persist?",
+    "expect": [
+      "Kitchen Finks: the battlefield → exile (replaced by Rest in Peace).",
+      "Kitchen Finks's persist doesn't return it: it was exiled instead of going to the graveyard, and persist returns it only from the graveyard (702.79a)."
+    ],
+    "notExpect": [
+      "comes back with a -1/-1 counter"
+    ],
+    "cite": []
+  },
+  {
+    "id": "chain-lightning-copy-back",
+    "text": "I cast Chain Lightning at my opponent. Can they copy it back at me?",
+    "expect": [
+      "opponent takes 3 damage.",
+      "Chain Lightning: the player it hit (or the controller of the permanent it hit) may pay {R}{R} as it resolves to copy it and choose a new target for the copy — it can be chained back at you, and that copy can be chained again (707.10)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sudden-shock-can-i-respond",
+    "text": "My opponent casts Sudden Shock on my Snapcaster Mage. Can I respond?",
+    "expect": [
+      "No: Sudden Shock has split second, so while it's on the stack players can't cast spells or activate abilities that aren't mana abilities (702.61a). Triggered abilities still trigger, and special actions like turning a morph face up are still allowed."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.61a"
+    ]
+  },
+  {
+    "id": "bolt-can-i-respond",
+    "text": "My opponent casts Lightning Bolt on my Snapcaster Mage. Can I respond?",
+    "expect": [
+      "Yes: after Lightning Bolt is cast its controller gets priority, then each player does in turn; instants can be cast and abilities activated before it resolves (117.3c, 117.4)."
+    ],
+    "notExpect": [
+      "split second"
+    ],
+    "cite": [
+      "117.3c"
+    ]
+  },
+  {
+    "id": "poison-three-plus-two-infect",
+    "text": "I have 3 poison counters and my opponent hits me with two 1/1 infect creatures. How many poison do I have?",
+    "expect": [
+      "You have 5 poison counters."
+    ],
+    "notExpect": [
+      "You have 4 poison counters."
+    ],
+    "cite": [
+      "702.90b"
+    ]
+  },
+  {
+    "id": "blood-moon-urzas-saga-stays",
+    "text": "I control Blood Moon. My opponent plays Urza's Saga. What happens?",
+    "expect": [
+      "Urza's Saga is a Mountain with no abilities (Blood Moon).",
+      "Urza's Saga stays on the battlefield: the Saga sacrifice check applies only to a Saga with chapter abilities, and it has none now (714.4)."
+    ],
+    "notExpect": [
+      "sacrifices Urza's Saga"
+    ],
+    "cite": [
+      "714.4"
+    ]
+  },
+  {
+    "id": "sac-my-creature-in-response-to-swords",
+    "text": "Can I sacrifice my creature to Viscera Seer in response to Swords to Plowshares?",
+    "expect": [
+      "a creature: the battlefield → your graveyard.",
+      "Swords to Plowshares doesn't resolve (all targets illegal)."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "608.2b"
+    ]
+  },
+  {
+    "id": "bounce-bears-in-response-to-doom-blade",
+    "text": "Can I bounce my Grizzly Bears in response to Doom Blade?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your hand.",
+      "Doom Blade doesn't resolve (all targets illegal)."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "608.2b"
+    ]
   }
 ]
