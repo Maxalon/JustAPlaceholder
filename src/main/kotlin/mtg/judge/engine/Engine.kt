@@ -1283,7 +1283,7 @@ class Engine(val state: GameState) {
                 if (power <= 0) trace.step("${a.name} has power $power and assigns no combat damage.", "510.1a")
                 else if (blockers.isEmpty() && a.wasBlocked) {
                     if (a.has("trample")) { trace.step("${a.name} was blocked but its blocker is gone; it has trample, so it assigns all $power damage to ${state.nameOf(a.attacking!!)}.", "702.19d"); hits += Hit(a, a.attacking!!, power) }
-                    else trace.step("${a.name} was blocked and its blocker has left combat. A blocked creature stays blocked, and without trample it assigns no combat damage at all.", "509.1h", "510.1c")
+                    else { trace.step("${a.name} was blocked and its blocker has left combat. A blocked creature stays blocked, and without trample it assigns no combat damage at all.", "509.1h", "510.1c"); state.outcomes += "${a.name} deals no combat damage: its blocker left combat and it stays blocked." }
                 }
                 else if (blockers.isEmpty()) { trace.step("${a.name} is unblocked and assigns $power damage to ${state.nameOf(a.attacking!!)}.", "510.1b"); hits += Hit(a, a.attacking!!, power) }
                 else if (blockers.size == 1) {
@@ -3087,7 +3087,19 @@ class Engine(val state: GameState) {
             if (to == Zone.GRAVEYARD) { onEvent(GameEvent.Dies(obj)); undyingOrPersist(obj, hadUndying, hadPersist) } else onEvent(GameEvent.LeavesBattlefield(obj))
             // Whatever was attached to it, or it was attached to, is checked by state-based actions (704.5m/n).
         }
-    }
+    
+        // A commander that went to a graveyard or exile may be put into the command zone by its owner the next time
+        // state-based actions are checked (903.9a); one that would go to hand or library may go there instead (903.9b).
+        // Its owner always wants it back, so that is assumed and said.
+        if (obj.commander && to in setOf(Zone.GRAVEYARD, Zone.EXILE, Zone.HAND, Zone.LIBRARY) && obj.zone == to) {
+            val owner = state.player(obj.owner)
+            val rule = if (to == Zone.GRAVEYARD || to == Zone.EXILE) "903.9a" else "903.9b"
+            trace.step("${obj.name} is a commander: ${if (to == Zone.GRAVEYARD || to == Zone.EXILE) "since it was put into ${zoneName(to, obj)}, ${owner.possessive.replaceFirstChar { it.lowercase() }} owner may put it into the command zone the next time state-based actions are checked" else "instead of going to ${zoneName(to, obj)}, its owner may put it into the command zone"}. Assuming ${owner.subject.lowercase()} ${owner.v("does", "do")}. Casting it from there again costs {2} more for each time it has been cast from the command zone before.", rule, "903.8")
+            moveRaw(obj, Zone.COMMAND)
+            state.assumptions += "${obj.name} is put into the command zone rather than left in ${zoneName(to, obj)} ($rule); its owner could leave it there instead."
+            state.outcomes += "${obj.name}: ${zoneName(to, obj)} → the command zone (its owner's choice, $rule)."
+        }
+}
 
     private fun afterResolution() {
         stateBasedActions()

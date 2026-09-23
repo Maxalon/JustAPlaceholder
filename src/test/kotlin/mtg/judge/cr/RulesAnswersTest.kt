@@ -63,6 +63,15 @@ class RulesAnswersTest {
         "They scoop in response to my spell, what happens?" to "104.3a",
         "When does an extra turn happen?" to "500.7",
         "Does deathtouch work on a planeswalker?" to "702.2b",
+        "my commander dies, can I put it back in the command zone" to "903.9a",
+        "my commander was bounced to my hand, can I put it in the command zone" to "903.9b",
+        "I cast my commander for the third time, how much does it cost" to "903.8",
+        "I take 21 commander damage but I'm at 40 life" to "903.10a",
+        "I have 21 damage from two different commanders" to "903.10a",
+        "I copy their commander with Clone, is the copy a commander" to "903.3",
+        "I steal their commander with Control Magic and attack them with it, is it commander damage" to "903.10a",
+        "my attacker's blocker dies before damage, does it trample over" to "702.19d",
+        "my creature is blocked and I bounce the blocker, do I hit them" to "509.1h",
     )
 
     @Test

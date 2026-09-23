@@ -14322,5 +14322,115 @@
       "opponent takes 5 damage"
     ],
     "cite": []
+  },
+  {
+    "id": "bolt-the-blocker-attacker-stays-blocked",
+    "text": "I attack with a 4/4 and they block with a 2/2, then I Bolt the blocker before damage",
+    "expect": [
+      "a 2/2 creature: the battlefield → opponent's graveyard.",
+      "a 4/4 creature deals no combat damage: its blocker left combat and it stays blocked."
+    ],
+    "notExpect": [
+      "opponent takes 4 damage"
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "kill-the-blocker-no-damage-through",
+    "text": "they block with a 2/2 and I kill the blocker, does my attacker deal damage to them",
+    "expect": [
+      "a creature deals no combat damage: its blocker left combat and it stays blocked."
+    ],
+    "notExpect": [
+      "opponent takes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "chump-with-a-token-then-exile-it",
+    "text": "they chump with a token and I exile the token before damage",
+    "expect": [
+      "a 1/1 token: the battlefield → exile.",
+      "a creature deals no combat damage: its blocker left combat and it stays blocked."
+    ],
+    "notExpect": [
+      "opponent takes 1 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "esper-sentinel-no-mana-open",
+    "text": "I have Esper Sentinel and they cast Ponder with no mana open",
+    "expect": [
+      "You draw 1 card."
+    ],
+    "notExpect": [
+      "can't be cast"
+    ],
+    "cite": []
+  },
+  {
+    "id": "rift-overloaded-do-my-tokens-die",
+    "text": "they cast Cyclonic Rift overloaded, do my tokens die",
+    "expect": [
+      "a 1/1 token ceases to exist; it doesn't stay in the zone it went to."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "craterhoof-with-six-at-thirty",
+    "text": "they cast Craterhoof with 6 creatures and attack me at 30 life",
+    "expect": [
+      "You lose the game."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "farewell-creatures-and-my-finks",
+    "text": "they cast Farewell choosing creatures and I have a Kitchen Finks",
+    "expect": [
+      "Kitchen Finks: the battlefield → exile."
+    ],
+    "notExpect": [
+      "comes back"
+    ],
+    "cite": []
+  },
+  {
+    "id": "land-and-sol-ring-turn-one",
+    "text": "I play a land and Sol Ring turn 1, how much mana do I have",
+    "expect": [
+      "You can make 3 mana right now: a basic land → one mana of any color; Sol Ring → {C}{C}."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "path-my-commander-goes-to-command-zone",
+    "text": "they Path my commander, where does it go",
+    "expect": [
+      "a commander: exile → the command zone (its owner's choice, 903.9a)."
+    ],
+    "notExpect": [],
+    "cite": [
+      "903.9a"
+    ]
+  },
+  {
+    "id": "my-commander-dies-command-zone",
+    "text": "my commander dies",
+    "expect": [
+      "a commander: your graveyard → the command zone (its owner's choice, 903.9a)."
+    ],
+    "notExpect": [],
+    "cite": [
+      "903.9a"
+    ]
   }
 ]

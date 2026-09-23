@@ -34,7 +34,7 @@ object Generic {
         // Aura does, because an Aura with nothing to enchant goes to the graveyard while an Equipment stays.
         if (n in setOf("aura", "aura card", "enchantment aura")) return OracleParser.parse("generic-aura", "an Aura", "Enchantment — Aura", "{1}{W}", 2.0, "W", null, null, emptyList(), "Enchant creature")
         if (n in setOf("equipment", "equipment card")) return OracleParser.parse("generic-equipment", "an Equipment", "Artifact — Equipment", "{2}", 2.0, "", null, null, emptyList(), "")
-        if (n in setOf("basic land", "land", "a basic land", "basic land card")) return OracleParser.parse("generic-basic-land", "a basic land", if (n.contains("basic")) "Basic Land" else "Land", null, 0.0, "", null, null, emptyList(), "")
+        if (n in setOf("basic land", "land", "a basic land", "basic land card")) return OracleParser.parse("generic-basic-land", "a basic land", if (n.contains("basic")) "Basic Land" else "Land", null, 0.0, "", null, null, emptyList(), "{T}: Add one mana of any color.")
         val typeLine = when (n) {
             "spell", "instant", "instant spell", "noncreature spell" -> "Instant"
             "sorcery", "sorcery spell" -> "Sorcery"

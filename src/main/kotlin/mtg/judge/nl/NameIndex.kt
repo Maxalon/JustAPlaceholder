@@ -73,7 +73,7 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
     companion object {
         /** Common nicknames -> normalized card names. Grow this by hand; it is not data from any card source. */
         val aliases: Map<String, String> = mapOf(
-            "bolt" to "lightning bolt", "maze" to "maze of ith", "chalice" to "chalice of the void", "snapcaster" to "snapcaster mage", "snappy" to "snapcaster mage", "snap" to "snapcaster mage", "bears" to "grizzly bears", "swords" to "swords to plowshares", "path" to "path to exile",
+            "bolt" to "lightning bolt", "maze" to "maze of ith", "chalice" to "chalice of the void", "snapcaster" to "snapcaster mage", "craterhoof" to "craterhoof behemoth", "hoof" to "craterhoof behemoth", "snappy" to "snapcaster mage", "snap" to "snapcaster mage", "bears" to "grizzly bears", "swords" to "swords to plowshares", "path" to "path to exile",
             "rhystic" to "rhystic study", "tithe" to "smothering tithe", "sol" to "sol ring", "wrath" to "wrath of god", "damnation" to "damnation",
             "cyc rift" to "cyclonic rift", "rift" to "cyclonic rift", "tutor" to "demonic tutor", "demonic" to "demonic tutor", "vamp tutor" to "vampiric tutor",
             "mana crypt" to "mana crypt", "crypt" to "mana crypt", "vault" to "mana vault", "goyf" to "tarmogoyf", "sdt" to "sensei s divining top", "divining top" to "sensei s divining top",

@@ -181,7 +181,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     val words = e.to.removePrefix("mode:").lowercase().split("|").filter { it.isNotEmpty() }
                     val texts = modalEffect?.modeTexts ?: emptyList()
                     words.mapNotNull { w -> matchMode(w, texts, def.name)?.plus(1) }
-                } else e.modes
+                } else e.modes.filter { i -> modalEffect == null || i <= modalEffect.modes.size }
                 // A modal spell's targets belong to the modes chosen (700.2c), so those are what a stated target
                 // has to fit; without this the target was dropped and the mode resolved with none.
                 val needed = modalEffect?.takeIf { modes.isNotEmpty() }?.let { mo -> modes.mapNotNull { i -> mo.modes.getOrNull(i - 1) }.flatMap { it.targets() } }
