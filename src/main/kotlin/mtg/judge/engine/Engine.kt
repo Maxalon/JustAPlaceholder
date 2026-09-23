@@ -719,7 +719,7 @@ class Engine(val state: GameState) {
     fun putCounters(objectId: String, count: Int, kind: String) {
         val obj = state.obj(objectId)
         val placed = countersPlaced(obj, count, kind)
-        if (placed <= 0) { state.outcomes += "No $kind counters are put on ${obj.name}."; return }
+        if (placed <= 0) { state.outcomes += "No $kind counters are put on ${obj.name}${counterStopper?.let { " ($it)" } ?: ""}."; return }
         obj.counters[kind] = (obj.counters[kind] ?: 0) + placed
         trace.step("$placed $kind counter${if (placed == 1) "" else "s"} ${if (placed == 1) "is" else "are"} put on ${obj.name}${if (obj.def.isCreature) "; it is now ${state.describePt(obj)}" else ""}.", "122.1", "614.1a")
         state.outcomes += "${obj.name} has ${obj.counters[kind]} $kind counter${if (obj.counters[kind] == 1) "" else "s"}."
@@ -1011,6 +1011,8 @@ class Engine(val state: GameState) {
     fun resolveTop() {
         val item = state.stack.removeLastOrNull() ?: run { trace.step("The stack is empty; nothing resolves."); return }
         trace.step("All players pass priority; ${item.describe} (top of the stack) starts to resolve.", "117.4", "608.1")
+        // Killing the Top in response to its ability: the ability is already on the stack and exists independently of its source.
+        if (item.kind != StackKind.SPELL && !item.source.isOnBattlefield() && item.source.zone != Zone.STACK) trace.step("${item.source.name} is no longer on the battlefield, but its ability was already on the stack, and an ability on the stack exists independently of its source. It still resolves, using the source's last known information where it needs it.", "113.7a", "608.2h")
         // 608.2b target legality
         if (item.targets.isNotEmpty()) {
             val legal = item.targets.map { it to isTargetLegal(item, it) }
@@ -1291,6 +1293,12 @@ class Engine(val state: GameState) {
         val defendsAgainst = when (val d = a.attacking) { is Ref.Player -> d.id == playerId; is Ref.Obj -> state.objects[d.id]?.controller == playerId; else -> true }
         if (!defendsAgainst) { trace.step("${a.name} is attacking ${state.nameOf(a.attacking!!)}, not ${p.subject.lowercase()}${if (p.you) "" else " or a planeswalker ${p.subject} controls"}, so ${b.name} can't block it.", "509.1a"); state.outcomes += "${b.name} can't block ${a.name} (it isn't attacking ${p.subject.lowercase()})."; return }
         if (b.tapped == true) { trace.step("${b.name} is tapped, so it can't block.", "509.1a"); state.outcomes += "${b.name} can't block (tapped)."; return }
+        // "Can I block both with my 4/4?": one attacker per blocker, unless its text lets it block more.
+        if (b.blocking != null && b.blocking != a.id) {
+            val extra = Regex("""can block an additional creature|can block any number of creatures""", RegexOption.IGNORE_CASE).containsMatchIn(b.def.oracleText)
+            if (!extra) { trace.step("${b.name} is already blocking ${state.objects[b.blocking!!]?.name ?: "another attacker"}. As blockers are declared, each blocking creature is chosen to block one attacking creature; only an effect like \"can block an additional creature\" allows more.", "509.1a"); state.outcomes += "${b.name} can't block ${a.name} as well (a creature blocks only one attacker, 509.1a)."; return }
+            trace.step("${b.name} is already blocking ${state.objects[b.blocking!!]?.name ?: "another attacker"}, and its text lets it block an additional creature, so it blocks ${a.name} too.", "509.1a")
+        }
         if (cant(b, "block")) { trace.step("${b.name} can't block (a rules text says so${cantSource(b, "block")?.let { ": $it" } ?: ""}).", "509.1b"); state.outcomes += "${b.name} can't block."; return }
         cantBlockWhy(a, b)?.let { (why, rules, out) -> trace.step(why, *rules.toTypedArray()); state.outcomes += out; return }
         val firstBlocker = blockersOf(a).isEmpty()
@@ -2965,10 +2973,12 @@ class Engine(val state: GameState) {
     }
 
     /** Doubling Season and friends: how many counters actually land on [o] when [n] would be placed. */
+    /** The permanent that last stopped counters being placed (Solemnity), for the outcome line. */
+    private var counterStopper: String? = null
     private fun countersPlaced(o: GameObject, n: Int, kind: String): Int {
-        var out = n
+        var out = n; counterStopper = null
         state.objects.values.filter { it.isOnBattlefield() }.flatMap { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.CounterMultiplier }.filter { it.anyPlayer || src.controller == o.controller }.map { src to it } }
-            .forEach { (src, m) -> if (m.factor == 0 && (m.kind == null || m.kind.equals(kind, true))) { trace.step("${src.name} says ${m.kind?.let { "$it counters" } ?: "counters"} can't be put on ${o.name}, so the $out $kind counter${if (out == 1) "" else "s"} ${if (out == 1) "isn't" else "aren't"} placed.", "614.1a", "122.1"); out = 0 } }
+            .forEach { (src, m) -> if (m.factor == 0 && (m.kind == null || m.kind.equals(kind, true))) { counterStopper = src.name; trace.step("${src.name} says ${m.kind?.let { "$it counters" } ?: "counters"} can't be put on ${o.name}, so the $out $kind counter${if (out == 1) "" else "s"} ${if (out == 1) "isn't" else "aren't"} placed.", "614.1a", "122.1"); out = 0 } }
         state.objects.values.filter { false }.flatMap { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.CounterMultiplier }.map { src to it } }
             .forEach { (src, m) -> trace.step("${src.name} replaces the counter placement: ${out * m.factor} $kind counters are put on ${o.name} instead of $out.", "614.1a", "614.6"); out *= m.factor }
         if (out > 0) state.objects.values.filter { it.isOnBattlefield() && it.controller == o.controller }.flatMap { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.CounterMultiplier }.filter { it.factor > 1 }.map { src to it } }

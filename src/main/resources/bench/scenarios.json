@@ -15126,5 +15126,114 @@
       "nothing to sacrifice"
     ],
     "cite": []
+  },
+  {
+    "id": "kill-the-top-in-response-to-its-activation",
+    "text": "Can I respond to a Sensei's Divining Top activation by killing the Top?",
+    "expect": [
+      "Sensei's Divining Top: the battlefield → opponent's graveyard.",
+      "Sensei's Divining Top: opponent looks at the top three cards of their library, then put them back in any order (not tracked in detail)."
+    ],
+    "notExpect": [
+      "Not understood",
+      "couldn't find"
+    ],
+    "cite": []
+  },
+  {
+    "id": "goyf-being-targeted-by-bolt-with-instant-and-land",
+    "text": "My Tarmogoyf is being targeted by Lightning Bolt. Graveyards have an instant and a land. Does it die?",
+    "expect": [
+      "Tarmogoyf has 3 damage marked.",
+      "Yes: Tarmogoyf died (it's in the graveyard)."
+    ],
+    "notExpect": [
+      "Not understood",
+      "@graveyards"
+    ],
+    "cite": []
+  },
+  {
+    "id": "solemnity-stops-ballista-counters",
+    "text": "I have Solemnity. Can I put counters on my Walking Ballista?",
+    "expect": [
+      "No +1/+1 counters are put on Walking Ballista (Solemnity)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "vial-in-a-thalia-at-one",
+    "text": "I have Aether Vial at 1. Can I vial in a Thalia?",
+    "expect": [
+      "Thalia, Guardian of Thraben stays in hand (mana value 2 ≠ 1 counters)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "goyf-size-claim-under-rest-in-peace",
+    "text": "I have Rest in Peace. My opponent's Tarmogoyf is a 0/1. Is that right?",
+    "expect": [
+      "Tarmogoyf is 0/1 (0/1 base, base set by its own ability (layer 7a: 0 card types in graveyards))."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "brainstorm-with-notion-thief-on-their-side",
+    "text": "I cast Brainstorm with Notion Thief on their side. What happens?",
+    "expect": [
+      "You skip 3 draws (Notion Thief); opponent draws instead.",
+      "opponent draws 3 cards."
+    ],
+    "notExpect": [
+      "You draw 3 cards."
+    ],
+    "cite": []
+  },
+  {
+    "id": "one-blocker-cannot-block-both",
+    "text": "My opponent attacks with two 2/2s. I have a 4/4. Can I block both?",
+    "expect": [
+      "a 4/4 creature can't block a 2/2 creature as well (a creature blocks only one attacker, 509.1a).",
+      "You take 2 damage."
+    ],
+    "notExpect": [
+      "You take 2 damage. (×2)"
+    ],
+    "cite": [
+      "509.1a"
+    ]
+  },
+  {
+    "id": "cage-stops-snapcaster-flashback-spell",
+    "text": "My opponent has Grafdigger's Cage. Can I cast Snapcaster's flashback spell?",
+    "expect": [
+      "a flashback spell can't be cast from your graveyard (Grafdigger's Cage)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "emrakul-extra-turn-narrated",
+    "text": "I cast Emrakul, the Aeons Torn. Do I get an extra turn?",
+    "expect": [
+      "Emrakul, the Aeons Torn: Take an extra turn after this one (not tracked in detail)."
+    ],
+    "notExpect": [
+      "Part of the triggered ability is not modeled: take an extra turn"
+    ],
+    "cite": [
+      "500.7"
+    ]
   }
 ]

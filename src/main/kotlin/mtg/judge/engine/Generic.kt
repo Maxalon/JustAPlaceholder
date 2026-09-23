@@ -28,6 +28,7 @@ object Generic {
         val n = name.lowercase().removePrefix("a ").removePrefix("an ").trim()
         creature(n)?.let { return it }
         if (n in setOf("counterspell", "counter", "counter spell", "generic counterspell")) return OracleParser.parse("generic-counterspell", "a counterspell", "Instant", "{1}{U}", 2.0, "U", null, null, emptyList(), "Counter target spell.")
+        if (n in setOf("flashback spell", "spell with flashback", "flashback card")) return OracleParser.parse("generic-flashback", "a flashback spell", "Instant", "{1}{U}", 2.0, "U", null, null, listOf("Flashback"), "Draw a card.\nFlashback {2}{U}")
         if (n in setOf("removal spell", "kill spell", "removal")) return OracleParser.parse("generic-removal", "a removal spell", "Instant", "{1}{B}", 2.0, "B", null, null, emptyList(), "Destroy target creature.")
         if (n in setOf("burn spell", "burn")) return OracleParser.parse("generic-burn", "a burn spell", "Instant", "{R}", 1.0, "R", null, null, emptyList(), "This spell deals 3 damage to any target.")
         // "my creature with an Aura on it dies": which Aura it is doesn't matter to the question — that it is an

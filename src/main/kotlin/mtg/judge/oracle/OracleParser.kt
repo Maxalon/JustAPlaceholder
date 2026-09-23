@@ -1053,6 +1053,8 @@ object OracleParser {
         Regex("""^return (?:~|target .+?|up to \w+ target .+?) from (?:your|a|their) graveyard to (?:your hand|its owner's hand|the battlefield|the top of your library).*$""", RegexOption.IGNORE_CASE) to listOf("400.7"),
         Regex("""^transform (?:~|it|target .+?)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.27a"),
         Regex("""^exile ~\.?$""", RegexOption.IGNORE_CASE) to listOf("701.13a"),
+        Regex("""^(?:you )?take an extra turn after this one\.?$""", RegexOption.IGNORE_CASE) to listOf("500.7"),
+        Regex("""^target player takes an extra turn after this one\.?$""", RegexOption.IGNORE_CASE) to listOf("500.7"),
         Regex("""^destroy ~\.?$""", RegexOption.IGNORE_CASE) to listOf("701.8a"),
         Regex("""^untap ~\.?$""", RegexOption.IGNORE_CASE) to listOf("701.26b"),
         Regex("""^tap ~\.?$""", RegexOption.IGNORE_CASE) to listOf("701.26a"),
