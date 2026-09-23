@@ -14432,5 +14432,149 @@
     "cite": [
       "903.9a"
     ]
+  },
+  {
+    "id": "jace-is-the-mind-sculptor",
+    "text": "they attack my planeswalker with a 5/5 and I don't block, does Jace die",
+    "expect": [
+      "Yes: Jace, the Mind Sculptor died (it's in the graveyard)."
+    ],
+    "notExpect": [
+      "You take 5 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "plus-two-jace-loyalty",
+    "text": "I +2 Jace the Mind Sculptor, what's his loyalty",
+    "expect": [
+      "Jace, the Mind Sculptor has 5 loyalty counters."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "liliana-minus-two-sacrifice",
+    "text": "I use Liliana of the Veil's -2 and they only have one creature",
+    "expect": [
+      "a creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "not tracked in detail"
+    ],
+    "cite": []
+  },
+  {
+    "id": "liliana-bare-plus-one",
+    "text": "they cast Liliana of the Veil and +1, I have 2 cards in hand",
+    "expect": [
+      "You discard 1 card (2 → 1 in hand).",
+      "opponent discards 1 card."
+    ],
+    "notExpect": [
+      "legend rule",
+      "keeps the newer"
+    ],
+    "cite": []
+  },
+  {
+    "id": "one-loyalty-ability-per-turn",
+    "text": "can I activate Jace twice in one turn",
+    "expect": [
+      "Jace, the Mind Sculptor's +2 can't be activated: a loyalty ability of it was already activated this turn (606.3)."
+    ],
+    "notExpect": [],
+    "cite": [
+      "606.3"
+    ]
+  },
+  {
+    "id": "doubling-season-gets-a-counter",
+    "text": "I have Doubling Season and my Bears gets a +1/+1 counter",
+    "expect": [
+      "Grizzly Bears has 2 +1/+1 counters."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "ballista-x-three-pings-three-times",
+    "text": "I cast Walking Ballista for X=3 and ping their 1/1 three times",
+    "expect": [
+      "a 1/1 creature: the battlefield → opponent's graveyard.",
+      "Walking Ballista enters with 3 +1/+1 counters."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "remove-two-counters-to-kill",
+    "text": "I remove two counters from Ballista to kill their 2/2",
+    "expect": [
+      "a 2/2 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "hangarback-with-counters-dies",
+    "text": "my Hangarback Walker with 3 counters dies",
+    "expect": [
+      "You get a Thopter token. (×3)"
+    ],
+    "notExpect": [
+      "not tracked in detail"
+    ],
+    "cite": []
+  },
+  {
+    "id": "hangarback-attacks-with-counters",
+    "text": "I attack with Hangarback with 2 counters and they block with a 5/5, what do I get",
+    "expect": [
+      "You get a Thopter token. (×2)"
+    ],
+    "notExpect": [
+      "can't attack"
+    ],
+    "cite": []
+  },
+  {
+    "id": "wrath-vs-regenerate-question",
+    "text": "does Wrath of God kill a creature with regenerate",
+    "expect": [
+      "a creature's regeneration shield doesn't help: the effect says it can't be regenerated (701.19c).",
+      "a creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [],
+    "cite": [
+      "701.19c"
+    ]
+  },
+  {
+    "id": "swords-in-response-to-wrath-no-fizzle",
+    "text": "I cast Swords on my Mulldrifter in response to Wrath, do I draw",
+    "expect": [
+      "Mulldrifter: the battlefield → exile."
+    ],
+    "notExpect": [
+      "all targets illegal",
+      "needs 0 targets"
+    ],
+    "cite": []
+  },
+  {
+    "id": "put-a-counter-default-kind",
+    "text": "I have Winding Constrictor and put a counter on my creature",
+    "expect": [
+      "Winding Constrictor has 2 +1/+1 counters."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

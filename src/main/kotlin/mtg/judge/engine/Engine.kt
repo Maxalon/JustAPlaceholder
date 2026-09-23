@@ -180,7 +180,10 @@ class Engine(val state: GameState) {
         // with the spell is that choice, not a target the spell doesn't have.
         else if (needed.size != targets.size && !unmodeledTarget && !isModal(effect) && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && effect != null && targetsAPlayer(effect))
                  && !(needed.isEmpty() && targets.size == 1 && card.oracleText.contains("source of your choice", true))) {
-            if (!asked) state.clarifications += Clarification("${card.name}'s target${if (needed.size == 1) "" else "s"}",
+            // "I Swords my Mulldrifter in response to Wrath": Wrath has no targets, so a permanent named with it is
+            // what it is about, not a target — read as one, Wrath "fizzled" once that permanent was gone.
+            if (needed.isEmpty() && effect != null && !effect.hasUnparsed()) { trace.step("${card.name} doesn't target anything; ${targets.joinToString(" and ") { state.nameOf(it) }} named with it ${if (targets.size == 1) "is" else "are"} not a target, so the spell affects whatever its text says.", "115.1"); targets = emptyList() }
+            else if (!asked) state.clarifications += Clarification("${card.name}'s target${if (needed.size == 1) "" else "s"}",
                 "${card.name} needs ${needed.size} target${if (needed.size == 1) "" else "s"} (${needed.joinToString("; ") { it.raw }}) but ${targets.size} ${if (targets.size == 1) "was" else "were"} given (601.2c).")
             if (needed.size > targets.size && (card.isInstantOrSorcery || obj.zone == Zone.HAND)) { targetsUnknown = true; trace.step("${card.name} needs a target that wasn't stated; it's put on the stack anyway so responses to it can be shown, but what it does to its target can't be.", "601.2c") }
             else if (needed.size > targets.size) return null
@@ -544,6 +547,12 @@ class Engine(val state: GameState) {
             p.life = p.life?.minus(n); trace.step("${p.subject} ${p.v("pays", "pay")} $n life${p.life?.let { " ($it)" } ?: ""} as part of the cost.", "119.4", "602.2b"); state.outcomes += "${p.subject} ${p.v("pays", "pay")} $n life."
         }
         ability.loyaltyCost?.let { lc ->
+            if (obj.id in state.loyaltyUsedThisTurn) {
+                trace.step("One of ${obj.name}'s loyalty abilities has already been activated this turn, and a planeswalker's loyalty abilities can be activated only once per turn in total. ${ability.cost} can't be activated now.", "606.3")
+                state.outcomes += "${obj.name}'s ${ability.cost} can't be activated: a loyalty ability of it was already activated this turn (606.3)."
+                return null
+            }
+            state.loyaltyUsedThisTurn += obj.id
             val have = obj.counters["loyalty"] ?: 0
             if (lc < 0 && have < -lc) { trace.step("${obj.name} has $have loyalty and can't pay the ${lc} loyalty cost.", "606.6"); state.outcomes += "${obj.name}'s $lc ability can't be activated (not enough loyalty)."; return null }
             obj.counters["loyalty"] = have + lc
@@ -866,7 +875,7 @@ class Engine(val state: GameState) {
             }
             held.forEach { it.summoningSick = false; it.attacking = null; it.blocking = null }
             // A new turn, so the land plays and the extra ones an effect gave start over (305.2).
-            state.landsPlayed.clear(); state.extraLandsThisTurn.clear()
+            state.landsPlayed.clear(); state.extraLandsThisTurn.clear(); state.loyaltyUsedThisTurn.clear()
             trace.step("${p.possessive.replaceFirstChar { it.uppercase() }} turn begins: ${p.subject.lowercase()} ${p.v("untaps", "untap")} all ${p.possessive} permanents, and everything ${p.subject.lowercase()} ${p.v("has", "have")} controlled since the turn began can attack and use {T} abilities.", "502.3", "302.6")
             return
         }
@@ -889,7 +898,7 @@ class Engine(val state: GameState) {
             state.cantLoseThisTurn.clear()
             state.cantCastThisTurn.clear()
             state.damageLifeFloor.clear()
-            state.landsPlayed.clear(); state.extraLandsThisTurn.clear()
+            state.landsPlayed.clear(); state.extraLandsThisTurn.clear(); state.loyaltyUsedThisTurn.clear()
             for (o in affected) { o.pumps.clear(); o.tempKeywords.clear(); o.basePt = null; o.animatedAs = null; o.saddled = false; o.saddledThisTurn = 0; o.damage = 0; trace.step("${o.name} is back to ${if (o.def.isCreature) state.describePt(o) else "normal"} with no damage.", "514.2"); state.outcomes += "${o.name}'s until-end-of-turn effects and damage are gone (cleanup)." }
             state.shields.clear(); state.objects.values.forEach { it.exileOnDeath = null }
             return
@@ -1761,6 +1770,7 @@ class Engine(val state: GameState) {
                     is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller, o) }
                     is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size
                     is CountExpr.YourLifeTotal -> state.player(item.controller).life
+                    is CountExpr.CountersOn -> item.source.counters[c.kind] ?: 0
                     is CountExpr.Unknown -> null
                 }
                 if (x == null) { state.unsupported += Unsupported(item.describe, "Couldn't count what the bonus is for each of."); return }
@@ -2093,7 +2103,7 @@ class Engine(val state: GameState) {
                 resolvePlayers(effect.who, item).forEach { p -> p.life = p.life?.minus(n); trace.step("${p.subject} ${p.v("loses", "lose")} $n life (that much)${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} $n life." }
             }
             is Effect.PumpAllCount -> {
-                val x = when (val c = effect.count) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }; is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size; is CountExpr.YourLifeTotal -> state.player(item.controller).life; is CountExpr.Unknown -> null }
+                val x = when (val c = effect.count) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }; is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size; is CountExpr.YourLifeTotal -> state.player(item.controller).life; is CountExpr.CountersOn -> item.source.counters[c.kind] ?: 0; is CountExpr.Unknown -> null }
                 if (x == null) { state.unsupported += Unsupported(item.describe, "Couldn't count X."); return }
                 trace.step("X is $x (counted as the effect resolves).", "608.2h")
                 applyEffect(Effect.PumpAll(effect.filter, x, x, effect.keywords), item)
@@ -2103,7 +2113,7 @@ class Engine(val state: GameState) {
                 val who = resolveWho(effect.who, item) ?: run { state.unsupported += Unsupported(item.describe, "Couldn't work out who creates the token."); return }
                 val def = Generic.token(effect.token) ?: run { state.unsupported += Unsupported(item.describe, "Couldn't read the token \"${effect.token}\"."); return }
                 if (effect.x) trace.step("X is ${item.x ?: 0}, so ${item.x ?: 0} token${if ((item.x ?: 0) == 1) "" else "s"} ${if ((item.x ?: 0) == 1) "is" else "are"} created.", "107.3a")
-                var n = (if (effect.x) (item.x ?: 0) else null) ?: effect.countBy?.let { c -> when (c) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }.also { trace.step("X is $it: the number of ${c.filter.raw}${if (c.filter.raw.endsWith("control", true)) "" else " ${who.subject.lowercase()} ${who.v("controls", "control")}"} as the ability resolves.", "608.2h") }; is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size; is CountExpr.YourLifeTotal -> (state.player(item.controller).life ?: 0); is CountExpr.Unknown -> { state.clarifications += Clarification("${item.describe}'s X", "X is \"${c.text}\", which isn't tracked; assuming 0."); 0 } } } ?: effect.count
+                var n = (if (effect.x) (item.x ?: 0) else null) ?: effect.countBy?.let { c -> when (c) { is CountExpr.CountersOn -> (item.source.counters[c.kind] ?: 0).also { trace.step("${item.source.name} had $it ${c.kind} counter${if (it == 1) "" else "s"} on it (last known information if it has left the battlefield), so that many tokens are created.", "608.2h") }; is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }.also { trace.step("X is $it: the number of ${c.filter.raw}${if (c.filter.raw.endsWith("control", true)) "" else " ${who.subject.lowercase()} ${who.v("controls", "control")}"} as the ability resolves.", "608.2h") }; is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size; is CountExpr.YourLifeTotal -> (state.player(item.controller).life ?: 0); is CountExpr.Unknown -> { state.clarifications += Clarification("${item.describe}'s X", "X is \"${c.text}\", which isn't tracked; assuming 0."); 0 } } } ?: effect.count
                 state.objects.values.filter { it.isOnBattlefield() }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.TokenMultiplier }.filter { it.anyPlayer || o.controller == who.id }.map { o to it } }
                     .forEach { (o, m) -> trace.step("${o.name} replaces the token creation: ${n * m.factor} tokens instead of $n.", "614.1a", "614.6"); n *= m.factor }
                 repeat(n) {
@@ -2641,6 +2651,7 @@ class Engine(val state: GameState) {
                     is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, o.controller, o) }
                     is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size
                     is CountExpr.YourLifeTotal -> state.player(o.controller).life
+                    is CountExpr.CountersOn -> o.counters[c.kind] ?: 0
                     is CountExpr.Unknown -> null
                     null -> null
                 }
@@ -2682,7 +2693,7 @@ class Engine(val state: GameState) {
     private fun destroy(obj: GameObject, text: String, vararg rules: String, canRegenerate: Boolean = true): Boolean {
         if (obj.has("indestructible")) { trace.step("${obj.name} is indestructible and can't be destroyed.", "702.12b"); state.outcomes += "${obj.name} is indestructible and isn't destroyed."; return true }
         val shield = state.shields.firstOrNull { it.replacement == Replacement.Regenerate && it.objectId == obj.id && (it.remaining ?: 0) > 0 }
-        if (shield != null && !canRegenerate) trace.step("${obj.name} has a regeneration shield, but the effect says it can't be regenerated, so the shield can't replace this destruction.", "701.19c", "614.8")
+        if (shield != null && !canRegenerate) { trace.step("${obj.name} has a regeneration shield, but the effect says it can't be regenerated, so the shield can't replace this destruction.", "701.19c", "614.8"); state.outcomes += "${obj.name}'s regeneration shield doesn't help: the effect says it can't be regenerated (701.19c)." }
         if (shield != null && canRegenerate) {
             shield.remaining = 0
             obj.tapped = true; obj.damage = 0; obj.attacking = null; obj.blocking = null
@@ -3022,6 +3033,7 @@ class Engine(val state: GameState) {
             is CountExpr.Permanents -> state.objects.values.count { it.isOnBattlefield() && state.matches(per.filter, it, obj.controller) }
             is CountExpr.CardTypesInGraveyards -> state.cardTypesInGraveyards().size
             is CountExpr.YourLifeTotal -> state.player(obj.controller).life ?: 0
+            is CountExpr.CountersOn -> obj.counters[per.kind] ?: 0
             is CountExpr.Unknown -> return 0 to ""
         }
         val what = (per as? CountExpr.Permanents)?.filter?.raw ?: "of them"

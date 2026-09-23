@@ -43,8 +43,13 @@ class PlaneswalkerTest {
         assertNotNull(e.activate("me", "jace", 0, emptyList())); e.resolveAll()
         assertEquals(5, s.obj("jace").counters["loyalty"]); assertTrue("606.4" in s.cited())
         assertEquals(1, s.player("me").drew); assertEquals(1, s.player("opp").drew)
+        // A second loyalty ability in the same turn is refused (606.3), whatever its cost.
+        assertNull(e.activate("me", "jace", 1, listOf(Ref.Player("opp"))), "second loyalty ability in one turn")
+        assertTrue("606.3" in s.cited()); assertEquals(5, s.obj("jace").counters["loyalty"])
+        s.loyaltyUsedThisTurn.clear()   // a new turn
         assertNull(e.activate("me", "jace", 2, listOf(Ref.Player("opp"))), "−10 with 5 loyalty")
         assertTrue("606.6" in s.cited()); assertEquals(5, s.obj("jace").counters["loyalty"])
+        s.loyaltyUsedThisTurn.clear()
         assertNotNull(e.activate("me", "jace", 1, listOf(Ref.Player("opp")))); e.resolveAll()
         assertEquals(4, s.obj("jace").counters["loyalty"]); assertEquals(2, s.player("opp").drew)
     }

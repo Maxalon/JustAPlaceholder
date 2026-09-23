@@ -181,6 +181,8 @@ class GameState(
     val coinFlips: MutableList<String> = mutableListOf(),
     /** Lands each player has played this turn (305.2 allows one, plus whatever an effect adds). */
     val landsPlayed: MutableMap<String, Int> = mutableMapOf(),
+    /** Planeswalkers whose loyalty ability has been activated this turn (606.3: one per turn). */
+    val loyaltyUsedThisTurn: MutableSet<String> = mutableSetOf(),
     /** Extra land plays a one-shot effect gave a player this turn ("you may play an additional land this turn"). */
     val extraLandsThisTurn: MutableMap<String, Int> = mutableMapOf(),
     var phase: String? = null,
@@ -324,6 +326,7 @@ class GameState(
         is CountExpr.Permanents -> objects.values.count { matches(expr.filter, it, obj.controller, obj) }
         is CountExpr.CardTypesInGraveyards -> cardTypesInGraveyards().size
         is CountExpr.YourLifeTotal -> players.firstOrNull { it.id == obj.controller }?.life
+        is CountExpr.CountersOn -> obj.counters[expr.kind] ?: 0
         is CountExpr.Unknown -> null
     }
     /** The card types among cards in every graveyard (Tarmogoyf); tokens are not cards, and a Kindred card counts its type. */

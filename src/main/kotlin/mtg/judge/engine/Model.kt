@@ -361,6 +361,8 @@ sealed interface Condition {
 /** How a characteristic-defining ability computes a number (604.3, 613.4a). */
 sealed interface CountExpr {
     data class Permanents(val filter: ObjFilter) : CountExpr
+    /** "for each +1/+1 counter on ~": the counters the source had (last known, if it has left the battlefield). */
+    data class CountersOn(val kind: String) : CountExpr
     /** Tarmogoyf: "the number of card types among cards in all graveyards". */
     data object CardTypesInGraveyards : CountExpr
     /** Death's Shadow: "your life total". */

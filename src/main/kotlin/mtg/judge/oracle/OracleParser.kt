@@ -1140,6 +1140,15 @@ object OracleParser {
             val raw = "${m.groupValues[1].lowercase()} in your graveyard"
             return Effect.GainKeywords(TargetSpec(ObjFilter(setOf(Kind.CARD), raw = raw, inGraveyard = true), raw), setOf(m.groupValues[2].lowercase()))
         }
+        // Liliana of the Veil: "Target player sacrifices a creature."
+        Regex("""^target (player|opponent) sacrifices an? ([a-z ]+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            val f = parseFilter(m.groupValues[2], Kind.CREATURE)
+            if (f.verifiable) return Effect.SacrificeEach(Who.TARGET_PLAYER, f)
+        }
+        // Hangarback Walker: "create a 1/1 colorless Thopter artifact creature token with flying for each +1/+1 counter on ~."
+        Regex("""^create an? (.+? token(?: with [a-z ]+)?) for each ([+-]\d+/[+-]\d+|[a-z]+) counter on ~\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            if (Generic.token(m.groupValues[1]) != null) return Effect.CreateToken(Who.YOU, 0, m.groupValues[1], CountExpr.CountersOn(m.groupValues[2].lowercase()))
+        }
         preventNextRe.matchEntire(s)?.let { m ->
             val n = m.groupValues[1].toInt(); val to = m.groupValues[2].ifEmpty { m.groupValues[3] }.lowercase()
             if (to == "you") return Effect.CreateShield(Replacement.PreventDamage(n, null, Who.YOU, false, null), null)
