@@ -864,6 +864,16 @@ class SituationParser(private val names: NameIndex) {
             // "Does Damping Sphere make my second spell cost more?": the board and two casts, then the cost.
             .let { t0 -> Regex("""^does (c\d+) make my (second|next|2nd) spell cost more\??$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 if (m.cards[r.groupValues[1]]?.isSpellOnly == false) "i control ${r.groupValues[1]}, i cast a spell, i cast a second spell, how much does it cost" else r.value } }
+            // "It gets bounced by Cyclonic Rift" / "my Bears is destroyed by Doom Blade": the other player cast that spell at it.
+            .let { t0 -> Regex("""^((?:my |the )?c\d+|it|that|(?:my |the )?\d+/\d+|my creature) (?:gets|get|is|was|got) (?:bounced|destroyed|killed|exiled|countered|pathed|bolted|targeted|hit|removed|blown up|shot|swordsed|murdered) by ((?:their |an? |the |my opponent's )?c\d+)\??$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                if (m.cards[Regex("""c\d+""").find(r.groupValues[2])!!.value]?.isSpellOnly == true) "my opponent casts ${r.groupValues[2].replace(Regex("""^(?:their |my opponent's )"""), "")} on ${r.groupValues[1]}" else r.value } }
+            // "My opponent enchants my Bears with Pacifism" / "I equip my Bears with Bonesplitter": the Aura is cast at it.
+            .let { t0 -> Regex("""\b(i|we|they|he|she|my opponent|the opponent|opponent) enchants? ((?:my |their |the )?c\d+|it|that|(?:my |their |the )?\d+/\d+) with ((?:an? |the )?c\d+)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                if (m.cards[Regex("""c\d+""").find(r.groupValues[3])!!.value]?.typeLine?.contains("Aura") == true) "${r.groupValues[1]} cast ${r.groupValues[3]} on ${r.groupValues[2]}" else r.value } }
+            // "is on a creature that gets blocked": the creature attacks and is blocked.
+            .replace(Regex("""\b(creature|\d+/\d+) that (?:gets|is|was|got) blocked\b""", RegexOption.IGNORE_CASE), "$1, it attacks, it is blocked")
+            // "I sacrifice my Elder while it's blocking" with no attacker named: a creature stands in as the attacker.
+            .replace(Regex("""\b(i|we) (sacrifices?|sacs?) ((?:my |the )?c\d+) (?:while|when|as) (?:it's|it is) blocking(?=[,.?]|$)""", RegexOption.IGNORE_CASE), "they attack with a 3/3, $1 block it with $3, $1 $2 $3")
             // "I Thoughtseize myself": a card used as a verb, aimed at the speaker.
             .let { t0 -> Regex("""^(i|we) (c\d+) (myself|ourselves)\??$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 if (m.cards[r.groupValues[2]]?.isSpellOnly == true) "${r.groupValues[1]} cast ${r.groupValues[2]} targeting myself" else r.value } }
@@ -872,7 +882,7 @@ class SituationParser(private val names: NameIndex) {
             // "I animate Mutavault": a manland's animation is its activated ability.
             .replace(Regex("""\b(i|we|they|he|she|my opponent|the opponent|opponent) animates? (my |their |the )?(c\d+)\b""", RegexOption.IGNORE_CASE), "$1 activate $2$3")
             // "equip it with Batterskull": the Equipment goes onto the creature.
-            .let { t0 -> Regex("""\bequip (it|that|(?:my |the )?c\d+|(?:my |the )?\d+/\d+) with (?:my |the )?(c\d+)\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+            .let { t0 -> Regex("""\bequip (it|that|(?:my |the )?c\d+|(?:my |the )?\d+/\d+) with (?:my |the |an? )?(c\d+)\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 if (m.cards[r.groupValues[2]]?.typeLine?.contains("Equipment") == true) "equip ${r.groupValues[2]} to ${r.groupValues[1]}" else r.value } }
             // "casts Lightning Bolt with exactly 1 red mana": how much mana the caster has.
             .replace(Regex("""\b(casts?|plays?) ((?:an? |the |their |my )?c\d+)((?: (?:at|on|targeting) [^,.]+?)?) with (?:exactly |only |just )?(\d+|one|two|three|four|five|six) (?:(?:red|blue|green|white|black|colorless|untapped|open) )?(?:mana|lands?)(?: (?:available|open|up|untapped|left))?(?=[,.?]|$)""", RegexOption.IGNORE_CASE), "has $4 mana and $1 $2$3")
@@ -5953,7 +5963,7 @@ class SituationParser(private val names: NameIndex) {
         }
         // "what are my Bears now?" / "what is it now?": the creature's size once everything is done.
         Regex("""^what (?:are|is|'s) (?:my |their |the |@\w+'s )?(c\d+|it|they)(?: now| then| after that| after this| at that point)?$""").find(clause0)?.let { q ->
-            val id = if (q.groupValues[1] == "it" || q.groupValues[1] == "they") ctx.lastMentioned?.takeIf { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) } ?: return@let else m.cards[q.groupValues[1]]?.takeIf { it.typeLine.contains("Creature") }?.let { objectIdForOrCast(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
+            val id = if (q.groupValues[1] == "it" || q.groupValues[1] == "they") ctx.lastMentioned?.takeIf { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) } ?: return@let else m.cards[q.groupValues[1]]?.takeIf { it.typeLine.contains("Creature") || (!it.isSpellOnly && objectIdFor(it, ctx) != null) }?.let { objectIdForOrCast(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, to = "pt"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "do I get it back?" / "does it come back to me at end of turn?" / "do I regain control?": the turn is played out to cleanup and control checked.
@@ -6011,6 +6021,19 @@ class SituationParser(private val names: NameIndex) {
             ctx.asks += EventSpec("ask", obj = id.id, to = if (q.groupValues[2].startsWith("trigger") || q.groupValues[2] == "go off") "trigger" else if (q.groupValues[2] in setOf("die", "dies", "dead")) "die" else "survive")
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below (read as ${id.card.name ?: id.id})."; return true
         }
+        // "does the attacker deal damage to me?": the creature that attacked, whoever's it is.
+        Regex("""^(?:does|do|did|will|would) the (?:attacker|attacking creature|attackers) (?:still |even )?(?:deals?|do|hits?|connects?)(?: (?:any |its |combat )?damage)?(?: to)? (me|us|them|my opponent|the opponent|him|her)$""").find(clause0)?.let { r ->
+            val att = ctx.events.lastOrNull { it.verb == "attack" && it.obj != null }?.obj ?: return@let
+            val victim = if (r.groupValues[1] in setOf("me", "us")) "me" else pronounPlayer(ctx, "their")
+            ctx.asks += EventSpec("ask", obj = att, to = "damage", targets = listOf(victim)); ctx.note(victim)
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
+        // "do I still untap my lands?" (Sword of Feast and Famine): whether anything untapped them.
+        Regex("""^(?:do|does|will|would) (i|we|they) (?:still |even |get to )?untap (?:my|our|their|all my|all of my) lands$""").find(clause0)?.let { r ->
+            val who = if (r.groupValues[1] in setOf("i", "we")) "me" else pronounPlayer(ctx, "their")
+            ctx.asks += EventSpec("ask", player = who, to = "untapLands"); ctx.note(who)
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
         // "can I cast Force of Will for free with no other blue card in hand?" (rewritten above).
         if (clause0 == "fow-noblue-question") {
             ctx.asks += EventSpec("ask", to = "text:No. Force of Will's alternative cost is to pay 1 life and exile a blue card from your hand (118.9). Costs are paid as the last step of casting, when Force of Will is already on the stack (601.2a, 601.2h), so it isn't in your hand to exile and can't pay for itself. With no other blue card you have to pay {3}{U}{U}.")
@@ -6058,7 +6081,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "does it survive?" / "will it die?": the last-mentioned permanent.
-        Regex("""^(?:does|do|did|will|would|is|are) (?:(?:its|the|his|her|their) (?:ability|abilities|trigger|triggered ability) )?(it|that|this|he|she|they|theirs|mine|yours|the other one|the other)?(?: (?:still |going to |gonna ))? ?(trigger|triggers|go off|survive|survives|die|dies|dead|still alive|live|lives|make it)\b""").find(clause0)?.let { q0 ->
+        Regex("""^(?:does|do|did|will|would|is|are) (?:(?:its|the|his|her|their) (?:ability|abilities|trigger|triggered ability) )?(it|that|this|he|she|they|theirs|mine|yours|the other one|the other)?(?:\s*(?:still|even|going to|gonna)\s+)?\s*(trigger|triggers|go off|survive|survives|die|dies|dead|still alive|live|lives|make it)\b""").find(clause0)?.let { q0 ->
             val q = object { val groupValues = listOf(q0.groupValues[0], q0.groupValues[2]) }
             val aboutTrigger = q0.groupValues[2].startsWith("trigger") || q0.groupValues[2] == "go off"
             // "I Giant Growth after damage. Does it survive?": a pump the asker just cast with no target named was aimed at their attacker.
@@ -6067,7 +6090,7 @@ class SituationParser(private val names: NameIndex) {
                 ?: ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).card.name?.let { n -> names.lookup(Names.normalize(n))?.isSpellOnly } != true } ?: ctx.events.asReversed().firstNotNullOfOrNull { e -> if (e.verb == "cast" || e.verb == "activate") e.targets.firstOrNull { it in ctx.objects } else null }
                 // "Does its ability trigger?" right after casting a creature: the creature that was cast. But
                 // "does it survive?" after casting Infest is about a creature, not about the sweeper.
-                ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.card?.name
+                ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null && !it.card.name.startsWith("a ") }?.card?.name
                     ?.takeIf { n -> aboutTrigger || names.lookup(Names.normalize(n))?.isSpellOnly != true }?.let { slug(it) }
                 // Only for a plain "it": "theirs" and "mine" are resolved against the other side below, and need
                 // the referent left alone.

@@ -15341,7 +15341,7 @@
     "text": "Does Solitude's evoke trigger if it's countered?",
     "expect": [
       "Solitude is countered.",
-      "No: Solitude's ability didn't trigger"
+      "No: Solitude was countered, so it never entered the battlefield. Its enters-the-battlefield ability triggers only on entering, and a countered spell goes to the graveyard instead (701.5a, 603.6a)."
     ],
     "notExpect": [
       "Solitude enters the battlefield"
@@ -18069,5 +18069,101 @@
     "cite": [
       "704.5j"
     ]
+  },
+  {
+    "id": "bears-bounced-by-rift-where-does-rancor-go",
+    "text": "I have Grizzly Bears with Rancor. It gets bounced by Cyclonic Rift. Where does Rancor go?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your hand.",
+      "Rancor: the battlefield → your graveyard.",
+      "Rancor: your graveyard → your hand."
+    ],
+    "notExpect": [
+      "Not understood",
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "opponent-enchants-my-bears-with-pacifism",
+    "text": "My opponent enchants my Bears with Pacifism. Can my Bears attack?",
+    "expect": [
+      "Grizzly Bears can't attack."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sword-on-a-blocked-creature-no-untap",
+    "text": "My Sword of Feast and Famine is on a creature that gets blocked. Do I still untap my lands?",
+    "expect": [
+      "No: nothing untapped your lands. Sword of Feast and Famine untaps them only when the equipped creature deals combat damage to a player; a blocked creature deals its damage to the blocker, not the player, so the trigger never happens (510.1c)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sacrifice-elder-while-blocking-no-attacker-named",
+    "text": "I sacrifice my Sakura-Tribe Elder while it's blocking. Does the attacker deal damage to me?",
+    "expect": [
+      "a 3/3 creature deals no combat damage: its blocker left combat and it stays blocked.",
+      "No: a 3/3 creature dealt no damage to you."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "equip-embercleave-onto-pro-red",
+    "text": "My creature has protection from red. Can I equip it with an Embercleave?",
+    "expect": [
+      "Embercleave's ability can't target a creature with protection from red."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "snapcaster-countered-no-etb",
+    "text": "My Snapcaster Mage is countered. Does its ability still trigger?",
+    "expect": [
+      "Snapcaster Mage is countered.",
+      "No: Snapcaster Mage was countered, so it never entered the battlefield. Its enters-the-battlefield ability triggers only on entering, and a countered spell goes to the graveyard instead (701.5a, 603.6a)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "ephemerate-mulldrifter-draws",
+    "text": "I cast Ephemerate on my Mulldrifter. How many cards do I draw?",
+    "expect": [
+      "You draw 2 cards.",
+      "Yes: You draw 2 cards in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "torpor-orb-stoneforge",
+    "text": "I have Torpor Orb. I cast Stoneforge Mystic. Do I get to search?",
+    "expect": [
+      "Stoneforge Mystic entering the battlefield doesn't trigger any abilities (Torpor Orb)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
