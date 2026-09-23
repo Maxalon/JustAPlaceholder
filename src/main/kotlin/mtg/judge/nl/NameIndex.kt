@@ -62,6 +62,8 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
     /** "stifles" -> "stifle", "counterspells" -> "counterspell": verbified or plural card names. */
     private fun singularize(span: List<String>): String? {
         val last = span.last()
+        // "fatal pushes": -es on the last word of a two-word name. Single words stay out ("times" is not Tim, "flashes" is a verb).
+        if (span.size >= 2 && last.length > 4 && last.endsWith("es")) { val k = (span.dropLast(1) + last.dropLast(2)).joinToString(" "); if (byNorm.containsKey(k)) return k }
         if (last.length > 3 && last.endsWith("s") && !last.endsWith("ss")) return (span.dropLast(1) + last.dropLast(1)).joinToString(" ")
         // "bolted", "pathed", "wrathed": a card name used as a past-tense verb.
         if (last.length > 4 && last.endsWith("ed")) { val stem = last.dropLast(2); val stemD = last.dropLast(1); return listOf(stem, stemD).firstOrNull { st -> val k = (span.dropLast(1) + st).joinToString(" "); byNorm.containsKey(k) || aliases.containsKey(k) }?.let { st -> (span.dropLast(1) + st).joinToString(" ") } }

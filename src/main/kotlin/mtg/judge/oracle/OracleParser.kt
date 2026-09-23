@@ -789,6 +789,10 @@ object OracleParser {
         }
         if (Regex("""^During your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsLockedOnYourTurn)
         Regex("""^You can't cast ~ during your first(?:, second)?(?:, or third| or second)? turns? of the game\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.CantCastBeforeTurn(if (line.contains("third")) 4 else if (line.contains("second")) 3 else 2)) }
+        // Damping Sphere: "Each spell a player casts costs {1} more to cast for each other spell that player has cast this turn."
+        Regex("""^Each spell a player casts costs \{(\d+)\} more to cast for each other spell that player has cast this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            return listOf(StaticEffect.CostTax(ObjFilter(setOf(Kind.SPELL), raw = "spell"), m.groupValues[1].toInt(), null, perOtherSpellThisTurn = true))
+        }
         Regex("""^(White|Blue|Black|Red|Green|Colorless|Multicolored) spells(?: your opponents cast| you cast)? cost \{(\d+)\} (more|less) to cast\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val c = mapOf("white" to 'W', "blue" to 'U', "black" to 'B', "red" to 'R', "green" to 'G')[m.groupValues[1].lowercase()] ?: return@let
             val f = ObjFilter(setOf(Kind.SPELL), colors = setOf(c), raw = "${m.groupValues[1].lowercase()} spell")
@@ -1162,6 +1166,9 @@ object OracleParser {
         // "If you control a commander as you cast this spell, you may choose both instead." / "Each mode must
         // target a different player.": riders on a modal spell's mode count, said rather than played out.
         Regex("""^if .+?, (?:you may )?choose (?:$modeCount|both) instead[.\u2014-]?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated(s.trim().trimEnd('.'), listOf("700.2d")) }
+        // Sylvan Library: the two extra cards are kept for 4 life each or put back.
+        Regex("""^choose two cards in your hand drawn this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated("you choose two cards in your hand drawn this turn", listOf("608.2c")) }
+        Regex("""^for each of those cards, pay 4 life or put the card on top of your library\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated("for each of those two cards, you pay 4 life to keep it or put it back on top of your library; a card you keep costs 4 life, so keeping both costs 8", listOf("608.2c", "119.4")) }
         Regex("""^each mode must target a different (player|opponent|creature|permanent)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated(s.trim().trimEnd('.'), listOf("700.2c")) }
         // "You can't lose the game this turn and your opponents can't win the game this turn." (Angel's Grace)
         Regex("""^you can't lose the game(?: this turn)?(?: and your opponents can't win the game(?: this turn)?)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.CantLoseThisTurn }

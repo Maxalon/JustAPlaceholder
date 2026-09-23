@@ -502,7 +502,9 @@ sealed interface StaticEffect {
     /** The Theros gods: "As long as your devotion to white is less than five, ~ isn't a creature." (It stays an enchantment and keeps its other abilities.) */
     data class NotACreatureUnlessDevotion(val colour: Char, val threshold: Int) : StaticEffect
     /** Thalia: "Noncreature spells cost {1} more to cast." (a tax on spells matching the filter; `yours` limits it to the controller's / opponents' spells) */
-    data class CostTax(val filter: ObjFilter, val amount: Int, val whose: Who? = null) : StaticEffect
+    data class CostTax(val filter: ObjFilter, val amount: Int, val whose: Who? = null,
+                       /** Damping Sphere: the amount applies once for each other spell its caster has cast this turn. */
+                       val perOtherSpellThisTurn: Boolean = false) : StaticEffect
     /** Trinisphere: a spell that would cost less than [amount] costs [amount] instead, while the source is untapped if [whileUntapped]. */
     data class CostFloor(val amount: Int, val whileUntapped: Boolean) : StaticEffect
     /** Cost modifiers and additional costs: narrated when the spell is cast (601.2b, 601.2f). */

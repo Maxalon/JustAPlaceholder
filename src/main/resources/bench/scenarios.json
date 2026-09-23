@@ -17968,5 +17968,106 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "chalice-on-one-vs-gitaxian-probe",
+    "text": "Opponent has Chalice on 1. I cast Gitaxian Probe paying 2 life. Does Chalice counter it?",
+    "expect": [
+      "Gitaxian Probe is countered."
+    ],
+    "notExpect": [
+      "Not understood",
+      "names the number",
+      "You draw 1 card.",
+      "kotlin.Unit"
+    ],
+    "cite": []
+  },
+  {
+    "id": "fatal-pushes-as-a-verb",
+    "text": "My opponent Fatal Pushes my Tarmogoyf. Does it work?",
+    "expect": [
+      "Tarmogoyf: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "Not understood",
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "ensnaring-bridge-asks-for-its-controllers-hand",
+    "text": "My opponent casts Ensnaring Bridge. I have 2 cards in hand and a 3/3. Can I attack?",
+    "expect": [
+      "Ensnaring Bridge enters the battlefield."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sylvan-library-draw-step",
+    "text": "I control Sylvan Library and it's my draw step. What happens?",
+    "expect": [
+      "You draw 1 card.",
+      "You draw 2 cards.",
+      "Sylvan Library: For each of those two cards, you pay 4 life to keep it or put it back on top of your library; a card you keep costs 4 life, so keeping both costs 8 (not tracked in detail)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "force-of-will-cant-pitch-itself",
+    "text": "Can I cast Force of Will for free if I have no other blue cards in hand?",
+    "expect": [
+      "No. Force of Will's alternative cost is to pay 1 life and exile a blue card from your hand (118.9). Costs are paid as the last step of casting, when Force of Will is already on the stack (601.2a, 601.2h), so it isn't in your hand to exile and can't pay for itself. With no other blue card you have to pay {3}{U}{U}."
+    ],
+    "notExpect": [
+      "Not understood",
+      "Force of Will is cast without paying its mana cost"
+    ],
+    "cite": []
+  },
+  {
+    "id": "damping-sphere-second-spell",
+    "text": "Does Damping Sphere make my second spell cost more?",
+    "expect": [
+      "a spell costs {1} plus {1} (Damping Sphere makes it cost {1} more) — 2 mana in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "601.2f"
+    ]
+  },
+  {
+    "id": "trinisphere-vs-dark-ritual",
+    "text": "I have Trinisphere out. My opponent casts Dark Ritual. What happens?",
+    "expect": [
+      "Dark Ritual costs 3 mana in all (Trinisphere: a spell that would cost less than 3 costs 3).",
+      "opponent has {B}{B}{B} in opponent's mana pool."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "two-thalias-brainstorm-tax",
+    "text": "I have two Thalias. How much more does my opponent's Brainstorm cost?",
+    "expect": [
+      "Thalia, Guardian of Thraben: the battlefield → your graveyard.",
+      "Brainstorm costs {U} plus {1} (Thalia, Guardian of Thraben makes it cost {1} more) — 2 mana in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5j"
+    ]
   }
 ]

@@ -93,7 +93,10 @@ class Engine(val state: GameState) {
                 .forEach { s -> trace.step("${s.name} is still on the stack, not on the battlefield, so its cost-raising ability isn't applying yet: ${card.name} costs its printed cost. (Once ${s.name} resolves, it would cost more.)", "604.2") }
             val commanderTax = if (obj.commander && obj.commanderCasts > 0) 2 * obj.commanderCasts else 0
             if (commanderTax > 0) trace.step("${card.name} is ${player.possessive} commander and has been cast from the command zone ${obj.commanderCasts} time${if (obj.commanderCasts == 1) "" else "s"} before, so it costs an additional {${commanderTax}} this time (the \"commander tax\").", "903.8")
-            val tax = taxes.sumOf { it.second.amount } + commanderTax
+            // Damping Sphere: {1} for each other spell this player has cast this turn, so the first is untaxed.
+            val earlier = state.spellsThisTurn[playerId] ?: 0
+            taxes.filter { it.second.perOtherSpellThisTurn }.forEach { (o, t) -> trace.step("${o.name}: ${player.subject.lowercase()} ${player.v("has", "have")} cast $earlier other spell${if (earlier == 1) "" else "s"} this turn, so ${card.name} costs {${t.amount * earlier}} more.", "601.2f") }
+            val tax = taxes.sumOf { if (it.second.perOtherSpellThisTurn) it.second.amount * earlier else it.second.amount } + commanderTax
             var cost = card.manaValue.toInt() + (x ?: 0) * maxOf(0, Regex("""\{X\}""").findAll(card.manaCost ?: "").count() - 1) + tax
             // Trinisphere: a spell that would cost less than three costs three.
             costFloor(cost)?.let { (o, f) -> trace.step("${o.name} is untapped and says each spell that would cost less than ${f.amount} mana costs ${f.amount} mana, so ${card.name} costs {${f.amount}} in all (the extra is generic).", "601.2f", "118.7"); state.outcomes += "${card.name} costs ${f.amount} mana in all (${o.name}: a spell that would cost less than ${f.amount} costs ${f.amount})."; cost = f.amount }
@@ -1375,7 +1378,8 @@ class Engine(val state: GameState) {
             val hand = state.player(src.controller).handSize
             // Power 0 is never greater than a hand size, so the Bridge can't stop it whatever the hand holds.
             if ((a.power ?: 0) <= 0) trace.step("${src.name} doesn't stop ${a.name}: its power is ${a.power ?: 0}, which can't be greater than the number of cards in any hand, so it can attack even into an empty hand.", "508.1c")
-            else if (hand == null) state.assumptions += "${src.name}: ${a.name} can attack only if its power (${a.power}) isn't greater than the number of cards in ${state.player(src.controller).possessive} hand, which wasn't stated; assuming it may attack."
+            else if (hand == null) { state.assumptions += "${src.name}: ${a.name} can attack only if its power (${a.power}) isn't greater than the number of cards in ${state.player(src.controller).possessive} hand, which wasn't stated; assuming it may attack."
+                state.clarifications += Clarification("${state.player(src.controller).possessive} hand size", "${src.name} looks at the number of cards in ${state.player(src.controller).possessive} hand (its controller's), not the attacker's; how many cards ${state.player(src.controller).v("does", "do")} ${state.player(src.controller).subject.lowercase()} have? ${a.name} (power ${a.power}) can attack only if that is ${a.power} or more.") }
             else if ((a.power ?: 0) > hand) { trace.step("${src.name}: ${state.player(src.controller).subject} ${state.player(src.controller).v("has", "have")} $hand card${if (hand == 1) "" else "s"} in hand and ${a.name} has power ${a.power}, so it can't attack.", "508.1c"); state.outcomes += "${a.name} can't attack (${src.name})."; return }
             else trace.step("${src.name} allows ${a.name} to attack: its power (${a.power}) isn't greater than the $hand card${if (hand == 1) "" else "s"} in ${state.player(src.controller).possessive} hand.", "508.1c")
         }

@@ -858,6 +858,12 @@ class SituationParser(private val names: NameIndex) {
                 val w = r.groupValues[1].lowercase()
                 val subj = when (w) { "me", "us" -> "i have"; "them", "my opponent", "the opponent" -> "my opponent has"; else -> "${r.groupValues[1]} has" }
                 ", $subj ${r.groupValues[2]}" } }
+            // "Can I cast Force of Will for free if I have no other blue cards in hand?": the card can't pay for itself.
+            .let { t0 -> Regex("""^can (?:i|we) (?:cast|play) (c\d+) for free (?:if|when|while) (?:i|we) (?:have|hold) no other blue cards? in (?:my |our )?hand\??$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                if (m.cards[r.groupValues[1]]?.display == "Force of Will") "fow-noblue-question" else r.value } }
+            // "Does Damping Sphere make my second spell cost more?": the board and two casts, then the cost.
+            .let { t0 -> Regex("""^does (c\d+) make my (second|next|2nd) spell cost more\??$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                if (m.cards[r.groupValues[1]]?.isSpellOnly == false) "i control ${r.groupValues[1]}, i cast a spell, i cast a second spell, how much does it cost" else r.value } }
             // "I Thoughtseize myself": a card used as a verb, aimed at the speaker.
             .let { t0 -> Regex("""^(i|we) (c\d+) (myself|ourselves)\??$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 if (m.cards[r.groupValues[2]]?.isSpellOnly == true) "${r.groupValues[1]} cast ${r.groupValues[2]} targeting myself" else r.value } }
@@ -4703,6 +4709,8 @@ class SituationParser(private val names: NameIndex) {
                 ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(summoningSick = true)
             // "Meddling Mage naming Lightning Bolt" / "Pithing Needle on Sensei's Divining Top" (named): the chosen card name.
             Regex("""\b(?:naming|that names|which names|named on|set to|choosing|on) (?:the number )?(\d+)\b""").find(rest)?.let { n ->
+                // "Chalice on 1": the number is its charge counters, not a name it chose.
+                if (m.cards.getValue(r.groupValues[2]).display == "Chalice of the Void") { ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(counters = ctx.objects.getValue(hostId).counters + ("charge" to n.groupValues[1].toInt())); return@let }
                 ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(named = n.groupValues[1])
                 ctx.notes += "${m.cards.getValue(r.groupValues[2]).display} names the number ${n.groupValues[1]}."
                 ctx.lastVerb = "have"; ctx.lastOwner = owner; ctx.lastActor = owner; return true
@@ -6002,6 +6010,22 @@ class SituationParser(private val names: NameIndex) {
                 ?: ctx.objects.values.lastOrNull { (who == null || it.controller == who) && (it.card.name ?: "").startsWith("a ") } ?: ctx.objects.values.lastOrNull { who == null || it.controller == who } ?: return@let
             ctx.asks += EventSpec("ask", obj = id.id, to = if (q.groupValues[2].startsWith("trigger") || q.groupValues[2] == "go off") "trigger" else if (q.groupValues[2] in setOf("die", "dies", "dead")) "die" else "survive")
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below (read as ${id.card.name ?: id.id})."; return true
+        }
+        // "can I cast Force of Will for free with no other blue card in hand?" (rewritten above).
+        if (clause0 == "fow-noblue-question") {
+            ctx.asks += EventSpec("ask", to = "text:No. Force of Will's alternative cost is to pay 1 life and exile a blue card from your hand (118.9). Costs are paid as the last step of casting, when Force of Will is already on the stack (601.2a, 601.2h), so it isn't in your hand to exile and can't pay for itself. With no other blue card you have to pay {3}{U}{U}.")
+            return true
+        }
+        // "does Chalice counter it?" / "does Counterspell stop it?": whether the spell just cast was countered.
+        Regex("""^(?:does|will|would|did|is|has) (?:my |their |the |his |her )?(c\d+|it|[a-z]+(?: [a-z]+)?) (?:still |even |actually )?(?:counters?|stops?|catch(?:es)?|hits?|triggers? on|nabs?|gets?) (it|that|the spell|my spell|their spell|(?:my |their |the )?c\d+)$|^(?:is|was|does|did|will) (it|that|the spell|(?:my |their |the )?c\d+) (?:get |going to be |going to get )?(?:countered|stopped|resolve|resolves)$""").find(clause0)?.let { r ->
+            val spellWord = r.groupValues[2].ifEmpty { r.groupValues[3] }
+            val spell = if (cardRef.matches(spellWord.substringAfterLast(' '))) m.cards[spellWord.substringAfterLast(' ')]?.display
+                        else ctx.events.lastOrNull { it.verb == "cast" }?.let { e -> e.card?.name ?: e.obj?.let { ctx.objects[it]?.card?.name } } ?: return@let
+            spell ?: return@let
+            // "Does Chalice counter it?" where Chalice is a permanent whose trigger counters: the outcome shows it.
+            if (r.groupValues[1].isNotEmpty() && r.groupValues[1] != "it") m.cards[r.groupValues[1]]?.let { c -> if (c.isSpellOnly && ctx.events.none { e -> e.verb == "cast" && e.card?.name == c.display }) return@let }
+            ctx.asks += EventSpec("ask", card = CardRef(name = spell), to = "countered")
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "can I cast it next turn?" (rewritten above): a card given flashback until end of turn, or any card in a graveyard.
         Regex("""^castlater-question (it|that|c\d+)$""").find(clause0)?.let { r ->
