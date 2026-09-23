@@ -205,6 +205,13 @@ class Engine(val state: GameState) {
             state.outcomes += "Why: $why."
             return null
         }
+        // "I Giant Growth after damage": the creature it was meant for is already in the graveyard. A spell that
+        // targets a creature can't be cast at a card that isn't one any more: the state-based action came first.
+        for ((i, ref) in targets.withIndex()) { val spec = needed.getOrNull(i) ?: continue; val o = (ref as? Ref.Obj)?.let { state.objects[it.id] } ?: continue
+            if (o.zone == Zone.GRAVEYARD && Kind.CREATURE in spec.filter.kinds && !spec.filter.inGraveyard && card.isInstantOrSorcery) {
+                trace.step("${card.name} can't be cast targeting ${o.name}: it needs \"${spec.raw}\", and ${o.name} is already in the graveyard. Combat damage is dealt and the state-based action that destroys a creature with lethal damage is checked before any player gets priority, so there was no time to cast ${card.name} after damage.", "601.2c", "510.2", "704.3", "704.5g")
+                state.outcomes += "${card.name} can't be cast: ${o.name} is already in the graveyard."; return null
+            } }
         for ((i, ref) in targets.withIndex()) { val spec = needed.getOrNull(i) ?: continue; if (ref is Ref.Obj && spec.filter.verifiable && state.objects[ref.id]?.isOnBattlefield() == true && !filterMatches(spec.filter, ref, playerId)) {
             trace.step("${state.nameOf(ref)} isn't a legal target for ${card.name}: it needs \"${spec.raw}\"${if (spec.filter.controller == Who.OPPONENT) ", and ${state.nameOf(ref)} is ${state.player(playerId).possessive} own" else ""}. A spell can't be cast without a legal target for each of its targets.", "601.2c", "115.1a")
             state.outcomes += "${card.name} can't target ${state.nameOf(ref)} (not ${withArticle(spec.raw)})."; return null

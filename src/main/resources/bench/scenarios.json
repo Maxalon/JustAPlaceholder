@@ -17367,5 +17367,145 @@
     "cite": [
       "514.1"
     ]
+  },
+  {
+    "id": "which-can-block-a-flier",
+    "text": "My opponent attacks with a 4/4 flier. I have a 2/2 with reach and a 5/5 without. Which can block?",
+    "expect": [
+      "Yes: a 2/2 creature with reach can block a 4/4 creature with flying.",
+      "No: a 5/5 creature can't block a 4/4 creature with flying (flying)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.9b"
+    ]
+  },
+  {
+    "id": "menace-vs-one-blocker-question",
+    "text": "I have a creature with menace. My opponent has one untapped creature. Can they block it?",
+    "expect": [
+      "No: a creature with menace has menace and can't be blocked except by two or more creatures, and a creature is the only creature that could block it (702.110b)."
+    ],
+    "notExpect": [
+      "Yes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "double-strike-two-two-into-three-three",
+    "text": "My 2/2 double strike attacks into a 3/3. What happens?",
+    "expect": [
+      "a 3/3 creature has 4 damage marked.",
+      "a 2/2 creature with double strike: the battlefield → your graveyard.",
+      "a 3/3 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "702.4b"
+    ]
+  },
+  {
+    "id": "fog-saves-blocker-from-deathtouch",
+    "text": "I cast Fog after blockers are declared. Does my blocker still die to deathtouch?",
+    "expect": [
+      "Damage to a 2/2 creature from a 1/1 creature with deathtouch is prevented.",
+      "No: a 2/2 creature is still on the battlefield."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "giant-growth-after-damage-too-late",
+    "text": "I have Grizzly Bears and attack. They block with a 2/2. I Giant Growth after damage. Does it survive?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard.",
+      "No: Grizzly Bears is in the graveyard."
+    ],
+    "notExpect": [
+      "Giant Growth is still on the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "first-striker-blocking-my-two-two",
+    "text": "My opponent has a 1/1 first striker blocking my 2/2. Who dies?",
+    "expect": [
+      "Yes: a 1/1 creature with first strike died (it's in the graveyard).",
+      "No: a 2/2 creature is still on the battlefield."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.7b"
+    ]
+  },
+  {
+    "id": "menace-in-words-one-blocker",
+    "text": "I have a 3/3 that can't be blocked except by two or more creatures. They have one creature. Can they block?",
+    "expect": [
+      "a creature can't block a 3/3 creature with menace on its own (menace).",
+      "opponent takes 3 damage."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "wall-blocks-five-five",
+    "text": "Can a 0/1 wall block a 5/5?",
+    "expect": [
+      "a 0/1 wall creature has 5 damage marked.",
+      "a 0/1 wall creature: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "trample-over-two-chumps",
+    "text": "I attack with a 6/6 trample and they block with a 0/1 and a 0/2. How much goes through?",
+    "expect": [
+      "opponent takes 3 damage."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.19b"
+    ]
+  },
+  {
+    "id": "sacrificed-blocker-no-damage-through",
+    "text": "I block a 2/2 with my 1/1 and then sacrifice the 1/1. Does the 2/2 deal damage to me?",
+    "expect": [
+      "a 2/2 creature deals no combat damage: its blocker left combat and it stays blocked."
+    ],
+    "notExpect": [
+      "You take 2 damage"
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "brazen-borrower-cant-block-ground",
+    "text": "My opponent attacks with a 3/3. I flash in Brazen Borrower and block. What happens?",
+    "expect": [
+      "Brazen Borrower // Petty Theft can't block a 3/3 creature (it can block only creatures with flying).",
+      "You take 3 damage."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

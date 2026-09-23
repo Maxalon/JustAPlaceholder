@@ -125,6 +125,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         var attackBatchEnd = -1
         val deferredAsks = mutableListOf<Pair<Int, EventSpec>>()
         var lastStep: EventSpec? = null
+        curEvents = sit.events
         for ((i, e) in sit.events.withIndex()) {
             if (e.verb == "ask") { deferredAsks += i to e; continue }   // answered once combat damage has been dealt
             if (e.verb == "step") { if (lastStep?.let { it.to == e.to && it.player == e.player } == true) continue; lastStep = e } else if (e.verb != "resolveAll") lastStep = null
@@ -166,6 +167,9 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             understood = understood,
         )
     }
+
+    /** The situation's events, for a step that needs to look back at what was said before it. */
+    private var curEvents: List<EventSpec> = emptyList()
 
     private fun apply(e: EventSpec, state: GameState, engine: Engine) {
         val targets = e.targets.map { parseRef(it, state) }
@@ -215,7 +219,16 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         engine.activate(src.controller, srcId, null, emptyList())
                     }
                 }
-                engine.cast(player, def, disambiguate(e.targets, needed, player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", flashback = e.to == "flashback", alternative = e.to == "altcost", choice = e.to?.takeIf { it.startsWith("copy:") || it == "revolt" } ?: e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it.startsWith("name:") }?.removePrefix("name:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" } ?: e.to?.takeIf { it.startsWith("put:") }?.removePrefix("put:"), payLife = e.payLife)
+                // "They block with a 2/2. I Giant Growth after damage.": a pump with no target named, cast by the
+                // player whose creature is attacking, is aimed at that attacker.
+                val castTargets = if (e.targets.isEmpty() && needed.size == 1 && def.isInstantOrSorcery && def.spellEffect.let { it is Effect.Pump || (it is Effect.Seq && it.effects.firstOrNull() is Effect.Pump) })
+                    (state.objects.values.filter { it.isOnBattlefield() && it.controller == player && it.attacking != null }.takeIf { it.size == 1 }
+                        // "… after damage": the attacker may already be dead; the spell was still meant for it.
+                        ?: curEvents.lastOrNull { it.verb == "attack" && it.player == player && it.obj != null }?.obj?.let { state.objects[it] }?.let { listOf(it) }
+                        ?: curEvents.lastOrNull { it.verb == "attackAll" && it.player == player }?.let { state.objects.values.filter { it.owner == player && it.def.isCreature && it.zone == Zone.GRAVEYARD }.takeIf { it.size == 1 } })
+                        ?.map { a -> state.assumptions += "${def.name}'s target wasn't stated; it's read as ${a.name}, the creature ${state.player(player).subject.lowercase()} attacked with."; Ref.Obj(a.id) as Ref } ?: emptyList()
+                    else disambiguate(e.targets, needed, player, state, engine)
+                engine.cast(player, def, castTargets, existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", flashback = e.to == "flashback", alternative = e.to == "altcost", choice = e.to?.takeIf { it.startsWith("copy:") || it == "revolt" } ?: e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it.startsWith("name:") }?.removePrefix("name:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" } ?: e.to?.takeIf { it.startsWith("put:") }?.removePrefix("put:"), payLife = e.payLife)
             }
             "draw" -> engine.draw(e.player ?: throw JudgeException("draw needs a player"), e.amount ?: 1)
             // "Grizzly Bears fights Hill Giant": the fight itself, with no card making it happen (701.14a).
@@ -531,7 +544,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         // "Can it block?" with nothing attacking: the one creature across the table is what it would block.
                         e.to == "block" && state.objects.values.count { it.isOnBattlefield() && it.controller != o.controller && (it.def.isCreature || it.animatedAs != null) } == 1 ->
                             state.objects.values.first { it.isOnBattlefield() && it.controller != o.controller && (it.def.isCreature || it.animatedAs != null) }.let { att ->
-                                engine.cantBlockWhy(att, o)?.let { (why, rules, out) -> state.trace.step(why, *rules.toTypedArray()); "No: $out" }
+                                (if (state.hasKeyword(att, "menace") && state.objects.values.count { b -> b.isOnBattlefield() && b.controller == o.controller && (b.def.isCreature || b.animatedAs != null) && b.tapped != true } < 2) "No: ${att.name} has menace and can't be blocked except by two or more creatures, and ${o.name} is the only creature that could block it (702.110b)." else null)
+                                    ?: engine.cantBlockWhy(att, o)?.let { (why, rules, out) -> state.trace.step(why, *rules.toTypedArray()); "No: $out" }
                                     ?: engine.cantWhy(o.id, e.to)?.let { why -> "No: ${o.name} can't block (${if (why == o.name) "its own ability" else why} says so)." }
                                     ?: "Yes: ${o.name} can block ${att.name} if it attacks."
                             }
