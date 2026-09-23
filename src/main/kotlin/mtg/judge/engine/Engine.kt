@@ -192,6 +192,7 @@ class Engine(val state: GameState) {
         for (ref in targets) targetingProblem(obj, playerId, ref)?.let { (why, rule) ->
             trace.step("${card.name} can't be cast targeting ${state.nameOf(ref)}: $why.", rule, "601.2c")
             state.outcomes += "${card.name} can't target ${state.nameOf(ref)}."
+            state.outcomes += "Why: $why."
             return null
         }
         for ((i, ref) in targets.withIndex()) { val spec = needed.getOrNull(i) ?: continue; if (ref is Ref.Obj && spec.filter.verifiable && state.objects[ref.id]?.isOnBattlefield() == true && !filterMatches(spec.filter, ref, playerId)) {
@@ -807,6 +808,15 @@ class Engine(val state: GameState) {
     }
 
     /** "I get a poison counter": ten or more and that player loses (704.5c). */
+    /** Aven Mindcensor: an opponent's search looks at only the top four cards of the library (614.1a). */
+    private fun searchLimitNote(searcher: String, what: String) {
+        val censor = state.objects.values.firstOrNull { it.isOnBattlefield() && it.controller != searcher && it.def.abilities.any { a -> a is UnparsedAbility && a.text.contains("searches the top four cards of that library instead", ignoreCase = true) } } ?: return
+        val p = state.player(searcher)
+        trace.step("${censor.name} is controlled by an opponent of ${p.subject.lowercase()}, so ${p.subject.lowercase()} ${p.v("searches", "search")} only the top four cards of ${p.possessive} library instead of the whole library: $what is found only if it's among them (the library is still shuffled).", "614.1a")
+        state.outcomes += "${censor.name}: ${p.subject} ${p.v("looks", "look")} at only the top four cards of ${p.possessive} library for $what; if none is there, nothing is found."
+        state.unsupported.removeAll { it.what == censor.name }
+    }
+
     /** "You have 5 poison counters.": the running total, replacing the line from the last hit. */
     private fun poisonLine(p: Player) {
         state.outcomes.removeAll { Regex("""^${Regex.escape(p.subject)} (?:has|have) \d+ poison counters?\.$""").matches(it) }
@@ -1789,6 +1799,14 @@ class Engine(val state: GameState) {
             // Several players could be the target and nothing says which: the part of the ability that needs one is
             // skipped, and saying so is the difference between an incomplete answer and a wrong one. With one
             // opponent it is assumed above; with two it is a real choice.
+            if (inferred == null && targets.isEmpty() && spec.filter.inGraveyard) {
+                val rip = state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.oracleText.contains("would be put into a graveyard from anywhere, exile it instead", ignoreCase = true) }
+                if (rip != null) {
+                    trace.step("${obj.name}'s triggered ability needs a target (${spec.raw}), but with ${rip.name} on the battlefield cards go to exile instead of graveyards, so there's nothing there to target: the ability is removed from the stack and does nothing.", "603.3d", "614.1a")
+                    state.outcomes += "${obj.name}'s trigger has no legal target (${rip.name} keeps graveyards empty) and does nothing."
+                    return null
+                }
+            }
             if (inferred == null && targets.isEmpty() && state.clarifications.none { it.about == "${obj.name}'s triggered ability's target" }) {
                 state.clarifications += Clarification("${obj.name}'s triggered ability's target",
                     "${obj.name}'s triggered ability needs a target (${spec.raw}) and the situation doesn't say which${if (state.players.size > 2) " (${state.opponentsOf(obj.controller).joinToString(" or ") { if (it.you) "you" else it.name }})" else ""}; what the ability does to that target is left out. Say who it targets for a complete answer.")
@@ -2393,6 +2411,7 @@ class Engine(val state: GameState) {
             }
             is Effect.PutFromHand -> {
                 val you = state.player(item.controller)
+                if (effect.fromLibrary) searchLimitNote(item.controller, withArticle(effect.filter.raw))
                 val fromZone = if (effect.fromLibrary) Zone.LIBRARY else if (effect.fromGraveyard) Zone.GRAVEYARD else Zone.HAND; val zoneName = if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"
                 // Reanimate and Sun Titan name the card as a target; with several in the graveyard, that is the one.
                 val chosen = item.targets.filterIsInstance<Ref.Obj>().firstOrNull()?.let { state.objects[it.id] }?.takeIf { it.zone == fromZone }
@@ -2747,6 +2766,7 @@ class Engine(val state: GameState) {
                 if (ownSubject) trace.step("${item.source.name}: \"${effect.text.replace("~", item.source.name).replaceFirstChar { it.uppercase() }.trimEnd('.')}.\" (${you.subject} ${you.v("carries", "carry")} this out; the details aren't tracked here.)", *effect.rules.toTypedArray())
                 else trace.step("${you.subject} ${thirdPerson(effectText(effect.text, item), you)}.", *effect.rules.toTypedArray())
                 val said = if (ownSubject || you.you) effect.text.replace("~", item.source.name).replaceFirstChar { it.uppercase() } else "${you.subject} ${thirdPerson(effectText(effect.text, item), you)}"
+                if (Regex("""(?i)\bsearch(?:es)? (?:your|their|his or her) library\b""").containsMatchIn(effect.text)) searchLimitNote(you.id, "the card it looks for")
                 state.outcomes += "${item.source.name}: ${said.trimEnd('.')} (not tracked in detail)."
             }
             is Effect.ForAll -> {

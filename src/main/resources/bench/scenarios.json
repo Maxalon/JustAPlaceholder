@@ -16172,5 +16172,128 @@
     "cite": [
       "608.2b"
     ]
+  },
+  {
+    "id": "settle-when-i-attack-with-three",
+    "text": "My opponent casts Settle the Wreckage when I attack with three creatures. What do I get?",
+    "expect": [
+      "a creature: the battlefield → exile. (×3)"
+    ],
+    "notExpect": [
+      "for 0 (that many)"
+    ],
+    "cite": []
+  },
+  {
+    "id": "goyf-four-five-survives-bolt",
+    "text": "My Tarmogoyf is a 4/5. My opponent Bolts it and there's no instant in any graveyard yet. Does it die?",
+    "expect": [
+      "No: Tarmogoyf is still on the battlefield."
+    ],
+    "notExpect": [
+      "Tarmogoyf: the battlefield → your graveyard.",
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "mindcensor-limits-fetch",
+    "text": "My opponent has Aven Mindcensor. I crack a Scalding Tarn. Can I find a land?",
+    "expect": [
+      "Aven Mindcensor: You look at only the top four cards of your library for an Island or Mountain; if none is there, nothing is found."
+    ],
+    "notExpect": [
+      "Find // Finality"
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "overloaded-rift-spares-own",
+    "text": "I cast Cyclonic Rift overloaded. Does it hit my own stuff?",
+    "expect": [
+      "No: Cyclonic Rift affects only what its controller doesn't control (\"nonland permanent you don't control\"); your own permanents are untouched."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.96a"
+    ]
+  },
+  {
+    "id": "damnation-how-many-creatures",
+    "text": "I have two Grizzly Bears. My opponent casts Damnation. How many creatures do I have?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard. (×2)",
+      "You have 0 creatures left."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "teferi-stops-counterspells",
+    "text": "I control Teferi, Time Raveler. Can my opponent counter my spell?",
+    "expect": [
+      "No: Teferi, Time Raveler lets opponent cast spells only when opponent could cast a sorcery (opponent's own main phase, empty stack), so opponent can't cast a counterspell while a spell is on the stack. Activated abilities that counter still work."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "rip-blanks-snapcaster",
+    "text": "Opponent has Rest in Peace. I cast Snapcaster Mage. Does it do anything?",
+    "expect": [
+      "Snapcaster Mage enters the battlefield.",
+      "Snapcaster Mage's trigger has no legal target (Rest in Peace keeps graveyards empty) and does nothing."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "603.3d"
+    ]
+  },
+  {
+    "id": "greaves-shroud-vs-doom-blade",
+    "text": "I equip Lightning Greaves to my Grizzly Bears. Can my opponent Doom Blade it?",
+    "expect": [
+      "Doom Blade can't target Grizzly Bears.",
+      "Why: Grizzly Bears has shroud and can't be the target of spells or abilities."
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield"
+    ],
+    "cite": [
+      "702.18a"
+    ]
+  },
+  {
+    "id": "solemnity-finks-no-counter",
+    "text": "I control Solemnity. My opponent's Kitchen Finks dies. Does it come back?",
+    "expect": [
+      "Kitchen Finks comes back with no -1/-1 counter (persist); it's now 3/2."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "doubling-season-jace-six",
+    "text": "I have Doubling Season and cast Jace, the Mind Sculptor. Can I ultimate immediately?",
+    "expect": [
+      "Jace, the Mind Sculptor has 6 loyalty.",
+      "Jace, the Mind Sculptor's -12 ability can't be activated (not enough loyalty)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

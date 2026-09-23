@@ -1402,9 +1402,9 @@ class SituationParser(private val names: NameIndex) {
 
         // "Opponent casts Settle the Wreckage after I attack with Kaalia and Serra Angel": the "after" part, with all its clauses, happened first.
         Regex("""^(.+?)\s+(after|while|when|once) ((?:i|my|they|their|the opponent|my opponent|opponent|@\w+)\b.*)$""").find(t)?.let { r ->
-            if (Regex("""\b(?:attack|attacks|cast|casts|play|plays|activate|activates|block|blocks|control|controls|have|has|gain|gains|lose|loses|draw|draws)\b""").containsMatchIn(r.groupValues[3]) && r.groupValues[3].split(clauseSplit).size > 1) {
+            if (Regex("""\b(?:attack|attacks|cast|casts|play|plays|activate|activates|block|blocks|control|controls|have|has|gain|gains|lose|loses|draw|draws)\b""").containsMatchIn(r.groupValues[3]) && (r.groupValues[3].split(clauseSplit).size > 1 || (Regex("""\b(?:casts?|activates?|flash(?:es)? in|plays?)\b""").containsMatchIn(r.groupValues[1]) && Regex("""\b(?:attacks?|casts?|plays?|activates?|blocks?)\b""").containsMatchIn(r.groupValues[3])))) {
                 var anySub = false
-                for (clause in r.groupValues[3].split(clauseSplit).map { it.trim().trimEnd(',', ';').trim() }.filter { it.isNotEmpty() }) if (readClause(clause, m, ctx)) anySub = true
+                for (clause in r.groupValues[3].split(clauseSplit).map { it.trim().trimEnd(',', ';').trim() }.filter { it.isNotEmpty() }) if (readClause(clause, m, ctx)) anySub = true else if (!isNoise(clause)) ctx.unread += restore(clause, m)
                 for (clause in r.groupValues[1].split(clauseSplit).map { it.trim().trimEnd(',', ';').trim() }.filter { it.isNotEmpty() }) if (readClause(clause, m, ctx)) any = true else if (!isNoise(clause)) ctx.unread += restore(clause, m)
                 return any || anySub
             }
@@ -1762,6 +1762,23 @@ class SituationParser(private val names: NameIndex) {
                 ctx.notes += "${card.display} was named only in the question; it is taken to be on the battlefield under ${if (who == "me") "your" else (ctx.players[who] ?: "your opponent") + "'s"} control."
             }
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
+        // "there's no instant in any graveyard yet": a statement about the graveyards, already how they are read.
+        Regex("""^there(?:'s| is| are) no (?:instants?|sorcer(?:y|ies)|creatures?|lands?|artifacts?|enchantments?)(?: cards?)? in (?:any|the|either|my|their|our|his|her|any of the) graveyards?(?: yet| right now| so far)?$""").find(clause0)?.let { return true }
+        // "Does it hit my own stuff?" after an overloaded Cyclonic Rift: whose permanents the spell's "each" reaches.
+        Regex("""^(?:does|will|would|did) (?:it|that|(?:the |my )?(c\d+)) (?:also |even )?(?:hit|affect|bounce|destroy|exile|kill|wipe|get|catch|take|touch|clear) (?:my|our) (?:own )?(?:stuff|things|permanents|creatures|board|lands|guys|dudes|side|cards|tokens)(?: too| as well| also)?$""").find(clause0)?.let { r ->
+            val name = r.groupValues[1].takeIf { it.isNotEmpty() }?.let { m.cards[it]?.display } ?: ctx.events.lastOrNull { it.verb == "cast" }?.card?.name ?: return@let
+            ctx.asks += EventSpec("ask", card = CardRef(name = name), player = "me", to = "hitsOwn"); return true
+        }
+        // "How many creatures do I have?" after a Damnation: counted once everything has resolved.
+        Regex("""^how many (creatures|permanents|lands|artifacts|tokens|cards in hand|cards) (?:do|does|did|will|would) (i|we|they|my opponent|the opponent|he|she|@\w+) (?:have|control|end up with|have left|still have|get to keep|keep)(?: left| now| then| after that| afterwards| on the battlefield| in play| in hand)?$""").find(clause0)?.let { r ->
+            val who = when (val w = r.groupValues[2]) { "i", "we" -> "me"; else -> if (w.startsWith("@")) w.removePrefix("@") else ctx.other("me") ?: "opp" }
+            ctx.asks += EventSpec("ask", player = who, to = "count:${r.groupValues[1]}"); ctx.note(who); return true
+        }
+        // "Can my opponent counter my spell?" with Teferi, Time Raveler out: whether they can cast anything now.
+        Regex("""^can (my opponent|the opponent|opponent|they|he|she|@\w+) (?:even |still )?(?:counter|respond to|stifle|interact with|answer) (?:my|the|this|that|it)(?: spells?| creature| play| stuff| that)?(?: now| at all| this turn| in response)?$""").find(clause0)?.let { r ->
+            val who = r.groupValues[1].let { if (it.startsWith("@")) it.removePrefix("@") else ctx.other("me") ?: "opp" }
+            ctx.asks += EventSpec("ask", player = who, to = "canCounter"); ctx.note(who); return true
         }
         // "How much trample damage goes through?": the attacker has trample, and the question is what the defender takes.
         Regex("""^how much (?:(trample) )?damage (?:goes|gets|tramples|comes) (?:through|over)(?: to (?:me|them|him|her|my opponent|the opponent|@\w+))?$""").find(clause0)?.let { r ->
@@ -3434,6 +3451,15 @@ class SituationParser(private val names: NameIndex) {
             val who = possessiveOwner(r.groupValues[1], ctx, m) ?: actor ?: ctx.lastOwner ?: "me"
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
             ctx.asks += EventSpec("ask", obj = id, to = "pt")
+            // "My Tarmogoyf is a 4/5": its size is the count of card types in graveyards, so that many are put there —
+            // none an instant, which is the type the question is usually about adding.
+            if (card.display == "Tarmogoyf" && ctx.objects.values.none { it.zone == "graveyard" }) {
+                val n = (r.groupValues[3].toIntOrNull() ?: 0).coerceIn(0, 6)
+                val types = listOf("creature", "land", "sorcery", "artifact", "enchantment", "planeswalker").take(n)
+                for (t in types) { var gid = "a_${t}_card"; var k = 2; while (gid in ctx.objects) gid = "a_${t}_card_" + (k++); ctx.objects[gid] = ObjectSpec(gid, CardRef(name = "a $t card"), zone = "graveyard", controller = ctx.other(who) ?: "opp") }
+                ctx.notes += "Tarmogoyf's $n/${n + 1} is read as $n card types among cards in graveyards (${types.joinToString(", ")}; no instant yet), which is what its size counts."
+                ctx.note(who); return true
+            }
             ctx.notes += "You say ${card.display} is ${r.groupValues[3]}/${r.groupValues[4]}; the outcome below says what it is with what was described."; ctx.note(who); return true
         }
         // "I have a blue card in hand": noted, for the Force of Will next to it.
