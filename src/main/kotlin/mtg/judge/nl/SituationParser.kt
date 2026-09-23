@@ -834,7 +834,13 @@ class SituationParser(private val names: NameIndex) {
             // "does Wrath of God kill a creature with regenerate": the creature is regenerated as the sweeper resolves.
             .replace(Regex("""^(?:does|will|would|can) (c\d+) (?:kill|destroy|get past|beat) (?:a |an |my |their )?creature with (?:regenerate|regeneration|a regeneration shield)\s*\??$""", RegexOption.IGNORE_CASE), "they have a creature, i cast $1 and they regenerate it")
             // "they chump with a token": a block of the asker's attack, which stands in when none was described.
-            .replace(Regex("""^(they|he|she|my opponent|the opponent) chumps? (?:with )?(a |an |their |my )?(token|\d+/\d+(?: token)?|creature)\b""", RegexOption.IGNORE_CASE), "i attack with a creature, $1 block with $2$3")
+            .let { t0 -> Regex("""^(they|he|she|my opponent|the opponent) chumps? (?:with )?(a |an |their |my )?(token|\d+/\d+(?: token)?|creature)\b""", RegexOption.IGNORE_CASE).replace(t0) { g ->
+                // "I have Blightsteel and attack. They chump with a 1/1.": the attack was already described.
+                (if (ctx.events.any { it.verb == "attack" || it.verb == "attackAll" }) "" else "i attack with a creature, ") + "${g.groupValues[1]} block with ${g.groupValues[2]}${g.groupValues[3]}" } }
+            // "how much tramples over?" / "how much damage gets through?": the damage the defending player takes.
+            .let { t0 -> Regex("""^how much (?:damage )?(?:tramples?|goes|gets|comes|carries) (?:over|through)(?: to (?:me|them|my opponent|the opponent|my face|their face))?\??$""", RegexOption.IGNORE_CASE).replace(t0) { _ ->
+                val lastAttack = ctx.events.lastOrNull { it.verb == "attack" || it.verb == "attackAll" }
+                if (lastAttack?.player == "me" || lastAttack == null) "how much damage does my opponent take" else "how much damage do i take" } }
             // "they cast Craterhoof with 6 creatures": the creatures are on the board, said without "out".
             .replace(Regex("""\b(casts?|plays?|played|cast) ((?:my |their |an? |the )?c\d+) with (\d+|two|three|four|five|six|seven|eight|nine|ten) (creatures?|other creatures?|\d+/\d+s?)\b(?! (?:out|in play|on the battlefield|untapped|open|up|available|in (?:my|their|his|her|the|a|each) graveyard|in (?:my|their|his|her) hand|exiled))""", RegexOption.IGNORE_CASE), "$1 $2 with $3 $4 out")
             // "attack me at 30 life": the life total belongs to the player attacked.
@@ -936,6 +942,10 @@ class SituationParser(private val names: NameIndex) {
             // blocked. Only a described creature, never a card: "Lightning Bolt hits my opponent" is a spell,
             // and so is "I hit my opponent for 3 with Lightning Bolt".
             .replace(Regex("""\b((?:\d+/\d+|creatures?|tokens?|dudes?|guys?|beaters?)s?)\s+(?:hits|hit|connects with|connected with)\s+(me|them|him|her|my opponent|the opponent|@\w+)\b(?!(?:\s+for \d+)?\s+with\b)"""), "$1 attacks $2 unblocked")
+            // "I hit them with a 5/5 infect creature unblocked" / "they hit me with a 4/4": that creature attacked and
+            // wasn't blocked. "I hit them with it for 3 more" after commander damage: the unnamed commander is a 3/3.
+            .replace(Regex("""\b(i|we|they|he|she|my opponent|the opponent|opponent) hits? (?:them|him|her|me|my opponent|the opponent|@\w+) with ((?:an? |my |their |\d+ |two |three )?(?:\d+/\d+|creatures?|tokens?)\b(?:(?! and | but | then | while | so | because )[^,.?])*?)(?: unblocked| unopposed)?(?=[,.?]| and | but | then | while | so | because |$)"""), "$1 attack with $2 unblocked")
+            .replace(Regex("""\b(i|we) hit (?:them |him |her |my opponent |the opponent )?with (it|that) for (\d+)(?: more)?\b"""), "$2 is a $3/$3 and $2 attacks unblocked")
             // "it hits them" / "they connect with me": the same, with the creature said as a pronoun.
             .replace(Regex("""\b(it|they)\s+(?:hits|hit|connects with|connected with)\s+(me|them|him|her|my opponent|the opponent|@\w+)\b(?!(?:\s+for \d+)?\s+with\b)"""), "$1 attacks $2 unblocked")
             .replace(Regex("""\b(?:they are|they're|he is|he's|she is|she's) attacking\b"""), "they attack")
@@ -1542,7 +1552,7 @@ class SituationParser(private val names: NameIndex) {
         // "I try to activate it" / "they attempt to block": the attempt is the action, and the answer says how it goes.
         val clauseIn = clauseIn0.replace(Regex("""\b(?:tr(?:y|ies|ied)|attempts?|attempted|want(?:s|ed)?|would like) to (?=(?:activate|use|tap|untap|block|attack|cast|play|sacrifice|equip|counter|draw|search|target|crack|pop|fire|give|put|destroy|exile|bounce|kill|return|regenerate)\b)"""), "")
             // "I control Valakut and five other Mountains": "other" only says they aren't the card just named.
-            .replace(Regex("""^(\d+) other (?=c\d+\b|[a-z])"""), "$1 ")
+            .replace(Regex("""\b(\d+) other (?=c\d+\b|[a-z])"""), "$1 ")
             // "a 3/3 deathtouch trampler": a run of keyword words after the size describes the creature the same
             // way "a 3/3 with deathtouch and trample" does. The noun forms ("trampler") mean the keyword.
             // "I attack her with a 3/3 flier": one keyword noun at the very end of the clause.
@@ -1698,6 +1708,17 @@ class SituationParser(private val names: NameIndex) {
 
     /** Combat said as a state: "has a 1/1 first striker blocking my 2/2", "their 3/3 is attacking". Kept apart from readClause0 for the JVM's method-size limit. */
     private fun readCombatStatements(c: String, actor: String?, m: Marked, ctx: Ctx): Boolean {
+        // "… Bile Blight on their Elf Warrior token while they have four of them": that many of the permanent just named.
+        Regex("""^(?:have|has|control|controls|got) (\d+|two|three|four|five|six) of (?:them|those|these)$""").find(c)?.let { r ->
+            val n = numberWords[r.groupValues[1]] ?: r.groupValues[1].toInt()
+            // After "cast Bile Blight on their Elf Warrior token": the thing just named is the spell's target.
+            val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.lastOrNull { it.verb == "cast" || it.verb == "activate" }?.targets?.firstOrNull { it in ctx.objects } ?: return@let
+            val o = ctx.objects.getValue(id)
+            val have = ctx.objects.values.count { it.controller == o.controller && it.card.oracleId == o.card.oracleId && it.card.name == o.card.name && it.zone == o.zone }
+            val card = m.cards.values.firstOrNull { it.oracleId == o.card.oracleId && it.display == o.card.name } ?: names.lookup(Names.normalize(o.card.name ?: return@let)) ?: return@let
+            repeat(n - have) { addObject(card, o.controller, false, ctx, zone = o.zone, allowDuplicate = true) }
+            ctx.lastMentioned = id; return true
+        }
         // "my opponent has a 1/1 first striker blocking my 2/2": the 2/2 attacks and the 1/1 blocks it.
         Regex("""^(?:has|have|got) (an? )?(\d+/\d+)(?: creature)?(?: with ($kwPhrase(?:(?:,|,? and) $kwPhrase)*))? (?:is )?blocking (my |their |his |her |the )?(\d+/\d+|c\d+)(?: creature)?$""").find(c)?.let { r ->
             val blockerOwner = actor ?: ctx.lastActor ?: "opp"

@@ -17507,5 +17507,103 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "bile-blight-hits-all-zombie-tokens",
+    "text": "I have a Zombie token and my opponent casts Bile Blight targeting it. I also have two other Zombie tokens. What happens?",
+    "expect": [
+      "Zombie token is -1/-1 until end of turn. (×3)",
+      "Zombie token: the battlefield → your graveyard. (×3)"
+    ],
+    "notExpect": [
+      "Not understood",
+      "Nothing changes"
+    ],
+    "cite": [
+      "111.3"
+    ]
+  },
+  {
+    "id": "commander-damage-hit-with-it-for-three-more",
+    "text": "My commander has dealt 19 damage to my opponent already. I hit with it for 3 more. Do they lose?",
+    "expect": [
+      "opponent loses the game (commander damage).",
+      "Yes: opponent has lost the game."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "infect-hit-them-with-unblocked",
+    "text": "My opponent has 3 poison counters. I hit them with a 5/5 infect creature unblocked. What happens?",
+    "expect": [
+      "opponent has 8 poison counters."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "opponent-hits-me-with-infect-creature",
+    "text": "I have 2 poison and my opponent hits me with a 4/4 infect creature. Do I lose?",
+    "expect": [
+      "You have 6 poison counters.",
+      "No: You are still in the game."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "chump-after-attack-described",
+    "text": "I have Blightsteel Colossus and attack. They chump with a 1/1. Do they get poison?",
+    "expect": [
+      "opponent has 10 poison counters.",
+      "opponent loses the game (poison)."
+    ],
+    "notExpect": [
+      "Not understood",
+      "a creature can't attack"
+    ],
+    "cite": []
+  },
+  {
+    "id": "how-much-tramples-over-after-pump",
+    "text": "I attack with a 3/3 trample. They block with a 1/1 and cast Giant Growth on the blocker. How much tramples over?",
+    "expect": [
+      "a 1/1 creature is 4/4 until end of turn.",
+      "No: opponent takes no damage."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "bile-blight-four-of-them",
+    "text": "I have a 1/1 Soldier token and cast Bile Blight on my opponent's Elf Warrior token while they have four of them. What happens?",
+    "expect": [
+      "Elf Warrior is -2/-2 until end of turn. (×4)",
+      "Elf Warrior: the battlefield → opponent's graveyard. (×4)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "hit-them-and-settle-the-wreckage",
+    "text": "I hit them with a 4/4 and they had Settle the Wreckage. What happens to my creature?",
+    "expect": [
+      "a 4/4 creature: the battlefield → exile."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

@@ -2642,6 +2642,13 @@ class Engine(val state: GameState) {
                 trace.step("${it.name} gets ${signed(effect.power)}/${signed(effect.toughness)} until end of turn; it's now ${it.power}/${it.toughness}.", "611.2a")
                 state.outcomes += "${it.name} is ${it.power}/${it.toughness} until end of turn."
             } }
+            is Effect.PumpSameName -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { t ->
+                // Tokens made by the same effect share a name (a Zombie token is "Zombie"), so they all shrink together.
+                val all = listOf(t) + state.objects.values.filter { o -> o !== t && o.isOnBattlefield() && (o.def.isCreature || o.animatedAs != null) && o.def.name.equals(t.def.name, true) }
+                for (o in all) { o.pumps += effect.power to effect.toughness }
+                trace.step("${t.name} gets ${signed(effect.power)}/${signed(effect.toughness)} until end of turn, and so does every other creature with the same name" + (if (all.size > 1) " (${all.drop(1).joinToString(", ") { it.name }})" else " (there are none)") + "; a token's name is its creature type unless the effect that made it says otherwise, so tokens made alike share a name.", "611.2a", "111.3")
+                for (o in all) state.outcomes += "${o.name} is ${o.power}/${o.toughness} until end of turn."
+            } }
             is Effect.GainKeywords -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let {
                 val kws = effect.keywords.map { k -> if (k == "protection from the color of your choice") "protection from ${item.choice ?: run { state.clarifications += Clarification("${item.describe}'s colour", "${item.describe} grants protection from a colour of your choice; which colour? (assuming none)"); "nothing" }}" else k }
                 if (kws.toSet() != effect.keywords.toSet()) { trace.step("${state.player(item.controller).subject} ${state.player(item.controller).v("chooses", "choose")} ${item.choice ?: "no colour"}.", "608.2c"); it.tempKeywords += kws; trace.step("${it.name} gains ${kws.joinToString(" and ")} until end of turn.", "611.2a"); state.outcomes += "${it.name} has ${kws.joinToString(" and ")} until end of turn."; return@let }
@@ -3905,6 +3912,7 @@ class Engine(val state: GameState) {
         is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.GainLifeEqualToToughness -> "its controller gains life equal to its toughness"; is Effect.PutOnBottom -> "put ${effect.target.raw} on the bottom of its owner's library"; is Effect.GainLifeLostThisWay -> "gain life equal to the life lost this way"; is Effect.RevealTopToHand -> "reveal the top card of your library and put it into your hand"; is Effect.PutSelfOnLibraryTop -> "put ${item.source.name} on top of its owner's library"; is Effect.LoseLifeEqualToRevealedMv -> "lose life equal to the revealed card's mana value"; is Effect.ExileIfDamagedDies -> "exile a creature dealt damage this way instead if it would die this turn"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"
         is Effect.Tap -> "tap ${effect.target.raw}"; is Effect.Untap -> "untap ${effect.target.raw}"
         is Effect.Pump -> "${effect.target.raw} gets ${signed(effect.power)}/${signed(effect.toughness)}"
+        is Effect.PumpSameName -> "${effect.target.raw} and all other creatures with the same name get ${signed(effect.power)}/${signed(effect.toughness)}"
         is Effect.GainKeywords -> "${effect.target.raw} gains ${effect.keywords.joinToString(" and ")}"
         is Effect.GainControl -> "gain control of ${effect.target.raw}${if (effect.untilEndOfTurn) " until end of turn" else ""}"
         is Effect.PumpSelf -> "${item.source.name} gets ${signed(effect.power)}/${signed(effect.toughness)}"

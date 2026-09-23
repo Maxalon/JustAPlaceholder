@@ -1040,6 +1040,7 @@ object OracleParser {
     private val tapRe = Regex("""^tap target (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val untapRe = Regex("""^untap target (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val pumpRe = Regex("""^target (.+?) gets ([+-]\d+)/([+-]\d+) until end of turn\.?$""", RegexOption.IGNORE_CASE)
+    private val pumpSameNameRe = Regex("""^target (.+?) and all other creatures with the same name as that creature get ([+-]\d+)/([+-]\d+) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val pumpGainRe = Regex("""^target (.+?) gets ([+-]\d+)/([+-]\d+) and gains (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val gainRe = Regex("""^(another )?target (.+?) gains (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
     private val gainSelfRe = Regex("""^~ gains (.+?) until end of turn\.?$""", RegexOption.IGNORE_CASE)
@@ -1593,6 +1594,7 @@ object OracleParser {
         Regex("""^gain control of (target .+?) until end of turn\. untap (?:that|it|that creature|that permanent).*?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> val t = target(m.groupValues[1]); return Effect.Seq(listOf(Effect.GainControl(t, true), Effect.Untap(t))) }
         untapRe.matchEntire(s)?.let { return Effect.Untap(target(it.groupValues[1])) }
         pumpRe.matchEntire(s)?.let { return Effect.Pump(target(it.groupValues[1]), it.groupValues[2].toInt(), it.groupValues[3].toInt()) }
+        pumpSameNameRe.matchEntire(s)?.let { return Effect.PumpSameName(target(it.groupValues[1]), it.groupValues[2].toInt(), it.groupValues[3].toInt()) }
         pumpGainRe.matchEntire(s)?.let { m -> keywordsIn(m.groupValues[4])?.let { kws -> return Effect.Seq(listOf(Effect.Pump(target(m.groupValues[1]), m.groupValues[2].toInt(), m.groupValues[3].toInt()), Effect.GainKeywords(target(m.groupValues[1]), kws))) } }
         gainRe.matchEntire(s)?.let { m -> keywordsIn(m.groupValues[3])?.let { kws ->
             val t = target(m.groupValues[2])

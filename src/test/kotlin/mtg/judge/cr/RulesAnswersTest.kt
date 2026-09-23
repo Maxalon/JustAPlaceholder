@@ -51,6 +51,7 @@ class RulesAnswersTest {
         "Does indestructible protect against exile?" to "702.12b",
         "Does regeneration work against exile?" to "701.19a",
         "Can my opponent make me sacrifice a creature if it has hexproof?" to "702.11b",
+        "Can I sacrifice a creature that has indestructible?" to "702.12b",
         "If my creature has shroud can I target it with my own pump spell?" to "702.18a",
         "If my lifelink creature deals damage and dies at the same time do I still gain life?" to "702.15b",
         "Double strike vs first strike blocker, who dies?" to "702.4b",
