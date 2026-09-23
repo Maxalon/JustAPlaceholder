@@ -554,6 +554,10 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     return
                 }
                 when (e.to) {
+                    "tookDamage" -> state.outcomes += run {
+                        // Damage stays marked until cleanup, and two creatures can share a description, so the object's own count decides.
+                        if (o.damage > 0) "Yes: ${o.name} was dealt ${o.damage} damage." else if (!o.isOnBattlefield() && state.trace.steps.any { st -> st.text.contains("damage to ${o.name}") && st.text.contains("deals") }) "Yes: ${o.name} was dealt damage (it's no longer on the battlefield)." else "No: ${o.name} wasn't dealt any damage."
+                    }
                     "stillResolves" -> state.outcomes += when {
                         state.trace.steps.any { it.text.startsWith("${o.name} is no longer on the battlefield, but its ability was already on the stack") } ->
                             "Yes: ${o.name}'s ability was already on the stack, and an ability on the stack exists independently of its source. Removing ${o.name} doesn't counter it; it resolves using ${o.name}'s last known information (113.7a)."

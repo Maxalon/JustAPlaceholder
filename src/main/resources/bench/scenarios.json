@@ -18545,5 +18545,98 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "does-the-attacker-die-double-block",
+    "text": "I block a 4/4 with a 2/2 and a 2/2. Does the attacker die?",
+    "expect": [
+      "a 4/4 creature: the battlefield → opponent's graveyard.",
+      "Yes: a 4/4 creature died (it's in the graveyard)."
+    ],
+    "notExpect": [
+      "Not understood",
+      "Yes: a 2/2 creature died"
+    ],
+    "cite": []
+  },
+  {
+    "id": "does-my-wall-die-if-i-block",
+    "text": "I have a 0/4 wall. They attack with a 4/4. Does my wall die if I block?",
+    "expect": [
+      "a 0/4 wall creature has 4 damage marked.",
+      "Yes: a 0/4 wall creature died (it's in the graveyard)."
+    ],
+    "notExpect": [
+      "Not understood",
+      "You take 4 damage."
+    ],
+    "cite": []
+  },
+  {
+    "id": "bolted-blocker-attacker-takes-no-damage",
+    "text": "They attack with a 2/2 and I block with a 2/2. Then they Bolt my blocker. Does their attacker take damage?",
+    "expect": [
+      "a 2/2 creature deals no combat damage: its blocker left combat and it stays blocked.",
+      "No: a 2/2 creature wasn't dealt any damage."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "infect-and-wither-attackers-both-blocked",
+    "text": "I attack with a 1/1 with infect and a 1/1 with wither. They block both with 2/2s. What happens?",
+    "expect": [
+      "a 2/2 creature has 1 -1/-1 counter(s). (×2)",
+      "a 1/1 creature with wither: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "Not understood",
+      "opponent has 1 poison counter."
+    ],
+    "cite": []
+  },
+  {
+    "id": "first-striker-blocks-a-three-three",
+    "text": "I attack with a 3/3 and my opponent blocks with a 2/2 first striker. Who dies?",
+    "expect": [
+      "Yes: a 2/2 creature with first strike died (it's in the graveyard).",
+      "No: a 3/3 creature is still on the battlefield."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.7b"
+    ]
+  },
+  {
+    "id": "deathtouch-blocker-vs-trampler",
+    "text": "I have a 1/1 deathtouch blocker. They attack with a 6/6 trample. How much tramples over?",
+    "expect": [
+      "You take 5 damage.",
+      "a 6/6 creature with trample: the battlefield → opponent's graveyard.",
+      "Yes: you take 5 damage in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.19b"
+    ]
+  },
+  {
+    "id": "vigilance-attacker-is-it-tapped",
+    "text": "My 2/2 with vigilance attacks. Is it tapped afterwards?",
+    "expect": [
+      "a 2/2 creature with vigilance is untapped (vigilance: attacking didn't tap it)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
