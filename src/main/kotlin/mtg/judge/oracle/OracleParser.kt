@@ -495,6 +495,10 @@ object OracleParser {
         Regex("""^if an opponent would draw a card( except the first one they draw in each of their draw steps)?, instead (?:that player skips that draw and you draw a card|you draw a card and (?:that player|they) skips? that draw)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             return StaticEffect.OpponentsDrawsRedirected(m.groupValues[1].isNotEmpty())
         }
+        // Hullbreacher: the draw is skipped and its controller gets a Treasure instead.
+        Regex("""^if an opponent would draw a card( except the first one they draw in each of their draw steps)?, instead you create a treasure token\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            return StaticEffect.OpponentsDrawsRedirected(m.groupValues[1].isNotEmpty(), treasure = true)
+        }
         // "Each opponent can't draw more than one card each turn." (Narset, Spirit of the Labyrinth)
         Regex("""^(each opponent|each player|your opponents|players) can't draw more than (one|two|three|\d+) cards? each turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val n = number(m.groupValues[2]) ?: return@let

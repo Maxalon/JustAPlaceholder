@@ -432,6 +432,14 @@ class Engine(val state: GameState) {
                 val redirected = count - exempt
                 if (redirected > 0) {
                     val taker = state.player(thief.controller)
+                    if (e.treasure) {
+                        trace.step("${thief.name} says that whenever ${who.subject.lowercase()} would draw a card${if (exempt > 0) " other than the first in ${who.possessive} draw step" else ""}, ${taker.subject.lowercase()} ${taker.v("creates", "create")} a Treasure token instead: ${who.subject.lowercase()} ${who.v("skips", "skip")} $redirected draw${if (redirected == 1) "" else "s"}.", "614.1a", "121.1")
+                        state.outcomes += "${who.subject} ${who.v("skips", "skip")} $redirected draw${if (redirected == 1) "" else "s"} (${thief.name}); ${taker.subject.lowercase()} ${taker.v("gets", "get")} $redirected Treasure token${if (redirected == 1) "" else "s"} instead."
+                        count = exempt
+                        if (count > 0) drawCards(who, count)
+                        Generic.token("Treasure token")?.let { def -> repeat(redirected) { val t = state.add(GameObject(freshObjectId(def.name), def, Zone.BATTLEFIELD, taker.id, token = true)); t.timestamp = state.tick(); onEvent(GameEvent.EntersBattlefield(t)) } }
+                        return
+                    }
                     trace.step("${thief.name} says that whenever ${who.subject.lowercase()} would draw a card${if (exempt > 0) " other than the first in ${who.possessive} draw step" else ""}, ${taker.subject.lowercase()} ${taker.v("draws", "draw")} a card instead and ${who.subject.lowercase()} ${who.v("skips", "skip")} that draw: $redirected of the $count draw${if (count == 1) "" else "s"} ${if (redirected == 1) "is" else "are"} ${if (taker.you) "yours" else taker.possessive}.", "614.1a", "121.1")
                     state.outcomes += "${who.subject} ${who.v("skips", "skip")} $redirected draw${if (redirected == 1) "" else "s"} (${thief.name}); ${taker.subject.lowercase()} ${taker.v("draws", "draw")} instead."
                     count = exempt

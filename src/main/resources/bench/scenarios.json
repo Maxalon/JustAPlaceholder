@@ -16295,5 +16295,126 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "blood-artist-wrath-four-on-my-side",
+    "text": "I have Blood Artist and my opponent Wraths with 4 creatures on my side. How much life do they lose?",
+    "expect": [
+      "opponent loses 1 life. (×5)",
+      "opponent loses 5 life in all."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "torpor-orb-thragtusk-no-gain",
+    "text": "My opponent casts Torpor Orb, then I cast Thragtusk. Do I gain 5?",
+    "expect": [
+      "Thragtusk entering the battlefield doesn't trigger any abilities (Torpor Orb).",
+      "No: you gain no life here."
+    ],
+    "notExpect": [
+      "You gain 5 life"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sheoldred-brainstorm-six",
+    "text": "I have Sheoldred, the Apocalypse. My opponent casts Brainstorm. How much life do they lose?",
+    "expect": [
+      "opponent loses 2 life. (×3)",
+      "opponent loses 6 life in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "rhystic-three-unpaid",
+    "text": "I control Rhystic Study. My opponent casts three spells and never pays. How many cards do I draw?",
+    "expect": [
+      "Yes: You draw 3 cards in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "hullbreacher-wheel",
+    "text": "I control Hullbreacher. My opponent casts Wheel of Fortune. What happens?",
+    "expect": [
+      "You draw 7 cards.",
+      "opponent skips 7 draws (Hullbreacher); you get 7 Treasure tokens instead."
+    ],
+    "notExpect": [
+      "opponent draws 7 cards."
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "terminus-their-blightsteel",
+    "text": "I cast Terminus with my opponent's Blightsteel Colossus on the battlefield. Where does it go?",
+    "expect": [
+      "Blightsteel Colossus: the battlefield → opponent's library."
+    ],
+    "notExpect": [
+      "affects nothing"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sylvan-library-two-extra",
+    "text": "I cast Sylvan Library and want to keep 2 extra cards. How much life?",
+    "expect": [
+      "Keeping 2 extra cards with Sylvan Library costs 8 life: for each card drawn this way you keep beyond your normal draw, you pay 4 life or put it back (Sylvan Library's text)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "chalice-control-on-one-ponder",
+    "text": "I control Chalice on 1 and cast Ponder. Is it countered?",
+    "expect": [
+      "Ponder is countered."
+    ],
+    "notExpect": [
+      "You draw 1 card."
+    ],
+    "cite": []
+  },
+  {
+    "id": "kaalia-put-in-avacyn",
+    "text": "I have Kaalia of the Vast and attack. Can I put in Avacyn?",
+    "expect": [
+      "Avacyn, Angel of Hope enters the battlefield.",
+      "Avacyn, Angel of Hope is attacking opponent.",
+      "opponent takes 8 damage."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "wrath-avacyn-their-creatures",
+    "text": "I Wrath with Avacyn, Angel of Hope on my side. Do their creatures die?",
+    "expect": [
+      "Avacyn, Angel of Hope is indestructible and isn't destroyed.",
+      "Yes: a creature died (it's in the graveyard)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.12b"
+    ]
   }
 ]

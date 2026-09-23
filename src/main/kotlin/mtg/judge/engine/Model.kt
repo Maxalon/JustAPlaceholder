@@ -408,7 +408,7 @@ sealed interface StaticEffect {
     /** Rule of Law, Ethersworn Canonist: a limit on how many spells a player may cast each turn. */
     data class SpellsPerTurn(val count: Int, val filter: ObjFilter?) : StaticEffect
     /** Notion Thief: "If an opponent would draw a card except the first one they draw in each of their draw steps, instead you draw a card and they skip that draw." */
-    data class OpponentsDrawsRedirected(val exceptFirstInDrawStep: Boolean) : StaticEffect
+    data class OpponentsDrawsRedirected(val exceptFirstInDrawStep: Boolean, val treasure: Boolean = false) : StaticEffect
     /** Narset, Spirit of the Labyrinth: "Each opponent can't draw more than one card each turn." */
     data class CantDrawMoreThan(val count: Int, val who: Who) : StaticEffect
     /** Humility: "All creatures lose all abilities and have base power and toughness 1/1." */
