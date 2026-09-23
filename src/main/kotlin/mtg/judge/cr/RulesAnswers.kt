@@ -31,6 +31,10 @@ object RulesAnswers {
 
     // Longest (most specific) first: the first entry whose terms are all present wins.
     private val entries: List<Entry> = listOf(
+        e("color identity + text", "Yes. A card's color identity is every color in its mana cost plus every color of mana symbol in its rules text (hybrid and Phyrexian symbols included), plus any color indicator. Reminder text doesn't count. Your deck can contain only cards whose color identity is within your commander's.", "903.4", "903.5c"),
+        e("colour identity + text", "Yes. A card's colour identity is every colour in its mana cost plus every colour of mana symbol in its rules text (hybrid and Phyrexian symbols included), plus any colour indicator. Reminder text doesn't count.", "903.4", "903.5c"),
+        e("sacrifice + commander + command zone", "Yes. Sacrificing your commander puts it into the graveyard, and the next time state-based actions are checked its owner may move it from the graveyard to the command zone instead of leaving it there. The sacrifice still counts as a cost paid or an effect that happened, so the spell or ability it was sacrificed to works as normal.", "903.9a", "701.21a"),
+        e("commander + copied", "No. Being a commander is not a copiable value: it is an attribute of the card itself, not one of its characteristics. A Clone copying a commander is not a commander, and damage it deals is not commander damage.", "903.3", "707.2"),
         e("respond + own spell", "Yes. After you cast a spell you receive priority again, so you can cast an instant or activate an ability in response to your own spell before anyone else gets priority; it goes on the stack above your spell and resolves first.", "117.3c", "405.2", "608.1"),
         e("evoke + countered", "No. If a creature spell cast for its evoke cost is countered, it never enters the battlefield, so neither its enters-the-battlefield ability nor the evoke sacrifice trigger happens; the card just goes to the graveyard.", "702.74a", "701.6a"),
         e("trigger + stack + order",

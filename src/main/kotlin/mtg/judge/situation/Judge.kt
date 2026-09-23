@@ -346,6 +346,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     state.outcomes += engine.manaAvailable(e.player ?: throw JudgeException("ask needs a player")); return
                 }
                 if (e.to == "spellCost") { state.outcomes += engine.spellCost(e.obj ?: throw JudgeException("ask needs an object")); return }
+                if (e.to == "monarch") { state.outcomes += (state.monarch?.let { mid -> val p = state.player(mid); "${p.subject} ${p.v("is", "are")} the monarch." } ?: "Nobody is the monarch."); return }
                 if (e.to == "playerSurvive" || e.to == "playerDie" || e.to == "playerWin") { state.outcomes += playerAnswer(e.to, state.player(e.player ?: throw JudgeException("ask needs a player")), state); return }
                 // "do I draw?" / "how many cards do I draw?": every card that player drew while this played out.
                 if (e.to == "playerDraw") {

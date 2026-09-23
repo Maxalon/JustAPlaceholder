@@ -469,7 +469,8 @@ class GameState(
         val typeOk = f.kinds.any { k -> when (k) {
             Kind.CREATURE -> isCreature(o); Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types
             Kind.LAND -> "Land" in o.def.types; Kind.PLANESWALKER -> "Planeswalker" in o.def.types; Kind.BATTLE -> "Battle" in o.def.types
-            Kind.PERMANENT -> true; Kind.CARD -> !o.token
+            // A "permanent card" in a graveyard, hand or library is never an instant or sorcery; a "source" on the stack still counts.
+            Kind.PERMANENT -> !(o.def.isInstantOrSorcery && o.zone in setOf(Zone.GRAVEYARD, Zone.LIBRARY, Zone.HAND, Zone.EXILE)); Kind.CARD -> !o.token
             // A card in a graveyard described as an instant or sorcery (a card, not a spell on the stack).
             Kind.SPELL -> f.inGraveyard && ("Instant" in o.def.types || "Sorcery" in o.def.types); else -> false
         } }

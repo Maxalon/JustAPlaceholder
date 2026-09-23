@@ -971,6 +971,12 @@ object OracleParser {
                     val payer = when (mayPay.groupValues[1].lowercase()) { "you" -> Who.YOU; "its controller" -> Who.CONTROLLER_OF_TARGET; "target player" -> Who.TARGET_PLAYER; "each opponent" -> Who.EACH_OPPONENT; else -> Who.THAT_PLAYER }
                     out += Effect.UnlessPays(parseSentence(ifNot.find(next)!!.groupValues[1].replaceFirstChar { it.uppercase() }), payer, mayPay.groupValues[2])
                     i += 2
+                } else if (next != null && Regex("""^If (?:~|this spell) was kicked, create (\w+) of those tokens instead\.?$""", RegexOption.IGNORE_CASE).matches(next) && parseSentence(cur) is Effect.CreateTokenCopy) {
+                    // Rite of Replication: one copy, or five if kicked.
+                    val base = parseSentence(cur) as Effect.CreateTokenCopy
+                    val n = Regex("""^If (?:~|this spell) was kicked, create (\w+) of those tokens instead\.?$""", RegexOption.IGNORE_CASE).find(next)!!.groupValues[1].let { number(it) ?: it.toIntOrNull() ?: 1 }
+                    out += Effect.IfKicked(base.copy(count = n), base)
+                    i += 2
                 } else if (Regex("""^sacrifice (?:~|it|this permanent|this creature)\.?$""", RegexOption.IGNORE_CASE).matches(cur) && next != null && next.startsWith("If you do, ", true)) {
                     // Dark Depths: "sacrifice it. If you do, create Marit Lage, …": the sacrifice, then what it buys.
                     out += Effect.IfYouDo(Effect.SacrificeSource, parseSentence(next.removePrefix("If you do, ").removePrefix("if you do, ").replaceFirstChar { it.uppercase() }), null)

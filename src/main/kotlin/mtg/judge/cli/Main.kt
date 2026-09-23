@@ -58,10 +58,13 @@ fun main(args: Array<String>) {
             if (opts.containsKey("debug")) { println("name index: ${index.size} names, up to ${index.maxWords} words"); parser.debugMark(text).forEach { println("  mark: $it") } }
             val parsed = parser.parse(text)
             val json = kotlinx.serialization.json.Json { prettyPrint = true; encodeDefaults = false }
-            if (parsed.situation.objects.isEmpty() && parsed.situation.events.isEmpty()) {
+            // "My commander gets copied by their Clone, is the Clone a commander?": a card is named but nothing
+            // happens, and the question is one the rules answer outright.
+            val tableAnswer = if (parsed.situation.events.isEmpty()) mtg.judge.cr.RulesAnswers.lookup(text) else null
+            if ((parsed.situation.objects.isEmpty() && parsed.situation.events.isEmpty()) || tableAnswer != null) {
                 // "What order do triggers go on the stack?" names no cards and nothing happens, so there is
                 // nothing to simulate — but it still has one settled answer, taken straight from the rules.
-                mtg.judge.cr.RulesAnswers.lookup(text)?.let { a ->
+                tableAnswer?.let { a ->
                     println(a.text)
                     if (!opts.containsKey("short") && rules != null && a.rules.isNotEmpty()) {
                         println(); println("Rules cited:")

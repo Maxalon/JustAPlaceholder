@@ -2593,6 +2593,10 @@ class Engine(val state: GameState) {
                 state.outcomes += "${item.source.name} is attached to ${t.name}."
                 if (t.def.isCreature) trace.step("${t.name} is now ${state.describePt(t)}.", "613.1")
             } }
+            is Effect.IfKicked -> {
+                trace.step(if (item.kicked) "${item.source.name} was kicked, so instead of ${describe(effect.otherwise, item)} it does this: ${describe(effect.then, item)}." else "${item.source.name} wasn't kicked, so: ${describe(effect.otherwise, item)}.", "702.33a", "608.2c")
+                applyEffect(if (item.kicked) effect.then else effect.otherwise, item)
+            }
             is Effect.IfYouDo -> {
                 trace.step("${you.subject} may ${describe(effect.choice, item)}. If ${you.v("they do", "you do")}: ${describe(effect.then, item)}.", "608.2d")
                 state.assumptions += "${you.subject} ${you.v("chooses", "choose")} to ${describe(effect.choice, item)} for ${item.describe}."
@@ -3654,7 +3658,7 @@ class Engine(val state: GameState) {
         is Effect.PutCounters -> "put ${effect.count} ${effect.kind} counter(s) on ${effect.target?.raw ?: item.source.name}"; is Effect.RemoveAllCounters -> "remove all counters from ${effect.target.raw}"
         is Effect.AddMana -> "add ${effect.text}"; is Effect.AddManaPer -> "add ${effect.symbol} for each ${effect.filter.raw}"; is Effect.AddManaDevotion -> "choose a colour and add that much mana of it as your devotion to it"; is Effect.AddManaInstead -> "add ${effect.text} instead if you control ${effect.required.joinToString(" and ") { "an $it" }}"; is Effect.Narrated -> effect.text.replace("~", item.source.name).replaceFirstChar { it.lowercase() }
         is Effect.ForAll -> "${effect.action} ${if (effect.action == "damage") "${effect.amount} to " else ""}each ${effect.filter.raw}"
-        is Effect.IfYouDo -> "${describe(effect.choice, item)}, and if so ${describe(effect.then, item)}"
+        is Effect.IfYouDo -> "${describe(effect.choice, item)}, and if so ${describe(effect.then, item)}"; is Effect.IfKicked -> "${describe(effect.otherwise, item)} (${describe(effect.then, item)} if kicked)"
         is Effect.IfCondition -> "if ${effect.raw}, ${describe(effect.then, item)}"
         is Effect.Attach -> "attach ${item.source.name} to ${effect.target.raw}"
         is Effect.GainKeywordsSelf -> "${item.source.name} gains ${effect.keywords.joinToString(" and ")}"

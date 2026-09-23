@@ -313,6 +313,8 @@ sealed interface Effect {
     data class ForAll(val filter: ObjFilter, val action: String, val amount: Int = 0, val noRegen: Boolean = false) : Effect
     /** "You may pay [cost]. If you do, [effect]." / "You may [do X]. If you do, [effect]." */
     data class IfYouDo(val choice: Effect, val then: Effect, val cost: String?) : Effect
+    /** Rite of Replication: "If this spell was kicked, create five of those tokens instead" — one effect or the other (702.33). */
+    data class IfKicked(val then: Effect, val otherwise: Effect) : Effect
     /** "If you control five or more Mountains, …" — the condition is checked as the effect happens. */
     data class IfCondition(val condition: Condition, val then: Effect, val raw: String) : Effect
     /** Attach the source (Aura on resolution, Equipment via equip) to the target (301.5, 303.4). */
@@ -337,7 +339,7 @@ sealed interface Effect {
         is Tap -> listOf(target); is Untap -> listOf(target); is Pump -> listOf(target); is GainKeywords -> listOf(target); is ReflectPrevented -> emptyList()
         is PutCounters -> listOfNotNull(target); is RemoveAllCounters -> listOf(target); is PutOnBottom -> listOf(target); is Attach -> listOf(target); is CreateShield -> listOfNotNull(target); is Regenerate -> listOfNotNull(target); is GainControl -> listOf(target); is Bounce -> listOfNotNull(target); is NarratedTargeted -> listOf(target); is GainLifeEqualToPower -> emptyList(); is CreateToken -> emptyList(); is CreateTokenCopy -> listOfNotNull(target); is SacrificeEach -> emptyList(); is SacrificeSource -> emptyList(); is Mill -> emptyList(); is ExileGraveyard -> emptyList(); is DiscardChosen -> emptyList(); is BounceChosen -> emptyList(); is LivingWeapon -> emptyList(); is DiscardNamed -> emptyList(); is CounterThatSpell -> emptyList(); is AddManaInstead -> emptyList(); is AddManaPer -> emptyList(); is AddManaDevotion -> emptyList(); is GainLifePerSpellThisTurn -> emptyList(); is WinIfDevotionCoversLibrary -> emptyList(); is CopySpell -> listOf(target); is StormCopy -> emptyList(); is DamageDivided -> listOf(target); is Monstrosity -> emptyList(); is MoveSourceCounters -> listOf(target); is ChangeTarget -> listOf(target); is Evolve -> emptyList(); is PreventCombatToAndBy -> listOf(target); is WinIfCastBefore -> emptyList(); is SacrificeThatMany -> emptyList(); is PutFromHand -> emptyList(); is DamagePlayer -> emptyList(); is LoseLifeThatMuch -> emptyList(); is BecomeMonarch -> emptyList(); is ReturnSelfFromGraveyard -> emptyList(); is AnimateSelf -> emptyList(); is SaddleSelf -> emptyList(); is PumpSelfCount -> emptyList(); is TapAttached -> emptyList(); is DamageThatMuch -> listOf(target); is PumpAllCount -> emptyList(); is ShuffleIntoLibrary -> listOf(target); is PumpCausing -> emptyList(); is Proliferate -> emptyList(); is CantLoseThisTurn -> emptyList(); is DamageLifeFloor -> emptyList(); is ExtraLandThisTurn -> emptyList(); is CoinFlip -> (onWin?.targets() ?: emptyList()) + (onLose?.targets() ?: emptyList()); is CantCastThisTurn -> emptyList(); is ForAllTargeted -> listOf(target)
         is May -> effect.targets(); is UnlessPays -> effect.targets(); is Seq -> effects.flatMap { it.targets() }.distinct()   // "It gets…" refers back to the same target
-        is IfYouDo -> choice.targets() + then.targets()
+        is IfYouDo -> choice.targets() + then.targets(); is IfKicked -> otherwise.targets()
         is IfCondition -> then.targets()
         is Repeat -> body.targets()
         is LoseLifeUnlessSacOrDiscard -> emptyList()
@@ -348,7 +350,7 @@ sealed interface Effect {
 
     fun hasUnparsed(): Boolean = when (this) {
         is Unparsed -> true; is May -> effect.hasUnparsed(); is UnlessPays -> effect.hasUnparsed(); is Seq -> effects.any { it.hasUnparsed() }
-        is IfYouDo -> choice.hasUnparsed() || then.hasUnparsed()
+        is IfYouDo -> choice.hasUnparsed() || then.hasUnparsed(); is IfKicked -> then.hasUnparsed() || otherwise.hasUnparsed()
         is IfCondition -> then.hasUnparsed()
         is Repeat -> body.hasUnparsed()
         is Modal -> modes.any { it.hasUnparsed() }

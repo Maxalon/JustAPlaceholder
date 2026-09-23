@@ -14711,7 +14711,8 @@
     "text": "I cast Exsanguinate for 5 in a 4 player game",
     "expect": [
       "opponent loses 5 life.",
-      "You gain 5 life."
+      "opponent 2 loses 5 life.",
+      "You gain 15 life."
     ],
     "notExpect": [
       "assuming 0"
@@ -15565,5 +15566,112 @@
     "cite": [
       "106.4"
     ]
+  },
+  {
+    "id": "four-player-blasphemous-act",
+    "text": "In a four player game, I cast Blasphemous Act. Everyone has creatures. What happens?",
+    "expect": [
+      "a creature has 13 damage marked. (×4)",
+      "a creature: the battlefield → opponent 2's graveyard.",
+      "a creature: the battlefield → opponent 3's graveyard."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "atraxa-proliferates-poison-at-end-step",
+    "text": "My commander is Atraxa, Praetors' Voice. I proliferate at end of turn with two poison on my opponent. How much poison do they have?",
+    "expect": [
+      "opponent has 3 poison counters."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "701.34a"
+    ]
+  },
+  {
+    "id": "tithe-three-opponents-draw",
+    "text": "I control Smothering Tithe and each of my three opponents draws a card. How many Treasures do I get?",
+    "expect": [
+      "You get a Treasure token. (×3)"
+    ],
+    "notExpect": [
+      "Not understood",
+      "my my"
+    ],
+    "cite": []
+  },
+  {
+    "id": "fog-stops-another-players-attack",
+    "text": "Bob casts Fog. Does it stop Alice's attack on Carol?",
+    "expect": [
+      "Damage to Carol from a creature is prevented."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "block-the-one-attacking-her",
+    "text": "Alice is at 1 life. Bob attacks Alice with a 1/1 and Carol with a 1/1. Alice blocks the one attacking her. Does Alice survive?",
+    "expect": [
+      "Yes: Alice is still in the game at 1 life."
+    ],
+    "notExpect": [
+      "Alice loses the game"
+    ],
+    "cite": []
+  },
+  {
+    "id": "rift-overloaded-two-opponents-boards",
+    "text": "I cast Cyclonic Rift overloaded with two opponents. Do both of their boards get bounced?",
+    "expect": [
+      "a creature: the battlefield → opponent 2's hand.",
+      "a creature: the battlefield → opponent's hand."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "rite-of-replication-kicked-five-copies",
+    "text": "I cast Rite of Replication kicked on my opponent's Sun Titan. What do I get?",
+    "expect": [
+      "You get a token copy of Sun Titan. (×5)"
+    ],
+    "notExpect": [
+      "not tracked in detail",
+      "mana value too high"
+    ],
+    "cite": [
+      "702.33a"
+    ]
+  },
+  {
+    "id": "monarch-taken-by-combat-damage",
+    "text": "I attack the monarch with a 2/2 and it isn't blocked. Do I become the monarch?",
+    "expect": [
+      "You are the monarch."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "kaalia-puts-griselbrand-in-attacking",
+    "text": "My Kaalia of the Vast attacks. I put Griselbrand onto the battlefield. Does Griselbrand attack?",
+    "expect": [
+      "Griselbrand is attacking opponent.",
+      "opponent takes 7 damage."
+    ],
+    "notExpect": [
+      "summoning sick"
+    ],
+    "cite": []
   }
 ]
