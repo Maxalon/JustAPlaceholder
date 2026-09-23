@@ -515,6 +515,14 @@ object OracleParser {
             val n = number(m.groupValues[1]) ?: return@let
             return StaticEffect.Replace(Replacement.CounterMultiplier(1, extra = n))
         }
+        // Mana Reflection / Nyxbloom Ancient: "If you tap a permanent for mana, it produces twice as much of that mana instead."
+        Regex("""^if you tap a (permanent|nonland permanent) for mana, it produces (twice|two times|three times|thrice) as much of that mana instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            return StaticEffect.Replace(Replacement.ManaBoost(if (m.groupValues[2].lowercase().startsWith("th")) 3 else 2, 0, m.groupValues[1].startsWith("nonland", true), trigger = false))
+        }
+        // Kinnan, Bonder Prodigy: "Whenever you tap a nonland permanent for mana, add one mana of any type that permanent produced."
+        Regex("""^whenever you tap a (permanent|nonland permanent) for mana, add one (?:additional )?mana of any type that permanent produced\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            return StaticEffect.Replace(Replacement.ManaBoost(1, 1, m.groupValues[1].startsWith("nonland", true), trigger = true))
+        }
         // Hardened Scales: "If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead."
         Regex("""^if one or more ([+-]\d+/[+-]\d+|\w+) counters would be put on an? (?:creature|artifact|permanent) you control, that many plus (one|two|\d+) \1 counters are put on it instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val n = number(m.groupValues[2]) ?: return@let

@@ -506,6 +506,8 @@ sealed interface Replacement {
     data class GraveyardReplacement(val filter: ObjFilter, val self: Boolean, val instead: String, val fromAnywhere: Boolean, val alsoDo: Effect? = null) : Replacement
     /** "If a source (you control) would deal damage …, it deals double that damage instead." */
     data class DamageMultiplier(val factor: Int, val sourceControl: Who?) : Replacement
+    /** Mana Reflection / Nyxbloom Ancient ("produces twice/three times as much"), Kinnan ("add one mana of any type that permanent produced"). */
+    data class ManaBoost(val factor: Int, val plus: Int, val nonlandOnly: Boolean, val trigger: Boolean) : Replacement
     /** "If you would gain life, you gain twice that much life instead." */
     data class LifeGainMultiplier(val factor: Int, val anyPlayer: Boolean = false) : Replacement
     /** "If an effect would place one or more counters on a permanent you control, it places twice that many instead." (Doubling Season) */

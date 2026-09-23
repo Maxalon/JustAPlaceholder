@@ -527,7 +527,19 @@ class Engine(val state: GameState) {
         }
         if (isManaEffect(ability.effect)) {
             val p = state.player(playerId)
-            val made = manaMade(ability.effect, playerId, choice)
+            val made0 = manaMade(ability.effect, playerId, choice)
+            // Mana Reflection, Nyxbloom Ancient, Kinnan: what the permanent makes is multiplied or added to.
+            var madeBoost: String? = made0 ?: describeManaEffect(ability.effect).takeIf { Regex("""\{[^}]+\}""").containsMatchIn(it) }
+            val boosts = state.objects.values.filter { it.isOnBattlefield() && it.controller == playerId }.flatMap { src -> src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.ManaBoost }.filter { !it.nonlandOnly || "Land" !in obj.def.types }.map { src to it } }
+            for ((src, b) in boosts) {
+                val text = madeBoost ?: break
+                val syms = Regex("""\{[^}]+\}""").findAll(text).map { it.value }.toList()
+                if (syms.isEmpty()) break
+                val all = (1..b.factor).flatMap { syms } + List(b.plus) { syms.first() }
+                trace.step(if (b.trigger) "${src.name} triggers on ${obj.name} being tapped for mana and adds one more mana of a type it produced: ${syms.joinToString("")} becomes ${all.joinToString("")}." else "${src.name} replaces what ${obj.name} produces: ${if (b.factor == 2) "twice" else "${b.factor} times"} as much, so ${syms.joinToString("")} becomes ${all.joinToString("")}.", if (b.trigger) "603.2" else "614.1a")
+                madeBoost = "add " + all.joinToString("")
+            }
+            val made = if (boosts.isNotEmpty()) madeBoost else made0
             trace.step("${p.subject} ${p.v("activates", "activate")} ${obj.name}'s mana ability (${ability.cost}). It's a mana ability, so it doesn't use the stack and resolves immediately: ${made ?: describeManaEffect(ability.effect)}.", "605.1a", "605.3b")
             if (ability.cost.contains("{T}")) tap(obj)
             state.outcomes += "${obj.name}'s mana ability: ${made ?: describeManaEffect(ability.effect)}."
@@ -1069,7 +1081,9 @@ class Engine(val state: GameState) {
                     if (t != null && t <= 0) { move(obj, Zone.GRAVEYARD, "${obj.name} has toughness $t and is put into its owner's graveyard (state-based action).", "704.3", "704.5f"); changed = true; continue }
                     val lethal = t != null && obj.damage >= t && obj.damage > 0
                     if ((lethal || obj.dealtDeathtouchDamage) && obj.has("indestructible")) {
-                        trace.step("${obj.name} has lethal damage but is indestructible, so it isn't destroyed.", "702.12b"); obj.dealtDeathtouchDamage = false; continue
+                        trace.step("${obj.name} has lethal damage but is indestructible, so it isn't destroyed.", "702.12b"); obj.dealtDeathtouchDamage = false
+                        if (state.outcomes.none { it == "${obj.name} is indestructible and isn't destroyed by the lethal damage on it." }) state.outcomes += "${obj.name} is indestructible and isn't destroyed by the lethal damage on it."
+                        continue
                     }
                     if (lethal) { destroy(obj, "${obj.name} has ${obj.damage} damage marked and toughness $t, so it's destroyed (state-based action).", "704.3", "704.5g"); changed = true; continue }
                     if (obj.dealtDeathtouchDamage && obj.damage > 0) { destroy(obj, "${obj.name} was dealt damage by a source with deathtouch, so it's destroyed (state-based action).", "704.3", "704.5h", "702.2b"); changed = true; continue }

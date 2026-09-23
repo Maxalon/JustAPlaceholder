@@ -2155,10 +2155,12 @@
     "text": "I attack with Serra Angel and Grizzly Bears. My opponent has Settle the Wreckage in hand and 4 untapped Plains.",
     "expect": [
       "Plains [plains_4] (opponent's)",
-      "opponent takes 4 damage"
+      "Serra Angel: the battlefield → exile.",
+      "Grizzly Bears: the battlefield → exile."
     ],
-    "cite": [
-      "510.2"
+    "cite": [],
+    "notExpect": [
+      "opponent takes 4 damage"
     ]
   },
   {
@@ -14624,6 +14626,134 @@
     "expect": [
       "Sol Ring phases out (back at the start of your next turn).",
       "Grizzly Bears phases out (back at the start of your next turn)."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "fog-in-hand-is-cast-at-the-attack",
+    "text": "I attack with a 5/5 and they have Fog",
+    "expect": [
+      "Damage to opponent from a 5/5 creature is prevented."
+    ],
+    "notExpect": [
+      "opponent takes 5 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "they-fog-my-attack",
+    "text": "they Fog my attack with a 4/4",
+    "expect": [
+      "Damage to opponent from a 4/4 creature is prevented."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "they-settle-my-attackers",
+    "text": "they Settle my attackers, do I get lands",
+    "expect": [
+      "a creature: the battlefield → exile. (×2)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "heroic-intervention-in-hand-vs-blasphemous-act",
+    "text": "they cast Blasphemous Act and I have Heroic Intervention in hand with a 3/3",
+    "expect": [
+      "a 3/3 creature is indestructible and isn't destroyed by the lethal damage on it."
+    ],
+    "notExpect": [
+      "your graveyard"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "vandalblast-not-overloaded",
+    "text": "they cast Vandalblast not overloaded on my Sol Ring",
+    "expect": [
+      "Sol Ring: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "overloaded"
+    ],
+    "cite": []
+  },
+  {
+    "id": "blood-artist-wrath-each-side",
+    "text": "I have Blood Artist and cast Wrath of God with 4 creatures on each side",
+    "expect": [
+      "opponent loses 1 life. (×9)"
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "hailfire-permanents-and-cards",
+    "text": "they cast Torment of Hailfire for 5 and I have 2 permanents and 3 cards",
+    "expect": [
+      "a permanent: the battlefield → your graveyard. (×2)",
+      "You discard a card. (×3)"
+    ],
+    "notExpect": [
+      "Unknown card"
+    ],
+    "cite": []
+  },
+  {
+    "id": "exsanguinate-for-five-in-a-game",
+    "text": "I cast Exsanguinate for 5 in a 4 player game",
+    "expect": [
+      "opponent loses 5 life.",
+      "You gain 5 life."
+    ],
+    "notExpect": [
+      "assuming 0"
+    ],
+    "cite": []
+  },
+  {
+    "id": "bounced-commander-to-command-zone",
+    "text": "their commander gets bounced by my Cyclonic Rift, does it go to the command zone",
+    "expect": [
+      "a commander: opponent's hand → the command zone (its owner's choice, 903.9b)."
+    ],
+    "notExpect": [],
+    "cite": [
+      "903.9b"
+    ]
+  },
+  {
+    "id": "kinnan-adds-one-more",
+    "text": "I tap Sol Ring with Kinnan out",
+    "expect": [
+      "Sol Ring's mana ability: add {C}{C}{C}."
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "nyxbloom-triples",
+    "text": "I have Nyxbloom Ancient and tap a Forest",
+    "expect": [
+      "Forest's mana ability: add {G}{G}{G}."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "mana-reflection-doubles-cradle",
+    "text": "I have Mana Reflection and tap Gaea's Cradle with 3 creatures out",
+    "expect": [
+      "Gaea's Cradle's mana ability: add {G}{G}{G}{G}{G}{G}."
     ],
     "notExpect": [],
     "cite": []
