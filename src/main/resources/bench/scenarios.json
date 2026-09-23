@@ -14757,5 +14757,119 @@
     ],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "untapped-after-size",
+    "text": "they have a 3/3 untapped and I attack with a 2/2",
+    "expect": [
+      "opponent takes 2 damage."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "trailing-will-it-die-splits",
+    "text": "if I attack with a 2/2 and they have a 3/3 will it die",
+    "expect": [
+      "No: a 3/3 creature is still on the battlefield."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "they-block-one-after-attack-into",
+    "text": "I swing with two 2/2s into a 3/3, they block one",
+    "expect": [
+      "opponent takes 2 damage.",
+      "a 2/2 creature: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "a creature: the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "attack-me-with-everything",
+    "text": "they attack me with everything, I have a 2/2 and a 3/3, they have a 4/4 and a 1/1",
+    "expect": [
+      "You take 4 damage.",
+      "You take 1 damage."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "my-creature-is-a-five-five-said-late",
+    "text": "I attack, they block with a 1/1 deathtouch, my creature is a 5/5, does it die",
+    "expect": [
+      "a 5/5 creature: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "deathtouch-question-blocking",
+    "text": "does deathtouch kill my 5/5 if it blocks a 1/1 deathtouch",
+    "expect": [
+      "a 5/5 creature: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "first-strike-deathtouch-blocker-no-owner",
+    "text": "a 1/1 first strike deathtouch blocks a 6/6, does the 6/6 deal damage",
+    "expect": [
+      "a 6/6 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "1/1 creature with first strike and deathtouch: the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "keywords-after-size-blocked-by",
+    "text": "my 4/4 trample deathtouch is blocked by a 3/3",
+    "expect": [
+      "opponent takes 3 damage.",
+      "a 3/3 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "shock-the-blocker-stays-blocked",
+    "text": "they block my 2/2 with a 2/2 and I Shock the blocker",
+    "expect": [
+      "a 2/2 creature deals no combat damage: its blocker left combat and it stays blocked."
+    ],
+    "notExpect": [
+      "opponent takes 2 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "alpha-strike-into-two-blockers",
+    "text": "I alpha strike with three 2/2s into their two 1/1s",
+    "expect": [
+      "opponent takes 2 damage.",
+      "a 1/1 creature: the battlefield → opponent's graveyard. (×2)"
+    ],
+    "notExpect": [
+      "a 2/2 creature: the battlefield → your graveyard"
+    ],
+    "cite": []
   }
 ]

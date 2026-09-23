@@ -562,6 +562,26 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(have|has|with) (\d+|two|three|four|five|six|seven) (permanents|lands|artifacts|creatures) and (\d+|two|three|four|five|six|seven) cards\b(?! in)""", RegexOption.IGNORE_CASE), "$1 $2 $3 and $4 cards in hand")
             // "their commander gets bounced by my Cyclonic Rift": the spell, cast by the other side at the commander.
             .let { t0 -> Regex("""\b(my|their) commander (?:gets|is|was|got) (?:bounced|killed|destroyed|exiled|countered|hit|targeted) by (?:my |their |an? |the )?(c\d+)\b""", RegexOption.IGNORE_CASE).replace(t0) { r -> "${if (r.groupValues[1].lowercase() == "my") "they" else "i"} cast ${r.groupValues[2]} on ${r.groupValues[1]} commander" } }
+            // "they have a 3/3 will it die": the question at the end is its own clause.
+            .replace(Regex("""(\S) (will|does|would|can|could) (it|that|he|she|they|my creature|their creature) (die|survive|live|be destroyed|block|attack|trigger|resolve|work|get through|connect|deal damage|take damage)(\??)\s*$""", RegexOption.IGNORE_CASE), "$1, $2 $3 $4$5")
+            // "a 3/3 untapped" → "an untapped 3/3"; "alpha strike" → attack; "attack me with everything".
+            .replace(Regex("""\b(a|an|my|their|his|her) (\d+/\d+) (untapped|tapped)\b""", RegexOption.IGNORE_CASE), "$1 $3 $2")
+            .replace(Regex("""\balpha[- ]?strikes?\b""", RegexOption.IGNORE_CASE), "attack")
+            // "attack with three 2/2s into their two 1/1s": the counted creatures after "into" are the blockers.
+            .replace(Regex("""\b(attacks?|attacking|swings?|swinging) with ((?:two|three|four|five|\d+) \d+/\d+s?(?: [a-z]+)?) into (?:their |an? |the )?((?:two|three|four|five|\d+) \d+/\d+s?(?: [a-z]+)?)\b""", RegexOption.IGNORE_CASE), "$1 with $2, they block with $3")
+            .replace(Regex("""\b(attacks?|attacking|swings?|swinging) (me|us|them) with (everything|everyone|all(?: of)?(?: my| their)?(?: creatures)?|(?:my|their|his|her) (?:whole |entire )?(?:team|board|squad|side))\b""", RegexOption.IGNORE_CASE), "$1 with $3")
+            // "my creature is a 5/5" said after the attack: the creature comes first.
+            .replace(Regex("""^(.*?),\s*my creature is an? (\d+/\d+)(?: creature)?,\s*(.*)$""", RegexOption.IGNORE_CASE), "i have a $2, $1, $3")
+            .replace(Regex("""\bmy creature is an? (\d+/\d+)\b""", RegexOption.IGNORE_CASE), "i have a $1")
+            // "does deathtouch kill my 5/5 if it blocks a 1/1 deathtouch": the attack and the block.
+            .replace(Regex("""^does deathtouch kill my (\d+/\d+) if it blocks (?:a |an |their )?(\d+/\d+)(?: with)? deathtouch\s*\??$""", RegexOption.IGNORE_CASE), "they attack with a $2 with deathtouch, i block with my $1")
+            // "a 1/1 first strike deathtouch blocks a 6/6": a block with no owners said; the blocker is read as the asker's.
+            .replace(Regex("""^an? (\d+/\d+(?: [a-z]+)*?) blocks an? (\d+/\d+(?: [a-z]+)*?)(?=,|\s*$)""", RegexOption.IGNORE_CASE), "they attack with a $2, i block with a $1")
+            // "4/4 trample deathtouch": keywords after the size without "with".
+            .let { t0 -> Regex("""\b(\d+/\d+) ((?:trample|deathtouch|flying|flyer|flier|lifelink|first strike|double strike|menace|vigilance|reach|indestructible|hexproof|haste|infect|wither|defender)(?: (?:trample|deathtouch|flying|flyer|flier|lifelink|first strike|double strike|menace|vigilance|reach|indestructible|hexproof|haste|infect|wither|defender))*)\b(?! ?(?:creature|token|guy|dude|attacker|blocker))""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                val kws = Regex("""trample|deathtouch|flying|flyer|flier|lifelink|first strike|double strike|menace|vigilance|reach|indestructible|hexproof|haste|infect|wither|defender""", RegexOption.IGNORE_CASE).findAll(r.groupValues[2]).map { it.value.lowercase().replace("flyer", "flying").replace("flier", "flying") }.toList()
+                if (kws.size < 2) r.value else "${r.groupValues[1]} with ${kws.joinToString(" & ")}"
+            } }
             // "they only have one creature": "only" adds nothing the board needs.
             .replace(Regex("""\b(they|i|we|he|she|my opponent|the opponent) only (have|has|control|controls|got) (a|an|one|two|three|four|\d+|no)\b""", RegexOption.IGNORE_CASE), "$1 $2 $3")
             // "what's his loyalty" / "how much loyalty does it have": the counters on it.
@@ -735,7 +755,7 @@ class SituationParser(private val names: NameIndex) {
             } }
             // "a 4/4 attacks my 2/2": the attacker is said without an owner, but a creature of mine blocking it
             // makes it the opponent's.
-            .replace(Regex("""\b(?:an?|the) ((?:\d+/\d+|c\d+)(?:\s+(?!attacks?\b|attacking\b|swings?\b|swinging\b)[a-z]+)*\s+(?:attacks?|attacking|swings?|swinging) (?:my|our) )"""), "their $1")
+            .replace(Regex("""\b(?:an?|the) ((?:\d+/\d+|c\d+)(?:\s+(?!attacks?\b|attacking\b|swings?\b|swinging\b)[a-z&,]+)*\s+(?:attacks?|attacking|swings?|swinging) (?:my|our) )"""), "their $1")
             // "their 4/4 attacks my 2/2": nobody attacks a creature, so the creature named after the verb is the
             // blocker. Whose it is says who blocks. A planeswalker really can be attacked, so a named card only
             // reads this way when it is a creature.
@@ -4491,7 +4511,14 @@ class SituationParser(private val names: NameIndex) {
             val who = actor ?: ctx.other(attackerEvent.player) ?: subject ?: "opp"
             val ids = (if (r.groupValues[4].isNotEmpty()) describedTokens(r.groupValues[1], r.groupValues[2], r.groupValues[3], who, ctx, r.groupValues[5]) else describedCreatures(r.groupValues[1], r.groupValues[2], r.groupValues[3], who, ctx, r.groupValues[5])) +
                 Regex(""" plus (an? |\d+ |two |three |four |five )?(\d+/\d+)s?(?: ($kwNouns))?(?: ($creatureKinds))?""").findAll(c).flatMap { x -> describedCreatures(x.groupValues[1], x.groupValues[2], x.groupValues[4], who, ctx, x.groupValues[3].let { k -> if (k.isEmpty()) "" else k.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") }) }.toList()
-            ids.forEach { ctx.events += EventSpec("block", player = who, obj = it, targets = listOfNotNull(attackerEvent.obj)) }
+            // "attack with three 2/2s, they block with two 1/1s": a counted group of blockers against several attackers
+            // blocks one attacker each, not all of them the same one (a list "with a 2/2 and a 1/1" stays a double block).
+            val counted = number(r.groupValues[1].trim()) ?: 0
+            val openAttackers = ctx.events.filter { e -> e.verb == "attack" && e.player != who && ctx.events.none { b -> b.verb == "block" && b.targets.contains(e.obj) } }.mapNotNull { it.obj }.distinct()
+            if (counted >= 2 && ids.size >= 2 && openAttackers.size >= ids.size && !c.contains(" plus ")) {
+                ids.forEachIndexed { i, id -> ctx.events += EventSpec("block", player = who, obj = id, targets = listOf(openAttackers[i])) }
+                ctx.notes += "${ids.size} blockers against ${openAttackers.size} attackers are read as one blocker on each of ${ids.size} attackers; say \"both block the same one\" for a double block."
+            } else ids.forEach { ctx.events += EventSpec("block", player = who, obj = it, targets = listOfNotNull(attackerEvent.obj)) }
             ctx.lastActor = who; ctx.lastVerb = "block"; return true
         }
         // "My Stoneforge Mystic dies with a Batterskull attached": the attachment, said as a trailer on what
@@ -4582,6 +4609,8 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:if )?(?:i |they |we |he |she )?(?:chump[- ]?)?(?:blocks?|blocking|chumps?)(?: one| one of them| the first| the first one| a single one| just one| only one)$""").find(c)?.let {
             val attackEvent = ctx.events.firstOrNull { it.verb == "attack" } ?: return@let
             val who = actor ?: ctx.other(attackEvent.player ?: "opp") ?: "me"
+            // "I swing with two 2/2s into a 3/3, they block one": the block was declared by "into a 3/3" already.
+            if (ctx.events.any { e -> e.verb == "block" && e.player == who }) return true
             val blocker = ctx.objects.values.lastOrNull { o -> o.controller == who && o.zone == "battlefield" && isCreatureName(o.card.name) && ctx.events.none { e -> e.verb == "block" && e.obj == o.id } }?.id
                 ?: describedCreatures("a ", "", "creature", who, ctx, "").firstOrNull()?.also {
                     ctx.notes += "Nothing was said about what ${if (who == "me") "you" else "they"} block with, so the blocker is read as an unnamed creature; name it for a precise answer."
