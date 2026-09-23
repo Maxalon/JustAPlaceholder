@@ -103,6 +103,8 @@ sealed interface Trigger {
     data object ThisAttacksSaddled : Trigger
     /** "Whenever one or more +1/+1 counters are put on ~": one trigger for the whole placement, not one each. */
     data class CountersPutOnThis(val kind: String, val atLeast: Int = 1) : Trigger
+    /** Dark Depths: "When ~ has no ice counters on it" — a state trigger, once the last counter goes (603.8). */
+    data class NoCountersOnThis(val kind: String) : Trigger
     /** Battalion: "~ and at least two other creatures attack" — ~ has to be one of them (702.101a). */
     data class ThisAndNOthersAttack(val others: Int) : Trigger
     /** "Whenever this creature becomes saddled (for the first time each turn)" (702.166b). */
@@ -489,6 +491,8 @@ sealed interface StaticEffect {
     data class CantCastFromZone(val zones: Set<String>, val opponentsOnly: Boolean) : StaticEffect
     /** Recognised static text the engine cites but has no game model for (level-up stats, "look at the top card any time", …). */
     data class Note(val text: String, val rules: List<String>) : StaticEffect
+    /** Questing Beast: "(Combat) damage that would be dealt by creatures you control can't be prevented" (615.12). */
+    data class DamageCantBePrevented(val combatOnly: Boolean, val creaturesOnly: Boolean) : StaticEffect
     /** "LEVEL 2-6 3/3 First strike": what a leveler is while it has that many level counters (702.87b). max null = "and up". */
     data class LevelBand(val min: Int, val max: Int?, val power: Int, val toughness: Int, val keywords: Set<String>) : StaticEffect
     /** A continuous replacement or prevention effect from a static ability (614, 615). */

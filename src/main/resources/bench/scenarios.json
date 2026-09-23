@@ -2354,7 +2354,7 @@
     "id": "deathrite-tap-for-mana",
     "text": "I control Deathrite Shaman. Can I tap it for mana?",
     "expect": [
-      "Exile target land card from a graveyard"
+      "Deathrite Shaman can't be tapped for mana on its own: its ability targets (land card from a graveyard), so it isn't a mana ability (605.1a) and needs that target."
     ],
     "notExpect": [
       "which one?"
@@ -15235,5 +15235,139 @@
     "cite": [
       "500.7"
     ]
+  },
+  {
+    "id": "hailfire-sacrifices-two-permanents-then-life",
+    "text": "My opponent casts Torment of Hailfire with X=3. I have 5 life and 2 permanents. What happens?",
+    "expect": [
+      "a permanent: the battlefield → your graveyard. (×2)",
+      "You go from 5 to 2 life."
+    ],
+    "notExpect": [
+      "You lose the game."
+    ],
+    "cite": []
+  },
+  {
+    "id": "oracle-already-out-with-empty-library",
+    "text": "I have Thassa's Oracle and an empty library. Do I win?",
+    "expect": [
+      "Thassa's Oracle's ability triggers only as it enters the battlefield; it is already there, so nothing checks now."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "commander-hits-for-three-more-to-twenty-one",
+    "text": "My commander has dealt 18 damage to my opponent. I hit them for 3 more with it. Do they lose?",
+    "expect": [
+      "opponent has taken 21 commander damage from a 3/3 creature.",
+      "Yes: opponent has lost the game."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "deathrite-exiles-their-land-for-mana",
+    "text": "I have Deathrite Shaman. Can I exile a land from my opponent's graveyard for mana?",
+    "expect": [
+      "a basic land: opponent's graveyard → exile."
+    ],
+    "notExpect": [
+      "Nothing changes",
+      "needs 0 target"
+    ],
+    "cite": []
+  },
+  {
+    "id": "hexmage-on-dark-depths-makes-marit-lage",
+    "text": "Can my Vampire Hexmage remove all counters from a Dark Depths?",
+    "expect": [
+      "Dark Depths loses all its counters (10 ice).",
+      "Dark Depths is sacrificed.",
+      "You get a Marit Lage."
+    ],
+    "notExpect": [
+      "Not understood",
+      "Rules text not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "finks-sacrificed-with-counter-stays-dead",
+    "text": "I sacrifice Kitchen Finks with a -1/-1 counter. Does it come back?",
+    "expect": [
+      "Kitchen Finks doesn't come back: it had 1 -1/-1 counter when it died, so persist doesn't return it."
+    ],
+    "notExpect": [
+      "Kitchen Finks comes back"
+    ],
+    "cite": []
+  },
+  {
+    "id": "questing-beast-through-fog",
+    "text": "I attack with Questing Beast. My opponent has Fog. Does damage get through?",
+    "expect": [
+      "Fog can't prevent Questing Beast's damage (Questing Beast).",
+      "opponent takes 4 damage."
+    ],
+    "notExpect": [
+      "Damage to opponent from Questing Beast is prevented.",
+      "opponent takes 4 damage. (×2)"
+    ],
+    "cite": [
+      "615.12"
+    ]
+  },
+  {
+    "id": "spellskite-already-the-target",
+    "text": "Opponent casts Bolt at my Spellskite. I activate Spellskite. What happens?",
+    "expect": [
+      "Lightning Bolt already targets Spellskite; nothing changes.",
+      "Spellskite has 3 damage marked."
+    ],
+    "notExpect": [
+      "isn't a legal target"
+    ],
+    "cite": []
+  },
+  {
+    "id": "evoke-countered-no-trigger",
+    "text": "Does Solitude's evoke trigger if it's countered?",
+    "expect": [
+      "Solitude is countered.",
+      "No: Solitude's ability didn't trigger"
+    ],
+    "notExpect": [
+      "Solitude enters the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "counterspell-their-leak-on-my-bolt",
+    "text": "I have 3 Islands and cast Counterspell on a Mana Leak targeting my Bolt. What resolves?",
+    "expect": [
+      "Mana Leak is countered.",
+      "opponent takes 3 damage."
+    ],
+    "notExpect": [
+      "you cast Mana Leak"
+    ],
+    "cite": []
+  },
+  {
+    "id": "wrath-my-board-of-four-with-zulaport",
+    "text": "I have Zulaport Cutthroat and my opponent Wraths my board of 4 creatures. What happens?",
+    "expect": [
+      "opponent loses 1 life. (×4)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

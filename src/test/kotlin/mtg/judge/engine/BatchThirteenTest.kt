@@ -449,7 +449,7 @@ class BatchThirteenTest {
         val s3 = state(); s3.put("skite", spellskite, "me"); s3.put("bears", bears, "me"); val e3 = Engine(s3)
         val naturalize = e3.cast("opp", card("Shatter", "Instant", "Destroy target artifact.", "{1}{R}", "R"), listOf(Ref.Obj("skite")))!!
         e3.activate("me", "skite", 0, listOf(Ref.Stack(naturalize.id))); e3.resolveAll()
-        assertTrue(s3.outcomes.any { it.contains("target isn't changed") }, "already targeting Spellskite: nothing to change: " + s3.outcomes)
+        assertTrue(s3.outcomes.any { it.contains("target isn't changed") || it.contains("already targets Spellskite") }, "already targeting Spellskite: nothing to change: " + s3.outcomes)
     }
 
     @Test

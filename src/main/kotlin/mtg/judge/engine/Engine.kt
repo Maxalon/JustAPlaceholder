@@ -578,6 +578,7 @@ class Engine(val state: GameState) {
             val kind = m.groupValues[2]; val have = obj.counters[kind] ?: 0; val p = state.player(playerId)
             if (have < n) { trace.step("${obj.name} has ${if (have == 0) "no" else "$have"} $kind counter${if (have == 1) "" else "s"} and its ability costs removing $n, so the cost can't be paid and the ability can't be activated.", "602.2b", "118.3"); state.outcomes += "${obj.name}'s ability can't be activated (not enough $kind counters to remove)."; return null }
             val left = have - n; if (left == 0) obj.counters.remove(kind) else obj.counters[kind] = left
+            if (left == 0) onEvent(GameEvent.CountersGone(obj, kind))
             trace.step("${p.subject} ${p.v("removes", "remove")} $n $kind counter${if (n == 1) "" else "s"} from ${obj.name} as the cost ($left left${if (obj.def.isCreature && obj.isOnBattlefield()) "; it's now ${obj.power}/${obj.toughness}" else ""}). A cost is paid as the ability is activated, so the counter is gone before the ability resolves.", "602.2b", "122.5")
             state.outcomes += "${obj.name}: $n $kind counter${if (n == 1) "" else "s"} removed as the cost ($left left)."
         }
@@ -610,6 +611,11 @@ class Engine(val state: GameState) {
         else if (divided != null && targets.isNotEmpty() && (divided.maxTargets == null || targets.size <= divided.maxTargets)) Unit
         else if (needed.size != targets.size && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && targetsAPlayer(ability.effect))) {
             state.clarifications += Clarification("${obj.name}'s ability target", "The ability needs ${needed.size} target(s) (${needed.joinToString("; ") { it.raw }}) but ${targets.size} given (602.2b, 601.2c).")
+            // Deathrite Shaman "tapped for mana": an ability with a target isn't a mana ability, however much mana it makes.
+            if ((ability.effect as? Effect.Seq)?.effects?.any { it is Effect.AddMana || it is Effect.AddManaPer } == true) {
+                trace.step("${obj.name}'s ability (\"${ability.text.replace("~", obj.name)}\") has a target, so it isn't a mana ability: it uses the stack, can be responded to, and can't be activated at all without a legal target. ${obj.name} can't just be tapped for mana.", "605.1a", "605.3")
+                state.outcomes += "${obj.name} can't be tapped for mana on its own: its ability targets (${needed.joinToString("; ") { it.raw }}), so it isn't a mana ability (605.1a) and needs that target."
+            }
             // "I Stifle a Wasteland activation": the ability still goes on the stack so responses to it can be shown.
             if (needed.size > targets.size) { abilityTargetsUnknown = true; trace.step("${obj.name}'s ability needs a target that wasn't stated; it's put on the stack anyway so responses to it can be shown, but what it does to its target can't be.", "602.2b") }
         }
@@ -1410,6 +1416,8 @@ class Engine(val state: GameState) {
         data class Attacks(val obj: GameObject) : GameEvent
         data class BecomesSaddled(val obj: GameObject) : GameEvent
         data class CountersPut(val obj: GameObject, val kind: String, val count: Int) : GameEvent
+        /** The last counter of a kind left an object (Vampire Hexmage on Dark Depths). */
+        data class CountersGone(val obj: GameObject, val kind: String) : GameEvent
         data class PlayerAttacks(val playerId: String) : GameEvent
         data class AttacksAlone(val obj: GameObject) : GameEvent
         data class StepBegins(val step: String, val activePlayer: String) : GameEvent
@@ -1503,6 +1511,7 @@ class Engine(val state: GameState) {
                 is GameEvent.Attacks -> "${event.obj.name} attacking"
                 is GameEvent.BecomesSaddled -> "${event.obj.name} becoming saddled"
                 is GameEvent.CountersPut -> "${event.count} ${event.kind} counter${if (event.count == 1) "" else "s"} being put on ${event.obj.name}"
+                is GameEvent.CountersGone -> "the last ${event.kind} counter leaving ${event.obj.name}"
                 is GameEvent.PlayerAttacks -> "${state.player(event.playerId).subject.lowercase()} attacking"
                 is GameEvent.AttacksAlone -> "${event.obj.name} attacking alone"
                 is GameEvent.StepBegins -> "the beginning of ${state.player(event.activePlayer).possessive} ${event.step.replace('_', ' ')}"
@@ -1576,6 +1585,7 @@ class Engine(val state: GameState) {
         Trigger.ThisLeavesBattlefield -> (event is GameEvent.LeavesBattlefield || event is GameEvent.Dies) && (event as? GameEvent.LeavesBattlefield)?.obj === obj || (event as? GameEvent.Dies)?.obj === obj
         Trigger.ThisAttacks -> event is GameEvent.Attacks && event.obj === obj
         Trigger.ThisAttacksSaddled -> event is GameEvent.Attacks && event.obj === obj && obj.saddled
+        is Trigger.NoCountersOnThis -> event is GameEvent.CountersGone && event.obj === obj && event.kind.equals(trigger.kind, true) && onBf()
         is Trigger.CountersPutOnThis -> event is GameEvent.CountersPut && event.obj === obj && onBf() &&
             event.kind.equals(trigger.kind, true) && event.count >= trigger.atLeast
         is Trigger.ThisBecomesSaddled -> event is GameEvent.BecomesSaddled && event.obj === obj && (!trigger.firstEachTurn || obj.saddledThisTurn == 1)
@@ -1645,6 +1655,7 @@ class Engine(val state: GameState) {
         val had = obj.counters[kind] ?: 0
         if (had > 0) {
             trace.step("${obj.name} has $kw, but it had ${had} $kind counter${if (had == 1) "" else "s"} on it when it died, so the ability does nothing.", if (undying) "702.93a" else "702.79a")
+            state.outcomes += "${obj.name} doesn't come back: it had $had $kind counter${if (had == 1) "" else "s"} when it died, so $kw doesn't return it."
             return
         }
         val def = obj.def
@@ -1686,7 +1697,7 @@ class Engine(val state: GameState) {
                 return StackItem(state.newStackId(), StackKind.TRIGGERED, obj.controller, obj, ability.effect, listOf(Ref.Player(causedBy)), zonesOf(listOf(Ref.Player(causedBy))), ability.text, causedBy = causedBy, causedAmount = causedAmount, causedObject = causedObject).also { state.stack += it; state.player(obj.controller).let { p -> trace.step("${p.subject} ${p.v("puts", "put")} ${obj.name}'s triggered ability on the stack targeting ${state.nameOf(Ref.Player(causedBy))}.", "603.3", "603.3d") } }
             }
             val inferred = inferTarget("${obj.name}'s triggered ability", spec, obj.controller, harmful = isHarmful(ability.effect), source = obj)
-                ?: if ((spec.filter.kinds == setOf(Kind.PLAYER) || Regex("""(?i)\bplayer\b""").containsMatchIn(spec.raw)) && state.opponentsOf(obj.controller).size == 1) {
+                ?: if ((spec.filter.kinds == setOf(Kind.PLAYER) || (Regex("""(?i)\bplayer\b""").containsMatchIn(spec.raw) && !Regex("""(?i)\b(?:that|target) (?:player|opponent) controls\b""").containsMatchIn(spec.raw))) && state.opponentsOf(obj.controller).size == 1) {
                     state.clarifications.removeAll { it.about == "${obj.name}'s triggered ability's target" }
                     val opp = state.opponentsOf(obj.controller).single()
                     state.assumptions += "${obj.name}'s triggered ability targets ${state.nameOf(Ref.Player(opp.id))} (\"${spec.raw}\"; assuming its controller chose an opponent rather than themselves)."
@@ -2098,6 +2109,7 @@ class Engine(val state: GameState) {
                 val me = item.source
                 if (target == null) { trace.step("${state.nameOf(ref)} is no longer on the stack, so there's no target to change.", "115.7"); return@forEachLegalTarget }
                 if (!me.isOnBattlefield()) { trace.step("${me.name} isn't on the battlefield, so nothing can be redirected to it.", "115.7"); return@forEachLegalTarget }
+                if (target.targets.any { it is Ref.Obj && it.id == me.id }) { trace.step("${target.describe} already targets ${me.name}, so there is no target to change; the ability does nothing more.", "115.7"); state.outcomes += "${target.describe} already targets ${me.name}; nothing changes."; return@forEachLegalTarget }
                 val specs = target.effect?.targets() ?: emptyList()
                 val idx = target.targets.indices.firstOrNull { i -> val spec = specs.getOrNull(i) ?: specs.firstOrNull(); spec != null && filterMatches(spec.filter, Ref.Obj(me.id), target.controller) && targetingProblem(target.source, target.controller, Ref.Obj(me.id)) == null && target.targets[i] != Ref.Obj(me.id) }
                 if (idx == null) { trace.step("${me.name} isn't a legal target for ${target.describe}${specs.firstOrNull()?.let { " (\"${it.raw}\")" } ?: ""}, so its target can't be changed to ${me.name}; the ability does nothing.", "115.7", "115.3"); state.outcomes += "${target.describe}'s target isn't changed (${me.name} isn't a legal target for it)."; return@forEachLegalTarget }
@@ -2517,7 +2529,7 @@ class Engine(val state: GameState) {
             is Effect.RemoveAllCounters -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o ->
                 val had = o.counters.filterValues { it > 0 }
                 if (had.isEmpty()) trace.step("${o.name} has no counters on it, so nothing is removed.", "608.2c")
-                else { trace.step("All counters are removed from ${o.name}: ${had.entries.joinToString(", ") { (k, n) -> "$n $k" }}${if (o.def.isCreature) "; it's now ${o.power}/${o.toughness} once they're gone" else ""}.", "608.2c", "122.1"); state.outcomes += "${o.name} loses all its counters (${had.entries.joinToString(", ") { (k, n) -> "$n $k" }})." }
+                else { for (k in had.keys) onEvent(GameEvent.CountersGone(o, k)); trace.step("All counters are removed from ${o.name}: ${had.entries.joinToString(", ") { (k, n) -> "$n $k" }}${if (o.def.isCreature) "; it's now ${o.power}/${o.toughness} once they're gone" else ""}.", "608.2c", "122.1"); state.outcomes += "${o.name} loses all its counters (${had.entries.joinToString(", ") { (k, n) -> "$n $k" }})." }
                 o.counters.clear()
                 if (had.keys.any { it == "+1/+1" || it == "-1/-1" || it == "loyalty" }) stateBasedActions()
             } }
@@ -2894,7 +2906,15 @@ class Engine(val state: GameState) {
         }
         // Replacement effects that modify damage (614.2, 609.7): doublers from the battlefield.
         val doublers = state.objects.values.filter { it.isOnBattlefield() }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.DamageMultiplier }.filter { d -> d.sourceControl == null || source == null || (d.sourceControl == Who.YOU) == (source.controller == o.controller) }.map { o to it } }
-        val prevention = preventionFor(source, target, inCombatDamage)
+        var prevention = preventionFor(source, target, inCombatDamage)
+        // Questing Beast: damage from its controller's creatures can't be prevented, so Fog and shields do nothing to it.
+        if (prevention.isNotEmpty() && source != null) state.objects.values.filter { it.isOnBattlefield() && it.controller == source.controller }.firstNotNullOfOrNull { qb ->
+            qb.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.DamageCantBePrevented>().firstOrNull { e -> (!e.combatOnly || inCombatDamage) && (!e.creaturesOnly || state.isCreature(source)) }?.let { qb to it }
+        }?.let { (qb, e) ->
+            trace.step("${qb.name} says ${if (e.combatOnly) "combat " else ""}damage that would be dealt by ${if (e.creaturesOnly) "creatures" else "sources"} ${state.player(qb.controller).subject.lowercase()} ${state.player(qb.controller).v("controls", "control")} can't be prevented, so ${prevention.joinToString(" and ") { it.first }} ${if (prevention.size == 1) "doesn't" else "don't"} prevent the $amount damage from $sourceName.", "615.12")
+            state.outcomes += "${prevention.joinToString(" and ") { it.first }} can't prevent $sourceName's damage (${qb.name})."
+            prevention = emptyList()
+        }
         if (doublers.isNotEmpty() && prevention.isNotEmpty()) trace.step("Both a damage-doubling replacement effect and a prevention effect apply; the affected player chooses the order (616.1). Assuming the prevention is applied first, which is best for the affected player.", "616.1", "616.1e")
         // Comeuppance / Deflecting Palm: what a shield prevented is dealt back by the shield's own source (its ruling:
         // the spell is the source of the new damage, so it isn't combat damage and the original source's abilities don't apply).
