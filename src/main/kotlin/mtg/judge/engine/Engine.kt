@@ -328,7 +328,7 @@ class Engine(val state: GameState) {
 
     /** "I gain 5 life (from lifelink)": life gain as a given, with its triggers. */
     fun gainLifeEvent(playerId: String, amount: Int) { gainLife(state.player(playerId), amount); stateBasedActions() }
-    fun loseLifeEvent(playerId: String, amount: Int) { val p = state.player(playerId); p.life = p.life?.minus(amount); trace.step("${p.subject} ${p.v("loses", "lose")} $amount life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} $amount life."; stateBasedActions() }
+    fun loseLifeEvent(playerId: String, amount: Int) { val p = state.player(playerId); if (p.lifeLocked) { trace.step("${p.possessive.replaceFirstChar { it.uppercase() }} life total can't change, so ${p.subject.lowercase()} ${p.v("loses", "lose")} no life.", "119.8"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} no life (${p.possessive} life total can't change)."; return }; p.life = p.life?.minus(amount); trace.step("${p.subject} ${p.v("loses", "lose")} $amount life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} $amount life."; stateBasedActions() }
 
     /** A player draws cards outside any effect ("my opponent draws a card"): each draw is an event triggers can see. */
     /**
@@ -851,6 +851,16 @@ class Engine(val state: GameState) {
         if (step == "untap") {
             state.activePlayer = activePlayer; state.step = step; state.phase = "beginning"
             val p = state.player(activePlayer)
+            // Phased-out permanents phase in as their controller's untap step begins (702.26a, 702.26c).
+            state.objects.values.filter { it.zone == Zone.BATTLEFIELD && it.phasedOut && it.controller == activePlayer }.takeIf { it.isNotEmpty() }?.let { back ->
+                back.forEach { it.phasedOut = false }
+                trace.step("${back.joinToString(", ") { it.name }} phase${if (back.size == 1) "s" else ""} in as ${p.possessive} untap step begins, and the game treats ${if (back.size == 1) "it" else "them"} as existing again. Phasing in isn't entering the battlefield, so nothing triggers on it.", "702.26a", "702.26c", "702.26d")
+                for (o in back) state.outcomes += "${o.name} phases back in."
+            }
+            if (p.lifeLocked || p.protectedFromEverything) {
+                p.lifeLocked = false; p.protectedFromEverything = false
+                trace.step("It is ${p.possessive} next turn, so the effect that gave ${p.subject.lowercase()} protection from everything and locked ${p.possessive} life total ends.", "611.2a")
+            }
             val mine = state.objects.values.filter { it.isOnBattlefield() && it.controller == activePlayer }
             // Meekstone and its cousins: some permanents don't untap at all (302.6 doesn't apply to them).
             val held = mine.filter { o -> state.objects.values.any { src -> src.isOnBattlefield() &&
@@ -979,8 +989,10 @@ class Engine(val state: GameState) {
                 if (def.isInstantOrSorcery) {
                     if (item.targetsUnknown) trace.step("${def.name} resolves, but its target was never stated, so what it does to it isn't shown.", "608.2c")
                     else item.effect?.let { applyEffect(it, item) } ?: if (!Generic.isGeneric(def)) state.unsupported.add(Unsupported(def.name, "The spell has no modeled effect.")) else Unit
-                    item.source.zone = if (item.flashback) Zone.EXILE else Zone.GRAVEYARD
+                    val exilesItself = effectContains(item.effect) { it is Effect.ExileSelfSpell }
+                    item.source.zone = if (item.flashback || exilesItself) Zone.EXILE else Zone.GRAVEYARD
                     if (item.source.token) trace.step("The copy of ${def.name} finishes resolving; a copy of a spell ceases to exist once it leaves the stack.", "608.2c", "707.10a")
+                    else if (exilesItself && !item.flashback) { state.outcomes += "${def.name}: the stack → exile (it exiles itself)." }
                     else if (item.flashback) { trace.step("${def.name} was cast with flashback, so it is exiled instead of going to its owner's graveyard; it can't be cast again.", "702.34a", "608.2n"); state.outcomes += "${def.name} is exiled (flashback)." }
                     else trace.step("${def.name} finishes resolving and is put into its owner's graveyard.", "608.2c", "608.2n")
                 } else {
@@ -2573,6 +2585,23 @@ class Engine(val state: GameState) {
                     "damage" -> { applyDamage(item.source.name, Ref.Obj(o.id), effect.amount, item.source); item.damaged += o.id }
                 } } finally { leavingTogether = emptySet() }
             }
+            is Effect.ExileSelfSpell ->
+                if (item.source.isOnBattlefield()) move(item.source, Zone.EXILE, "${item.source.name} is exiled.", "701.13a")
+                else trace.step("${item.source.name} exiles itself as it finishes resolving: it goes to exile instead of its owner's graveyard.", "701.13a", "608.2n")
+            is Effect.ProtectionUntilNextTurn -> {
+                you.lifeLocked = true; you.protectedFromEverything = true
+                trace.step("Until ${you.possessive} next turn, ${you.possessive} life total can't change and ${you.subject.lowercase()} ${you.v("has", "have")} protection from everything: ${you.subject.lowercase()} can't be the target of spells or abilities, all damage that would be dealt to ${you.subject.lowercase()} is prevented, and ${you.subject.lowercase()} can't gain or lose life. Poison counters and \"loses the game\" effects aren't life and aren't damage, so they still work.", "702.16b", "702.16e", "119.7", "119.8")
+                state.outcomes += "${you.subject} can't be targeted or damaged, and ${you.possessive} life total can't change, until ${you.possessive} next turn (protection from everything)."
+            }
+            is Effect.PhaseOutAll -> {
+                val ps = state.objects.values.filter { it.isOnBattlefield() && state.matches(effect.filter, it, item.controller) }
+                if (ps.isEmpty()) trace.step("No permanents match \"${effect.filter.raw}\", so nothing phases out.")
+                else {
+                    for (o in ps) o.phasedOut = true
+                    trace.step("${ps.joinToString(", ") { it.name }} phase${if (ps.size == 1) "s" else ""} out. Until ${if (ps.size == 1) "it phases" else "they phase"} in at the start of ${you.possessive} next turn ${if (ps.size == 1) "it is" else "they are"} treated as though ${if (ps.size == 1) "it doesn't" else "they don't"} exist: spells, abilities and attacks can't touch ${if (ps.size == 1) "it" else "them"}, and ${if (ps.size == 1) "it doesn't" else "they don't"} leave the battlefield, so nothing triggers on leaving.", "702.26b", "702.26d")
+                    for (o in ps) state.outcomes += "${o.name} phases out (back at the start of ${you.possessive} next turn)."
+                }
+            }
             is Effect.Unparsed -> trace.step("(Not modeled: \"${effect.text}\")")
         }
     }
@@ -2738,6 +2767,15 @@ class Engine(val state: GameState) {
 
     private fun describeManaEffect(e: Effect): String = when (e) { is Effect.AddMana -> "add ${e.text}"; is Effect.AddManaPer -> "add ${e.symbol} for each ${e.filter.raw}"; is Effect.AddManaDevotion -> "choose a colour and add that much mana of it as your devotion to it"; is Effect.AddManaInstead -> "add ${e.text} instead if you control ${e.required.joinToString(" and ") { "an $it" }}"; is Effect.Narrated -> e.text.trimEnd('.'); is Effect.DamagePlayer -> "it deals ${e.amount} damage to ${when (e.who) { Who.YOU -> "you"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }}"; is Effect.Seq -> e.effects.joinToString(", then ") { describeManaEffect(it) }; else -> e.toString().lowercase() }
     /** "~" -> the source's name; first letter lowercased for use after a subject. */
+    /** Whether [e], or anything inside it, satisfies [pred]. */
+    private fun effectContains(e: Effect?, pred: (Effect) -> Boolean): Boolean = when (e) {
+        null -> false
+        is Effect.Seq -> e.effects.any { effectContains(it, pred) }
+        is Effect.May -> effectContains(e.effect, pred)
+        is Effect.UnlessPays -> effectContains(e.effect, pred)
+        else -> pred(e)
+    }
+
     private fun effectText(t: String, item: StackItem) = t.replace("~", item.source.name).replaceFirstChar { it.lowercase() }
 
     /** "put two cards from your hand on top of your library" said of an opponent: "puts two cards from their hand on top of their library".
@@ -2790,6 +2828,11 @@ class Engine(val state: GameState) {
 
     private fun applyDamage(sourceName: String, target: Ref, amount: Int, source: GameObject? = state.objects.values.firstOrNull { it.name == sourceName }): Int {
         var amount = amount
+        if (target is Ref.Player && amount > 0 && state.player(target.id).protectedFromEverything) {
+            val p = state.player(target.id)
+            trace.step("${p.subject} ${p.v("has", "have")} protection from everything, so the $amount damage $sourceName would deal to ${p.subject.lowercase()} is prevented.", "702.16e", "615.1")
+            state.outcomes += "Damage to ${p.subject.lowercase()} from $sourceName is prevented (protection from everything)."; return 0
+        }
         if (inCombatDamage && (source?.id in state.combatDamageMuted || (target as? Ref.Obj)?.id in state.combatDamageMuted)) {
             val who = if (source?.id in state.combatDamageMuted) source!!.name else state.nameOf(target)
             trace.step("All combat damage dealt to and by $who is prevented this turn (Maze of Ith-style effect), so the $amount combat damage ${if (source?.id in state.combatDamageMuted) "it would deal to ${state.nameOf(target)}" else "$sourceName would deal to it"} is prevented.", "615.1", "615.6")
@@ -2892,6 +2935,7 @@ class Engine(val state: GameState) {
 
     private fun gainLife(p: Player, amount: Int) {
         var n = amount
+        if (p.lifeLocked) { trace.step("${p.possessive.replaceFirstChar { it.uppercase() }} life total can't change, so ${p.subject.lowercase()} ${p.v("gains", "gain")} no life.", "119.7"); state.outcomes += "${p.subject} ${p.v("gains", "gain")} no life (${p.possessive} life total can't change)."; return }
         state.objects.values.filter { it.isOnBattlefield() }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.mapNotNull { (it as? StaticEffect.Replace)?.replacement as? Replacement.LifeGainMultiplier }.filter { it.anyPlayer || o.controller == p.id }.map { o to it } }
             .forEach { (o, m) -> trace.step("${o.name} replaces the life gain: ${p.subject.lowercase()} ${p.v("gains", "gain")} ${n * m.factor} life instead of $n.", "614.1a", "614.6"); n *= m.factor }
         if (n == 0) { trace.step("${p.subject} ${p.v("gains", "gain")} no life.", "119.3"); state.outcomes += "${p.subject} ${p.v("gains", "gain")} no life (0)."; return }
@@ -3132,6 +3176,7 @@ class Engine(val state: GameState) {
 
     /** Why [ref] can't be targeted by a spell/ability from [source] controlled by [controller], or null if it can. */
     private fun targetingProblem(source: GameObject, controller: String, ref: Ref): Pair<String, String>? {
+        if (ref is Ref.Player && state.player(ref.id).protectedFromEverything) return "${state.nameOf(ref)} ${if (state.player(ref.id).you) "have" else "has"} protection from everything and can't be the target of spells or abilities" to "702.16b"
         if (ref is Ref.Player && ref.id != controller && state.objects.values.any { it.isOnBattlefield() && it.controller == ref.id && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.PlayerHexproof } })
             return "${state.nameOf(ref)} ${if (state.player(ref.id).you) "have" else "has"} hexproof (${state.objects.values.first { it.isOnBattlefield() && it.controller == ref.id && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.PlayerHexproof } }.name}) and can't be the target of spells or abilities an opponent controls" to "702.11c"
         val o = (ref as? Ref.Obj)?.let { state.objects[it.id] } ?: return null
@@ -3410,6 +3455,7 @@ class Engine(val state: GameState) {
         is Effect.Regenerate -> "regenerate ${effect.target?.raw ?: item.source.name}"
         is Effect.GainLife -> "gain ${effect.amount} life"; is Effect.LoseLife -> "lose ${if (effect.x) "X" else effect.amount.toString()} life"; is Effect.Discard -> "${when (effect.who) { Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; Who.TARGET_PLAYER -> "target player"; else -> "that player" }} discard${if (effect.who == Who.YOU) "" else "s"} ${if (effect.x) "X" else effect.count.toString()} card(s)${if (effect.random) " at random" else ""}"; is Effect.Repeat -> "repeat ${if (effect.x) "X" else effect.times.toString()} times: ${describe(effect.body, item)}"; is Effect.LoseLifeUnlessSacOrDiscard -> "${when (effect.who) { Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }} loses ${effect.amount} life unless they sacrifice ${effect.filter?.let { withArticle(it.raw) } ?: "a permanent"}${if (effect.discard) " or discard a card" else ""}"
         is Effect.May -> "may " + describe(effect.effect, item); is Effect.UnlessPays -> describe(effect.effect, item) + " unless ${effect.cost} is paid"
+        is Effect.ExileSelfSpell -> "exile ${item.source.name}"; is Effect.ProtectionUntilNextTurn -> "until your next turn your life total can't change and you have protection from everything"; is Effect.PhaseOutAll -> "${effect.filter.raw} phase out"
         is Effect.Seq -> effect.effects.joinToString(", then ") { describe(it, item) }; is Effect.Unparsed -> "\"${effect.text}\""
     }
     private fun unparsedText(e: Effect): String = when (e) { is Effect.Unparsed -> e.text; is Effect.May -> unparsedText(e.effect); is Effect.UnlessPays -> unparsedText(e.effect); is Effect.Seq -> e.effects.filter { it.hasUnparsed() }.joinToString(" | ") { unparsedText(it) }; is Effect.Modal -> e.modes.filter { it.hasUnparsed() }.joinToString(" | ") { "mode \"" + unparsedText(it) + "\"" }; else -> "" }

@@ -3,6 +3,10 @@ package mtg.judge.engine
 enum class Zone { BATTLEFIELD, HAND, GRAVEYARD, LIBRARY, EXILE, STACK, COMMAND }
 
 class Player(val id: String, val name: String, var life: Int?) {
+    /** "Your life total can't change" until this player's next turn (Teferi's Protection). */
+    var lifeLocked = false
+    /** "You gain protection from everything" until this player's next turn: can't be targeted, damage to them is prevented. */
+    var protectedFromEverything = false
     var drew = 0
     /** Cards drawn this turn, for "can't draw more than one card each turn" (Narset). */
     var drewThisTurn = 0
@@ -89,6 +93,8 @@ class GameObject(
     val tempKeywords = mutableSetOf<String>()
     /** Monstrous: set by monstrosity and never unset while the permanent stays on the battlefield (701.31b). */
     var monstrous: Boolean = false
+    /** Phased out (702.26b): still in the battlefield zone, but treated as though it doesn't exist until it phases in. */
+    var phasedOut: Boolean = false
     /** Set by the owning GameState so characteristics include static effects from other permanents. */
     var state: GameState? = null
 
@@ -96,7 +102,7 @@ class GameObject(
     val toughness: Int? get() = state?.toughnessOf(this) ?: def.toughness?.let { it + pumps.sumOf { p -> p.second } + (counters["+1/+1"] ?: 0) - (counters["-1/-1"] ?: 0) }
     fun has(keyword: String): Boolean = state?.hasKeyword(this, keyword) ?: (def.has(keyword) || keyword.lowercase() in tempKeywords)
     val name get() = def.name
-    fun isOnBattlefield() = zone == Zone.BATTLEFIELD
+    fun isOnBattlefield() = zone == Zone.BATTLEFIELD && !phasedOut
     override fun toString() = "$name [$id]"
 }
 

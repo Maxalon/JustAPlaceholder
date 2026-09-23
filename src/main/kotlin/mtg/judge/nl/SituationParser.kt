@@ -1299,7 +1299,9 @@ class SituationParser(private val names: NameIndex) {
             val head = r.groupValues[1].trim()
             if (head.isEmpty() || Regex("""c\d+""").containsMatchIn(r.groupValues[2])) return@let
             val mentionedBefore = ctx.lastMentioned
-            val readTrailer = readClause("have " + r.groupValues[2].trim() + " out", m, ctx)
+            // "I respond with Teferi's Protection with a 4/4 out": the creature is the head's subject's, not the last actor's.
+            val subj = Regex("""^(i|we|they|he|she|my opponent|the opponent|@\w+)\b""").find(head)?.groupValues?.get(1)?.let { w -> if (w in setOf("i", "we")) "i have " else if (w.startsWith("@")) "$w has " else "they have " } ?: "have "
+            val readTrailer = readClause(subj + r.groupValues[2].trim() + " out", m, ctx)
             if (!readTrailer) return@let
             // The head is read after the board, but "it" in it points at what was named before this clause, not
             // at one of the creatures the trailer just made.
@@ -5114,6 +5116,12 @@ class SituationParser(private val names: NameIndex) {
         val evoked = Regex("""\b(?:with evoke|evoked|for (?:its|the) evoke cost|via evoke|evoking it|using evoke)\b""").containsMatchIn(rest)
         // "with flashback", "from my graveyard", "flashing it back": cast from the graveyard, so it is exiled afterwards.
         val flashedBack = Regex("""\b(?:with flashback|for (?:its|the) flashback cost|via flashback|flashing it back|using flashback|from (?:my|their|his|her|the) graveyard)\b""").containsMatchIn(rest)
+        // "I cast Teferi's Protection, they Bolt me": a cast right after the other player's is read as a response, with
+        // the first spell still on the stack. Said out loud, so a player who meant "after it resolved" can say so.
+        ctx.events.lastOrNull()?.let { last ->
+            if (last.verb == "cast" && last.player != who && !Regex("""\b(?:in response|respond)""").containsMatchIn(rest))
+                ctx.notes += "${card.display} is read as cast in response to ${last.card?.name ?: "the spell before it"}, which is still on the stack; say \"then\" or \"after it resolves\" if it had resolved first."
+        }
         // "choosing the second mode", "mode 2", "choosing modes 1 and 3"
         val modes = Regex("""(?:choosing |with |picking )?(?:the )?(?:mode|modes) (\d+(?:\s*(?:,|and|&)\s*\d+)*)|(?:choosing |picking )(?:the )?(first|second|third|fourth) (?:mode|option)""").find(rest)?.let { mm ->
             if (mm.groupValues[1].isNotEmpty()) Regex("""\d+""").findAll(mm.groupValues[1]).map { it.value.toInt() }.toList()

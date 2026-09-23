@@ -1140,6 +1140,13 @@ object OracleParser {
             val raw = "${m.groupValues[1].lowercase()} in your graveyard"
             return Effect.GainKeywords(TargetSpec(ObjFilter(setOf(Kind.CARD), raw = raw, inGraveyard = true), raw), setOf(m.groupValues[2].lowercase()))
         }
+        // "Exile ~." at the end of an instant or sorcery (Teferi's Protection, Cabal Therapy's flashback text aside): it exiles itself as it resolves.
+        if (Regex("""^exile ~\.?$""", RegexOption.IGNORE_CASE).matches(s.trim())) return Effect.ExileSelfSpell
+        // Teferi's Protection.
+        if (Regex("""^until your next turn, your life total can't change and you gain protection from everything\.?$""", RegexOption.IGNORE_CASE).matches(s.trim())) return Effect.ProtectionUntilNextTurn
+        Regex("""^(all permanents you control|all creatures you control|all nonland permanents you control) phase out\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            return Effect.PhaseOutAll(parseFilter(m.groupValues[1].removePrefix("all "), Kind.PERMANENT))
+        }
         // Liliana of the Veil: "Target player sacrifices a creature."
         Regex("""^target (player|opponent) sacrifices an? ([a-z ]+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
             val f = parseFilter(m.groupValues[2], Kind.CREATURE)

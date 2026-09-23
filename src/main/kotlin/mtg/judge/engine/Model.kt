@@ -158,6 +158,12 @@ sealed interface Effect {
     data object Evolve : Effect
     /** "Monstrosity N": N +1/+1 counters and it becomes monstrous, once only (701.31a). */
     data class Monstrosity(val amount: Int) : Effect
+    /** Teferi's Protection: "Until your next turn, your life total can't change and you gain protection from everything." */
+    data object ProtectionUntilNextTurn : Effect
+    /** "All permanents you control phase out." (702.26) */
+    data class PhaseOutAll(val filter: ObjFilter) : Effect
+    /** "Exile ~." as the last sentence of an instant or sorcery: it goes to exile instead of the graveyard as it finishes resolving. */
+    data object ExileSelfSpell : Effect
     /** "If damage (from a creature source) is prevented this way, ~ deals that much damage to that creature / to that source's controller":
      *  a rider on the prevention shield the same spell just made (Comeuppance, Deflecting Palm). */
     data class ReflectPrevented(val toCreature: Boolean, val toController: Boolean) : Effect
@@ -328,6 +334,7 @@ sealed interface Effect {
         is Repeat -> body.targets()
         is LoseLifeUnlessSacOrDiscard -> emptyList()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
+        is ProtectionUntilNextTurn, is PhaseOutAll, is ExileSelfSpell -> emptyList()
         is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is GainLifeLostThisWay, is GainLifeEqualToToughness, is Discard, is ExileIfDamagedDies, is RevealTopToHand, is LoseLifeEqualToRevealedMv, is PutSelfOnLibraryTop, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
     }
 

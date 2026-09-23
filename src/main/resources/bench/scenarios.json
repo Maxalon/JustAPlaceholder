@@ -14576,5 +14576,56 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "teferis-protection-prevents-combat-damage",
+    "text": "I have Teferi's Protection, they attack me with a 10/10, I cast it",
+    "expect": [
+      "Damage to you from a 10/10 creature is prevented (protection from everything).",
+      "Teferi's Protection: the stack → exile (it exiles itself)."
+    ],
+    "notExpect": [
+      "You take 10 damage"
+    ],
+    "cite": [
+      "702.16e"
+    ]
+  },
+  {
+    "id": "teferis-protection-phases-out-my-board",
+    "text": "they cast Wrath and I respond with Teferi's Protection with a 4/4 out, do I keep it",
+    "expect": [
+      "a 4/4 creature phases out (back at the start of your next turn)."
+    ],
+    "notExpect": [
+      "a 4/4 creature: the battlefield → your graveyard",
+      "opponent's graveyard"
+    ],
+    "cite": [
+      "702.26b"
+    ]
+  },
+  {
+    "id": "teferis-protection-then-bolt-cant-target",
+    "text": "I cast Teferi's Protection, then they Bolt me",
+    "expect": [
+      "Lightning Bolt can't target you."
+    ],
+    "notExpect": [
+      "You take 3 damage"
+    ],
+    "cite": [
+      "702.16b"
+    ]
+  },
+  {
+    "id": "teferis-protection-rift-phases-out",
+    "text": "I cast Teferi's Protection in response to Cyclonic Rift with my Grizzly Bears and Sol Ring out",
+    "expect": [
+      "Sol Ring phases out (back at the start of your next turn).",
+      "Grizzly Bears phases out (back at the start of your next turn)."
+    ],
+    "notExpect": [],
+    "cite": []
   }
 ]
