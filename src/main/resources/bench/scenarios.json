@@ -15773,5 +15773,116 @@
       "Own token"
     ],
     "cite": []
+  },
+  {
+    "id": "lattice-makes-lands-artifacts-for-vandalblast",
+    "text": "I control Mycosynth Lattice and my opponent casts Vandalblast overloaded. What happens to my lands?",
+    "expect": [
+      "Mycosynth Lattice: the battlefield → your graveyard.",
+      "a basic land: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "Rules text not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "propaganda-only-taxes-its-controller",
+    "text": "Alice has Propaganda. Bob attacks Carol with a 2/2. Does Bob have to pay?",
+    "expect": [
+      "Propaganda doesn't tax this attack: it taxes only creatures attacking Alice.",
+      "Carol takes 2 damage."
+    ],
+    "notExpect": [],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "stifle-cannot-target-a-spell",
+    "text": "I attack with a 2/2. My opponent casts Settle the Wreckage. Can I Stifle it?",
+    "expect": [
+      "Stifle can't target Settle the Wreckage: it's a spell, not an activated or triggered ability."
+    ],
+    "notExpect": [
+      "Once Settle the Wreckage resolves"
+    ],
+    "cite": [
+      "115.1a"
+    ]
+  },
+  {
+    "id": "bridge-which-can-attack",
+    "text": "My opponent controls Ensnaring Bridge and has 1 card in hand. I have a 2/2 and a 1/1. Which can attack?",
+    "expect": [
+      "No: a 2/2 creature can't attack (Ensnaring Bridge: opponent has 1 card in hand and a 2/2 creature's power is 2, 508.1c).",
+      "Yes: a 1/1 creature can attack."
+    ],
+    "notExpect": [
+      "Yes: a 2/2 creature can attack."
+    ],
+    "cite": []
+  },
+  {
+    "id": "aetherflux-kills-at-forty",
+    "text": "I have Aetherflux Reservoir at 51 life. Can I kill my opponent at 40?",
+    "expect": [
+      "You pay 50 life.",
+      "opponent takes 50 damage.",
+      "opponent loses the game."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "bridge-cast-mid-attack",
+    "text": "Opponent casts Ensnaring Bridge while I'm attacking. Do my attackers stop?",
+    "expect": [
+      "opponent takes 1 damage."
+    ],
+    "notExpect": [
+      "can't attack"
+    ],
+    "cite": []
+  },
+  {
+    "id": "bolt-can-target-a-planeswalker",
+    "text": "Can Lightning Bolt target a planeswalker?",
+    "expect": [
+      "a planeswalker has 1 loyalty."
+    ],
+    "notExpect": [
+      "couldn't find",
+      "doesn't resolve"
+    ],
+    "cite": [
+      "306.8"
+    ]
+  },
+  {
+    "id": "orrery-sorcery-on-their-turn",
+    "text": "If I control Vedalken Orrery, can I cast my sorcery on my opponent's turn?",
+    "expect": [
+      "Yes: Vedalken Orrery lets a sorcery be cast now, as though it had flash."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "702.8a"
+    ]
+  },
+  {
+    "id": "coffers-with-five-swamps",
+    "text": "My opponent taps Cabal Coffers with 5 Swamps. How much mana do they make?",
+    "expect": [
+      "Cabal Coffers's mana ability: add {B}{B}{B}{B}{B}."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

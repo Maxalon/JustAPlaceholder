@@ -735,6 +735,9 @@ object OracleParser {
             if (inner is TriggeredAbility) return listOf(StaticEffect.GrantTriggered(parseFilter(m.groupValues[1].lowercase().replace(Regex("""s(?= you control|$)"""), ""), Kind.PERMANENT), inner))
         }
         if (Regex("""^Spells and abilities your opponents control can't cause you to sacrifice permanents\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.CantBeMadeToSacrifice)
+        if (Regex("""^All permanents are artifacts in addition to their other types\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.AllPermanentsAreArtifacts)
+        if (Regex("""^All cards that aren't on the battlefield, spells, and permanents are colorless\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("613.1e")))
+        if (Regex("""^Players may spend mana as though it were mana of any (?:color|type)\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("106.1")))
         // Mox Diamond.
         if (Regex("""^If ~ would enter, you may discard a land card instead\. If you do, put ~ onto the battlefield\. If you don't, put it into its owner's graveyard\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.EntersUnlessDiscard(parseFilter("land card", Kind.PERMANENT)))
         Regex("""^(Combat )?damage that would be dealt by (creatures|sources) you control can't be prevented\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.DamageCantBePrevented(m.groupValues[1].isNotEmpty(), m.groupValues[2].equals("creatures", true))) }

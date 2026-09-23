@@ -31,6 +31,7 @@ object RulesAnswers {
 
     // Longest (most specific) first: the first entry whose terms are all present wins.
     private val entries: List<Entry> = listOf(
+        e("any target + planeswalker", "Yes. \"Any target\" means a creature, a player, a planeswalker or a battle, so a spell like Lightning Bolt can target a planeswalker directly; damage dealt to a planeswalker removes that many loyalty counters.", "115.4", "306.8"),
         e("oracle + trigger + draw", "Yes. Thassa's Oracle's ability triggers when it enters and goes on the stack, and opponents get priority before it resolves. If they make you draw from an empty library in response, you lose the game the next time state-based actions are checked, before the trigger resolves. If your library is small but not empty, drawing cards in response just makes it smaller, which only helps the Oracle.", "603.3", "117.4", "704.5b"),
         e("color identity + text", "Yes. A card's color identity is every color in its mana cost plus every color of mana symbol in its rules text (hybrid and Phyrexian symbols included), plus any color indicator. Reminder text doesn't count. Your deck can contain only cards whose color identity is within your commander's.", "903.4", "903.5c"),
         e("colour identity + text", "Yes. A card's colour identity is every colour in its mana cost plus every colour of mana symbol in its rules text (hybrid and Phyrexian symbols included), plus any colour indicator. Reminder text doesn't count.", "903.4", "903.5c"),

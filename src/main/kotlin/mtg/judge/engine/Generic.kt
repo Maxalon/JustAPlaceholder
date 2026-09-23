@@ -36,6 +36,10 @@ object Generic {
             val type = when (kind) { "spell", "instant", "noncreature spell" -> "Instant"; "sorcery" -> "Sorcery"; "creature", "creature spell" -> "Creature"; "artifact" -> "Artifact"; else -> "Enchantment" }
             return OracleParser.parse("generic-$mv-mana-$kind", "a $mv mana $kind", type, if (mv == 0) "{0}" else "{$mv}", mv.toDouble(), "", if (type == "Creature") "2" else null, if (type == "Creature") "2" else null, emptyList(), "")
         }
+        if (n in setOf("sorcery", "a sorcery", "sorcery spell")) return OracleParser.parse("generic-sorcery", "a sorcery", "Sorcery", "{2}", 2.0, "", null, null, emptyList(), "")
+        if (n in setOf("instant", "an instant", "instant spell")) return OracleParser.parse("generic-instant", "an instant", "Instant", "{2}", 2.0, "", null, null, emptyList(), "")
+        if (n in setOf("artifact", "an artifact", "artifact spell")) return OracleParser.parse("generic-artifact", "an artifact", "Artifact", "{2}", 2.0, "", null, null, emptyList(), "")
+        if (n in setOf("enchantment", "an enchantment", "enchantment spell")) return OracleParser.parse("generic-enchantment", "an enchantment", "Enchantment", "{2}", 2.0, "", null, null, emptyList(), "")
         if (n in setOf("flashback spell", "spell with flashback", "flashback card")) return OracleParser.parse("generic-flashback", "a flashback spell", "Instant", "{1}{U}", 2.0, "U", null, null, listOf("Flashback"), "Draw a card.\nFlashback {2}{U}")
         if (n in setOf("removal spell", "kill spell", "removal")) return OracleParser.parse("generic-removal", "a removal spell", "Instant", "{1}{B}", 2.0, "B", null, null, emptyList(), "Destroy target creature.")
         if (n in setOf("burn spell", "burn")) return OracleParser.parse("generic-burn", "a burn spell", "Instant", "{R}", 1.0, "R", null, null, emptyList(), "This spell deals 3 damage to any target.")

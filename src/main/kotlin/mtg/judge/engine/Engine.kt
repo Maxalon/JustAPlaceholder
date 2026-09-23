@@ -215,7 +215,7 @@ class Engine(val state: GameState) {
                     o.isOnBattlefield() && o.controller == playerId && o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }
                         .any { e -> e is StaticEffect.CastAsThoughFlash && (e.filter == null || spellMatches(e.filter, card)) }
                 }
-                if (granter != null) trace.step("${granter.name} lets ${state.player(playerId).possessive} spells be cast as though they had flash, so ${card.name} can be cast now even though ${withArticle(kind.lowercase())} spell normally couldn't be.", "702.8a", timingRule)
+                if (granter != null) { trace.step("${granter.name} lets ${state.player(playerId).possessive} spells be cast as though they had flash, so ${card.name} can be cast now even though ${withArticle(kind.lowercase())} spell normally couldn't be.", "702.8a", timingRule); state.outcomes += "Yes: ${granter.name} lets ${card.name} be cast now, as though it had flash." }
                 else if (state.activePlayerStated && state.activePlayer != null && state.activePlayer != playerId) {
                     val active = state.player(state.activePlayer!!)
                     trace.step("${withArticle(kind.lowercase()).replaceFirstChar { c -> c.uppercase() }} spell can be cast only during its controller's own main phase, and it's ${active.possessive} turn; ${card.name} doesn't have flash, so it can't be cast now.", timingRule, "117.1a")
@@ -1241,6 +1241,12 @@ class Engine(val state: GameState) {
                 return
             }
         }
+        // Alice's Propaganda when Bob attacks Carol: the tax is only on creatures attacking its controller.
+        if (defendingPlayer != null) state.objects.values.filter { it.isOnBattlefield() && it.controller != defendingPlayer && it.controller != playerId }
+            .flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.AttackTax>().map { o to it } }
+            .forEach { (src, tax) -> val owner = state.player(src.controller)
+                trace.step("${src.name} says creatures can't attack ${owner.subject.lowercase()} unless their controller pays ${tax.cost} for each; ${a.name} is attacking ${state.nameOf(Ref.Player(defendingPlayer))}, not ${owner.name}, so ${src.name} doesn't apply and nothing is paid.", "508.1c")
+                state.outcomes += "${src.name} doesn't tax this attack: it taxes only creatures attacking ${owner.name}." }
         state.objects.values.filter { it.isOnBattlefield() && it.controller == defendingPlayer }.flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.AttackTax>().map { o to it } }.forEach { (src, tax) ->
             when {
                 state.wontPay.remove(playerId) -> { trace.step("${src.name} says creatures can't attack ${state.nameOf(Ref.Player(defendingPlayer!!))} unless their controller pays ${tax.cost} for each; ${p.subject.lowercase()} ${p.v("doesn't", "don't")} pay, so ${a.name} can't attack.", "508.1c"); state.outcomes += "${a.name} can't attack (${src.name}'s cost not paid)."; return }
@@ -1322,6 +1328,12 @@ class Engine(val state: GameState) {
         if (a.has("flying") && !(b.has("flying") || b.has("reach"))) return Triple("${a.name} has flying and ${b.name} has neither flying nor reach, so ${b.name} can't block it.", listOf("702.9b"), "${b.name} can't block ${a.name} (flying).")
         return null
     }
+
+    /** Ensnaring Bridge: the Bridge that stops [a] attacking, when its controller's hand size is known and smaller than a's power. */
+    fun bridgeStops(a: GameObject): String? = state.objects.values.filter { it.isOnBattlefield() }.firstOrNull { o ->
+        o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.Cant>().any { it.what == "attack" && it.powerAboveHand } &&
+            state.player(o.controller).handSize?.let { hand -> (a.power ?: 0) > 0 && (a.power ?: 0) > hand } == true
+    }?.let { src -> "${src.name}: ${state.player(src.controller).subject} ${state.player(src.controller).v("has", "have")} ${state.player(src.controller).handSize} card${if (state.player(src.controller).handSize == 1) "" else "s"} in hand and ${a.name}'s power is ${a.power}" }
 
     fun declareBlocker(playerId: String, blockerId: String, attackerId: String) {
         emptyStackFirst("declaring blockers")
@@ -3492,6 +3504,11 @@ class Engine(val state: GameState) {
             if (!spec.filter.verifiable) state.clarifications += Clarification("target legality", "Can't verify \"${spec.raw}\" for ${state.nameOf(ref)}: unrecognised qualifier(s) ${spec.filter.unknownWords.joinToString()}. Assuming it's a legal target.")
             // A spell on the stack named as the target of something that wants a permanent: the asker almost
             // certainly means the permanent it will become, so say what the words as given would do.
+            // Stifle at Settle the Wreckage: an ability-counter aimed at a spell — a spell is never a legal target for it.
+            else if (ref is Ref.Stack && Kind.ABILITY in spec.filter.kinds && Kind.SPELL !in spec.filter.kinds && state.stackItem(ref.id)?.kind == StackKind.SPELL) {
+                trace.step("${state.nameOf(ref)} is a spell, and ${item.describe} targets \"${spec.raw}\": a spell isn't an activated or triggered ability, so it isn't a legal target. ${item.describe} does nothing to it; a counterspell is what answers a spell.", "115.1a", "601.2c")
+                state.outcomes += "${item.describe} can't target ${state.nameOf(ref)}: it's a spell, not an activated or triggered ability."
+            }
             else if (ref is Ref.Stack && Kind.SPELL !in spec.filter.kinds && !filterMatches(spec.filter, ref, item.controller)) {
                 trace.step("${state.nameOf(ref)} is still a spell on the stack, and \"${spec.raw}\" names a permanent, so it isn't a legal target: a creature spell isn't a creature until it resolves. ${item.describe} will do nothing. If it was meant to answer the permanent, let the spell resolve first.", "109.2", "601.2c", "608.2b")
                 state.outcomes += "${item.describe} can't target ${state.nameOf(ref)} while it's still a spell on the stack."

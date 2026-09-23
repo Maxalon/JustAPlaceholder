@@ -266,6 +266,23 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "blink" -> { val o = state.obj(e.obj ?: throw JudgeException("blink needs an object")); engine.blinkObject(o, e.player ?: o.controller) }
             "reanimate" -> { val o = state.obj(e.obj ?: throw JudgeException("reanimate needs an object")); engine.reanimateObject(o, e.player ?: o.owner) }
             "regenerate" -> { val o = state.obj(e.obj ?: throw JudgeException("regenerate needs an object")); state.shields += mtg.judge.engine.Shield(mtg.judge.engine.Replacement.Regenerate, o.id, null, 1, "a regeneration effect") }
+            // "Can I kill my opponent at 40?" / "can I kill it?": what the asker controls or holds that deals damage is aimed at it.
+            "kill" -> {
+                val player = e.player ?: state.players.first().id
+                val victim = targets.firstOrNull() ?: throw JudgeException("kill needs a target")
+                fun damage(eff: Effect?): Boolean = when (eff) { is Effect.Damage -> true; is Effect.DamageDivided -> true; is Effect.Seq -> eff.effects.any { damage(it) }; is Effect.May -> damage(eff.effect); is Effect.Modal -> eff.modes.any { damage(it) }; else -> false }
+                val onBoard = state.objects.values.filter { it.isOnBattlefield() && it.controller == player }.firstNotNullOfOrNull { o ->
+                    o.def.abilities.filterIsInstance<ActivatedAbility>().withIndex().firstOrNull { (_, a) -> damage(a.effect) && a.effect.targets().isNotEmpty() }?.let { (i, a) -> Triple(o, i, a) }
+                }
+                if (onBoard != null) {
+                    val (o, idx, a) = onBoard
+                    state.trace.step("\"Can ${state.player(player).subject.lowercase()} kill ${state.nameOf(victim)}?\": ${o.name} has \"${a.text.replace("~", o.name)}\", which deals damage, so it's activated targeting ${state.nameOf(victim)}.", "602.2")
+                    engine.activate(player, o.id, idx, listOf(victim)); return
+                }
+                val inHand = state.objects.values.firstOrNull { it.zone == Zone.HAND && it.controller == player && it.def.isInstantOrSorcery && damage(it.def.spellEffect) }
+                if (inHand != null) { state.trace.step("\"Can ${state.player(player).subject.lowercase()} kill ${state.nameOf(victim)}?\": ${inHand.name} in hand deals damage, so it's cast targeting ${state.nameOf(victim)}.", "601.2"); engine.cast(player, inHand.def, listOf(victim), objectId = inHand.id); return }
+                state.clarifications += mtg.judge.engine.Clarification("killing ${state.nameOf(victim)}", "nothing described that ${state.player(player).subject.lowercase()} ${state.player(player).v("controls", "control")} or ${state.player(player).v("holds", "hold")} deals damage to it. Say what you have for an answer.")
+            }
             // "Can I save it?": whatever the player controls or holds that would protect the creature is used on it, in
             // response to what threatens it — Mother of Runes, a regeneration ability, a Blossoming Defense in hand.
             "save" -> {
@@ -393,6 +410,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         e.to == "attack" && state.hasKeyword(o, "defender") -> "No: ${o.name} has defender, so it can't attack (702.3b)."
                         // Attacking taps it, so a creature that is already attacking is tapped and could attack.
                         e.to == "attack" && o.tapped == true && o.attacking == null -> "No: ${o.name} is tapped, so it can't be declared as an attacker (508.1a)."
+                        e.to == "attack" && engine.bridgeStops(o) != null -> "No: ${o.name} can't attack (${engine.bridgeStops(o)}, 508.1c)."
                         e.to == "block" && o.tapped == true && o.blocking == null -> "No: ${o.name} is tapped, and a tapped creature can't be declared as a blocker (509.1a)."
                         e.to == "block" && o.attacking != null -> "No: ${o.name} is attacking, so it isn't there to block (509.1a)."
                         // "which of my creatures can block it?": the attacker's evasion decides it, and answering
@@ -550,6 +568,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "reanimate" -> "${state.objects[e.obj]?.name ?: e.obj} is put from the graveyard onto the battlefield"
             "regenerate" -> "${state.objects[e.obj]?.name ?: e.obj} has a regeneration shield"
             "save" -> "${who ?: "you"} ${if (who == null || who == "you") "try" else "tries"} to save ${state.objects[e.obj]?.name ?: e.obj}"
+            "kill" -> "${who ?: "you"} ${if (who == null || who == "you") "try" else "tries"} to kill ${e.targets.firstOrNull()?.let { t -> state.objects[t]?.name ?: state.players.firstOrNull { p -> p.id == t }?.name ?: t } ?: "?"}"
             "sacrifice" -> "${who ?: "controller"} ${if (who == "you") "sacrifice" else "sacrifices"} ${state.objects[e.obj]?.name ?: e.obj}"
             "fight" -> "${state.objects[e.obj]?.name ?: e.obj} fights ${e.targets.firstOrNull()?.let { state.objects[it]?.name ?: it } ?: "?"}"
             "gainlife" -> "${who ?: "the player"} ${if (who == "you") "gain" else "gains"} ${e.amount ?: 1} life"

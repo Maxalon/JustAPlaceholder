@@ -460,6 +460,9 @@ class GameState(
     private fun sign(n: Int) = if (n >= 0) "+$n" else "$n"
 
     /** Whether a permanent matches a filter, relative to [controller] (the source's controller). Mirrors Engine.filterMatches for battlefield objects. */
+    /** An artifact by its types, or any permanent while Mycosynth Lattice is out (layer 4, 613.1d). */
+    fun isArtifact(o: GameObject): Boolean = "Artifact" in o.def.types || (o.isOnBattlefield() && objects.values.any { l -> l.isOnBattlefield() && abilitiesLostOn(l) == null && l.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.AllPermanentsAreArtifacts } })
+
     fun matches(f: ObjFilter, o: GameObject, controller: String, source: GameObject? = null, anyZone: Boolean = false): Boolean {
         // "instant or sorcery card in your graveyard": a card there, its owner's, never a permanent.
         if (f.inGraveyard) { if (o.zone != Zone.GRAVEYARD) return false; if (f.controller == null && o.owner != controller) return false }
@@ -467,14 +470,14 @@ class GameState(
         if (f.attachedToSource && (source == null || source.attachedTo != o.id)) return false
         if (f.other && source != null && source === o) return false
         val typeOk = f.kinds.any { k -> when (k) {
-            Kind.CREATURE -> isCreature(o); Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types
+            Kind.CREATURE -> isCreature(o); Kind.ARTIFACT -> isArtifact(o); Kind.ENCHANTMENT -> "Enchantment" in o.def.types
             Kind.LAND -> "Land" in o.def.types; Kind.PLANESWALKER -> "Planeswalker" in o.def.types; Kind.BATTLE -> "Battle" in o.def.types
             // A "permanent card" in a graveyard, hand or library is never an instant or sorcery; a "source" on the stack still counts.
             Kind.PERMANENT -> !(o.def.isInstantOrSorcery && o.zone in setOf(Zone.GRAVEYARD, Zone.LIBRARY, Zone.HAND, Zone.EXILE)); Kind.CARD -> !o.token
             // A card in a graveyard described as an instant or sorcery (a card, not a spell on the stack).
             Kind.SPELL -> f.inGraveyard && ("Instant" in o.def.types || "Sorcery" in o.def.types); else -> false
         } }
-        val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> isCreature(o); Kind.LAND -> "Land" in o.def.types; Kind.ARTIFACT -> "Artifact" in o.def.types; Kind.ENCHANTMENT -> "Enchantment" in o.def.types; else -> false } }
+        val notOk = f.notKinds.none { k -> when (k) { Kind.CREATURE -> isCreature(o); Kind.LAND -> "Land" in o.def.types; Kind.ARTIFACT -> isArtifact(o); Kind.ENCHANTMENT -> "Enchantment" in o.def.types; else -> false } }
         val notSubOk = f.notSubtypes.none { st -> o.def.subtypes.any { it.equals(st, true) } || ((st == "basic" || st == "snow") && o.def.supertypes.any { it.equals(st, true) }) }
         val ctrlOk = when (f.controller) { null -> true; Who.YOU -> o.controller == controller; Who.OPPONENT -> o.controller != controller; else -> true }
         val anim = o.animatedAs

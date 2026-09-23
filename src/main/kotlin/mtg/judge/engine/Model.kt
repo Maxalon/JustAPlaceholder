@@ -509,6 +509,8 @@ sealed interface StaticEffect {
     data class EntersUnlessDiscard(val filter: ObjFilter) : StaticEffect
     /** Sigarda, Host of Herons: "Spells and abilities your opponents control can't cause you to sacrifice permanents." */
     data object CantBeMadeToSacrifice : StaticEffect
+    /** Mycosynth Lattice: "All permanents are artifacts in addition to their other types." (layer 4) */
+    data object AllPermanentsAreArtifacts : StaticEffect
     /** Arcane Lighthouse: "creatures your opponents control lose hexproof and indestructible … until end of turn". */
     /** "LEVEL 2-6 3/3 First strike": what a leveler is while it has that many level counters (702.87b). max null = "and up". */
     data class LevelBand(val min: Int, val max: Int?, val power: Int, val toughness: Int, val keywords: Set<String>) : StaticEffect
