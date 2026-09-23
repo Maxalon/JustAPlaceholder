@@ -16853,5 +16853,127 @@
       "Nothing changes"
     ],
     "cite": []
+  },
+  {
+    "id": "two-legendary-ragavans",
+    "text": "I have two legendary Ragavan, Nimble Pilferer. What happens?",
+    "expect": [
+      "Ragavan, Nimble Pilferer: the battlefield → your graveyard.",
+      "You keep the newer Ragavan, Nimble Pilferer (704.5j lets you choose which)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5j"
+    ]
+  },
+  {
+    "id": "ooze-eats-dead-creature",
+    "text": "I have Scavenging Ooze and my opponent's creature dies. Can I eat it?",
+    "expect": [
+      "a creature: opponent's graveyard → exile."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "fatal-push-four-drop-no-revolt",
+    "text": "I cast Fatal Push on a 4-drop. Does it work?",
+    "expect": [
+      "Fatal Push can't target a 4 mana creature (not a creature if it has mana value 2 or less)."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "toxic-deluge-for-three-mixed-board",
+    "text": "I cast Toxic Deluge for 3 with my 4/4 and their 2/2 and 3/3. What dies?",
+    "expect": [
+      "a 4/4 creature is 1/1 until end of turn.",
+      "a 2/2 creature: the battlefield → opponent's graveyard.",
+      "a 3/3 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "a 4/4 creature: the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "pro-red-cant-be-blocked-by-red",
+    "text": "I have Sword of Fire and Ice on a creature and my opponent has a red creature. Can it block?",
+    "expect": [
+      "No: a red creature can't block a creature (protection)."
+    ],
+    "notExpect": [
+      "Yes: a red creature can block."
+    ],
+    "cite": []
+  },
+  {
+    "id": "oko-elks-grave-titan",
+    "text": "I cast Oko, Thief of Crowns and +1 my opponent's Grave Titan. What is it?",
+    "expect": [
+      "Grave Titan is now a green Elk creature with no abilities, 3/3."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "613.1f"
+    ]
+  },
+  {
+    "id": "kor-firewalker-saves-at-three",
+    "text": "I cast Lightning Bolt on my opponent at 3 life while they have Kor Firewalker. Do they die?",
+    "expect": [
+      "opponent gains 1 life.",
+      "No: opponent is still in the game at 1 life."
+    ],
+    "notExpect": [
+      "loses the game"
+    ],
+    "cite": []
+  },
+  {
+    "id": "bridge-three-cards-two-attackers",
+    "text": "I have Ensnaring Bridge and 3 cards in hand. My opponent attacks with a 3/3 and a 4/4. What gets through?",
+    "expect": [
+      "a 4/4 creature can't attack (Ensnaring Bridge).",
+      "You take 3 damage."
+    ],
+    "notExpect": [
+      "You take 7 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "fatal-push-revolt-four-drop",
+    "text": "I cast Fatal Push on their 4-drop after cracking a fetchland. Does it work?",
+    "expect": [
+      "a 4 mana creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "can't target"
+    ],
+    "cite": [
+      "207.2c"
+    ]
+  },
+  {
+    "id": "clique-targets-me-draws",
+    "text": "My Vendilion Clique targets me. Do I draw?",
+    "expect": [
+      "You draw 1 card.",
+      "Yes: You draw 1 card in all."
+    ],
+    "notExpect": [
+      "opponent draws 1 card."
+    ],
+    "cite": []
   }
 ]

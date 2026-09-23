@@ -1453,6 +1453,22 @@ object OracleParser {
             if (Generic.token(a) != null && Generic.token(b) != null) return Effect.Seq(listOf(Effect.CreateToken(w, 1, a), Effect.CreateToken(w, 1, b)))
         }
         if (Regex("""^if a card would be put into your graveyard from anywhere this turn, exile that card instead\.?$""", RegexOption.IGNORE_CASE).matches(s.trim())) return Effect.ExileInsteadOfGraveyardThisTurn
+        // Oko, Thief of Crowns: "Target artifact or creature loses all abilities and becomes a green Elk creature with base power and toughness 3/3."
+        Regex("""^target (artifact or creature|creature|artifact|permanent|creature or planeswalker) loses all abilities and becomes an? (?:(white|blue|black|red|green) )?([A-Z][a-z]+) creature with base power and toughness (\d+)/(\d+)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            val raw = m.groupValues[1].lowercase()
+            val color = m.groupValues[2].lowercase().let { c -> mapOf("white" to 'W', "blue" to 'U', "black" to 'B', "red" to 'R', "green" to 'G')[c] }
+            return Effect.Transmogrify(TargetSpec(parseFilter(raw, Kind.PERMANENT).copy(raw = raw), raw), m.groupValues[4].toInt(), m.groupValues[5].toInt(), m.groupValues[3].replaceFirstChar { it.uppercase() }, color)
+        }
+        // Scavenging Ooze: "Exile target card from a graveyard."
+        Regex("""^exile target card from a graveyard\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let {
+            val raw = "card in a graveyard"
+            return Effect.Exile(TargetSpec(ObjFilter(setOf(Kind.CARD), raw = raw, inGraveyard = true), raw))
+        }
+        // Vendilion Clique: the chosen card goes to the bottom and its owner draws.
+        Regex("""^choose a nonland card from it\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated("Choose a nonland card from it", listOf("400.2")) }
+        Regex("""^that player reveals the chosen card, puts it on the bottom of their library, then draws a card\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let {
+            return Effect.Seq(listOf(Effect.Narrated("That player reveals the chosen card and puts it on the bottom of their library", listOf("701.20a")), Effect.Draw(Who.TARGET_PLAYER, 1)))
+        }
         // Surgical Extraction / Extirpate: the target card and every card with its name are exiled.
         Regex("""^choose target card in a graveyard other than a basic land card\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let {
             val raw = "card in a graveyard other than a basic land card"

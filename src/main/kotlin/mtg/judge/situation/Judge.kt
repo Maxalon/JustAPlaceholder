@@ -215,7 +215,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         engine.activate(src.controller, srcId, null, emptyList())
                     }
                 }
-                engine.cast(player, def, disambiguate(e.targets, needed, player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", flashback = e.to == "flashback", alternative = e.to == "altcost", choice = e.to?.takeIf { it.startsWith("copy:") } ?: e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it.startsWith("name:") }?.removePrefix("name:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" } ?: e.to?.takeIf { it.startsWith("put:") }?.removePrefix("put:"), payLife = e.payLife)
+                engine.cast(player, def, disambiguate(e.targets, needed, player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", flashback = e.to == "flashback", alternative = e.to == "altcost", choice = e.to?.takeIf { it.startsWith("copy:") || it == "revolt" } ?: e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it.startsWith("name:") }?.removePrefix("name:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" } ?: e.to?.takeIf { it.startsWith("put:") }?.removePrefix("put:"), payLife = e.payLife)
             }
             "draw" -> engine.draw(e.player ?: throw JudgeException("draw needs a player"), e.amount ?: 1)
             // "Grizzly Bears fights Hill Giant": the fight itself, with no card making it happen (701.14a).
@@ -523,6 +523,13 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                             attackerFacing(o, state)!!.let { att ->
                                 engine.cantBlockWhy(att, o)?.let { (why, rules, out) -> state.trace.step(why, *rules.toTypedArray()); "No: $out" }
                                     ?: "Yes: ${o.name} can block ${att.name}."
+                            }
+                        // "Can it block?" with nothing attacking: the one creature across the table is what it would block.
+                        e.to == "block" && state.objects.values.count { it.isOnBattlefield() && it.controller != o.controller && (it.def.isCreature || it.animatedAs != null) } == 1 ->
+                            state.objects.values.first { it.isOnBattlefield() && it.controller != o.controller && (it.def.isCreature || it.animatedAs != null) }.let { att ->
+                                engine.cantBlockWhy(att, o)?.let { (why, rules, out) -> state.trace.step(why, *rules.toTypedArray()); "No: $out" }
+                                    ?: engine.cantWhy(o.id, e.to)?.let { why -> "No: ${o.name} can't block (${if (why == o.name) "its own ability" else why} says so)." }
+                                    ?: "Yes: ${o.name} can block ${att.name} if it attacks."
                             }
                         else -> engine.cantWhy(o.id, e.to)?.let { why -> "No: ${o.name} can't ${e.to} (${if (why == o.name) "its own ability" else why} says so)." }
                             ?: if (o.isOnBattlefield()) "Yes: ${o.name} can ${e.to}${if (e.to == "attack" && o.summoningSick == true && !o.has("haste")) ", but not this turn: it's summoning sick (302.6)" else ""}." else "No: ${o.name} isn't on the battlefield."

@@ -118,6 +118,11 @@ class Engine(val state: GameState) {
             return null
         }
         var effect = card.spellEffect ?: card.enchant?.takeIf { card.isAura }?.let { Effect.Attach(TargetSpec(it, "enchant ${it.raw}")) }
+        // Revolt changes what Fatal Push may target, so it is applied before the targets are checked.
+        (effect as? Effect.Destroy)?.let { d -> if (choice == "revolt" && card.has("revolt") && d.target.filter.maxManaValue != null) {
+            trace.step("Revolt: a permanent left the battlefield under ${player.possessive} control this turn, so ${card.name} can destroy a creature with mana value 4 or less instead of 2 or less.", "207.2c")
+            effect = d.copy(target = d.target.copy(filter = d.target.filter.copy(maxManaValue = 4, raw = "creature with mana value 4 or less"), raw = "creature with mana value 4 or less"))
+        } }
         val needed = effect?.targets() ?: emptyList()
         // "they crack Polluted Delta and I Stifle it": a spell that targets an ability, aimed at a permanent whose
         // ability is on the stack, is aimed at that ability. Read as the land, Stifle's target was illegal.
@@ -130,10 +135,6 @@ class Engine(val state: GameState) {
         var asked = false
         var noLegalTarget = false
         var targetsUnknown = false
-        (effect as? Effect.Destroy)?.let { d -> if (choice == "revolt" && card.has("revolt") && d.target.filter.maxManaValue != null) {
-            trace.step("Revolt: a permanent left the battlefield under ${player.possessive} control this turn, so ${card.name} can destroy a creature with mana value 4 or less instead of 2 or less.", "207.2c")
-            effect = d.copy(target = d.target.copy(filter = d.target.filter.copy(maxManaValue = 4, raw = "creature with mana value 4 or less"), raw = "creature with mana value 4 or less"))
-        } }
         var targets = if (targetsGiven.isEmpty() && needed.size == 1) inferTarget(card.name, needed[0], playerId, harmful = isHarmful(effect), source = obj, beneficial = isBeneficial(effect)).also { asked = it == null && state.clarifications.any { c -> c.about == "${card.name}'s target" }; noLegalTarget = it != null && it.isEmpty() } ?: targets else targetsGiven
         // Two targets and only one named ("Rabid Bite on my Bears"): the named one takes the spec it fits, the other is inferred.
         if (targets.size == 1 && needed.size == 2) {
@@ -1858,6 +1859,11 @@ class Engine(val state: GameState) {
             }
             if (inferred != null) targets = inferred
         }
+        // "Vendilion Clique targeting me": a player named with the cast is the enters-the-battlefield trigger's target.
+        if (targets.isEmpty() && ability.trigger == Trigger.ThisEnters && obj.etbTargets?.any { it is Ref.Player } == true && (targetsAPlayer(ability.effect) || Regex("""\btarget (?:player|opponent)\b""", RegexOption.IGNORE_CASE).containsMatchIn(ability.text))) {
+            targets = obj.etbTargets!!.filterIsInstance<Ref.Player>().take(1); obj.etbTargets = null
+            trace.step("${obj.name}'s trigger targets ${state.nameOf(targets[0])}, as named when it was cast.", "603.3d")
+        }
         if (needed.isEmpty() && targets.isEmpty() && targetsAPlayer(ability.effect)) {
             // "Exile target player's graveyard": the player is carried by a Who, so there is no TargetSpec to infer from.
             val opps = state.opponentsOf(obj.controller)
@@ -2866,6 +2872,13 @@ class Engine(val state: GameState) {
                 same.forEach { move(it, Zone.EXILE, "${it.name} is exiled from ${zoneName(it.zone, it)}.", "701.23a") }
                 state.outcomes += "${item.source.name}: every ${card.def.name} in ${owner.possessive} graveyard, hand and library is exiled (${same.size} known here)."
             } }
+            is Effect.Transmogrify -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o ->
+                val was = "${o.name}${if (o.def.isCreature) " (${state.describePt(o)})" else ""}"
+                o.def = o.def.copy(types = setOf("Creature"), subtypes = setOf(effect.subtype), colors = effect.color?.let { setOf(it) } ?: emptySet(), abilities = emptyList(), keywords = emptySet(), power = effect.power, toughness = effect.toughness)
+                o.pumps.clear(); o.tempKeywords.clear(); o.basePt = null
+                trace.step("$was loses all abilities and becomes ${effect.color?.let { c -> mapOf('W' to "a white", 'U' to "a blue", 'B' to "a black", 'R' to "a red", 'G' to "a green")[c] } ?: "a"} ${effect.subtype} creature with base power and toughness ${effect.power}/${effect.toughness}: its types, colour and abilities are replaced (layers 4, 5 and 6) and its base size set (layer 7b). Counters and Auras on it stay, and it's still ${state.describePt(o)} now.", "613.1d", "613.1e", "613.1f", "613.4b")
+                state.outcomes += "${o.name} is now ${effect.color?.let { c -> mapOf('W' to "a white", 'U' to "a blue", 'B' to "a black", 'R' to "a red", 'G' to "a green")[c] } ?: "a"} ${effect.subtype} creature with no abilities, ${state.describePt(o)}."
+            } }
             is Effect.SpellCantBeCountered -> forEachLegalTarget(item, effect.target) { ref -> (ref as? Ref.Stack)?.let { r -> state.stack.firstOrNull { it.id == r.id } }?.let { sp ->
                 sp.cantBeCountered = true
                 trace.step("${sp.source.name} can't be countered now (${item.source.name}'s ability).", "608.2c")
@@ -3835,7 +3848,7 @@ class Engine(val state: GameState) {
         is Effect.GainLife -> "gain ${effect.amount} life"; is Effect.LoseLife -> "lose ${if (effect.x) "X" else effect.amount.toString()} life"; is Effect.Discard -> "${when (effect.who) { Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; Who.TARGET_PLAYER -> "target player"; else -> "that player" }} discard${if (effect.who == Who.YOU) "" else "s"} ${if (effect.x) "X" else effect.count.toString()} card(s)${if (effect.random) " at random" else ""}"; is Effect.Repeat -> "repeat ${if (effect.x) "X" else effect.times.toString()} times: ${describe(effect.body, item)}"; is Effect.LoseLifeUnlessSacOrDiscard -> "${when (effect.who) { Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }} loses ${effect.amount} life unless they sacrifice ${effect.filter?.let { withArticle(it.raw) } ?: "a permanent"}${if (effect.discard) " or discard a card" else ""}"
         is Effect.May -> "may " + describe(effect.effect, item); is Effect.UnlessPays -> describe(effect.effect, item) + " unless ${effect.cost} is paid"
         is Effect.ExileSelfSpell -> "exile ${item.source.name}"; is Effect.ProtectionUntilNextTurn -> "until your next turn your life total can't change and you have protection from everything"; is Effect.PhaseOutAll -> "${effect.filter.raw} phase out"
-        is Effect.ExtractNamed -> "exile ${effect.target.raw} and every card with its name"; is Effect.SpellCantBeCountered -> "target spell can't be countered"
+        is Effect.ExtractNamed -> "exile ${effect.target.raw} and every card with its name"; is Effect.Transmogrify -> "${effect.target.raw} loses all abilities and becomes a ${effect.power}/${effect.toughness} ${effect.subtype}"; is Effect.SpellCantBeCountered -> "target spell can't be countered"
         is Effect.Seq -> effect.effects.joinToString(", then ") { describe(it, item) }; is Effect.Unparsed -> "\"${effect.text}\""
     }
     private fun unparsedText(e: Effect): String = when (e) { is Effect.Unparsed -> e.text; is Effect.May -> unparsedText(e.effect); is Effect.UnlessPays -> unparsedText(e.effect); is Effect.Seq -> e.effects.filter { it.hasUnparsed() }.joinToString(" | ") { unparsedText(it) }; is Effect.Modal -> e.modes.filter { it.hasUnparsed() }.joinToString(" | ") { "mode \"" + unparsedText(it) + "\"" }; else -> "" }
