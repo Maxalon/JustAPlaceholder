@@ -18638,5 +18638,104 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "yawgmoths-will-replay-bolt",
+    "text": "I have Yawgmoth's Will. Can I replay my Lightning Bolt from the graveyard?",
+    "expect": [
+      "This turn, cards that would go to your graveyard are exiled instead (Yawgmoth's Will).",
+      "opponent takes 3 damage.",
+      "Lightning Bolt: the stack → exile (exiled instead of going to the graveyard this turn)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "animate-dead-opponents-griselbrand",
+    "text": "I reanimate my opponent's Griselbrand with Animate Dead. Who controls it?",
+    "expect": [
+      "Griselbrand: opponent's graveyard → the battlefield (under your control, Animate Dead)."
+    ],
+    "notExpect": [
+      "Not understood",
+      "Animate Dead: the battlefield → your graveyard."
+    ],
+    "cite": [
+      "303.4a"
+    ]
+  },
+  {
+    "id": "ashes-to-ashes-two-bears",
+    "text": "My opponent casts Ashes to Ashes on my two Grizzly Bears. What happens?",
+    "expect": [
+      "Grizzly Bears: the battlefield → exile. (×2)",
+      "opponent takes 5 damage."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "deep-analysis-flashback-cost",
+    "text": "I flashback Deep Analysis. How much does it cost?",
+    "expect": [
+      "Deep Analysis cast with flashback costs {1}{U}, plus pay 3 life (its flashback cost, 702.34a); the printed {3}{U} isn't paid. It's exiled as it resolves."
+    ],
+    "notExpect": [
+      "Not understood",
+      "4 mana"
+    ],
+    "cite": []
+  },
+  {
+    "id": "unearth-finks-read-as-in-graveyard",
+    "text": "I cast Unearth on my Kitchen Finks. What comes back?",
+    "expect": [
+      "Kitchen Finks enters the battlefield.",
+      "You gain 2 life."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "living-death-counted-boards",
+    "text": "I cast Living Death with two creatures in my graveyard. My opponent has three on the battlefield. What happens?",
+    "expect": [
+      "a creature: the battlefield → opponent's graveyard. (×3)",
+      "a creature enters the battlefield. (×2)"
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "tormods-crypt-vs-reanimate-stop-it",
+    "text": "I have Tormod's Crypt. My opponent casts Reanimate. Can I stop it?",
+    "expect": [
+      "Tormod's Crypt: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "Not understood",
+      "There is no spell"
+    ],
+    "cite": []
+  },
+  {
+    "id": "tarmogoyf-said-three-four-survives-bolt",
+    "text": "My Tarmogoyf is 3/4. My opponent Bolts it. Does it die?",
+    "expect": [
+      "Tarmogoyf has 3 damage marked.",
+      "No: Tarmogoyf is still on the battlefield."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

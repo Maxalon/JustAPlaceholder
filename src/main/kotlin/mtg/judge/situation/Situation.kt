@@ -92,6 +92,8 @@ data class ObjectSpec(
     val commanderCasts: Int = 0,
     /** A card name this permanent names ("Meddling Mage naming Lightning Bolt"). */
     val named: String? = null,
+    /** True when the parser put it on the battlefield only because a spell named it, with no zone said. */
+    val assumed: Boolean = false,
 )
 
 @Serializable

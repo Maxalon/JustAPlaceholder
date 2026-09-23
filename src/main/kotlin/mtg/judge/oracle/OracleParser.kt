@@ -85,7 +85,10 @@ object OracleParser {
                 isKeywordLine(selfRef, keywords) && statics.isEmpty() -> selfRef.split(',', ';').map { it.trim() }.filter { it.isNotEmpty() }.forEach { part ->
                     val kw = keywords.map { it.lowercase() }.filter { part.lowercase() == it || part.lowercase().startsWith("$it ") }.maxByOrNull { it.length } ?: part.substringBefore(' ').lowercase()
                     when (kw) {
-                        "enchant" -> { val what = part.substring(7).trim().trimEnd('.'); enchant = if (what.equals("player", true)) ObjFilter(setOf(Kind.PLAYER), raw = what) else parseFilter(what, Kind.PERMANENT); abilities += StaticAbility(part, kw) }
+                        "enchant" -> { val what = part.substring(7).trim().trimEnd('.'); enchant = if (what.equals("player", true)) ObjFilter(setOf(Kind.PLAYER), raw = what)
+                            // Animate Dead: "Enchant creature card in a graveyard" — a card, not a permanent.
+                            else if (Regex("""(?i)^(?:creature|permanent|artifact|enchantment|land|planeswalker) card in an? graveyard$""").matches(what)) ObjFilter(setOf(Kind.CARD), raw = what, inGraveyard = true)
+                            else parseFilter(what, Kind.PERMANENT); abilities += StaticAbility(part, kw) }
                         "equip" -> abilities += ActivatedAbility(part.trimEnd('.'), Effect.Attach(TargetSpec(ObjFilter(setOf(Kind.CREATURE), controller = Who.YOU, raw = "creature you control"), "creature you control")), part, "Activate only as a sorcery")
                         "cycling" -> abilities += ActivatedAbility(part.trimEnd('.') + " (discard this card from your hand)", Effect.Draw(Who.YOU, 1), part, "Activate only while this card is in your hand")
                         // "Basic landcycling {1}{B}", "Plainscycling {2}": cycling that fetches a land (702.29b).
@@ -1173,6 +1176,7 @@ object OracleParser {
         // "If you control a commander as you cast this spell, you may choose both instead." / "Each mode must
         // target a different player.": riders on a modal spell's mode count, said rather than played out.
         Regex("""^if .+?, (?:you may )?choose (?:$modeCount|both) instead[.\u2014-]?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated(s.trim().trimEnd('.'), listOf("700.2d")) }
+        Regex("""^exile two target (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m -> val t = target(m.groupValues[1]); if (t.filter.verifiable) return Effect.ExileTwo(t) }
         // Veil of Summer.
         Regex("""^draw a card if an opponent has cast a blue or black spell this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated("if an opponent has cast a blue or black spell this turn, you draw a card", listOf("608.2c")) }
         Regex("""^spells you control can't be countered this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated("spells you control can't be countered this turn", listOf("608.2c")) }

@@ -17,6 +17,12 @@ class Engine(val state: GameState) {
     fun cast(playerId: String, card: CardDef, targets: List<Ref>, objectId: String? = null, modes: List<Int> = emptyList(), overload: Boolean = false, x: Int? = null, kicked: Boolean = false, evoked: Boolean = false, flashback: Boolean = false, choice: String? = null, payLife: Int? = null, alternative: Boolean = false): StackItem? {
         val player = state.player(playerId)
         val obj = objectId?.let { state.objects[it] } ?: state.add(GameObject(objectId ?: freshObjectId(card.name), card, Zone.HAND, playerId))
+        // "I cast Lightning Bolt from my graveyard": only with permission (Yawgmoth's Will) or the card's own flashback.
+        if (obj.zone == Zone.GRAVEYARD && !flashback && playerId !in state.castFromGraveyard && !card.has("flashback")) {
+            trace.step("${card.name} is in ${player.possessive} graveyard, and nothing lets ${player.subject.lowercase()} cast it from there: a spell can be cast only from where a rule or effect allows, normally the hand (601.3, 601.2a). Yawgmoth's Will or a flashback cost would let it be cast from the graveyard.", "601.3", "601.2a")
+            state.outcomes += "${card.name} can't be cast from ${player.possessive} graveyard (nothing allows it)."; return null
+        }
+        if (obj.zone == Zone.GRAVEYARD && !flashback && playerId in state.castFromGraveyard) trace.step("${card.name} is cast from ${player.possessive} graveyard, as Yawgmoth's Will allows this turn.", "601.3")
         state.stack.firstOrNull { it.kind == StackKind.SPELL && it.source.def.has("split second") }?.let { ss ->
             trace.step("${ss.source.name} has split second and is on the stack, so players can't cast spells or activate abilities that aren't mana abilities. ${card.name} can't be cast now.", "702.61a")
             state.outcomes += "${card.name} can't be cast while ${ss.source.name} is on the stack (split second)."; return null
@@ -1188,6 +1194,15 @@ class Engine(val state: GameState) {
                         val tid = (t as? Ref.Obj)?.id
                         item.source.attachedTo = tid; applyControlEnchanted(item.source)
                         trace.step("${def.name} enters the battlefield attached to ${t?.let { state.nameOf(it) } ?: "nothing"}.", "608.3b", "303.4")
+                        // Animate Dead, Necromancy, Dance of the Dead: the card it enchants in a graveyard comes back under its controller's control.
+                        val gy = tid?.let { state.objects[it] }?.takeIf { it.zone == Zone.GRAVEYARD }
+                        if (gy != null && Regex("""(?i)return enchanted creature card to the battlefield under your control""").containsMatchIn(def.oracleText)) {
+                            val ctrl = state.player(item.controller)
+                            gy.zone = Zone.BATTLEFIELD; gy.controller = item.controller; gy.summoningSick = true; gy.tapped = false
+                            trace.step("${def.name}'s enters-the-battlefield ability returns ${gy.name} from ${state.player(gy.owner).possessive} graveyard to the battlefield under ${ctrl.possessive} control, and ${def.name} stays attached to it (now enchanting a creature rather than a card). ${gy.name} is a new object under ${ctrl.possessive} control: it can't attack or use {T} abilities this turn (302.6).", "303.4a", "400.7", "302.6")
+                            state.outcomes += "${gy.name}: ${state.player(gy.owner).possessive} graveyard → the battlefield (under ${ctrl.possessive} control, ${def.name})."
+                            onEvent(GameEvent.EntersBattlefield(gy))
+                        }
                     }
                     applyEntersReplacements(item.source, item.choice)
                     if (item.source.mustGoToGraveyard) { item.source.mustGoToGraveyard = false; trace.step("${def.name} finishes resolving without entering the battlefield.", "608.3", "614.1c"); return }
@@ -1291,7 +1306,8 @@ class Engine(val state: GameState) {
                 val host = obj.attachedTo?.let { state.objects[it] }
                 if (obj.def.isAura) {
                     val enchant = obj.def.enchant
-                    val legal = host != null && host.isOnBattlefield() && (enchant == null || state.matches(enchant, host, obj.controller, obj))
+                    // Animate Dead: once its card is back on the battlefield, it enchants "creature put onto the battlefield with ~".
+                    val legal = host != null && host.isOnBattlefield() && (enchant == null || state.matches(enchant, host, obj.controller, obj) || (enchant.inGraveyard && (host.def.isCreature || host.animatedAs != null)))
                     if (!legal) { move(obj, Zone.GRAVEYARD, "${obj.name} is ${if (host == null || !host.isOnBattlefield()) "no longer attached to anything" else "attached to something it can't enchant"}, so it's put into its owner's graveyard (state-based action).", "704.3", "704.5m"); changed = true }
                 } else if (obj.def.isEquipment && obj.attachedTo != null) {
                     if (host == null || !host.isOnBattlefield() || !host.def.isCreature) { obj.attachedTo = null; trace.step("${obj.name} is no longer attached to a creature, so it becomes unattached and stays on the battlefield (state-based action).", "704.3", "704.5n"); state.outcomes += "${obj.name} stays on the battlefield, unattached."; changed = true }
@@ -2689,6 +2705,10 @@ class Engine(val state: GameState) {
             } }
             is Effect.GainLife -> resolvePlayers(effect.who, item).forEach { p -> gainLife(p, effect.amount) }
             is Effect.LoseLife -> { val n = if (effect.x) (item.x ?: 0) else effect.amount; resolvePlayers(effect.who, item).forEach { p -> p.life = p.life?.minus(n); item.lifeLost += n; trace.step("${p.subject} ${p.v("loses", "lose")} $n life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} $n life." } }
+            is Effect.ExileTwo -> for (i in 0..1) item.targets.getOrNull(i)?.let { ref ->
+                if (isTargetLegal(item, ref)) objOf(ref)?.let { o -> move(o, Zone.EXILE, "${o.name} is exiled.", "701.13a") }
+                else trace.step("${state.nameOf(ref)} is an illegal target now, so it isn't exiled.", "608.2b")
+            }
             is Effect.PlayerAndPermanentsGainHexproofFrom -> {
                 val names = effect.colors.map { colorWord(it) }
                 you.hexproofFrom += effect.colors
@@ -2803,6 +2823,13 @@ class Engine(val state: GameState) {
                 if (had.keys.any { it == "+1/+1" || it == "-1/-1" || it == "loyalty" }) stateBasedActions()
             } }
             is Effect.Attach -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { t ->
+                // Animate Dead, Necromancy, Dance of the Dead: "return enchanted creature card to the battlefield under your control".
+                if (t.zone == Zone.GRAVEYARD && Regex("""(?i)return enchanted creature card to the battlefield under your control""").containsMatchIn(item.source.def.oracleText)) {
+                    t.zone = Zone.BATTLEFIELD; t.controller = item.controller; t.summoningSick = true; t.tapped = false
+                    trace.step("${item.source.name} enters attached to ${t.name} in ${state.player(t.owner).possessive} graveyard; its ability returns ${t.name} to the battlefield under ${state.player(item.controller).possessive} control and ${item.source.name} stays attached to it.", "303.4a", "608.2c")
+                    state.outcomes += "${t.name}: ${state.player(t.owner).possessive} graveyard → the battlefield (under ${state.player(item.controller).possessive} control, ${item.source.name})."
+                    onEvent(GameEvent.EntersBattlefield(t))
+                }
                 item.source.attachedTo = t.id; applyControlEnchanted(item.source)
                 trace.step("${item.source.name} becomes attached to ${t.name}${if (item.source.def.isEquipment) " (equipped creature)" else ""}.", *(if (item.source.def.isEquipment) arrayOf("702.6a", "301.5a") else arrayOf("701.3a")))
                 state.outcomes += "${item.source.name} is attached to ${t.name}."
@@ -2929,6 +2956,7 @@ class Engine(val state: GameState) {
                 val said = if (ownSubject || you.you) effect.text.replace("~", item.source.name).replaceFirstChar { it.uppercase() } else "${you.subject} ${thirdPerson(effectText(effect.text, item), you)}"
                 if (Regex("""(?i)\bsearch(?:es)? (?:your|their|his or her) library\b""").containsMatchIn(effect.text)) searchLimitNote(you.id, "the card it looks for")
                 enterBlockersNote(item, effect.text)
+                if (Regex("""(?i)cast spells from your graveyard""").containsMatchIn(effect.text)) state.castFromGraveyard += you.id
                 if (Regex("""(?i)cast spells from your graveyard""").containsMatchIn(effect.text)) state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.oracleText.contains("would be put into a graveyard from anywhere, exile it instead", ignoreCase = true) }?.let { rip ->
                     state.outcomes += "${rip.name} keeps ${you.possessive} graveyard empty (cards go to exile instead), so ${item.source.name} has nothing there to play or cast."
                 }
@@ -3539,6 +3567,11 @@ class Engine(val state: GameState) {
             return if (obj.commanderCasts > 0) "The commander tax adds {${2 * obj.commanderCasts}} to its mana cost (903.8), because it has been cast from the command zone ${obj.commanderCasts} time${if (obj.commanderCasts == 1) "" else "s"}. Name the card for the total."
                    else "It has not been cast from the command zone yet, so there is no commander tax (903.8): it costs its mana cost. Name the card for the total."
         val printed = card.manaCost ?: return "${card.name} has no mana cost, so it can't be cast for mana."
+        // "I flashback Deep Analysis. How much does it cost?": the flashback cost, not the printed one.
+        if (state.trace.steps.any { it.text.contains("flashback", true) && it.text.contains(card.name) }) Regex("""(?i)flashback(?:—|-|\s)\s*((?:\{[^}]*\})+)(?:,\s*([^.\n(]+))?""").find(card.oracleText)?.let { fb ->
+            val extra = fb.groupValues[2].trim().takeIf { it.isNotEmpty() }?.let { ", plus ${it.lowercase()}" } ?: ""
+            return "${card.name} cast with flashback costs ${fb.groupValues[1]}$extra (its flashback cost, 702.34a); the printed ${printed} isn't paid. It's exiled as it resolves."
+        }
         val taxes = state.objects.values.filter { it.isOnBattlefield() }
             .flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CostTax>()
                 .filter { t -> (t.whose == null || (t.whose == Who.YOU) == (o.controller == obj.controller)) && spellMatches(t.filter, card) }.map { o to it } }
@@ -4002,6 +4035,7 @@ class Engine(val state: GameState) {
         is Effect.ExileSelfSpell -> "exile ${item.source.name}"; is Effect.ProtectionUntilNextTurn -> "until your next turn your life total can't change and you have protection from everything"; is Effect.PhaseOutAll -> "${effect.filter.raw} phase out"
         is Effect.ExtractNamed -> "exile ${effect.target.raw} and every card with its name"; is Effect.LivingEnd -> "each player exiles the creature cards in their graveyard, sacrifices their creatures and returns the exiled cards"; is Effect.PutBackFromHand -> "put ${effect.count} cards from your hand on top of your library"; is Effect.ExileIfMvAtMostX -> "exile ${effect.target.raw} if its mana value is at most the colours spent"; is Effect.Transmogrify -> "${effect.target.raw} loses all abilities and becomes a ${effect.power}/${effect.toughness} ${effect.subtype}"; is Effect.SpellCantBeCountered -> "target spell can't be countered"
         is Effect.DiscardHand -> "${if (effect.who == Who.EACH_PLAYER) "each player discards their hand" else "discard your hand"}"; is Effect.WindfallDraw -> "each player draws cards equal to the greatest number discarded"
+        is Effect.ExileTwo -> "exile two target ${effect.target.raw}s"
         is Effect.PlayerAndPermanentsGainHexproofFrom -> "you and permanents you control gain hexproof from ${effect.colors.map { colorWord(it) }.joinToString(" and from ")} until end of turn"
         is Effect.Seq -> effect.effects.joinToString(", then ") { describe(it, item) }; is Effect.Unparsed -> "\"${effect.text}\""
     }

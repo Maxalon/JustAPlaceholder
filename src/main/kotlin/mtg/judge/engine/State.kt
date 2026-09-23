@@ -104,6 +104,8 @@ class GameObject(
     val lostKeywords = mutableSetOf<String>()
     /** The card as printed: a copy effect (Clone) changes [def] only while it is on the battlefield (400.7). */
     val printedDef: CardDef = def
+    /** The parser put it on the battlefield only because a spell named it; a graveyard-targeting spell may move it. */
+    var assumed = false
     /** Mox Diamond with no land to discard: it never enters, and goes to the graveyard instead. */
     var mustGoToGraveyard = false
     /** The mana its caster could pay with as it was cast, for "can I?" asked afterwards. */
@@ -246,6 +248,8 @@ class GameState(
     var lastRevealed: GameObject? = null
     /** The spell most recently countered (Mana Drain's "that spell's mana value"). */
     var lastCountered: GameObject? = null
+    /** Players who may cast spells from their graveyard this turn (Yawgmoth's Will). */
+    val castFromGraveyard = mutableSetOf<String>()
     /** The permanent most recently sacrificed (Fling's "the sacrificed creature's power"), with last-known information. */
     var lastSacrificed: GameObject? = null
     val assumptions = mutableListOf<String>()

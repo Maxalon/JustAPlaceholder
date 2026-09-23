@@ -48,7 +48,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
 
         for (o in sit.objects) {
             val def = cardDef(o.card, state) ?: continue
-            state.add(GameObject(o.id, def, zone(o.zone), o.controller, o.owner ?: o.controller, o.tapped, o.summoningSick, o.counters.toMutableMap(), o.damage, o.token)).also {
+            state.add(GameObject(o.id, def, zone(o.zone), o.controller, o.owner ?: o.controller, o.tapped, o.summoningSick, o.counters.toMutableMap(), o.damage, o.token)).also { it.assumed = o.assumed
                 it.timestamp = state.tick(); it.attachedTo = o.attachedTo; it.commander = o.commander; it.commanderCasts = o.commanderCasts; it.chosenName = o.named
                 o.keywords.forEach { kw -> it.tempKeywords += kw.lowercase() }
                 o.pump?.let { pm -> Regex("""^([+-]?\d+)/([+-]?\d+)$""").matchEntire(pm)?.let { m -> it.pumps += m.groupValues[1].toInt() to m.groupValues[2].toInt() } }
@@ -174,6 +174,24 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
     private fun apply(e: EventSpec, state: GameState, engine: Engine) {
         val targets = e.targets.map { parseRef(it, state) }
         when (e.verb.lowercase()) {
+            // "Can I stop it?": the spell on the stack, answered with what the asker has.
+            "stop" -> {
+                val player = e.player ?: "me"; val p = state.player(player)
+                val spell = state.stack.lastOrNull { it.kind == StackKind.SPELL && it.controller != player } ?: run { state.outcomes += "There is no spell of ${state.player(state.players.first { it.id != player }.id).possessive} on the stack to stop."; return }
+                val mine = state.objects.values.filter { it.isOnBattlefield() && it.controller == player }
+                val crypt = mine.firstNotNullOfOrNull { o -> engine.activatedAbilitiesOf(o).withIndex().firstOrNull { (_, a) -> a.effect is Effect.ExileGraveyard && (a.effect as Effect.ExileGraveyard).who == mtg.judge.engine.Who.TARGET_PLAYER }?.let { (i, a) -> Triple(o, i, a) } }
+                val counter = mine.firstNotNullOfOrNull { o -> engine.activatedAbilitiesOf(o).withIndex().firstOrNull { (_, a) -> a.effect is Effect.Counter }?.let { (i, a) -> Triple(o, i, a) } }
+                val heldCounter = state.objects.values.firstOrNull { it.zone == Zone.HAND && it.controller == player && it.def.isInstantOrSorcery && it.def.spellEffect.let { ef -> ef is Effect.Counter || (ef is Effect.Seq && ef.effects.any { x -> x is Effect.Counter }) } }
+                when {
+                    crypt != null && spell.source.def.oracleText.contains("graveyard", true) -> {
+                        state.trace.step("\"Can ${p.subject.lowercase()} stop it?\": ${crypt.first.name} has \"${crypt.third.text.replace("~", crypt.first.name)}\", and ${spell.describe} works with a graveyard, so it's activated in response targeting ${state.player(spell.controller).subject.lowercase()}.", "602.2")
+                        engine.activate(player, crypt.first.id, crypt.second, listOf(Ref.Player(spell.controller)))
+                    }
+                    counter != null -> { state.trace.step("\"Can ${p.subject.lowercase()} stop it?\": ${counter.first.name} has an ability that counters, so it's activated targeting ${spell.describe}.", "602.2"); engine.activate(player, counter.first.id, counter.second, listOf(Ref.Stack(spell.id))) }
+                    heldCounter != null -> { state.trace.step("\"Can ${p.subject.lowercase()} stop it?\": ${heldCounter.name} in hand counters, so it's cast targeting ${spell.describe}.", "601.2"); engine.cast(player, heldCounter.def, listOf(Ref.Stack(spell.id)), heldCounter.id) }
+                    else -> state.outcomes += "No: nothing described that ${p.subject.lowercase()} ${p.v("controls", "control")} or ${p.v("holds", "hold")} counters ${spell.describe} or answers what it does."
+                }
+            }
             "cast" -> {
                 val player = e.player ?: state.players.first().id
                 // "Can I counter it?" with Glen Elendra Archmage out: the permanent's own counter ability, not a spell nobody named.
@@ -228,6 +246,10 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         ?: curEvents.lastOrNull { it.verb == "attackAll" && it.player == player }?.let { state.objects.values.filter { it.owner == player && it.def.isCreature && it.zone == Zone.GRAVEYARD }.takeIf { it.size == 1 } })
                         ?.map { a -> state.assumptions += "${def.name}'s target wasn't stated; it's read as ${a.name}, the creature ${state.player(player).subject.lowercase()} attacked with."; Ref.Obj(a.id) as Ref } ?: emptyList()
                     else disambiguate(e.targets, needed, player, state, engine)
+                // "I cast Unearth on my Kitchen Finks": a spell that targets a card in a graveyard says where the card is.
+                castTargets.forEachIndexed { i, ref -> val spec = needed.getOrNull(i); if (spec?.filter?.inGraveyard == true && ref is Ref.Obj) state.objects[ref.id]?.takeIf { it.assumed && it.isOnBattlefield() }?.let { o ->
+                    o.zone = Zone.GRAVEYARD; o.assumed = false
+                    state.assumptions += "${o.name} is read as a card in ${state.player(o.owner).possessive} graveyard, since ${def.name} targets one there and nothing said where it was." } }
                 engine.cast(player, def, castTargets, existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", flashback = e.to == "flashback", alternative = e.to == "altcost", choice = e.to?.takeIf { it.startsWith("copy:") || it == "revolt" } ?: e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it.startsWith("name:") }?.removePrefix("name:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" } ?: e.to?.takeIf { it.startsWith("put:") }?.removePrefix("put:"), payLife = e.payLife)
             }
             "draw" -> engine.draw(e.player ?: throw JudgeException("draw needs a player"), e.amount ?: 1)
@@ -769,6 +791,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "pay" -> "${who ?: "the player"} ${if (e.to == "no") "${if (who == "you") "don't" else "doesn't"} pay" else "${if (who == "you") "pay" else "pays"}"}"
             "resolve", "pass" -> "the top of the stack resolves"
             "resolveall" -> "everything on the stack resolves"
+            "stop" -> "${who ?: "you"} ${if (who == null || who == "you") "try" else "tries"} to stop the spell on the stack"
             "ask" -> if (e.to?.startsWith("text:") == true) "question: answered in the outcome" else if (e.to == "manaAvailable" || e.to == "manaNextTurn") "question: how much mana ${if (who == null || who == "you") "do you" else "does $who"} ${if (e.to == "manaNextTurn") "get next turn" else "have"}?" else if (e.to == "stillResolves") "question: does ${state.objects[e.obj]?.name ?: e.obj}'s ability still resolve?" else if (e.to == "tokenMade") "question: ${if (who == null || who == "you") "do you" else "does $who"} get ${e.card?.name?.let { "a $it token" } ?: "a token"}?" else if (e.to == "spellCost") "question: how much does ${state.objects[e.obj]?.name ?: e.card?.name ?: "the spell"} cost?" else if (e.to == "countered") "question: is ${e.card?.name ?: "the spell"} countered?" else if (e.to == "untapLands") "question: ${if (who == null || who == "you") "do your" else "do $who's"} lands untap?" else if (e.to == "respond") "question: can ${if (who == null || who == "you") "you" else who} respond?" else if (e.to == "gotLand") "question: ${if (who == null || who == "you") "do you" else "does $who"} get a land?" else if (e.to == "tokenMade") "question: ${if (who == null || who == "you") "do you" else "does $who"} get ${e.card?.name}?" else if (e.to == "hitsOwn") "question: does ${e.card?.name} hit ${if (who == null || who == "you") "your" else "$who's"} own permanents?" else if (e.to?.startsWith("count:") == true) "question: how many ${e.to.removePrefix("count:")} ${if (who == null || who == "you") "do you" else "does $who"} have?" else if (e.to == "canCounter") "question: can ${if (who == null || who == "you") "you" else who} counter it?" else if (e.to == "playerGain" || e.to == "playerLost") "question: how much life ${if (who == null || who == "you") "do you" else "does $who"} ${if (e.to == "playerGain") "gain" else "lose"}?" else if (e.to == "playerDraw") "question: ${if (who == "you") "do you" else "does $who"} draw?" else if (e.to == "playerLife") "question: what ${if (who == "you") "is your" else "is $who's"} life total?" else if (e.to == "playerSurvive") "question: ${if (who == "you") "do you" else "does $who"} survive?" else if (e.to == "playerDie") "question: ${if (who == "you") "do you" else "does $who"} lose?" else if (e.to == "playerWin") "question: ${if (who == "you") "do you" else "does $who"} win?" else if (e.to == "playerDamage") "question: ${if (who == "you") "do you" else "does $who"} take damage?" else if (e.to == "controller") "question: who controls ${state.objects[e.obj]?.name ?: e.obj}?" else if (e.to == "identity") "question: what is ${state.objects[e.obj]?.name ?: e.obj} now?" else if (e.to == "castNow") "question: can ${if (who == null || who == "you") "you" else who} cast ${state.objects[e.obj]?.name ?: e.obj} now?" else "question: ${if (e.to == "block" || e.to == "attack") "can" else "does"} ${state.objects[e.obj]?.name ?: e.obj} ${if (e.to == "damage") "deal damage to ${e.targets.firstOrNull()?.let { t -> state.players.firstOrNull { it.id == t }?.let { if (it.you) "you" else it.name } } ?: "the player"}" else e.to}?"
             "enter" -> "${state.objects[e.obj]?.name ?: e.obj} enters the battlefield"
             "playland" -> "${who ?: "you"} play${if (who == null || who == "you") "" else "s"} ${state.objects[e.obj]?.name ?: e.obj}"
