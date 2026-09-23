@@ -1059,7 +1059,7 @@ class Engine(val state: GameState) {
                 else if (hand > 7) { trace.step("${ap.subject} ${ap.v("has", "have")} $hand cards in hand and a maximum hand size of seven, so ${ap.subject.lowercase()} ${ap.v("discards", "discard")} ${hand - 7} card${if (hand - 7 == 1) "" else "s"} of ${ap.possessive} choice first.", "514.1", "402.2"); ap.handSize = 7; state.outcomes += "${ap.subject} ${ap.v("discards", "discard")} ${hand - 7} card${if (hand - 7 == 1) "" else "s"} to hand size." }
                 else { trace.step("${ap.subject} ${ap.v("has", "have")} $hand card${if (hand == 1) "" else "s"} in hand, no more than the maximum hand size of seven, so nothing is discarded.", "514.1", "402.2"); state.outcomes += "${ap.subject} ${ap.v("discards", "discard")} nothing to hand size ($hand card${if (hand == 1) "" else "s"}, maximum seven)." }
             } }
-            val affected = state.objects.values.filter { it.isOnBattlefield() && (it.pumps.isNotEmpty() || it.tempKeywords.isNotEmpty() || it.damage > 0 || it.basePt != null) }
+            val affected = state.objects.values.filter { it.isOnBattlefield() && (it.pumps.isNotEmpty() || it.tempKeywords.isNotEmpty() || it.damage > 0 || it.basePt != null || it.animatedAs != null) }
             trace.step("The cleanup step: all damage marked on permanents is removed and all \"until end of turn\" effects end, simultaneously.", "514.2")
             for (o in state.objects.values.filter { it.isOnBattlefield() && it.controlRevertsTo != null }) {
                 val back = state.player(o.controlRevertsTo!!); o.controller = back.id; o.controlRevertsTo = null

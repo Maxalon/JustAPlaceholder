@@ -17690,5 +17690,104 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "clone-copies-bears-not-its-counter",
+    "text": "I Clone my opponent's Grizzly Bears that has a +1/+1 counter. How big is my Clone?",
+    "expect": [
+      "Clone (copying Grizzly Bears) is 2/2."
+    ],
+    "notExpect": [
+      "Not understood",
+      "Clone: the battlefield → your graveyard"
+    ],
+    "cite": [
+      "707.2"
+    ]
+  },
+  {
+    "id": "disenchant-equipped-sword-what-happens-to-creature",
+    "text": "My opponent Disenchants my Sword of Fire and Ice while it's equipped. What happens to my creature?",
+    "expect": [
+      "Sword of Fire and Ice: the battlefield → your graveyard.",
+      "a creature is 1/1."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "animated-manland-after-the-turn-ends",
+    "text": "I animate Mutavault and equip it with Batterskull. Then the turn ends. Is it still a creature?",
+    "expect": [
+      "Batterskull stays on the battlefield, unattached.",
+      "No: Mutavault isn't a creature; it's land."
+    ],
+    "notExpect": [
+      "Not understood",
+      "all targets illegal"
+    ],
+    "cite": [
+      "514.2"
+    ]
+  },
+  {
+    "id": "humility-can-it-still-fly",
+    "text": "I cast Humility. My opponent has a 4/4 with flying. Can it still fly?",
+    "expect": [
+      "No: a 4/4 creature with flying has no abilities under Humility, so it doesn't have flying."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "thalia-bolt-with-exactly-one-mana",
+    "text": "I have Thalia, Guardian of Thraben. My opponent casts Lightning Bolt at me with exactly 1 red mana. What happens?",
+    "expect": [
+      "Lightning Bolt can't be cast (costs 2, only 1 mana available)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "wasteland-tap-in-response",
+    "text": "My opponent plays a Wasteland and destroys my Tropical Island. Can I respond by tapping it for mana?",
+    "expect": [
+      "Tropical Island's mana ability: add {G}.",
+      "Tropical Island: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "voice-pathed-do-i-get-a-token",
+    "text": "My Voice of Resurgence gets Path to Exiled. Do I get a token?",
+    "expect": [
+      "Voice of Resurgence: the battlefield → exile.",
+      "No: no token was created by what was described."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "rancor-returns-when-bears-die",
+    "text": "I have Rancor on my Bears and they Doom Blade the Bears. Where does Rancor go?",
+    "expect": [
+      "Rancor: the battlefield → your graveyard.",
+      "Rancor: your graveyard → your hand."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
