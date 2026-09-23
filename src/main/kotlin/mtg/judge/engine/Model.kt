@@ -205,6 +205,8 @@ sealed interface Effect {
     data class DealsPowerTo(val mine: TargetSpec, val theirs: TargetSpec) : Effect
     /** "Target player discards X cards at random" / "each player discards two cards". */
     data class Discard(val who: Who, val count: Int, val x: Boolean = false, val random: Boolean = false) : Effect
+    /** Veil of Summer: "You and permanents you control gain hexproof from blue and from black until end of turn." */
+    data class PlayerAndPermanentsGainHexproofFrom(val colors: Set<Char>) : Effect
     /** "Each player discards their hand" (Wheel of Fortune, Windfall). */
     data class DiscardHand(val who: Who) : Effect
     /** "then draws cards equal to the greatest number of cards a player discarded this way" (Windfall). */
@@ -364,7 +366,7 @@ sealed interface Effect {
         is Repeat -> body.targets()
         is LoseLifeUnlessSacOrDiscard -> emptyList()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
-        is ProtectionUntilNextTurn, is PhaseOutAll, is ExileSelfSpell, is LoseKeywordsAll, is ExileInsteadOfGraveyardThisTurn, is LivingEnd, is PutBackFromHand, is DiscardHand, is WindfallDraw -> emptyList()
+        is ProtectionUntilNextTurn, is PhaseOutAll, is ExileSelfSpell, is LoseKeywordsAll, is ExileInsteadOfGraveyardThisTurn, is LivingEnd, is PutBackFromHand, is DiscardHand, is WindfallDraw, is PlayerAndPermanentsGainHexproofFrom -> emptyList()
         is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is GainLifeLostThisWay, is GainLifeEqualToToughness, is Discard, is ExileIfDamagedDies, is RevealTopToHand, is LoseLifeEqualToRevealedMv, is PutSelfOnLibraryTop, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
     }
 

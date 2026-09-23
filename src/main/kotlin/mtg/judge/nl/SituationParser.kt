@@ -874,6 +874,13 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(creature|\d+/\d+) that (?:gets|is|was|got) blocked\b""", RegexOption.IGNORE_CASE), "$1, it attacks, it is blocked")
             // "I sacrifice my Elder while it's blocking" with no attacker named: a creature stands in as the attacker.
             .replace(Regex("""\b(i|we) (sacrifices?|sacs?) ((?:my |the )?c\d+) (?:while|when|as) (?:it's|it is) blocking(?=[,.?]|$)""", RegexOption.IGNORE_CASE), "they attack with a 3/3, $1 block it with $3, $1 $2 $3")
+            // "My Bears has hexproof from Shalai": the permanent that gives it is on the board.
+            .let { t0 -> Regex("""^((?:my |their |the )?(?:c\d+|\d+/\d+|creature)) (?:has|have|gets|got) (hexproof|indestructible|flying|lifelink|deathtouch|trample|vigilance|haste|first strike|double strike|menace|reach|protection from \w+) from ((?:my |their |the )?c\d+)(?=[,.?]|$)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                val giver = m.cards[Regex("""c\d+""").find(r.groupValues[3])!!.value]
+                if (giver != null && !giver.isSpellOnly) "${if (r.groupValues[1].startsWith("their")) "my opponent controls" else "i control"} ${r.groupValues[3].replace(Regex("""^(?:my |their |the )"""), "")}, ${r.groupValues[1]} has ${r.groupValues[2]}" else r.value } }
+            // "My opponent has Tamiyo's Safekeeping on their creature": an instant on a creature is one they cast at it.
+            .let { t0 -> Regex("""\b(i|we|they|he|she|my opponent|the opponent) (?:has|have|got) ((?:an? |the )?c\d+) on ((?:my |their |his |her |the )?(?:creature|c\d+|\d+/\d+))""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                if (m.cards[Regex("""c\d+""").find(r.groupValues[2])!!.value]?.isSpellOnly == true) "${r.groupValues[1]} cast ${r.groupValues[2]} on ${r.groupValues[3]}" else r.value } }
             // "I Thoughtseize myself": a card used as a verb, aimed at the speaker.
             .let { t0 -> Regex("""^(i|we) (c\d+) (myself|ourselves)\??$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 if (m.cards[r.groupValues[2]]?.isSpellOnly == true) "${r.groupValues[1]} cast ${r.groupValues[2]} targeting myself" else r.value } }

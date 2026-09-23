@@ -1071,6 +1071,7 @@ class Engine(val state: GameState) {
                 else if (hand > 7) { trace.step("${ap.subject} ${ap.v("has", "have")} $hand cards in hand and a maximum hand size of seven, so ${ap.subject.lowercase()} ${ap.v("discards", "discard")} ${hand - 7} card${if (hand - 7 == 1) "" else "s"} of ${ap.possessive} choice first.", "514.1", "402.2"); ap.handSize = 7; state.outcomes += "${ap.subject} ${ap.v("discards", "discard")} ${hand - 7} card${if (hand - 7 == 1) "" else "s"} to hand size." }
                 else { trace.step("${ap.subject} ${ap.v("has", "have")} $hand card${if (hand == 1) "" else "s"} in hand, no more than the maximum hand size of seven, so nothing is discarded.", "514.1", "402.2"); state.outcomes += "${ap.subject} ${ap.v("discards", "discard")} nothing to hand size ($hand card${if (hand == 1) "" else "s"}, maximum seven)." }
             } }
+            for (pl in state.players) if (pl.hexproofFrom.isNotEmpty()) { pl.hexproofFrom.clear(); trace.step("${pl.possessive.replaceFirstChar { it.uppercase() }} hexproof from a colour ends with the turn.", "514.2") }
             val affected = state.objects.values.filter { it.isOnBattlefield() && (it.pumps.isNotEmpty() || it.tempKeywords.isNotEmpty() || it.damage > 0 || it.basePt != null || it.animatedAs != null) }
             trace.step("The cleanup step: all damage marked on permanents is removed and all \"until end of turn\" effects end, simultaneously.", "514.2")
             for (o in state.objects.values.filter { it.isOnBattlefield() && it.controlRevertsTo != null }) {
@@ -2673,6 +2674,14 @@ class Engine(val state: GameState) {
             } }
             is Effect.GainLife -> resolvePlayers(effect.who, item).forEach { p -> gainLife(p, effect.amount) }
             is Effect.LoseLife -> { val n = if (effect.x) (item.x ?: 0) else effect.amount; resolvePlayers(effect.who, item).forEach { p -> p.life = p.life?.minus(n); item.lifeLost += n; trace.step("${p.subject} ${p.v("loses", "lose")} $n life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} $n life." } }
+            is Effect.PlayerAndPermanentsGainHexproofFrom -> {
+                val names = effect.colors.map { colorWord(it) }
+                you.hexproofFrom += effect.colors
+                val mine = state.objects.values.filter { it.isOnBattlefield() && it.controller == you.id }
+                for (o in mine) for (c in effect.colors) o.tempKeywords += "hexproof from ${colorWord(c)}"
+                trace.step("${you.subject} and the permanents ${you.subject.lowercase()} ${you.v("controls", "control")} gain hexproof from ${names.joinToString(" and from ")} until end of turn: ${names.joinToString(" or ")} spells and abilities from ${names.joinToString(" or ")} sources ${you.possessive} opponents control can't target ${if (you.you) "you" else you.name} or them. A spell already aimed at ${if (you.you) "you" else you.name} or one of them finds its target illegal when it tries to resolve.", "702.11d", "608.2b")
+                state.outcomes += "${you.subject} and ${you.possessive} permanents have hexproof from ${names.joinToString(" and ")} until end of turn."
+            }
             is Effect.DiscardHand -> {
                 var most = 0; var unknown = false
                 for (p in resolvePlayers(effect.who, item)) {
@@ -3671,6 +3680,9 @@ class Engine(val state: GameState) {
     /** Why [ref] can't be targeted by a spell/ability from [source] controlled by [controller], or null if it can. */
     private fun targetingProblem(source: GameObject, controller: String, ref: Ref): Pair<String, String>? {
         if (ref is Ref.Player && state.player(ref.id).protectedFromEverything) return "${state.nameOf(ref)} ${if (state.player(ref.id).you) "have" else "has"} protection from everything and can't be the target of spells or abilities" to "702.16b"
+        // Veil of Summer: hexproof from a colour, for the player and for their permanents.
+        if (ref is Ref.Player && ref.id != controller) state.player(ref.id).hexproofFrom.firstOrNull { it in source.def.colors }?.let { c -> return "${state.nameOf(ref)} ${if (state.player(ref.id).you) "have" else "has"} hexproof from ${colorWord(c)} until end of turn, and ${source.name} is ${colorWord(c)}, so it can't target ${if (state.player(ref.id).you) "you" else "them"}" to "702.11d" }
+        if (ref is Ref.Obj) state.objects[ref.id]?.let { o -> if (o.controller != controller) o.tempKeywords.firstOrNull { k -> k.startsWith("hexproof from ") && source.def.colors.any { c -> colorWord(c) == k.removePrefix("hexproof from ") } }?.let { k -> return "${o.name} has $k until end of turn, and ${source.name} is ${k.removePrefix("hexproof from ")}, so it can't be the target of that spell or ability" to "702.11d" } }
         if (ref is Ref.Player && ref.id != controller && state.objects.values.any { it.isOnBattlefield() && it.controller == ref.id && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.PlayerHexproof } })
             return "${state.nameOf(ref)} ${if (state.player(ref.id).you) "have" else "has"} hexproof (${state.objects.values.first { it.isOnBattlefield() && it.controller == ref.id && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.PlayerHexproof } }.name}) and can't be the target of spells or abilities an opponent controls" to "702.11c"
         val o = (ref as? Ref.Obj)?.let { state.objects[it.id] } ?: return null
@@ -3798,9 +3810,11 @@ class Engine(val state: GameState) {
     private fun isTargetLegal(item: StackItem, ref: Ref): Boolean {
         // An object target that changed zones is a new object and never legal, whatever the spell says about it (608.2b, 400.7).
         if (ref is Ref.Obj) { val o = state.objects[ref.id] ?: return false; val z = item.targetZones[ref.id]; if (z != null && o.zone != z) return false }
+        // A player who gained hexproof (Veil of Summer, Leyline of Sanctity) in response is an illegal target whatever the spell's words.
+        if (ref is Ref.Player && (state.player(ref.id).lost || targetingProblem(item.source, item.controller, ref) != null)) return false
         val spec = specFor(item, ref) ?: return true
         return when (ref) {
-            is Ref.Player -> !state.player(ref.id).lost
+            is Ref.Player -> !state.player(ref.id).lost && targetingProblem(item.source, item.controller, ref) == null
             // A spell or ability on the stack has to fit the words too: without this Essence Scatter countered a
             // Lightning Bolt and Negate countered a Grizzly Bears, and the answer said it worked.
             is Ref.Stack -> state.stackItem(ref.id) != null && (!spec.filter.verifiable || filterMatches(spec.filter, ref, item.controller))
@@ -3961,10 +3975,12 @@ class Engine(val state: GameState) {
         is Effect.ExileSelfSpell -> "exile ${item.source.name}"; is Effect.ProtectionUntilNextTurn -> "until your next turn your life total can't change and you have protection from everything"; is Effect.PhaseOutAll -> "${effect.filter.raw} phase out"
         is Effect.ExtractNamed -> "exile ${effect.target.raw} and every card with its name"; is Effect.LivingEnd -> "each player exiles the creature cards in their graveyard, sacrifices their creatures and returns the exiled cards"; is Effect.PutBackFromHand -> "put ${effect.count} cards from your hand on top of your library"; is Effect.ExileIfMvAtMostX -> "exile ${effect.target.raw} if its mana value is at most the colours spent"; is Effect.Transmogrify -> "${effect.target.raw} loses all abilities and becomes a ${effect.power}/${effect.toughness} ${effect.subtype}"; is Effect.SpellCantBeCountered -> "target spell can't be countered"
         is Effect.DiscardHand -> "${if (effect.who == Who.EACH_PLAYER) "each player discards their hand" else "discard your hand"}"; is Effect.WindfallDraw -> "each player draws cards equal to the greatest number discarded"
+        is Effect.PlayerAndPermanentsGainHexproofFrom -> "you and permanents you control gain hexproof from ${effect.colors.map { colorWord(it) }.joinToString(" and from ")} until end of turn"
         is Effect.Seq -> effect.effects.joinToString(", then ") { describe(it, item) }; is Effect.Unparsed -> "\"${effect.text}\""
     }
     private fun unparsedText(e: Effect): String = when (e) { is Effect.Unparsed -> e.text; is Effect.May -> unparsedText(e.effect); is Effect.UnlessPays -> unparsedText(e.effect); is Effect.Seq -> e.effects.filter { it.hasUnparsed() }.joinToString(" | ") { unparsedText(it) }; is Effect.Modal -> e.modes.filter { it.hasUnparsed() }.joinToString(" | ") { "mode \"" + unparsedText(it) + "\"" }; else -> "" }
     private fun signed(n: Int) = if (n >= 0) "+$n" else "$n"
+    private fun colorWord(c: Char) = when (c) { 'W' -> "white"; 'U' -> "blue"; 'B' -> "black"; 'R' -> "red"; 'G' -> "green"; else -> c.toString() }
     private fun withArticle(s: String) = (if (s.firstOrNull()?.lowercaseChar() in setOf('a', 'e', 'i', 'o', 'u')) "an " else "a ") + s
     private fun freshObjectId(name: String): String { val base = name.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_'); var id = base; var i = 2; while (state.objects.containsKey(id)) id = "${base}_${i++}"; return id }
     private fun zoneName(z: Zone, obj: GameObject?) = when (z) {

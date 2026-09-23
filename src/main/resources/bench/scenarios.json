@@ -18165,5 +18165,93 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "veil-of-summer-in-response-to-thoughtseize",
+    "text": "My opponent casts Thoughtseize on me and I respond with Veil of Summer. What happens?",
+    "expect": [
+      "You and your permanents have hexproof from blue and black until end of turn.",
+      "Thoughtseize doesn't resolve (all targets illegal)."
+    ],
+    "notExpect": [
+      "Not understood",
+      "you discard a nonland card"
+    ],
+    "cite": [
+      "702.11d",
+      "608.2b"
+    ]
+  },
+  {
+    "id": "veil-then-doom-blade",
+    "text": "I cast Veil of Summer. Then my opponent casts Doom Blade on my Grizzly Bears. What happens?",
+    "expect": [
+      "Doom Blade can't target Grizzly Bears.",
+      "Why: Grizzly Bears has hexproof from black until end of turn, and Doom Blade is black, so it can't be the target of that spell or ability."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "hexproof-from-shalai",
+    "text": "My Grizzly Bears has hexproof from Shalai. Can my opponent Bolt it?",
+    "expect": [
+      "Lightning Bolt can't target Grizzly Bears."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "safekeeping-on-their-creature-vs-wrath",
+    "text": "My opponent has Tamiyo's Safekeeping on their creature. Can I Wrath it?",
+    "expect": [
+      "a creature has hexproof and indestructible until end of turn.",
+      "a creature is indestructible and isn't destroyed."
+    ],
+    "notExpect": [
+      "Not understood",
+      "needs 1 target"
+    ],
+    "cite": []
+  },
+  {
+    "id": "leyline-of-sanctity-vs-thoughtseize",
+    "text": "I have Leyline of Sanctity. Can my opponent Thoughtseize me?",
+    "expect": [
+      "Thoughtseize can't target you.",
+      "Why: you have hexproof (Leyline of Sanctity) and can't be the target of spells or abilities an opponent controls."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sigarda-vs-fleshbag",
+    "text": "Opponent casts Fleshbag Marauder. I control Sigarda, Host of Herons. What happens?",
+    "expect": [
+      "You sacrifice nothing (Sigarda, Host of Herons).",
+      "Fleshbag Marauder: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "kor-firewalker-vs-bolt",
+    "text": "My opponent has Kor Firewalker. Can I Bolt it?",
+    "expect": [
+      "Lightning Bolt can't target Kor Firewalker.",
+      "Why: Kor Firewalker has protection from red, so it can't be targeted by that spell."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

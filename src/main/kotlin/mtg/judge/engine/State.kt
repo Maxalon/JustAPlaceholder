@@ -7,6 +7,8 @@ class Player(val id: String, val name: String, var life: Int?) {
     var lifeLocked = false
     /** "You gain protection from everything" until this player's next turn: can't be targeted, damage to them is prevented. */
     var protectedFromEverything = false
+    /** Veil of Summer: colours this player has hexproof from until end of turn. */
+    val hexproofFrom = mutableSetOf<Char>()
     var drew = 0
     /** Cards drawn this turn, for "can't draw more than one card each turn" (Narset). */
     var drewThisTurn = 0

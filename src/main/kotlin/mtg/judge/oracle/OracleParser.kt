@@ -1166,6 +1166,13 @@ object OracleParser {
         // "If you control a commander as you cast this spell, you may choose both instead." / "Each mode must
         // target a different player.": riders on a modal spell's mode count, said rather than played out.
         Regex("""^if .+?, (?:you may )?choose (?:$modeCount|both) instead[.\u2014-]?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated(s.trim().trimEnd('.'), listOf("700.2d")) }
+        // Veil of Summer.
+        Regex("""^draw a card if an opponent has cast a blue or black spell this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated("if an opponent has cast a blue or black spell this turn, you draw a card", listOf("608.2c")) }
+        Regex("""^spells you control can't be countered this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated("spells you control can't be countered this turn", listOf("608.2c")) }
+        Regex("""^you and permanents you control gain hexproof from (white|blue|black|red|green)(?: and from (white|blue|black|red|green))? until end of turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            val cs = listOf(m.groupValues[1], m.groupValues[2]).filter { it.isNotEmpty() }.map { mapOf("white" to 'W', "blue" to 'U', "black" to 'B', "red" to 'R', "green" to 'G').getValue(it.lowercase()) }.toSet()
+            return Effect.PlayerAndPermanentsGainHexproofFrom(cs)
+        }
         // Sylvan Library: the two extra cards are kept for 4 life each or put back.
         Regex("""^choose two cards in your hand drawn this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated("you choose two cards in your hand drawn this turn", listOf("608.2c")) }
         Regex("""^for each of those cards, pay 4 life or put the card on top of your library\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated("for each of those two cards, you pay 4 life to keep it or put it back on top of your library; a card you keep costs 4 life, so keeping both costs 8", listOf("608.2c", "119.4")) }
