@@ -136,6 +136,8 @@ object OracleParser {
                 selfRef.startsWith("When ", true) || selfRef.startsWith("Whenever ", true) || selfRef.startsWith("At ", true) || abilityWord.containsMatchIn(selfRef) -> abilities += parseTriggeredAll(selfRef)
                 isActivated(selfRef) -> abilities += parseActivated(selfRef)
                 isSpell -> spellLines += selfRef
+                // True-Name Nemesis: protection from a player, read as the opponent chosen as it entered.
+                Regex("""^~ has protection from the chosen player\.?$""", RegexOption.IGNORE_CASE).matches(selfRef) -> abilities += StaticAbility("protection from the chosen player", "protection from the chosen player")
                 else -> abilities += UnparsedAbility(selfRef)
             }
         }

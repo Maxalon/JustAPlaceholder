@@ -558,6 +558,7 @@ class Engine(val state: GameState) {
         val targets = if (targets.isEmpty() && needed.size == 1) inferTarget("${obj.name}'s ability", needed[0], playerId, harmful = isHarmful(ability.effect), source = obj, beneficial = isBeneficial(ability.effect))?.takeIf { it.isNotEmpty() } ?: targets else targets
         // The ability's text names a target the parser couldn't model ("~ becomes a copy of target land"): keeping
         // the target and saying the text isn't modeled beats "the ability needs 0 targets but 1 given".
+        var abilityTargetsUnknown = false
         val unmodeledTarget = needed.isEmpty() && targets.isNotEmpty() && ability.effect.hasUnparsed() && Regex("""(?i)\btarget\b""").containsMatchIn(ability.text)
         // Damage divided as you choose takes any number of targets within its cap, so one spec is not one target.
         val divided = ability.effect as? Effect.DamageDivided ?: (ability.effect as? Effect.Seq)?.effects?.filterIsInstance<Effect.DamageDivided>()?.firstOrNull()
@@ -565,13 +566,14 @@ class Engine(val state: GameState) {
         else if (divided != null && targets.isNotEmpty() && (divided.maxTargets == null || targets.size <= divided.maxTargets)) Unit
         else if (needed.size != targets.size && !(needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Player && targetsAPlayer(ability.effect))) {
             state.clarifications += Clarification("${obj.name}'s ability target", "The ability needs ${needed.size} target(s) (${needed.joinToString("; ") { it.raw }}) but ${targets.size} given (602.2b, 601.2c).")
-            if (needed.size > targets.size) return null
+            // "I Stifle a Wasteland activation": the ability still goes on the stack so responses to it can be shown.
+            if (needed.size > targets.size) { abilityTargetsUnknown = true; trace.step("${obj.name}'s ability needs a target that wasn't stated; it's put on the stack anyway so responses to it can be shown, but what it does to its target can't be.", "602.2b") }
         }
         for (ref in targets) targetingProblem(obj, playerId, ref)?.let { (why, rule) ->
             trace.step("${obj.name}'s ability can't target ${state.nameOf(ref)}: $why.", rule, "602.2b", "601.2c"); state.outcomes += "${obj.name}'s ability can't target ${state.nameOf(ref)}."; return null
         }
         ability.restriction?.let { trace.step("${obj.name}'s ability says \"$it\"; assuming that timing is satisfied.", "602.5", "602.2") }
-        val item = StackItem(state.newStackId(), StackKind.ACTIVATED, playerId, obj, ability.effect, targets, zonesOf(targets), ability.text, choice = choice, x = x)
+        val item = StackItem(state.newStackId(), StackKind.ACTIVATED, playerId, obj, ability.effect, targets, zonesOf(targets), ability.text, choice = choice, x = x, targetsUnknown = abilityTargetsUnknown)
         if (x != null) trace.step("X is $x, chosen as the ability is activated; its cost includes X.", "107.3a", "602.2b")
         state.stack += item
         wardTriggers(item)
@@ -1192,7 +1194,7 @@ class Engine(val state: GameState) {
         cantBeBlockedBy(a, b)?.let { r -> return Triple("${a.name} can't be blocked by ${r.by!!.raw}, and ${b.name} is one, so it can't block ${a.name}.", listOf("509.1b"), "${b.name} can't block ${a.name}.") }
         state.protections(a).takeIf { it.isNotEmpty() }?.let { prots ->
             val bq = qualitiesOf(b.def)
-            prots.firstOrNull { it == "everything" || it in bq }?.let { q -> return Triple("${a.name} has protection from $q, so ${b.name} can't block it.", listOf("702.16f"), "${b.name} can't block ${a.name} (protection).") }
+            protectionHit(prots, bq, b.controller)?.let { q -> return Triple("${a.name} has protection from ${protectionName(q)}, so ${b.name} can't block it.", listOf("702.16f"), "${b.name} can't block ${a.name} (protection).") }
         }
         if (a.has("fear") && !(b.has("fear") || "Artifact" in b.def.types || 'B' in b.def.colors)) return Triple("${a.name} has fear and can't be blocked except by artifact creatures and/or black creatures.", listOf("702.36b"), "${b.name} can't block ${a.name} (fear).")
         if (a.has("intimidate") && !("Artifact" in b.def.types || b.def.colors.intersect(a.def.colors).isNotEmpty())) return Triple("${a.name} has intimidate and can't be blocked except by artifact creatures and/or creatures that share a color with it.", listOf("702.13b"), "${b.name} can't block ${a.name} (intimidate).")
@@ -2809,8 +2811,8 @@ class Engine(val state: GameState) {
             val o = state.objects[target.id]
             if (o != null) {
                 val qualities = qualitiesOf(source.def)
-                state.protections(o).firstOrNull { it == "everything" || it in qualities }?.let { q ->
-                    trace.step("$sourceName would deal $amount damage to ${o.name}, but ${o.name} has protection from $q, so that damage is prevented.", "702.16e", "615.1")
+                protectionHit(state.protections(o), qualities, source.controller)?.let { q ->
+                    trace.step("$sourceName would deal $amount damage to ${o.name}, but ${o.name} has protection from ${protectionName(q)}, so that damage is prevented.", "702.16e", "615.1")
                     state.outcomes += "Damage to ${o.name} from $sourceName is prevented (protection)."; return 0
                 }
             }
@@ -3096,6 +3098,12 @@ class Engine(val state: GameState) {
 
     private val colorNames = mapOf('W' to "white", 'U' to "blue", 'B' to "black", 'R' to "red", 'G' to "green")
 
+    /** The protection quality on [prots] that [qualities] or a source controlled by [sourceController] falls under, if any. */
+    private fun protectionHit(prots: Set<String>, qualities: Set<String>, sourceController: String?): String? =
+        prots.firstOrNull { it == "everything" || it in qualities || (it.startsWith("player:") && it.removePrefix("player:") == sourceController) }
+    /** "protection from player:opp" said as a person would. */
+    private fun protectionName(q: String): String = if (q.startsWith("player:")) state.player(q.removePrefix("player:")).let { if (it.you) "you (the chosen player)" else "${it.name} (the chosen player)" } else q
+
     private fun qualitiesOf(def: CardDef): Set<String> = def.colors.mapNotNull { colorNames[it] }.toSet() + def.types.map { it.lowercase() } + def.types.map { it.lowercase() + "s" }
 
     /** Why [ref] can't be targeted by a spell/ability from [source] controlled by [controller], or null if it can. */
@@ -3110,8 +3118,8 @@ class Engine(val state: GameState) {
         if (prots.isNotEmpty()) {
             val qualities = qualitiesOf(source.def)
             val isSpell = source.def.isInstantOrSorcery || source.zone == Zone.STACK
-            val hit = prots.firstOrNull { it == "everything" || it in qualities || (it == "colored spells" && isSpell && source.def.colors.isNotEmpty()) || (it == "spells" && isSpell) }
-            if (hit != null) return "${o.name} has protection from $hit, so it can't be targeted by ${if (source.def.isInstantOrSorcery || source.zone == Zone.STACK) "that spell" else "an ability from that source"}" to "702.16b"
+            val hit = prots.firstOrNull { it == "everything" || it in qualities || (it == "colored spells" && isSpell && source.def.colors.isNotEmpty()) || (it == "spells" && isSpell) || (it.startsWith("player:") && it.removePrefix("player:") == controller) }
+            if (hit != null) return "${o.name} has protection from ${protectionName(hit)}, so it can't be targeted by ${if (source.def.isInstantOrSorcery || source.zone == Zone.STACK) "that spell" else "an ability from that source"}" to "702.16b"
         }
         return null
     }
@@ -3316,6 +3324,13 @@ class Engine(val state: GameState) {
             if (helpsThePlayer(effectiveEffect(item))) { val you = state.player(item.controller); state.assumptions += "${item.describe} targets ${if (you.you) "you" else you.name} (\"target player\" wasn't specified; assuming its controller, since it helps that player)."; return@run you }
             // "Target player loses 1 life" with no target named: assume the one opponent (the sensible choice), and say so.
             val opp = state.opponentsOf(item.controller).singleOrNull()
+            // Leyline of Sanctity / Aegis of the Gods: the opponent can't be targeted, so they can't be the assumed target either.
+            val problem = opp?.let { targetingProblem(item.source, item.controller, Ref.Player(it.id)) }
+            if (opp != null && problem != null) {
+                trace.step("${item.describe} says \"target player\" and no target was named. ${problem.first.replaceFirstChar { it.uppercase() }}, so it couldn't have been cast targeting ${if (opp.you) "you" else opp.name}; the only player it could target is its own controller.", problem.second, "115.1")
+                state.outcomes += "${item.describe} can't target ${if (opp.you) "you" else opp.name} (hexproof)."
+                return@run null
+            }
             if (opp != null) state.assumptions += "${item.describe} targets ${if (opp.you) "you" else opp.name} (\"target player\" wasn't specified; assuming the opponent)."
             // Several opponents and nothing says which: with one it is assumed above, with two it is a real choice,
             // and leaving it out silently made "target player loses 1 life" vanish from the answer.

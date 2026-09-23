@@ -392,8 +392,12 @@ class GameState(
         val stripped = abilitiesLostOn(obj) != null
         val texts = (if (stripped) emptyList() else obj.def.abilities.filterIsInstance<StaticAbility>().map { it.text } + obj.tempKeywords) +
             staticEffectsOn(obj).filter { (src, _) -> abilitiesLostOn(src) == null }.flatMap { (_, e) -> (e as? StaticEffect.KeywordGrant)?.keywords ?: emptySet() }
-        for (t in texts) Regex("""protection from ([a-z]+(?: spells)?)(?: and from ([a-z]+(?: spells)?))?""", RegexOption.IGNORE_CASE).findAll(t).forEach { m ->
-            out += m.groupValues[1].lowercase(); if (m.groupValues[2].isNotEmpty()) out += m.groupValues[2].lowercase()
+        for (t in texts) {
+            // "protection from the chosen player" (True-Name Nemesis): the player chosen is taken to be its controller's opponent.
+            if (t.contains("protection from the chosen player", true)) { opponentsOf(obj.controller).firstOrNull()?.let { out += "player:${it.id}" }; continue }
+            Regex("""protection from ([a-z]+(?: spells)?)(?: and from ([a-z]+(?: spells)?))?""", RegexOption.IGNORE_CASE).findAll(t).forEach { m ->
+                out += m.groupValues[1].lowercase(); if (m.groupValues[2].isNotEmpty()) out += m.groupValues[2].lowercase()
+            }
         }
         return out
     }

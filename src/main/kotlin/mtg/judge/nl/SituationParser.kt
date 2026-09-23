@@ -519,6 +519,24 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\bwith (c\d+) (out|in play|on the battlefield) on (my|their|his|her) side\b""", RegexOption.IGNORE_CASE), "with $3 $1 $2")
             // "Force of Will pitching a blue card on their Thoughtseize": the target belongs to the cast, not the pitch.
             .replace(Regex(""",\s*(pitching|exiling) ((?:an?|one|two) (?:blue |red |green |black |white )?cards?) ((?:on|at|targeting) .+)$""", RegexOption.IGNORE_CASE), " $3, $1 $2")
+            // "my pro-red creature", "a pro-white 2/2": protection, said the short way.
+            .replace(Regex("""\bpro[- ]?(red|white|blue|black|green) (\d+/\d+|creature|guy|dude|blocker|attacker)\b""", RegexOption.IGNORE_CASE), "$2 with protection from $1")
+            .replace(Regex("""\b(\d+/\d+|creature|guy|dude) (?:with )?pro[- ]?(red|white|blue|black|green)\b""", RegexOption.IGNORE_CASE), "$1 with protection from $2")
+            // "they block my deathtouch 1/1 with a 5/5": the attack is the asker's, and the block is theirs.
+            .replace(Regex("""\b(they|he|she|my opponent|the opponent) (?:chump[- ]?)?blocks? my ((?:[a-z]+ )?\d+/\d+(?: (?:with|that has) [a-z ]+?)?) with (?:a |an |their |his |her )?(\d+/\d+(?: [a-z]+)*|[a-z]+ ?\d+/\d+|creature|[a-z]+ creature)\b""", RegexOption.IGNORE_CASE), "i attack with a $2, $1 block with a $3")
+            // "can Doom Blade target a black creature": the spell is cast at one and the engine says whether it can.
+            .replace(Regex("""^can (c\d+) (?:target|hit|kill|destroy|exile|bounce|be cast on|be used on) (?:a |an |their |my opponent's )([a-z0-9/ ]+?)(?: creature)?\s*\??$""", RegexOption.IGNORE_CASE), "they have a $2 creature, i cast $1 on it")
+            // "can I block a pro-green creature with my green creature": their attack, and the asker's block.
+            .replace(Regex("""^can (?:i|we) (?:chump[- ]?)?block (?:a |an |their |the )?([a-z0-9/ ]+?) with (?:my|a|an) ([a-z0-9/ ]+?)\s*\??$""", RegexOption.IGNORE_CASE), "they attack with a $1, i block with a $2")
+            // "a white 3/3", "their green creature": the colour is read after the size, where the description reader looks for it.
+            .replace(Regex("""\b(a|an|my|their|his|her|the) (white|blue|black|red|green|colou?rless) (\d+/\d+)\b""", RegexOption.IGNORE_CASE), "$1 $3 $2 creature")
+            // "I cast Giant Growth in response to Lightning Bolt on my 2/2": their spell and its target first, then the answer.
+            .let { t0 -> Regex("""\b(i|we|they|he|she|my opponent|the opponent) (casts?|plays?) ((?:my |an? |the )?c\d+) in response to (?:their |a |an |the |my )?(c\d+) (on|at|targeting) ((?:my|their|his|her) (?:\d+/\d+|c\d+|[a-z]+(?: [a-z]+)?))\s*$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                val me = r.groupValues[1].lowercase() in setOf("i", "we")
+                "${if (me) "they cast" else "i cast"} ${r.groupValues[4]} ${r.groupValues[5]} ${r.groupValues[6]}, ${r.groupValues[1]} ${r.groupValues[2]} ${r.groupValues[3]} on it in response"
+            } }
+            // "I Stifle a Wasteland activation": the activation happens, and the Stifle answers it.
+            .replace(Regex("""\b(i|we) (c\d+|stifle|counter) (?:a |an |the |their )?(c\d+)(?:'s)? (?:activation|ability activation|activated ability)\b""", RegexOption.IGNORE_CASE), "they activate $3, $1 $2 it")
             // "I'm at 2 with Platinum Angel": a life total and a permanent, said in one breath.
             .replace(Regex("""\b(i'm|i am|im|we're|we are) at (\d+) with (?:my |a )?(c\d+)\b""", RegexOption.IGNORE_CASE), "$1 at $2 life and i have $3")
             .replace(Regex("""\b(they're|they are|he's|she's|my opponent is|the opponent is) at (\d+) with (?:their |a )?(c\d+)\b""", RegexOption.IGNORE_CASE), "$1 at $2 life and they have $3")
@@ -2007,11 +2025,15 @@ class SituationParser(private val names: NameIndex) {
                          ?: ctx.objects.values.lastOrNull { it.controller == who && it.zone == "battlefield" }?.id ?: return@let
             // "I activate Maze of Ith targeting it": "it" is never the permanent being activated — it is the last
             // creature named, and after an attack the attacker. Read as the Maze itself the target was illegal.
-            val targets = targetsIn(r.groupValues[3].ifEmpty { r.groupValues[6] }, m, ctx).let { t ->
+            // "activate it to give it pro red": the colour chosen for a protection-granting ability (Mother of Runes).
+            val colourRe = Regex("""\s*\b(?:to |for )?(?:give|giving|grant|granting|make|making) (?:it|itself|that|(?:my |the )?c\d+)? ?(?:protection from|pro[- ]?) ?(white|blue|black|red|green)\b""")
+            val restT = r.groupValues[3].ifEmpty { r.groupValues[6] }
+            val colour = colourRe.find(restT)?.groupValues?.get(1)
+            val targets = targetsIn(colour?.let { restT.replace(colourRe, "") } ?: restT, m, ctx).let { t ->
                 if (t != listOf(id)) t
                 else listOfNotNull(ctx.events.lastOrNull { it.verb == "attack" }?.obj ?: ctx.objects.values.lastOrNull { it.id != id && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id)
-            }
-            ctx.events += EventSpec("activate", player = who, obj = id, abilityIndex = which, targets = targets)
+            }.ifEmpty { if (colour != null) listOf(id) else emptyList() }
+            ctx.events += EventSpec("activate", player = who, obj = id, abilityIndex = which, targets = targets, to = colour?.let { "color:$it" })
             ctx.lastActor = who; ctx.lastMentioned = id; return true
         }
         // "choosing mode 1" left on its own: a card name that ends in "!" splits the sentence there, so the modes
@@ -2075,8 +2097,11 @@ class SituationParser(private val names: NameIndex) {
                 ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return false
             val timesRe = Regex("""\b(twice|two times|three times|four times|five times|(\d+) times)\b""")
             val times = timesRe.find(r.groupValues[1])?.let { t -> if (t.groupValues[1].startsWith("twice")) 2 else number(t.groupValues[2].ifEmpty { t.groupValues[1].substringBefore(' ') }) ?: 1 } ?: 1
-            val targets = targetsIn(r.groupValues[1].replace(timesRe, "").trim(), m, ctx)
-            repeat(times) { ctx.events += EventSpec("activate", player = who, obj = id, targets = targets) }
+            // "activate it to give it pro red": the colour chosen for a protection-granting ability (Mother of Runes).
+            val colourRe = Regex("""\s*\b(?:to |for )?(?:give|giving|grant|granting|make|making) (?:it|itself|that|(?:my |the )?c\d+)? ?(?:protection from|pro[- ]?) ?(white|blue|black|red|green)\b""")
+            val colour = colourRe.find(r.groupValues[1])?.groupValues?.get(1)
+            val targets = targetsIn(r.groupValues[1].replace(timesRe, "").let { s -> colour?.let { s.replace(colourRe, "") } ?: s }.trim(), m, ctx).ifEmpty { if (colour != null) listOf(id) else emptyList() }
+            repeat(times) { ctx.events += EventSpec("activate", player = who, obj = id, targets = targets, to = colour?.let { "color:$it" }) }
             ctx.lastActor = who; return true
         }
         // Read before isNoise: "is dealt 2 more" opens with a question word and would be dropped as noise.
@@ -2573,7 +2598,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastVerb = "have"; return true
         }
         // "activate Mother of Runes choosing black" / "use it naming white": the colour an ability asks its controller to choose.
-        Regex("""^(?:$activateVerbs) (?:my |the |their )?(c\d+|it|that)(?:'s ability)? (?:choosing|naming|picking|for|on) (white|blue|black|red|green|colou?rless)(?: in response)?$""").find(c)?.let { r ->
+        Regex("""^(?:$activateVerbs) (?:my |the |their )?(c\d+|it|that)(?:'s ability)? (?:choosing|naming|picking|for|on|(?:to give|giving|to grant|granting) (?:it|itself|that)? ?(?:protection from|pro[- ]?)) ?(white|blue|black|red|green|colou?rless)(?: in response)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val src = if (r.groupValues[1] in setOf("it", "that")) (ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let)
                       else m.cards[r.groupValues[1]]?.let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) } ?: return@let
@@ -2791,7 +2816,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastMentioned = id; return true
         }
         // "give it protection from black": the actor's other permanent grants it (Mother of Runes).
-        Regex("""^(?:gives?|granting|grants?) (?:it|that|(?:the |my )?(c\d+)) protection from (white|blue|black|red|green)(?: in response)?$""").find(c)?.let { r ->
+        Regex("""^(?:gives?|granting|grants?|to give|activates? (?:it|c\d+) to give|use (?:it|c\d+) to give) (?:it|that|itself|(?:the |my )?(c\d+)) (?:protection from|pro[- ]?) ?(white|blue|black|red|green)(?: in response)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
             val target = if (r.groupValues[1].isNotEmpty()) (objectIdFor(m.cards.getValue(r.groupValues[1]), ctx) ?: addObject(m.cards.getValue(r.groupValues[1]), who, false, ctx))
                          else ctx.events.lastOrNull { it.verb == "cast" }?.targets?.firstOrNull { it in ctx.objects } ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
@@ -3933,11 +3958,15 @@ class SituationParser(private val names: NameIndex) {
             // "they attack with a 3/3 and I activate Maze of Ith on it": "it" is never the permanent being activated.
             // After an attack it is the attacker; otherwise the last creature named. Read as the Maze itself, the
             // ability's only target was illegal and the attacker connected.
-            val targets = targetsIn(r.groupValues[2].replace(xRe, "").replace(timesRe, "").trim(), m, ctx).let { t ->
+            // "activate it to give it pro red" / "use Mother of Runes giving it protection from black": the colour chosen.
+            val colourRe = Regex("""\s*\b(?:to |for )?(?:give|giving|grant|granting|make|making) (?:it|itself|that|(?:my |the )?c\d+)? ?(?:protection from|pro[- ]?) ?(white|blue|black|red|green)\b""")
+            val colour = colourRe.find(r.groupValues[2])?.groupValues?.get(1)
+            val restForTargets = r.groupValues[2].replace(xRe, "").replace(timesRe, "").let { s -> colour?.let { s.replace(colourRe, "") } ?: s }.trim()
+            val targets = targetsIn(restForTargets, m, ctx).let { t ->
                 if (t != listOf(id)) t
                 else listOfNotNull(ctx.events.lastOrNull { it.verb == "attack" }?.obj ?: ctx.objects.values.lastOrNull { it.id != id && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id)
-            }
-            repeat(times) { ctx.events += EventSpec("activate", player = who, obj = id, targets = targets, amount = xValue) }
+            }.ifEmpty { if (colour != null) listOf(id) else emptyList() }
+            repeat(times) { ctx.events += EventSpec("activate", player = who, obj = id, targets = targets, amount = xValue, to = colour?.let { "color:$it" }) }
             ctx.lastActor = who; return true
         }
         // Step beginnings: "at the beginning of my upkeep", "on their end step", "my upkeep starts".
@@ -4121,14 +4150,17 @@ class SituationParser(private val names: NameIndex) {
                 "my", "own" -> "me"
                 "their", "his", "her" -> pronounPlayer(ctx, w)
                 "my opponent's", "the opponent's", "an opponent's", "opponent's" -> pronounPlayer(ctx)
-                "" , "the" -> null
+                // "their 6/6 is blocked by my 1/1": the possessive was already taken off the clause as its actor.
+                "" -> actor
+                "the" -> null
                 else -> w.removePrefix("@").removeSuffix("'s")
             }
             val attacker = when {
                 r.groupValues[2] in setOf("it", "that") -> ctx.events.lastOrNull { it.verb == "attack" }?.obj ?: ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
                 cardRef.matches(r.groupValues[2]) -> m.cards[r.groupValues[2]]?.let { card -> objectIdFor(card, ctx) ?: addObject(card, atkWho ?: ctx.lastOwner, false, ctx) } ?: return@let
                 // "my 3/3 with trample is blocked by a 0/4": the keyword describes the attacker.
-                else -> describedFrom(if (atkWho == null) "the " else "my ", r.groupValues[2], r.groupValues[3], atkWho ?: ctx.lastOwner, ctx).firstOrNull() ?: return@let
+                // "their 6/6 with trample is blocked by my 1/1": the attacker is theirs. Passed as "my", it was the asker's.
+                else -> describedFrom(when (atkWho) { null -> "the "; "me" -> "my "; else -> "their " }, r.groupValues[2], r.groupValues[3], atkWho ?: ctx.lastOwner, ctx).firstOrNull() ?: return@let
             }
             val who = ctx.other(ctx.objects[attacker]?.controller ?: "opp") ?: "me"
             // "blocked by a 2/2 and a 3/3" — the sentence reader joins them with "plus", so the block is multiple.

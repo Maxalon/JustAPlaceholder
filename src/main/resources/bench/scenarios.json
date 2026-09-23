@@ -14181,5 +14181,146 @@
     ],
     "notExpect": [],
     "cite": []
+  },
+  {
+    "id": "pro-red-short-form",
+    "text": "they Bolt my pro-red creature",
+    "expect": [
+      "Lightning Bolt can't target a creature with protection from red."
+    ],
+    "notExpect": [
+      "You take 3 damage"
+    ],
+    "cite": [
+      "702.16b"
+    ]
+  },
+  {
+    "id": "can-i-block-pro-green-with-green",
+    "text": "can I block a pro-green creature with my green creature",
+    "expect": [
+      "a green creature can't block a creature with protection from green (protection)."
+    ],
+    "notExpect": [],
+    "cite": [
+      "702.16f"
+    ]
+  },
+  {
+    "id": "white-blocker-vs-pro-white",
+    "text": "I attack with a pro-white 2/2 and they block with a white 3/3",
+    "expect": [
+      "a 3/3 white creature can't block a 2/2 creature with protection from white (protection)."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "true-name-nemesis-cant-be-blocked-by-them",
+    "text": "I attack with True-Name Nemesis, can they block",
+    "expect": [
+      "a creature can't block True-Name Nemesis (protection).",
+      "opponent takes 3 damage."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "true-name-nemesis-cant-be-bolted",
+    "text": "they Bolt True-Name Nemesis",
+    "expect": [
+      "Lightning Bolt can't target True-Name Nemesis."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "mother-of-runes-pro-red-in-response",
+    "text": "they Bolt my Mother of Runes and I activate it to give it pro red",
+    "expect": [
+      "Mother of Runes has protection from red until end of turn.",
+      "Lightning Bolt doesn't resolve (all targets illegal)."
+    ],
+    "notExpect": [
+      "your graveyard"
+    ],
+    "cite": []
+  },
+  {
+    "id": "giant-growth-in-response-to-bolt-on-my-creature",
+    "text": "I cast Giant Growth in response to Lightning Bolt on my 2/2",
+    "expect": [
+      "a 2/2 creature is 5/5 until end of turn."
+    ],
+    "notExpect": [
+      "a 2/2 creature: the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "can-doom-blade-target-black",
+    "text": "can Doom Blade target a black creature",
+    "expect": [
+      "Doom Blade can't target a black creature (not a nonblack creature)."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "stifle-a-wasteland-activation",
+    "text": "what happens if I Stifle a Wasteland activation",
+    "expect": [
+      "Wasteland's activated ability is countered."
+    ],
+    "notExpect": [
+      "all targets illegal",
+      "not an activated or triggered ability"
+    ],
+    "cite": []
+  },
+  {
+    "id": "aegis-stops-thoughtseize",
+    "text": "they have Aegis of the Gods and I cast Thoughtseize",
+    "expect": [
+      "Thoughtseize can't target opponent (hexproof)."
+    ],
+    "notExpect": [
+      "opponent discards"
+    ],
+    "cite": []
+  },
+  {
+    "id": "leyline-stops-unaimed-thoughtseize",
+    "text": "I have Leyline of Sanctity and they cast Thoughtseize",
+    "expect": [
+      "Thoughtseize can't target you (hexproof)."
+    ],
+    "notExpect": [
+      "you discard"
+    ],
+    "cite": []
+  },
+  {
+    "id": "they-block-my-deathtouch",
+    "text": "they block my deathtouch 1/1 with a 5/5",
+    "expect": [
+      "a 5/5 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "opponent attacks with a 1/1"
+    ],
+    "cite": []
+  },
+  {
+    "id": "their-trampler-blocked-by-my-deathtouch",
+    "text": "their 6/6 trample is blocked by my 1/1 deathtouch",
+    "expect": [
+      "You take 5 damage.",
+      "a 6/6 creature with trample: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "opponent takes 5 damage"
+    ],
+    "cite": []
   }
 ]

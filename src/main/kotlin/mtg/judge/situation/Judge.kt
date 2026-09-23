@@ -186,6 +186,16 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 // has to fit; without this the target was dropped and the mode resolved with none.
                 val needed = modalEffect?.takeIf { modes.isNotEmpty() }?.let { mo -> modes.mapNotNull { i -> mo.modes.getOrNull(i - 1) }.flatMap { it.targets() } }
                     ?: def.spellEffect?.targets() ?: emptyList()
+                // "I Stifle Wasteland's ability" with no activation described: the ability is activated first, so there
+                // is something on the stack to aim at, and the answer says so.
+                for (t in e.targets) if (t.endsWith(":ability") || t.endsWith(":activated")) {
+                    val srcId = t.substringBefore(':')
+                    val src = state.objects[srcId] ?: continue
+                    if (state.stack.none { it.source.id == srcId && it.kind == StackKind.ACTIVATED } && src.def.abilities.any { it is ActivatedAbility }) {
+                        state.assumptions += "${src.name}'s ability wasn't said to be activated; assuming ${state.player(src.controller).subject.lowercase()} activated it, since that is what ${def.name} is aimed at."
+                        engine.activate(src.controller, srcId, null, emptyList())
+                    }
+                }
                 engine.cast(player, def, disambiguate(e.targets, needed, player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", flashback = e.to == "flashback", choice = e.to?.takeIf { it.startsWith("copy:") } ?: e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it.startsWith("name:") }?.removePrefix("name:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" }, payLife = e.payLife)
             }
             "draw" -> engine.draw(e.player ?: throw JudgeException("draw needs a player"), e.amount ?: 1)
