@@ -15022,5 +15022,109 @@
       "Hangarback Walker is 2/2"
     ],
     "cite": []
+  },
+  {
+    "id": "mother-of-runes-saves-the-knight",
+    "text": "I have Mother of Runes. Opponent casts Doom Blade on my Knight. Can I save it?",
+    "expect": [
+      "a knight creature has protection from black until end of turn.",
+      "Doom Blade doesn't resolve (all targets illegal)."
+    ],
+    "notExpect": [
+      "a knight creature: the battlefield → your graveyard.",
+      "protection from nothing"
+    ],
+    "cite": []
+  },
+  {
+    "id": "blossoming-defense-in-hand-saves-it",
+    "text": "Opponent casts Doom Blade on my Grizzly Bears. I have Blossoming Defense in hand. Can I save it?",
+    "expect": [
+      "Grizzly Bears has hexproof until end of turn.",
+      "Doom Blade doesn't resolve (all targets illegal)."
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield → your graveyard."
+    ],
+    "cite": []
+  },
+  {
+    "id": "force-of-will-for-free",
+    "text": "My opponent casts Thoughtseize targeting me. I have Force of Will and a blue card. Can I counter it for free?",
+    "expect": [
+      "You pay 1 life.",
+      "You exile a blue card from your hand (Force of Will's alternative cost).",
+      "Thoughtseize is countered."
+    ],
+    "notExpect": [
+      "Force of Will: your hand → your graveyard.",
+      "Not understood"
+    ],
+    "cite": [
+      "118.9"
+    ]
+  },
+  {
+    "id": "two-thalias-legend-rule-and-tax",
+    "text": "I control two Thalias. Does my opponent's Lightning Bolt cost more?",
+    "expect": [
+      "Thalia, Guardian of Thraben: the battlefield → your graveyard.",
+      "Lightning Bolt costs {R} plus {1} (Thalia, Guardian of Thraben makes it cost {1} more) — 2 mana in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5j"
+    ]
+  },
+  {
+    "id": "hit-me-with-two-infect-creatures",
+    "text": "I have 4 poison counters. My opponent hits me with two 2/2 infect creatures. Do I lose?",
+    "expect": [
+      "You have 8 poison counters.",
+      "No: You are still in the game."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sword-hit-my-opponent",
+    "text": "I have a Sword of Feast and Famine equipped to my 2/2. I hit my opponent. What happens?",
+    "expect": [
+      "opponent takes 4 damage.",
+      "opponent discards 1 card."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "rift-overloaded-their-tokens",
+    "text": "I cast Cyclonic Rift overloaded. What happens to my opponent's tokens?",
+    "expect": [
+      "a 1/1 token: the battlefield → opponent's hand.",
+      "a 1/1 token ceases to exist; it doesn't stay in the zone it went to."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sac-to-seer-in-response-to-path",
+    "text": "Can I sacrifice a creature to Viscera Seer in response to Path to Exile targeting it?",
+    "expect": [
+      "a creature: the battlefield → your graveyard.",
+      "Path to Exile doesn't resolve (all targets illegal)."
+    ],
+    "notExpect": [
+      "Viscera Seer: the battlefield → exile.",
+      "nothing to sacrifice"
+    ],
+    "cite": []
   }
 ]

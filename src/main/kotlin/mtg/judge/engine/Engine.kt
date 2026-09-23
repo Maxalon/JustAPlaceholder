@@ -14,7 +14,7 @@ class Engine(val state: GameState) {
 
     // ---- events ----------------------------------------------------------------------------
 
-    fun cast(playerId: String, card: CardDef, targets: List<Ref>, objectId: String? = null, modes: List<Int> = emptyList(), overload: Boolean = false, x: Int? = null, kicked: Boolean = false, evoked: Boolean = false, flashback: Boolean = false, choice: String? = null, payLife: Int? = null): StackItem? {
+    fun cast(playerId: String, card: CardDef, targets: List<Ref>, objectId: String? = null, modes: List<Int> = emptyList(), overload: Boolean = false, x: Int? = null, kicked: Boolean = false, evoked: Boolean = false, flashback: Boolean = false, choice: String? = null, payLife: Int? = null, alternative: Boolean = false): StackItem? {
         val player = state.player(playerId)
         val obj = objectId?.let { state.objects[it] } ?: state.add(GameObject(objectId ?: freshObjectId(card.name), card, Zone.HAND, playerId))
         state.stack.firstOrNull { it.kind == StackKind.SPELL && it.source.def.has("split second") }?.let { ss ->
@@ -276,6 +276,19 @@ class Engine(val state: GameState) {
         }
         card.abilities.filterIsInstance<StaticAbility>().filter { it.keyword in castingKeywordRules }.forEach { k ->
             trace.step("${card.name} has ${k.text.trimEnd('.')}: ${castingKeywordNotes[k.keyword]}.", castingKeywordRules.getValue(k.keyword!!))
+        }
+        // Force of Will, Daze, Snuff Out: "you may … rather than pay this spell's mana cost" (118.9). Cast "for free"
+        // the alternative cost is paid and said; otherwise it is a reminder that the choice existed.
+        card.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.Note>().map { it.text }
+            .firstOrNull { Regex("""rather than pay (?:~'s|this spell's) mana cost""", RegexOption.IGNORE_CASE).containsMatchIn(it) }?.let { altText ->
+            val what = Regex("""you may (.+?) rather than pay""", RegexOption.IGNORE_CASE).find(altText)?.groupValues?.get(1) ?: altText
+            if (alternative) {
+                trace.step("${card.name} is cast for its alternative cost instead of its mana cost: ${player.subject.lowercase()} ${what.replace("your hand", "${player.possessive} hand")}. An alternative cost replaces the mana cost; additional costs and cost increases still apply.", "118.9", "601.2b", "601.2f")
+                Regex("""pay (\d+) life""", RegexOption.IGNORE_CASE).find(what)?.groupValues?.get(1)?.toInt()?.let { n -> if (!lifeCostPaid) { player.life = player.life?.minus(n); state.outcomes += "${player.subject} ${player.v("pays", "pay")} $n life${player.life?.let { l -> " ($l)" } ?: ""}." } }
+                Regex("""exile (an? \w+ card) from your hand""", RegexOption.IGNORE_CASE).find(what)?.groupValues?.get(1)?.let { c -> state.outcomes += "${player.subject} ${player.v("exiles", "exile")} $c from ${player.possessive} hand (${card.name}'s alternative cost)." }
+                Regex("""return (an? \w+(?: \w+)?) you control to its owner's hand""", RegexOption.IGNORE_CASE).find(what)?.groupValues?.get(1)?.let { c -> state.outcomes += "${player.subject} ${player.v("returns", "return")} $c to ${player.possessive} hand (${card.name}'s alternative cost)." }
+                state.outcomes += "${card.name} is cast without paying its mana cost (alternative cost)."
+            } else trace.step("${card.name} could instead be cast for its alternative cost (\"${altText.replace("~", card.name).trimEnd('.')}\"); the answer assumes its mana cost was paid, unless it says it was cast for free.", "118.9")
         }
         if (card.isAura) trace.step("${card.name} is an Aura spell, so it targets what it will enchant.", "303.4a", "702.5a")
         checkTargetsAtCast(item)

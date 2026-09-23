@@ -1012,7 +1012,7 @@ object OracleParser {
         val f = parseFilter(m.groupValues[2], Kind.PERMANENT)
         return if (f.verifiable) Effect.PutFromHand(f, null, tapped = m.groupValues[4].isNotEmpty(), attacking = m.groupValues[5].isNotEmpty(), fromLibrary = true, maxMv = m.groupValues[3].toIntOrNull()) else null
     }
-    private val forAllRe = Regex("""^(destroy|exile|tap|untap) (?:all|each) (.+?)\.?$""", RegexOption.IGNORE_CASE)
+    private val forAllRe = Regex("""^(?:you )?(destroy|exile|tap|untap) (?:all|each) (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val tuckAllRe = Regex("""^put (?:all|each) (.+?) on the bottom of (?:their|its) owners?' librar(?:y|ies)(?: in a random order)?\.?$""", RegexOption.IGNORE_CASE)
     private val damageEachRe = Regex("""^(?:~|it) deals (\d+) damage to each (.+?)\.?$""", RegexOption.IGNORE_CASE)
     private val narratedRes: List<Pair<Regex, List<String>>> = listOf(

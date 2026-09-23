@@ -203,7 +203,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         engine.activate(src.controller, srcId, null, emptyList())
                     }
                 }
-                engine.cast(player, def, disambiguate(e.targets, needed, player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", flashback = e.to == "flashback", choice = e.to?.takeIf { it.startsWith("copy:") } ?: e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it.startsWith("name:") }?.removePrefix("name:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" }, payLife = e.payLife)
+                engine.cast(player, def, disambiguate(e.targets, needed, player, state, engine), existing?.id, modes, overload = e.to == "overload", x = e.amount, kicked = e.to == "kicked", evoked = e.to == "evoke", flashback = e.to == "flashback", alternative = e.to == "altcost", choice = e.to?.takeIf { it.startsWith("copy:") } ?: e.to?.takeIf { it.startsWith("copytarget:") }?.removePrefix("copytarget:") ?: e.to?.takeIf { it.startsWith("name:") }?.removePrefix("name:") ?: e.to?.takeIf { it == "revolt" || it == "spellmastery" }, payLife = e.payLife)
             }
             "draw" -> engine.draw(e.player ?: throw JudgeException("draw needs a player"), e.amount ?: 1)
             // "Grizzly Bears fights Hill Giant": the fight itself, with no card making it happen (701.14a).
@@ -266,6 +266,46 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "blink" -> { val o = state.obj(e.obj ?: throw JudgeException("blink needs an object")); engine.blinkObject(o, e.player ?: o.controller) }
             "reanimate" -> { val o = state.obj(e.obj ?: throw JudgeException("reanimate needs an object")); engine.reanimateObject(o, e.player ?: o.owner) }
             "regenerate" -> { val o = state.obj(e.obj ?: throw JudgeException("regenerate needs an object")); state.shields += mtg.judge.engine.Shield(mtg.judge.engine.Replacement.Regenerate, o.id, null, 1, "a regeneration effect") }
+            // "Can I save it?": whatever the player controls or holds that would protect the creature is used on it, in
+            // response to what threatens it — Mother of Runes, a regeneration ability, a Blossoming Defense in hand.
+            "save" -> {
+                val player = e.player ?: state.players.first().id
+                val target = state.obj(e.obj ?: throw JudgeException("save needs an object"))
+                fun protective(eff: Effect?): Boolean = when (eff) {
+                    is Effect.GainKeywords -> eff.keywords.any { k -> k.startsWith("protection") || k in setOf("hexproof", "shroud", "indestructible") }
+                    is Effect.Regenerate, is Effect.CreateShield -> true
+                    is Effect.Seq -> eff.effects.any { protective(it) }
+                    is Effect.Modal -> eff.modes.any { protective(it) }
+                    is Effect.May -> protective(eff.effect)
+                    else -> false
+                }
+                fun targeted(eff: Effect?): Boolean = when (eff) {
+                    is Effect.GainKeywords -> true; is Effect.Regenerate -> eff.target != null; is Effect.CreateShield -> eff.target != null
+                    is Effect.Seq -> eff.effects.any { targeted(it) }; is Effect.May -> targeted(eff.effect); is Effect.Modal -> eff.modes.any { targeted(it) }; else -> false
+                }
+                val onBoard = state.objects.values.filter { it.isOnBattlefield() && it.controller == player }.firstNotNullOfOrNull { o ->
+                    o.def.abilities.withIndex().filter { it.value is ActivatedAbility }.map { it.index to it.value as ActivatedAbility }
+                        .firstOrNull { (_, a) -> protective(a.effect) && (targeted(a.effect) || o.id == target.id) }?.let { (_, a) -> o to a }
+                }
+                if (onBoard != null) {
+                    val (o, a) = onBoard
+                    val idx = o.def.abilities.filterIsInstance<ActivatedAbility>().indexOf(a)
+                    // Mother of Runes: the colour chosen is the colour of the spell aimed at the creature.
+                    val threat = state.stack.lastOrNull { s -> s.targets.any { t -> t is Ref.Obj && t.id == target.id } }
+                    val colour = threat?.source?.def?.colors?.singleOrNull()?.let { c -> mapOf('W' to "white", 'U' to "blue", 'B' to "black", 'R' to "red", 'G' to "green")[c] }
+                    val choosesColour = a.text.contains("color of your choice", true) || a.text.contains("colour of your choice", true)
+                    state.trace.step("\"Can ${state.player(player).subject.lowercase()} save ${target.name}?\": ${o.name} has \"${a.text.replace("~", o.name)}\", which would protect it, so it's activated${if (targeted(a.effect)) " targeting ${target.name}" else ""} in response${if (choosesColour && colour != null) ", choosing $colour (${threat.source.name}'s colour)" else ""}.", "117.3c", "602.2")
+                    engine.activate(player, o.id, idx, if (targeted(a.effect)) listOf(Ref.Obj(target.id)) else emptyList(), choice = if (choosesColour) colour else null)
+                    return
+                }
+                val inHand = state.objects.values.firstOrNull { it.zone == Zone.HAND && it.controller == player && it.def.isInstantOrSorcery && protective(it.def.spellEffect) }
+                if (inHand != null) {
+                    state.trace.step("\"Can ${state.player(player).subject.lowercase()} save ${target.name}?\": ${inHand.name} in hand would protect it, so it's cast targeting ${target.name} in response.", "117.3c")
+                    engine.cast(player, inHand.def, listOf(Ref.Obj(target.id)), objectId = inHand.id)
+                    return
+                }
+                state.clarifications += mtg.judge.engine.Clarification("saving ${target.name}", "nothing described that ${state.player(player).subject.lowercase()} ${state.player(player).v("controls", "control")} or ${state.player(player).v("holds", "hold")} would protect ${target.name} (an ability that grants protection, hexproof, shroud, indestructible or regeneration, or such an instant in hand). Say what you have for an answer.")
+            }
             "pay" -> {
                 val who = e.player ?: throw JudgeException("pay needs a player")
                 if (e.to == "no") { state.willPay.remove(who); state.wontPay += who } else { state.wontPay.remove(who); state.willPay += who }
@@ -508,6 +548,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "blink" -> "${state.objects[e.obj]?.name ?: e.obj} is exiled and returned to the battlefield"
             "reanimate" -> "${state.objects[e.obj]?.name ?: e.obj} is put from the graveyard onto the battlefield"
             "regenerate" -> "${state.objects[e.obj]?.name ?: e.obj} has a regeneration shield"
+            "save" -> "${who ?: "you"} ${if (who == null || who == "you") "try" else "tries"} to save ${state.objects[e.obj]?.name ?: e.obj}"
             "sacrifice" -> "${who ?: "controller"} ${if (who == "you") "sacrifice" else "sacrifices"} ${state.objects[e.obj]?.name ?: e.obj}"
             "fight" -> "${state.objects[e.obj]?.name ?: e.obj} fights ${e.targets.firstOrNull()?.let { state.objects[it]?.name ?: it } ?: "?"}"
             "gainlife" -> "${who ?: "the player"} ${if (who == "you") "gain" else "gains"} ${e.amount ?: 1} life"

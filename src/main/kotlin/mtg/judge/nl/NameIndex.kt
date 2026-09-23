@@ -39,7 +39,9 @@ class NameIndex private constructor(private val byNorm: Map<String, Entry>, val 
                     ?: (if (len >= 2) byNorm["the $key"] ?: sing?.let { byNorm["the $it"] } else null)
                 // A first name shared by several legendary creatures ("Sheoldred", "Atraxa"): the front face of a transforming card
                 // that happens to carry it ("Sheoldred // The True Scriptures") doesn't win over them.
-                val e = if (len == 1 && key !in aliases && (e0 == null || e0.kind != "full" || !e0.isCard) && heads[key] != null) heads.getValue(key).let { hs -> hs.first().copy(alternatives = hs.drop(1).map { it.display } + listOfNotNull(e0?.display)) } else e0
+                // "two Thalias": the plural of a first name is the same first name.
+                val headKey = if (len == 1 && key !in aliases && (e0 == null || e0.kind != "full" || !e0.isCard)) (key.takeIf { heads[it] != null } ?: sing?.takeIf { heads[it] != null }) else null
+                val e = if (headKey != null) heads.getValue(headKey).let { hs -> hs.first().copy(alternatives = hs.drop(1).map { it.display } + listOfNotNull(e0?.display)) } else e0
                 // A name made only of everyday words ("The End", "Turn Aside" no, "Wear // Tear" yes) is table talk unless it's a nickname.
                 // The singularized form counts too: "exiled" reaches the card Exile through "exile", and "exile" is
                 // an everyday word here, so "it is exiled" is table talk, not a card being cast.
