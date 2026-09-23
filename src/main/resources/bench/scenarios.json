@@ -4133,14 +4133,14 @@
     "id": "counter-it-from-hand",
     "text": "I have Mana Leak. My opponent casts Sol Ring and I counter it. They have 5 lands untapped.",
     "expect": [
-      "Sol Ring is countered"
+      "opponent pays {3}; Mana Leak has no further effect.",
+      "Sol Ring enters the battlefield."
     ],
     "notExpect": [
-      "Not understood",
-      "Sol Ring enters the battlefield"
+      "Not understood"
     ],
     "cite": [
-      "701.6a"
+      "608.2g"
     ]
   },
   {
@@ -16714,5 +16714,144 @@
     "cite": [
       "702.79a"
     ]
+  },
+  {
+    "id": "blood-moon-dryad-arbor",
+    "text": "I have Blood Moon and my opponent plays Dryad Arbor. What is it?",
+    "expect": [
+      "Dryad Arbor is a Mountain with no abilities (Blood Moon).",
+      "Dryad Arbor is still a creature (1/1): Blood Moon changes only its land type and abilities."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "mirror-entity-x-five-three-creatures",
+    "text": "I have Mirror Entity and activate it for X=5 with three creatures. What are they?",
+    "expect": [
+      "a creature is 5/5 until end of turn. (×3)",
+      "a creature is 5/5."
+    ],
+    "notExpect": [
+      "0/0"
+    ],
+    "cite": []
+  },
+  {
+    "id": "phantasmal-image-bolted",
+    "text": "I cast Phantasmal Image copying my opponent's Grave Titan. Then they Bolt it. What happens?",
+    "expect": [
+      "Phantasmal Image is sacrificed.",
+      "Lightning Bolt doesn't resolve (all targets illegal)."
+    ],
+    "notExpect": [
+      "Grave Titan has 3 damage marked."
+    ],
+    "cite": [
+      "707.9b"
+    ]
+  },
+  {
+    "id": "spell-pierce-two-lands-open",
+    "text": "My opponent casts Spell Pierce on my Lightning Bolt. I have 2 lands untapped. What happens?",
+    "expect": [
+      "You pay {2}; Spell Pierce has no further effect.",
+      "opponent takes 3 damage."
+    ],
+    "notExpect": [
+      "Lightning Bolt is countered."
+    ],
+    "cite": []
+  },
+  {
+    "id": "thalia-taxes-force-of-will",
+    "text": "I have Thalia, Guardian of Thraben and my opponent casts Force of Will for free. Does Thalia tax it?",
+    "expect": [
+      "Force of Will still costs {1} more (Thalia, Guardian of Thraben): a cost increase applies to an alternative cost too (601.2f)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "601.2f"
+    ]
+  },
+  {
+    "id": "hexmage-makes-marit-lage",
+    "text": "I control Dark Depths with 3 ice counters and cast Vampire Hexmage. Do I get Marit Lage?",
+    "expect": [
+      "Dark Depths loses all its counters (3 ice).",
+      "You get a Marit Lage.",
+      "Yes: you have a Marit Lage token (20/20)."
+    ],
+    "notExpect": [
+      "No: no Marit Lage token"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sword-feast-famine-connects",
+    "text": "I have Sword of Feast and Famine on a creature that connects. What happens?",
+    "expect": [
+      "opponent takes 3 damage.",
+      "opponent discards 1 card."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "batterskull-carrier-blocked",
+    "text": "I attack with a creature equipped with Batterskull. It's blocked by a 4/4. What happens?",
+    "expect": [
+      "a 4/4 creature has 5 damage marked.",
+      "You gain 5 life.",
+      "a 4/4 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "rancor-one-one-tramples-over-chump",
+    "text": "I have a 1/1 with Rancor attacking and my opponent chumps with a 0/1. How much trample?",
+    "expect": [
+      "opponent takes 2 damage.",
+      "Yes: opponent takes 2 damage in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "702.19b"
+    ]
+  },
+  {
+    "id": "worst-case-one-blocker",
+    "text": "I attack with two 2/2s and my opponent has one 3/3 untapped. What's the worst case?",
+    "expect": [
+      "a 2/2 creature: the battlefield → your graveyard.",
+      "opponent takes 2 damage."
+    ],
+    "notExpect": [
+      "opponent takes 2 damage. (×2)"
+    ],
+    "cite": []
+  },
+  {
+    "id": "cryptic-counter-and-bounce-two-targets",
+    "text": "My opponent casts Cryptic Command choosing counter and bounce on my Bolt and my Bears. What happens?",
+    "expect": [
+      "Lightning Bolt is countered.",
+      "Grizzly Bears: the battlefield → your hand."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
   }
 ]

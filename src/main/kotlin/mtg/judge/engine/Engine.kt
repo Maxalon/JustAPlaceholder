@@ -99,6 +99,7 @@ class Engine(val state: GameState) {
                 val change = when { tax > 0 -> "plus {$tax}"; tax < 0 -> "less {${-tax}}"; else -> "unchanged" }
                 trace.step("${(taxes.map { "${it.first.name} makes ${card.name} cost {${kotlin.math.abs(it.second.amount)}} ${if (it.second.amount < 0) "less" else "more"}" } + (if (commanderTax > 0) listOf("the commander tax adds {$commanderTax}") else emptyList())).joinToString(" and ")}: its total cost is ${card.manaCost ?: "?"} $change (${cost} mana in all).", "601.2f", "118.7")
             }
+            if (tax > 0 && alternative && taxes.isNotEmpty()) state.outcomes += "${card.name} still costs {$tax} more (${taxes.joinToString(", ") { it.first.name }}): a cost increase applies to an alternative cost too (601.2f)."
             player.mana?.let { avail -> if (cost > avail) { trace.step("${player.subject} ${player.v("has", "have")} only $avail mana available and ${card.name} costs $cost, so it can't be cast: the total cost can't be paid.", "601.2h", "601.2f"); state.outcomes += "${card.name} can't be cast (costs $cost, only $avail mana available)."; return null } else if (taxes.isNotEmpty() || commanderTax > 0) trace.step("${player.subject} ${player.v("has", "have")} $avail mana available, enough for the $cost.", "601.2h") }
         }
         card.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CantCastBeforeTurn>().firstOrNull()?.let { c ->
@@ -1949,6 +1950,15 @@ class Engine(val state: GameState) {
             is Effect.UnlessPays -> {
                 val payer = resolveWho(effect.payer, item)
                 trace.step("${payer?.subject ?: "The named player"} may pay ${effect.cost}. If ${if (payer?.you == true) "you do" else "they do"}, nothing more happens; if not: ${describe(effect.effect, item)}.", "608.2g", "117.3d")
+                // "I have 2 lands untapped": with the mana known and enough of it, the player is taken to pay.
+                if (payer != null && payer.id !in state.willPay && payer.id !in state.wontPay) {
+                    val need = Regex("""\{(\d+)\}""").findAll(effect.cost).sumOf { it.groupValues[1].toInt() } + Regex("""\{[WUBRGC]\}""").findAll(effect.cost).count()
+                    val avail = availableMana(payer)
+                    if (avail != null && need > 0) {
+                        if (avail >= need) { state.willPay += payer.id; trace.step("${payer.subject} ${payer.v("has", "have")} $avail mana available, enough for ${effect.cost}, so ${payer.subject.lowercase()} ${payer.v("pays", "pay")} it (assumed; say otherwise if not).", "608.2g") }
+                        else trace.step("${payer.subject} ${payer.v("has", "have")} only $avail mana available, not enough for ${effect.cost}.", "608.2g")
+                    }
+                }
                 if (payer != null && state.willPay.remove(payer.id)) {
                     trace.step("${payer.subject} ${payer.v("pays", "pay")} ${effect.cost}, so ${item.describe} does nothing more.", "608.2g")
                     state.outcomes += "${payer.subject} ${payer.v("pays", "pay")} ${effect.cost}; ${item.describe} has no further effect."
@@ -2904,7 +2914,17 @@ class Engine(val state: GameState) {
         trace.step("$was enters as a copy of ${chosen.name}: it copies the printed card and any other copy effects on it, and nothing else — not counters, damage, Auras, or anything else that has happened to ${chosen.name}.", "707.2", "707.2a", "614.1c")
         o.def = chosen.def
         if (e.tapped) o.tapped = true
-        e.except?.let { state.unsupported += Unsupported(was, "The copy's exception is not modeled: " + it.replace("~", was)) }
+        e.except?.let { ex ->
+            // Phantasmal Image: "except it's an Illusion in addition to its other types and it has \"When this creature
+            // becomes the target of a spell or ability, sacrifice it.\"" — the copy keeps that type and that ability (707.9b).
+            val quoted = Regex(""""([^"]+)"""").find(ex)?.groupValues?.get(1)
+            val extraType = Regex("""it's an? (\w+) in addition to its other types""", RegexOption.IGNORE_CASE).find(ex)?.groupValues?.get(1)
+            if (quoted != null || extraType != null) {
+                val extra = quoted?.let { q -> mtg.judge.oracle.OracleParser.parse("copy-except-${o.id}", o.def.name, o.def.typeLine, o.def.manaCost, o.def.manaValue, o.def.colors.joinToString(""), o.def.power?.toString(), o.def.toughness?.toString(), emptyList(), q).abilities } ?: emptyList()
+                o.def = o.def.copy(abilities = o.def.abilities + extra, subtypes = o.def.subtypes + listOfNotNull(extraType))
+                trace.step("$was keeps the exception in its own text: it's ${extraType?.let { "an $it in addition to its other types" } ?: "as copied"}${quoted?.let { " and has \"$it\"" } ?: ""}.", "707.9b")
+            } else state.unsupported += Unsupported(was, "The copy's exception is not modeled: " + ex.replace("~", was))
+        }
     }
 
     private fun applyEntersReplacements(o: GameObject, choice: String? = null) {
@@ -3326,6 +3346,7 @@ class Engine(val state: GameState) {
             val saga = "Saga" in land.def.subtypes
             trace.step("${moon.name} makes ${land.name} a Mountain: it loses its other land types and every ability from its rules text${if (saga) ", chapter abilities included," else ""} and has only \"{T}: Add {R}\" (a type-changing effect, layer 4).${if (saga) " It's still an enchantment and a Saga; its lore counters stay, and with no chapter abilities it is neither sacrificed nor able to do anything." else ""}", "613.1d", "305.7", *(if (saga) arrayOf("714.4") else emptyArray()))
             state.outcomes += "${land.name} is a Mountain with no abilities (${moon.name})."
+            if (land.def.isCreature) state.outcomes += "${land.name} is still a creature (${state.describePt(land)}): ${moon.name} changes only its land type and abilities."
             if (saga) state.outcomes += "${land.name} stays on the battlefield: the Saga sacrifice check applies only to a Saga with chapter abilities, and it has none now (714.4)."
             state.unsupported.removeAll { it.what == land.name }
         }
