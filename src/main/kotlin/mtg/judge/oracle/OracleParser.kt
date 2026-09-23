@@ -72,7 +72,8 @@ object OracleParser {
         val isSpell = "Instant" in types || "Sorcery" in types
         val spellLines = mutableListOf<String>()
         for (line in lines) {
-            val selfRef = selfReference(line, name)
+            // "Converge — Exile target nonland permanent if …": on an instant or sorcery the ability word heads the spell's own text (207.2c).
+            val selfRef = selfReference(line, name).let { if (isSpell) it.replace(Regex("""^Converge\s*[—–]\s*"""), "") else it }
             // "Threshold — As long as …", "Landfall — ~ gets …": the ability word names the ability and says
             // nothing by itself (207.2c). Without stripping it the line reads as a bare keyword and loses its effect.
             val statics = parseStatic(selfRef.replace(abilityWordStatic, ""))
@@ -503,6 +504,10 @@ object OracleParser {
         Regex("""^(each opponent|each player|your opponents|players) can't draw more than (one|two|three|\d+) cards? each turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val n = number(m.groupValues[2]) ?: return@let
             return StaticEffect.CantDrawMoreThan(n, if (m.groupValues[1].lowercase() == "each player" || m.groupValues[1].lowercase() == "players") Who.EACH_PLAYER else Who.EACH_OPPONENT)
+        }
+        // Dress Down: "Creatures lose all abilities." — no size is set, only the abilities go.
+        Regex("""^(creatures|all creatures) lose all abilities\.?$""", RegexOption.IGNORE_CASE).matchEntire(line.trim())?.let {
+            return StaticEffect.LoseAbilitiesSetPt(ObjFilter(setOf(Kind.CREATURE), raw = "creatures"), 0, 0, setPt = false)
         }
         // "All creatures lose all abilities and have base power and toughness 1/1." (Humility)
         Regex("""^(.+?) lose all abilities and have base power and toughness (\d+)/(\d+)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
@@ -1453,6 +1458,19 @@ object OracleParser {
             if (Generic.token(a) != null && Generic.token(b) != null) return Effect.Seq(listOf(Effect.CreateToken(w, 1, a), Effect.CreateToken(w, 1, b)))
         }
         if (Regex("""^if a card would be put into your graveyard from anywhere this turn, exile that card instead\.?$""", RegexOption.IGNORE_CASE).matches(s.trim())) return Effect.ExileInsteadOfGraveyardThisTurn
+        // Living End.
+        Regex("""^each player exiles all creature cards from their graveyard, then sacrifices all creatures they control, then puts all cards they exiled this way onto the battlefield\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.LivingEnd }
+        // Prismatic Ending (converge).
+        Regex("""^(?:converge — )?exile target (nonland permanent|permanent|creature|artifact or enchantment) if its mana value is less than or equal to the number of colors of mana spent to cast (?:~|this spell)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            val raw = m.groupValues[1].lowercase()
+            return Effect.ExileIfMvAtMostX(TargetSpec(parseFilter(raw, Kind.PERMANENT).copy(raw = raw), raw))
+        }
+        // Archon of Cruelty.
+        Regex("""^target opponent sacrifices a creature or planeswalker of their choice, discards a card, and loses (\d+) life\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            val raw = "creature or planeswalker"
+            return Effect.Seq(listOf(Effect.SacrificeEach(Who.TARGET_PLAYER, parseFilter(raw, Kind.PERMANENT).copy(raw = raw)), Effect.Discard(Who.TARGET_PLAYER, 1), Effect.LoseLife(Who.TARGET_PLAYER, m.groupValues[1].toInt())))
+        }
+        Regex("""^you draw a card and gain (\d+) life\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m -> return Effect.Seq(listOf(Effect.Draw(Who.YOU, 1), Effect.GainLife(Who.YOU, m.groupValues[1].toInt()))) }
         // Oko, Thief of Crowns: "Target artifact or creature loses all abilities and becomes a green Elk creature with base power and toughness 3/3."
         Regex("""^target (artifact or creature|creature|artifact|permanent|creature or planeswalker) loses all abilities and becomes an? (?:(white|blue|black|red|green) )?([A-Z][a-z]+) creature with base power and toughness (\d+)/(\d+)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
             val raw = m.groupValues[1].lowercase()

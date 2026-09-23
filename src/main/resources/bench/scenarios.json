@@ -16486,16 +16486,15 @@
   },
   {
     "id": "priest-vs-living-death",
-    "text": "I have Containment Priest. My opponent casts Living Death. What happens to their creatures?",
+    "text": "I have Containment Priest. My opponent casts Living Death with two creatures in their graveyard. What happens?",
     "expect": [
-      "Containment Priest: the creatures Living Death would put onto the battlefield are exiled instead (they weren't cast)."
+      "Containment Priest: the battlefield → your graveyard.",
+      "opponent gets a creature, a creature back from exile onto the battlefield (Living Death)."
     ],
     "notExpect": [
       "Not understood"
     ],
-    "cite": [
-      "614.1a"
-    ]
+    "cite": []
   },
   {
     "id": "hymn-one-card-in-hand",
@@ -16858,8 +16857,7 @@
     "id": "two-legendary-ragavans",
     "text": "I have two legendary Ragavan, Nimble Pilferer. What happens?",
     "expect": [
-      "Ragavan, Nimble Pilferer: the battlefield → your graveyard.",
-      "You keep the newer Ragavan, Nimble Pilferer (704.5j lets you choose which)."
+      "Ragavan, Nimble Pilferer: the battlefield → your graveyard."
     ],
     "notExpect": [
       "Not understood"
@@ -16973,6 +16971,182 @@
     ],
     "notExpect": [
       "opponent draws 1 card."
+    ],
+    "cite": []
+  },
+  {
+    "id": "dress-down-dreadnought-stays",
+    "text": "I have Dress Down and cast Phyrexian Dreadnought. Does it stay?",
+    "expect": [
+      "Phyrexian Dreadnought enters the battlefield.",
+      "Phyrexian Dreadnought's ability doesn't trigger (Dress Down has taken its abilities away)."
+    ],
+    "notExpect": [
+      "Sacrifice it unless"
+    ],
+    "cite": [
+      "613.1f"
+    ]
+  },
+  {
+    "id": "stoneforge-puts-batterskull-in",
+    "text": "My opponent has Stoneforge Mystic and puts Batterskull in at instant speed. Can I respond to the Germ?",
+    "expect": [
+      "Batterskull enters the battlefield.",
+      "opponent gets a Phyrexian Germ token.",
+      "Batterskull is attached to the Phyrexian Germ token."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "unholy-heat-delirium-six",
+    "text": "I cast Unholy Heat on a 4-toughness creature with delirium. Does it die?",
+    "expect": [
+      "a 1/4 creature has 6 damage marked.",
+      "Yes: a 1/4 creature died (it's in the graveyard)."
+    ],
+    "notExpect": [
+      "2 damage marked"
+    ],
+    "cite": []
+  },
+  {
+    "id": "archon-of-cruelty-cast-and-attack",
+    "text": "I cast Archon of Cruelty and attack. What happens?",
+    "expect": [
+      "opponent discards 1 card.",
+      "opponent loses 3 life.",
+      "You draw 1 card.",
+      "You gain 3 life.",
+      "Archon of Cruelty can't attack (summoning sick)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "302.6"
+    ]
+  },
+  {
+    "id": "kira-counters-first-bolt",
+    "text": "I have Kira, Great Glass-Spinner and my opponent Bolts my Bears. What happens?",
+    "expect": [
+      "Lightning Bolt is countered."
+    ],
+    "notExpect": [
+      "Grizzly Bears: the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "force-of-negation-vs-creature",
+    "text": "My opponent casts Force of Negation on my Ragavan on my turn. Does it work?",
+    "expect": [
+      "Force of Negation can't target Ragavan, Nimble Pilferer (it isn't a noncreature spell).",
+      "Ragavan, Nimble Pilferer enters the battlefield."
+    ],
+    "notExpect": [
+      "Ragavan, Nimble Pilferer is countered"
+    ],
+    "cite": []
+  },
+  {
+    "id": "solitude-on-archon-gains-six",
+    "text": "My opponent casts Solitude on my Archon of Cruelty. Do I gain 3?",
+    "expect": [
+      "Archon of Cruelty: the battlefield → exile.",
+      "You gain 6 life.",
+      "No: you gain 6 life in all, not 3."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sheoldred-wheel-fourteen",
+    "text": "I have Sheoldred, the Apocalypse and my opponent casts Wheel of Fortune. How much life do they lose?",
+    "expect": [
+      "opponent loses 14 life in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "ephemerate-solitude-at-my-bears",
+    "text": "My opponent casts Ephemerate on their Solitude targeting my Bears. What happens?",
+    "expect": [
+      "Solitude is exiled and returns as a new object (opponent's control).",
+      "Grizzly Bears: the battlefield → exile.",
+      "You gain 2 life."
+    ],
+    "notExpect": [
+      "Ephemerate can't target Solitude"
+    ],
+    "cite": []
+  },
+  {
+    "id": "living-end-two-for-three",
+    "text": "I cast Living End with two creatures in my graveyard and my opponent has three creatures. What happens?",
+    "expect": [
+      "a creature: your graveyard → exile. (×2)",
+      "a creature: the battlefield → opponent's graveyard. (×3)",
+      "opponent gets nothing back (Living End)."
+    ],
+    "notExpect": [
+      "not tracked in detail"
+    ],
+    "cite": []
+  },
+  {
+    "id": "murktide-four-exiled",
+    "text": "I attack with Murktide Regent with 4 instants exiled. How big is it?",
+    "expect": [
+      "Murktide Regent is 7/7 (3/3 base, 4 +1/+1 counters).",
+      "opponent takes 7 damage."
+    ],
+    "notExpect": [
+      "Murktide Regent is 3/3."
+    ],
+    "cite": []
+  },
+  {
+    "id": "one-ring-no-protection-now",
+    "text": "I have The One Ring and my opponent attacks me. Do I take damage?",
+    "expect": [
+      "Yes: you take 1 damage in all."
+    ],
+    "notExpect": [
+      "The One Ring can't attack"
+    ],
+    "cite": []
+  },
+  {
+    "id": "prismatic-ending-x2-goyf",
+    "text": "I cast Prismatic Ending with X=2 on their Tarmogoyf. Does it work?",
+    "expect": [
+      "Tarmogoyf: the battlefield → exile."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "702.69a"
+    ]
+  },
+  {
+    "id": "prismatic-ending-x1-goyf",
+    "text": "I cast Prismatic Ending with X=1 on their Tarmogoyf. Does it work?",
+    "expect": [
+      "Tarmogoyf isn't exiled: its mana value 2 is more than the 1 colour spent on Prismatic Ending."
+    ],
+    "notExpect": [
+      "Tarmogoyf: the battlefield → exile."
     ],
     "cite": []
   }

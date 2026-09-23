@@ -151,6 +151,12 @@ class Engine(val state: GameState) {
             val each = needed.map { spec -> inferTarget(card.name, spec, playerId, harmful = isHarmful(effect) && spec.filter.controller != Who.YOU, source = obj, beneficial = spec.filter.controller == Who.YOU) }
             if (each.all { it != null && it.size == 1 }) targets = each.map { it!!.single() }
         }
+        // "Ephemerate on their Solitude targeting my Bears": the extra target is what the blinked creature's enters trigger aims at.
+        if (effect is Effect.Blink && needed.size == 1 && targets.size > 1 && targets[0] is Ref.Obj) {
+            state.blinkEtbTargets[(targets[0] as Ref.Obj).id] = targets.drop(1)
+            trace.step("${card.name} targets only ${state.nameOf(targets[0])}; ${targets.drop(1).joinToString(" and ") { state.nameOf(it) }} will be the target of its enters-the-battlefield trigger when it comes back.", "603.3d")
+            targets = targets.take(1)
+        }
         if (noLegalTarget) { trace.step("${card.name} needs a target (${needed[0].raw}) and nothing can legally be chosen, so it can't be cast.", "601.2c", "115.1"); state.outcomes += "${card.name} can't be cast: no legal target."; return null }
         if (!card.isInstantOrSorcery && card.abilities.none { it is TriggeredAbility || it is ActivatedAbility || it is StaticAbility } && card.abilities.isNotEmpty()) {
             state.unsupported += Unsupported(card.name, "Rules text not modeled: " + card.abilities.filterIsInstance<UnparsedAbility>().joinToString(" | ") { it.text })
@@ -394,6 +400,7 @@ class Engine(val state: GameState) {
         val hadCounters = o.counters.filterValues { it > 0 }; val wasAttached = state.objects.values.filter { it.isOnBattlefield() && it.attachedTo == o.id }.map { it.name }
         move(o, Zone.EXILE, "${o.name} is exiled.", "701.13a")
         val back = state.add(GameObject(freshObjectId(o.def.name), o.def, Zone.BATTLEFIELD, newController, o.owner)); back.timestamp = state.tick(); back.summoningSick = o.def.isCreature; o.successor = back.id
+        state.blinkEtbTargets.remove(o.id)?.let { back.etbTargets = it }
         trace.step("${o.def.name} returns to the battlefield at once, under ${state.player(back.controller).possessive} control, as a new object with no memory of its previous existence: untapped, with no damage, no counters${if (hadCounters.isNotEmpty()) " (the ${hadCounters.entries.joinToString(", ") { (k, n) -> "$n $k" }} are gone)" else ""}${if (wasAttached.isNotEmpty()) ", and ${wasAttached.joinToString(", ")} no longer attached to it" else ""}${if (o.def.isCreature) ", and summoning sick again" else ""}. Anything that was targeting the old object no longer has a legal target.", "400.7", "701.13a", "302.6")
         // "Does it keep the counter?" is the usual question, so the outcome says it, not only the trace.
         state.outcomes += "${o.def.name} is exiled and returns as a new object (${state.player(back.controller).possessive} control)" +
@@ -1995,7 +2002,14 @@ class Engine(val state: GameState) {
                     else trace.step("Spell mastery isn't on: only $gy instant or sorcery card${if (gy == 1) "" else "s"} ${if (gy == 1) "is" else "are"} in ${state.player(item.controller).possessive} graveyard (the situation didn't say otherwise), so ${item.source.name} deals its usual ${effect.amount}.", "608.2c")
                     on
                 }
-                forEachLegalTarget(item, effect.target) { applyDamage(item.source.name, it, sacAmount ?: if (effect.x) (item.x ?: 0) else if (item.kicked && effect.kickedAmount != null) effect.kickedAmount else mastery ?: effect.amount) }
+                // Delirium: four or more card types among cards in the caster's graveyard raise the damage (Unholy Heat).
+                val delirium = item.source.def.abilities.filterIsInstance<StaticAbility>().firstOrNull { it.keyword == "delirium" }?.let { a -> Regex("""deals (\d+) damage instead if there are four or more card types among cards in your graveyard""", RegexOption.IGNORE_CASE).find(a.text)?.groupValues?.get(1)?.toInt() }?.takeIf { _ ->
+                    val types = state.objects.values.filter { it.zone == Zone.GRAVEYARD && it.owner == item.controller && !it.token }.flatMap { o -> o.def.types }.toSet().size
+                    val on = types >= 4
+                    trace.step(if (on) "Delirium: $types card types are among cards in ${state.player(item.controller).possessive} graveyard, so ${item.source.name} deals the delirium amount instead of ${effect.amount}." else "Delirium isn't on: only $types card type${if (types == 1) "" else "s"} ${if (types == 1) "is" else "are"} among cards in ${state.player(item.controller).possessive} graveyard, so ${item.source.name} deals its usual ${effect.amount}.", "608.2c")
+                    on
+                }
+                forEachLegalTarget(item, effect.target) { applyDamage(item.source.name, it, sacAmount ?: if (effect.x) (item.x ?: 0) else if (item.kicked && effect.kickedAmount != null) effect.kickedAmount else mastery ?: delirium ?: effect.amount) }
             }
             is Effect.PumpSelfCount -> {
                 val o = item.source
@@ -2871,6 +2885,26 @@ class Engine(val state: GameState) {
                 trace.step("${item.source.name} exiles ${card.name} and every card named ${card.def.name} in ${owner.possessive} graveyard, hand and library (${same.size} known here; any in ${owner.possessive} library are exiled too, then ${owner.subject.lowercase()} ${owner.v("shuffles", "shuffle")}).", "701.23a", "400.7")
                 same.forEach { move(it, Zone.EXILE, "${it.name} is exiled from ${zoneName(it.zone, it)}.", "701.23a") }
                 state.outcomes += "${item.source.name}: every ${card.def.name} in ${owner.possessive} graveyard, hand and library is exiled (${same.size} known here)."
+            } }
+            is Effect.LivingEnd -> {
+                val exiledBy = state.players.associate { p -> p.id to state.objects.values.filter { it.zone == Zone.GRAVEYARD && it.owner == p.id && it.def.isCreature && !it.token } }
+                for (p in state.players) {
+                    val exiled = exiledBy.getValue(p.id)
+                    exiled.forEach { move(it, Zone.EXILE, "${p.subject} ${p.v("exiles", "exile")} ${it.name} from ${p.possessive} graveyard.", "701.13a") }
+                    if (exiled.isEmpty()) trace.step("${p.subject} ${p.v("has", "have")} no creature cards in ${p.possessive} graveyard to exile.", "701.13a")
+                }
+                for (p in state.players) state.objects.values.filter { it.isOnBattlefield() && it.controller == p.id && (it.def.isCreature || it.animatedAs != null) }.toList().forEach { sacrifice(p.id, it.id) }
+                for (p in state.players) {
+                    val exiled = exiledBy.getValue(p.id)
+                    exiled.forEach { enter(it.id) }
+                    state.outcomes += "${p.subject} ${p.v("gets", "get")} ${if (exiled.isEmpty()) "nothing back" else exiled.joinToString(", ") { it.def.name } + " back from exile onto the battlefield"} (${item.source.name})."
+                }
+            }
+            is Effect.ExileIfMvAtMostX -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o ->
+                val x = item.x ?: 1
+                val mv = o.def.manaValue.toInt()
+                if (mv <= x) move(o, Zone.EXILE, "${o.name} has mana value $mv, no more than the $x colour${if (x == 1) "" else "s"} of mana spent (X = $x), so it's exiled.", "701.13a", "702.69a")
+                else { trace.step("${o.name} has mana value $mv, more than the $x colour${if (x == 1) "" else "s"} of mana spent (X = $x), so ${item.source.name} does nothing to it.", "702.69a"); state.outcomes += "${o.name} isn't exiled: its mana value $mv is more than the $x colour${if (x == 1) "" else "s"} spent on ${item.source.name}." }
             } }
             is Effect.Transmogrify -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o ->
                 val was = "${o.name}${if (o.def.isCreature) " (${state.describePt(o)})" else ""}"
@@ -3848,7 +3882,7 @@ class Engine(val state: GameState) {
         is Effect.GainLife -> "gain ${effect.amount} life"; is Effect.LoseLife -> "lose ${if (effect.x) "X" else effect.amount.toString()} life"; is Effect.Discard -> "${when (effect.who) { Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; Who.TARGET_PLAYER -> "target player"; else -> "that player" }} discard${if (effect.who == Who.YOU) "" else "s"} ${if (effect.x) "X" else effect.count.toString()} card(s)${if (effect.random) " at random" else ""}"; is Effect.Repeat -> "repeat ${if (effect.x) "X" else effect.times.toString()} times: ${describe(effect.body, item)}"; is Effect.LoseLifeUnlessSacOrDiscard -> "${when (effect.who) { Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }} loses ${effect.amount} life unless they sacrifice ${effect.filter?.let { withArticle(it.raw) } ?: "a permanent"}${if (effect.discard) " or discard a card" else ""}"
         is Effect.May -> "may " + describe(effect.effect, item); is Effect.UnlessPays -> describe(effect.effect, item) + " unless ${effect.cost} is paid"
         is Effect.ExileSelfSpell -> "exile ${item.source.name}"; is Effect.ProtectionUntilNextTurn -> "until your next turn your life total can't change and you have protection from everything"; is Effect.PhaseOutAll -> "${effect.filter.raw} phase out"
-        is Effect.ExtractNamed -> "exile ${effect.target.raw} and every card with its name"; is Effect.Transmogrify -> "${effect.target.raw} loses all abilities and becomes a ${effect.power}/${effect.toughness} ${effect.subtype}"; is Effect.SpellCantBeCountered -> "target spell can't be countered"
+        is Effect.ExtractNamed -> "exile ${effect.target.raw} and every card with its name"; is Effect.LivingEnd -> "each player exiles the creature cards in their graveyard, sacrifices their creatures and returns the exiled cards"; is Effect.ExileIfMvAtMostX -> "exile ${effect.target.raw} if its mana value is at most the colours spent"; is Effect.Transmogrify -> "${effect.target.raw} loses all abilities and becomes a ${effect.power}/${effect.toughness} ${effect.subtype}"; is Effect.SpellCantBeCountered -> "target spell can't be countered"
         is Effect.Seq -> effect.effects.joinToString(", then ") { describe(it, item) }; is Effect.Unparsed -> "\"${effect.text}\""
     }
     private fun unparsedText(e: Effect): String = when (e) { is Effect.Unparsed -> e.text; is Effect.May -> unparsedText(e.effect); is Effect.UnlessPays -> unparsedText(e.effect); is Effect.Seq -> e.effects.filter { it.hasUnparsed() }.joinToString(" | ") { unparsedText(it) }; is Effect.Modal -> e.modes.filter { it.hasUnparsed() }.joinToString(" | ") { "mode \"" + unparsedText(it) + "\"" }; else -> "" }

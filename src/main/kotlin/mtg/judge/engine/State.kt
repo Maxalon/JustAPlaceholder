@@ -200,6 +200,8 @@ class GameState(
     val damageLifeFloor: MutableMap<String, Int> = mutableMapOf(),
     /** Players whose cards go to exile instead of their graveyard this turn (Yawgmoth's Will); cleared in cleanup. */
     val exileInsteadThisTurn: MutableSet<String> = mutableSetOf(),
+    /** Targets named with a blink spell beyond the blinked permanent: what its enters trigger aims at when it comes back. */
+    val blinkEtbTargets: MutableMap<String, List<Ref>> = mutableMapOf(),
     /** Players who can't cast spells for the rest of the turn (Silence, Orim's Chant); cleared in cleanup. */
     val cantCastThisTurn: MutableSet<String> = mutableSetOf(),
     /** Coin flips the situation stated, oldest first: "win" or "lose" (705.2). Each flip takes the next one. */
@@ -374,8 +376,8 @@ class GameState(
 
     /** The level band a leveler is in for its level counters (702.87b); null below the first band or for other creatures. */
     fun levelBand(obj: GameObject): StaticEffect.LevelBand? { val n = obj.counters["level"] ?: 0; return obj.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.LevelBand>().firstOrNull { n >= it.min && (it.max == null || n <= it.max) } }
-    private fun basePower(obj: GameObject): Int? = obj.animatedAs?.power ?: obj.basePt?.first ?: levelBand(obj)?.power ?: abilitiesLostOn(obj)?.second?.power ?: cdaOf(obj)?.let { c -> if (c.power != null) cdaValue(obj, c.power)?.plus(c.plus) else obj.def.power } ?: obj.def.power
-    private fun baseToughness(obj: GameObject): Int? = obj.animatedAs?.toughness ?: obj.basePt?.second ?: levelBand(obj)?.toughness ?: abilitiesLostOn(obj)?.second?.toughness ?: cdaOf(obj)?.let { c -> if (c.toughness != null) cdaValue(obj, c.toughness)?.plus(c.toughnessPlus ?: c.plus) else obj.def.toughness } ?: obj.def.toughness
+    private fun basePower(obj: GameObject): Int? = obj.animatedAs?.power ?: obj.basePt?.first ?: levelBand(obj)?.power ?: abilitiesLostOn(obj)?.second?.takeIf { it.setPt }?.power ?: cdaOf(obj)?.let { c -> if (c.power != null) cdaValue(obj, c.power)?.plus(c.plus) else obj.def.power } ?: obj.def.power
+    private fun baseToughness(obj: GameObject): Int? = obj.animatedAs?.toughness ?: obj.basePt?.second ?: levelBand(obj)?.toughness ?: abilitiesLostOn(obj)?.second?.takeIf { it.setPt }?.toughness ?: cdaOf(obj)?.let { c -> if (c.toughness != null) cdaValue(obj, c.toughness)?.plus(c.toughnessPlus ?: c.plus) else obj.def.toughness } ?: obj.def.toughness
 
     /** "~ gets -X/-X, where X is your life total": the amount, recomputed each time it's asked for. */
     fun selfCountPt(obj: GameObject, toughness: Boolean = false): Int {
