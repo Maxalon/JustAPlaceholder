@@ -755,6 +755,11 @@ object OracleParser {
             if (m.groupValues[2].contains(':')) { val act = parseActivated(m.groupValues[2].trimEnd('.').replace("this creature", "~").replace("this permanent", "~")); if (act is ActivatedAbility) return listOf(StaticEffect.GrantActivated(parseFilter(m.groupValues[1].lowercase().replace(Regex("""s(?= you control|$)"""), ""), Kind.PERMANENT), act)) }
         }
         if (Regex("""^Spells and abilities your opponents control can't cause you to sacrifice permanents\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.CantBeMadeToSacrifice)
+        // Rhythm of the Wild: "Creature spells you control can't be countered."
+        Regex("""^(Creature spells|Noncreature spells|Instant and sorcery spells|Spells) you control can't be countered\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val f = when (m.groupValues[1].lowercase()) { "creature spells" -> ObjFilter(setOf(Kind.CREATURE), raw = "creature spell"); "noncreature spells" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE), raw = "noncreature spell"); "instant and sorcery spells" -> ObjFilter(setOf(Kind.SPELL), notKinds = setOf(Kind.CREATURE, Kind.ARTIFACT, Kind.ENCHANTMENT, Kind.PLANESWALKER), raw = "instant or sorcery spell"); else -> ObjFilter(setOf(Kind.SPELL), raw = "spell") }
+            return listOf(StaticEffect.SpellsCantBeCountered(f))
+        }
         if (Regex("""^All permanents are artifacts in addition to their other types\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.AllPermanentsAreArtifacts)
         if (Regex("""^All cards that aren't on the battlefield, spells, and permanents are colorless\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("613.1e")))
         if (Regex("""^Players may spend mana as though it were mana of any (?:color|type)\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("106.1")))

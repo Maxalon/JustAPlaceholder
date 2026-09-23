@@ -80,7 +80,7 @@ object Generic {
         val colors = m.groupValues[3].trim().split(' ').mapNotNull { colorMap[it] }.joinToString("")
         val keywords0 = m.groupValues[4].split(Regex("""\s*,\s*|\s+and\s+""")).map { it.trim() }.filter { it.isNotEmpty() }
         // "a Dragon" / "an Angel": the type says it flies, whatever else was left out.
-        val flyers = setOf("dragon", "angel", "bird", "drake", "phoenix", "sphinx", "bat", "faerie", "griffin", "pegasus", "thopter")
+        val flyers = setOf("dragon", "angel", "bird", "drake", "phoenix", "sphinx", "bat", "faerie", "griffin", "pegasus", "thopter", "spirit")
         val keywords = if (subs.lowercase().split(' ').any { it in flyers } && keywords0.none { it.equals("flying", true) }) keywords0 + "flying" else keywords0
         val kwLine = keywords.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
         val article = if (n.first().lowercaseChar() in "aeiou") "an" else "a"

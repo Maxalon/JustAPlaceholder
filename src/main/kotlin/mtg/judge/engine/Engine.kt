@@ -2348,6 +2348,9 @@ class Engine(val state: GameState) {
                 // Banefire: "If X is 5 or more, ~ can't be countered."
                 val uncounterableByX = target.kind == StackKind.SPELL && Regex("""(?i)if x is (\d+) or more, (?:~|this spell|${Regex.escape(target.source.def.name)}) can't be countered""").find(target.source.def.oracleText)?.let { mm -> (target.x ?: 0) >= mm.groupValues[1].toInt() } == true
                 if (uncounterableByX) { trace.step("${target.describe} was cast with X = ${target.x}, which is enough for its own text to make it uncounterable, so ${item.describe} has no effect on it.", "701.6a"); state.outcomes += "${target.describe} isn't countered (X = ${target.x}: it can't be)."; return }
+                // Rhythm of the Wild: a permanent its controller has says their creature spells can't be countered.
+                val shield = if (target.kind == StackKind.SPELL) state.objects.values.firstOrNull { o -> o.isOnBattlefield() && o.controller == target.controller && o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.SpellsCantBeCountered>().any { s -> spellMatches(s.filter, target.source.def) } } else null
+                if (shield != null) { trace.step("${shield.name} says ${state.player(target.controller).possessive} ${shield.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.SpellsCantBeCountered>().first().filter.raw}s can't be countered, so ${item.describe} has no effect on ${target.describe}.", "701.6a"); state.outcomes += "${target.describe} isn't countered (${shield.name}: it can't be)."; return@forEachLegalTarget }
                 if (target.kind == StackKind.SPELL && (cant(target.source, "be countered") || target.cantBeCountered)) { trace.step("${target.describe} can't be countered, so ${item.describe} has no effect on it.", "701.6a"); state.outcomes += "${target.describe} isn't countered (it can't be)."; return@forEachLegalTarget }
                 state.stack.remove(target); state.lastCountered = target.source
                 val instead = effect.insteadZone?.takeIf { target.kind == StackKind.SPELL }
@@ -2505,7 +2508,7 @@ class Engine(val state: GameState) {
             is Effect.GainLifePerSpellThisTurn -> {
                 val p = resolveWho(effect.who, item) ?: state.player(item.controller)
                 val n = state.spellsThisTurn[p.id] ?: 0
-                trace.step("${p.subject} ${p.v("has", "have")} cast $n spell${if (n == 1) "" else "s"} this turn (counting the one that triggered this), so ${p.subject.lowercase()} ${p.v("gains", "gain")} ${n * effect.per} life.", "608.2h", "119.3")
+                trace.step("${p.subject} ${p.v("has", "have")} cast $n spell${if (n == 1) "" else "s"} this turn (counting the one that triggered this), so the ability gives ${n * effect.per} life.", "608.2h", "119.3")
                 gainLife(p, n * effect.per)
             }
             is Effect.WinIfDevotionCoversLibrary -> {
@@ -2935,6 +2938,12 @@ class Engine(val state: GameState) {
                 item.lastCount = affected.size
                 if (affected.isEmpty()) { trace.step("Nothing matches \"${effect.filter.raw}\", so ${effect.action} affects nothing.${if (state.objects.values.any { it.phasedOut }) " Phased-out permanents are treated as though they don't exist, so they aren't destroyed." else ""}", "702.26b"); state.outcomes += "${item.source.name} affects nothing: nothing on the battlefield is ${withArticle(effect.filter.raw.removeSuffix("s"))} to ${effect.action}${if (state.objects.values.any { it.phasedOut }) " (the phased-out permanents aren't there for it)" else ""}." }
                 // Everything leaves at once: abilities of permanents leaving simultaneously still see the others go (603.10a).
+                // "I have 4 lands and a Darksteel Citadel. Armageddon.": lands said only as a count are lands too.
+                if (effect.action == "destroy" && Kind.LAND in effect.filter.kinds && effect.filter.controller == null) for (p in state.players) {
+                    val counted = p.mana ?: continue
+                    val named = state.objects.values.count { it.isOnBattlefield() && it.controller == p.id && "Land" in it.def.types }
+                    if (counted > named) { val n = counted - named; trace.step("${p.subject} ${p.v("has", "have")} $n land${if (n == 1) "" else "s"} given only as a count; ${if (n == 1) "it is" else "they are"} destroyed too.", "701.8a"); state.outcomes += "${p.possessive.replaceFirstChar { it.uppercase() }} $n other land${if (n == 1) "" else "s"} ${if (n == 1) "is" else "are"} destroyed."; p.mana = 0 }
+                }
                 if (effect.action in setOf("destroy", "exile", "bounce", "tuck") && affected.size > 1) { leavingTogether = affected.map { it.id }.toSet(); trace.step("All of them leave the battlefield simultaneously, so abilities that trigger on creatures dying or leaving look back and see every one of them.", "603.10a") }
                 try { for (o in affected) when (effect.action) {
                     "destroy" -> destroy(o, "${o.name} is destroyed.", "701.8a", canRegenerate = !effect.noRegen)

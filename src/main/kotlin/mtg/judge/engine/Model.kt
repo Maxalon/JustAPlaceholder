@@ -537,6 +537,8 @@ sealed interface StaticEffect {
     data class EntersUnlessDiscard(val filter: ObjFilter) : StaticEffect
     /** Sigarda, Host of Herons: "Spells and abilities your opponents control can't cause you to sacrifice permanents." */
     data object CantBeMadeToSacrifice : StaticEffect
+    /** Rhythm of the Wild, Prowling Serpopard: "Creature spells you control can't be countered." */
+    data class SpellsCantBeCountered(val filter: ObjFilter) : StaticEffect
     /** Mycosynth Lattice: "All permanents are artifacts in addition to their other types." (layer 4) */
     data object AllPermanentsAreArtifacts : StaticEffect
     /** Arcane Lighthouse: "creatures your opponents control lose hexproof and indestructible … until end of turn". */

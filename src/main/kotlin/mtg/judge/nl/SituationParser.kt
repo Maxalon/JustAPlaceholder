@@ -889,6 +889,15 @@ class SituationParser(private val names: NameIndex) {
                 if (giver != null && !giver.isSpellOnly && !giver.typeLine.contains("Land")) { if (objectIdFor(giver, ctx) == null) { val lm = ctx.lastMentioned; addObject(giver, "me", false, ctx); ctx.lastMentioned = lm }; "can ${r.groupValues[2]} tap for mana" } else r.value } }
             // "Grizzly Bears that I just cast": it came down this turn (summoning sick), not a cast at something.
             .replace(Regex("""\b(c\d+) (?:that|which) ((?:i|we|they|he|she) just (?:cast|played)(?: this turn)?)\b""", RegexOption.IGNORE_CASE), "$1 $2")
+            // "Then next turn I use his +1 again": a leading "next turn" is read where the trailing one is.
+            .replace(Regex("""^(?:then |and then )?(?:on |during )?(?:my |their |his |her )?next turn,? (.+?)\??$""", RegexOption.IGNORE_CASE), "$1 next turn")
+            // "use his +1 on my Bears twice over two turns": once now, once next turn.
+            .replace(Regex("""\b(uses?|activates?) (his|her|its|the) ([+-]\d+|plus \w+|minus \w+) on ((?:my |the )?c\d+) twice over (?:two|2) turns\b""", RegexOption.IGNORE_CASE), "$1 $2 $3 on $4, i $1 $2 $3 on $4 next turn")
+            // "Before blockers my opponent casts Fog": the timing phrase moves to the end, where it is read.
+            .replace(Regex("""^((?:before|after|during) (?:blockers|blocks|attackers|attacks|combat|combat damage|damage|first strike damage)(?: (?:are|is) (?:declared|dealt))?),? (.+?)\??$""", RegexOption.IGNORE_CASE), "$2 $1")
+            // "a 2/2 Grizzly Bears": the size adds nothing the card doesn't say.
+            .let { t0 -> Regex("""\b(an? |my |their |the )?(\d+/\d+) (c\d+)\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                if (m.cards[r.groupValues[3]]?.typeLine?.contains("Creature") == true) "${r.groupValues[1]}${r.groupValues[3]}" else r.value } }
             // "I Thoughtseize myself": a card used as a verb, aimed at the speaker.
             .let { t0 -> Regex("""^(i|we) (c\d+) (myself|ourselves)\??$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 if (m.cards[r.groupValues[2]]?.isSpellOnly == true) "${r.groupValues[1]} cast ${r.groupValues[2]} targeting myself" else r.value } }
@@ -1673,7 +1682,7 @@ class SituationParser(private val names: NameIndex) {
      */
     /** Mana a player is said to have. Said after they cast something, it is what they have from then on (a "manaNow" event). */
     private fun setMana(who: String, n: Int, ctx: Ctx) {
-        ctx.mana[who] = n; ctx.note(who)
+        ctx.mana[who] = n; ctx.note(who); ctx.lastOwner = who; ctx.lastActor = who
         if (ctx.events.any { it.verb == "cast" && it.player == who }) ctx.events += EventSpec("manaNow", player = who, amount = n)
     }
 
@@ -5870,7 +5879,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by playing the turn out to its cleanup step, where hand size is checked (514.1)."; return true
         }
         // "can I activate it the turn it comes down?" / "can I tap Deathrite Shaman right away?": summoning sickness and {T} costs.
-        Regex("""^can (?:i|we|they|he|she|my opponent|the opponent|@\w+) (?:activate|use|tap|fire off|crack) (?:it|that|its ability|its abilities|(?:my |their |his |her |the |@\w+'s )?(c\d+)(?:'s (?:ability|abilities))?)( the (?:same )?turn (?:it|i|they|he|she) (?:comes? down|came down|come down|enters?(?: the battlefield)?|entered(?: the battlefield)?|is played|was played|play it|played it|cast it)| right away| immediately| the turn it drops| straight away)?$""").find(clause0)?.let { q ->
+        Regex("""^can (?:i|we|they|he|she|my opponent|the opponent|@\w+) (?:still |even )?(?:activate|use|tap|fire off|crack) (?:it|that|its ability|its abilities|(?:my |their |his |her |the |@\w+'s )?(c\d+)(?:'s (?:ability|abilities))?)( the (?:same )?turn (?:it|i|they|he|she) (?:comes? down|came down|come down|enters?(?: the battlefield)?|entered(?: the battlefield)?|is played|was played|play it|played it|cast it)| right away| immediately| the turn it drops| straight away)?$""").find(clause0)?.let { q ->
             val ph = q.groupValues[1]
             val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
                      else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.objects.values.lastOrNull()?.id ?: return@let
@@ -5948,8 +5957,8 @@ class SituationParser(private val names: NameIndex) {
         // "how many counters does it have?" / "how many +1/+1 counters are on my Ballista?"
         Regex("""^how many (?:([+-]\d+/[+-]\d+|[a-z]+) )?counters? (?:does|do|is|are) (?:it|that|they|(?:my |their |his |her |the |@\w+'s )?(c\d+))(?:'s)? (?:have|has|on it|got)(?: now| in total| altogether)?$|^how many (?:([+-]\d+/[+-]\d+|[a-z]+) )?counters? (?:is|are) (?:on|there on) (?:it|that|(?:my |their |his |her |the |@\w+'s )?(c\d+))$""").find(clause0)?.let { q ->
             val ph = q.groupValues[2].ifEmpty { q.groupValues[4] }
-            val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
-                     else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+            val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdForOrCast(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
+                     else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.lastCastEntry?.let { castPermanentObject(ctx) } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, to = "counters"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "is it summoning sick?" / "does my Elves have summoning sickness?": whether it came down this turn.
@@ -6037,6 +6046,27 @@ class SituationParser(private val names: NameIndex) {
                 ?: ctx.objects.values.lastOrNull { (who == null || it.controller == who) && (it.card.name ?: "").startsWith("a ") } ?: ctx.objects.values.lastOrNull { who == null || it.controller == who } ?: return@let
             ctx.asks += EventSpec("ask", obj = id.id, to = if (q.groupValues[2].startsWith("trigger") || q.groupValues[2] == "go off") "trigger" else if (q.groupValues[2] in setOf("die", "dies", "dead")) "die" else "survive")
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below (read as ${id.card.name ?: id.id})."; return true
+        }
+        // "Whose turn is it after I cast Time Walk?": the extra turn, or the turn the situation named.
+        Regex("""^whose turn is it(?: next| now| after (?:that|this))?$""").find(clause0)?.let {
+            val extraTurnCards = setOf("Time Walk", "Time Warp", "Temporal Manipulation", "Capture of Jingzhou", "Temporal Mastery", "Nexus of Fate", "Walk the Aeons", "Time Stretch", "Karn's Temporal Sundering", "Alrund's Epiphany", "Temporal Trespass", "Expropriate", "Savor the Moment", "Beacon of Tomorrows", "Part the Waterveil", "Emrakul, the Aeons Torn", "Notorious Throng", "Lighthouse Chronologist")
+            val extra = ctx.events.lastOrNull { e -> e.verb == "cast" && e.card?.name in extraTurnCards }
+            if (extra != null) {
+                val who = if (extra.player == "me") "you" else "your opponent"
+                ctx.asks += EventSpec("ask", to = "text:After this turn ends, $who ${if (who == "you") "take" else "takes"} the extra turn ${extra.card?.name} gives: the whole turn from untap step to cleanup, with a new land drop, a draw, and untapped permanents. Only after that extra turn does the turn order carry on (500.7).")
+            } else {
+                val ap = ctx.activePlayer
+                ctx.asks += EventSpec("ask", to = "text:" + when (ap) { null -> "Whose turn it is wasn't stated; say \"it's my turn\" or \"on their turn\" and the answer will use it."; "me" -> "It's your turn, as the situation says."; else -> "It's your opponent's turn, as the situation says." })
+            }
+            return true
+        }
+        // "What do I get?" after casting a Clone at something: the copy's size.
+        Regex("""^what do (?:i|we) (?:get|end up with|have)(?: then| now)?$""").find(clause0)?.let {
+            val e = ctx.events.lastOrNull { it.verb == "cast" && it.player == "me" } ?: return@let
+            val entry = e.card?.name?.let { names.lookup(Names.normalize(it)) } ?: return@let
+            if (entry.isSpellOnly || !entry.typeLine.contains("Creature")) return@let
+            val id = objectIdForOrCast(entry, ctx) ?: return@let
+            ctx.asks += EventSpec("ask", obj = id, to = "pt"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "does the attacker deal damage to me?": the creature that attacked, whoever's it is.
         Regex("""^(?:does|do|did|will|would) the (?:attacker|attacking creature|attackers) (?:still |even )?(?:deals?|do|hits?|connects?)(?: (?:any |its |combat )?damage)?(?: to)? (me|us|them|my opponent|the opponent|him|her)$""").find(clause0)?.let { r ->
@@ -6737,8 +6767,12 @@ class SituationParser(private val names: NameIndex) {
     private fun tokenSize(name: String): String? {
         val word = name.removeSuffix(" token").trim().split(' ').lastOrNull()?.takeIf { it.isNotEmpty() } ?: return null
         if (word in setOf("creature", "artifact", "treasure", "clue", "food", "blood", "gold", "map", "powerstone", "incubator")) return null
-        return names.tokenSizes[Names.normalize(word)]
+        return names.tokenSizes[Names.normalize(word)] ?: usualTokenSizes[Names.normalize(word)]
     }
+    /** Token types whose printed sizes vary but almost always come one way at a table. */
+    private val usualTokenSizes = mapOf("spirit" to "1/1", "soldier" to "1/1", "goblin" to "1/1", "elf" to "1/1", "human" to "1/1", "thopter" to "1/1", "servo" to "1/1",
+        "saproling" to "1/1", "insect" to "1/1", "bird" to "1/1", "squirrel" to "1/1", "rat" to "1/1", "pest" to "1/1", "faerie" to "1/1", "thrull" to "1/1", "myr" to "1/1",
+        "knight" to "2/2", "wolf" to "2/2", "bear" to "2/2", "zombie" to "2/2", "vampire" to "2/2", "beast" to "3/3", "dinosaur" to "3/3", "angel" to "4/4", "plant" to "0/1", "spawn" to "0/1")
 
     private fun objectIdFor(card: NameIndex.Entry, ctx: Ctx): String? = ctx.objects.values.firstOrNull { it.card.oracleId == card.oracleId }?.id
     private fun other(p: String?) = when (p) { "me" -> "opp"; "opp" -> "me"; else -> null }

@@ -6010,7 +6010,7 @@
     "id": "a-stated-spell-count-feeds-storm-style-abilities",
     "text": "I control Aetherflux Reservoir and I have cast four spells this turn. I cast Lightning Bolt. How much life do I gain?",
     "expect": [
-      "You have cast 5 spells this turn (counting the one that triggered this), so you gain 5 life"
+      "You have cast 5 spells this turn (counting the one that triggered this), so the ability gives 5 life"
     ],
     "notExpect": [
       "Not understood",
@@ -18283,6 +18283,174 @@
     "text": "I control Cryptolith Rite and two Grizzly Bears. How much mana do I have?",
     "expect": [
       "You can make 2 mana right now: Grizzly Bears → one mana of any color; Grizzly Bears → one mana of any color."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "hardened-scales-ballista-counters-question",
+    "text": "I have Hardened Scales and cast Walking Ballista for X=2. How many counters does it have?",
+    "expect": [
+      "Walking Ballista enters with 3 +1/+1 counters.",
+      "Walking Ballista has 3 +1/+1 counters."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "phantasmal-image-copies-spirit-token",
+    "text": "My opponent has a Spirit token. I cast Phantasmal Image copying it. What do I get?",
+    "expect": [
+      "Phantasmal Image, a copy of Spirit token, enters the battlefield.",
+      "Phantasmal Image (copying Spirit token) is 1/1."
+    ],
+    "notExpect": [
+      "Not understood",
+      "isn't a creature"
+    ],
+    "cite": []
+  },
+  {
+    "id": "rhythm-of-the-wild-vs-counterspell",
+    "text": "I have Rhythm of the Wild. My opponent casts Counterspell on my Grizzly Bears. Does it work?",
+    "expect": [
+      "Grizzly Bears isn't countered (Rhythm of the Wild: it can't be).",
+      "Grizzly Bears enters the battlefield."
+    ],
+    "notExpect": [
+      "Not understood",
+      "Grizzly Bears is countered."
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "aetherflux-fifth-spell",
+    "text": "My Aetherflux Reservoir is out and I cast my fifth spell this turn. How much life do I gain?",
+    "expect": [
+      "You gain 5 life.",
+      "You gain 5 life in all."
+    ],
+    "notExpect": [
+      "Not understood",
+      "10 life"
+    ],
+    "cite": []
+  },
+  {
+    "id": "stony-silence-vs-top-can-i-still-tap-it",
+    "text": "I have Sensei's Divining Top and my opponent casts Stony Silence. Can I still tap it?",
+    "expect": [
+      "No: Stony Silence says Sensei's Divining Top's activated abilities can't be activated."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "ajani-plus-one-twice-over-two-turns",
+    "text": "I have Ajani, Caller of the Pride and use his +1 on my Grizzly Bears twice over two turns. How big is Bears?",
+    "expect": [
+      "Grizzly Bears is 4/4 (2/2 base, 2 +1/+1 counters)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "sheoldred-brainstorm-life-loss",
+    "text": "I control Sheoldred, the Apocalypse. My opponent draws 3 cards off Brainstorm. How much life do they lose?",
+    "expect": [
+      "opponent loses 6 life in all."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "doubling-season-jace-loyalty",
+    "text": "I control Doubling Season and cast Jace, the Mind Sculptor. What's his loyalty?",
+    "expect": [
+      "Jace, the Mind Sculptor has 6 loyalty."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "whose-turn-after-time-walk",
+    "text": "Whose turn is it after I cast Time Walk?",
+    "expect": [
+      "After this turn ends, you take the extra turn Time Walk gives: the whole turn from untap step to cleanup, with a new land drop, a draw, and untapped permanents. Only after that extra turn does the turn order carry on (500.7)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "fog-before-blockers",
+    "text": "I attack with a 2/2. Before blockers my opponent casts Fog. What happens?",
+    "expect": [
+      "Damage to opponent from a 2/2 creature is prevented."
+    ],
+    "notExpect": [
+      "Not understood",
+      "opponent takes 2 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "armageddon-with-counted-lands-and-citadel",
+    "text": "My opponent casts Armageddon. I have 4 lands and a Darksteel Citadel. What's left?",
+    "expect": [
+      "Your 4 other lands are destroyed.",
+      "Darksteel Citadel is indestructible and isn't destroyed."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "size-before-a-card-name-under-elesh-norn",
+    "text": "My opponent controls Elesh Norn, Grand Cenobite. I have a 2/2 Grizzly Bears. Does it die?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard.",
+      "Yes: Grizzly Bears died (it's in the graveyard)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "ghostly-prison-one-land",
+    "text": "I'm at 3 life and my opponent attacks with a 5/5. I have Ghostly Prison and they have 1 untapped land. What happens?",
+    "expect": [
+      "a 5/5 creature can't attack (can't pay {2} for Ghostly Prison)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "ulamog-chumped-no-trample",
+    "text": "I have Ulamog, the Ceaseless Hunger attacking and my opponent chump blocks with a 1/1. Do they take damage?",
+    "expect": [
+      "No: opponent takes no damage."
     ],
     "notExpect": [
       "Not understood"
