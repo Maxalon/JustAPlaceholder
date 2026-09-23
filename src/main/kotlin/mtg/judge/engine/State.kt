@@ -18,6 +18,13 @@ class Player(val id: String, val name: String, var life: Int?) {
     val devotion = mutableMapOf<Char, Int>()
     /** Mana available right now, when the situation said so ("only has one Mountain untapped"). */
     var mana: Int? = null
+    /** Mana added to the pool by spells and abilities this step (Dark Ritual), counted with what the lands make. */
+    var manaPool: Int = 0
+    val manaPoolSymbols = mutableListOf<String>()
+    /** Mana already paid from lands for spells cast in this situation, so "how much do I have" and "can I?" don't count it twice. */
+    var manaSpent: Int = 0
+    /** What the pool holds, said the way a player would: "{B}{B}{B}", "one mana of any color". */
+    fun poolText(): String = manaPoolSymbols.joinToString("") { it }.replace("{any}", "").let { fixed -> val any = manaPoolSymbols.count { it == "{any}" }; listOfNotNull(fixed.takeIf { it.isNotEmpty() }, if (any == 0) null else "$any mana of any color").joinToString(" and ") }
     /** Cards in library, when the situation said so (empty-library draws, 704.5b). */
     var librarySize: Int? = null
     /** Cards in graveyard, when the situation said so rather than naming them (threshold, delirium). */
@@ -93,6 +100,10 @@ class GameObject(
     val tempKeywords = mutableSetOf<String>()
     /** Keywords taken away until end of turn (Arcane Lighthouse): checked before anything that would grant them. */
     val lostKeywords = mutableSetOf<String>()
+    /** Mox Diamond with no land to discard: it never enters, and goes to the graveyard instead. */
+    var mustGoToGraveyard = false
+    /** The mana its caster could pay with as it was cast, for "can I?" asked afterwards. */
+    var manaAvailableAtCast: Int? = null
     /** Monstrous: set by monstrosity and never unset while the permanent stays on the battlefield (701.31b). */
     var monstrous: Boolean = false
     /** Phased out (702.26b): still in the battlefield zone, but treated as though it doesn't exist until it phases in. */
@@ -183,6 +194,8 @@ class GameState(
     val cantLoseThisTurn: MutableSet<String> = mutableSetOf(),
     /** Players whose life total damage can't take below the given number this turn (Angel's Grace); cleared in cleanup. */
     val damageLifeFloor: MutableMap<String, Int> = mutableMapOf(),
+    /** Players whose cards go to exile instead of their graveyard this turn (Yawgmoth's Will); cleared in cleanup. */
+    val exileInsteadThisTurn: MutableSet<String> = mutableSetOf(),
     /** Players who can't cast spells for the rest of the turn (Silence, Orim's Chant); cleared in cleanup. */
     val cantCastThisTurn: MutableSet<String> = mutableSetOf(),
     /** Coin flips the situation stated, oldest first: "win" or "lose" (705.2). Each flip takes the next one. */

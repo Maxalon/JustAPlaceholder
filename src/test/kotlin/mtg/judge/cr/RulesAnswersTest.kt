@@ -64,6 +64,8 @@ class RulesAnswersTest {
         "When does an extra turn happen?" to "500.7",
         "Does deathtouch work on a planeswalker?" to "702.2b",
         "my commander dies, can I put it back in the command zone" to "903.9a",
+        "Can I respond to my own spell?" to "117.3c",
+        "Does Solitude's evoke trigger if it's countered?" to "702.74a",
         "my commander was bounced to my hand, can I put it in the command zone" to "903.9b",
         "I cast my commander for the third time, how much does it cost" to "903.8",
         "I take 21 commander damage but I'm at 40 life" to "903.10a",

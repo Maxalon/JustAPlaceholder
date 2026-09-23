@@ -31,6 +31,7 @@ object RulesAnswers {
 
     // Longest (most specific) first: the first entry whose terms are all present wins.
     private val entries: List<Entry> = listOf(
+        e("respond + own spell", "Yes. After you cast a spell you receive priority again, so you can cast an instant or activate an ability in response to your own spell before anyone else gets priority; it goes on the stack above your spell and resolves first.", "117.3c", "405.2", "608.1"),
         e("evoke + countered", "No. If a creature spell cast for its evoke cost is countered, it never enters the battlefield, so neither its enters-the-battlefield ability nor the evoke sacrifice trigger happens; the card just goes to the graveyard.", "702.74a", "701.6a"),
         e("trigger + stack + order",
             "Triggered abilities wait until a player would next receive priority, and then go on the stack: the active player's first, in whatever order that player chooses, then each other player's in turn order. The last one put on the stack is the first to resolve.",

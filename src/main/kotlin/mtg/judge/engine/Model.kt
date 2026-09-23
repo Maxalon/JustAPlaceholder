@@ -105,6 +105,8 @@ sealed interface Trigger {
     data class CountersPutOnThis(val kind: String, val atLeast: Int = 1) : Trigger
     /** Dark Depths: "When ~ has no ice counters on it" — a state trigger, once the last counter goes (603.8). */
     data class NoCountersOnThis(val kind: String) : Trigger
+    /** A Saga's chapter ability: triggers as the lore counter that reaches that number is put on it (714.2, 714.3c). */
+    data class Chapter(val n: Int) : Trigger
     /** Battalion: "~ and at least two other creatures attack" — ~ has to be one of them (702.101a). */
     data class ThisAndNOthersAttack(val others: Int) : Trigger
     /** "Whenever this creature becomes saddled (for the first time each turn)" (702.166b). */
@@ -298,6 +300,8 @@ sealed interface Effect {
     data class DamageLifeFloor(val floor: Int) : Effect
     /** "Until end of turn, creatures your opponents control lose hexproof and indestructible" (Arcane Lighthouse, Glaring Spotlight). */
     data class LoseKeywordsAll(val filter: ObjFilter, val keywords: Set<String>) : Effect
+    /** Yawgmoth's Will: "If a card would be put into your graveyard from anywhere this turn, exile that card instead." */
+    data object ExileInsteadOfGraveyardThisTurn : Effect
     /** Silence: "Your opponents can't cast spells this turn." */
     data class CantCastThisTurn(val who: Who) : Effect
     /** "Flip a coin. If you lose the flip, ~ deals 3 damage to you." (Mana Crypt): both branches are reported. */
@@ -338,7 +342,7 @@ sealed interface Effect {
         is Repeat -> body.targets()
         is LoseLifeUnlessSacOrDiscard -> emptyList()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
-        is ProtectionUntilNextTurn, is PhaseOutAll, is ExileSelfSpell, is LoseKeywordsAll -> emptyList()
+        is ProtectionUntilNextTurn, is PhaseOutAll, is ExileSelfSpell, is LoseKeywordsAll, is ExileInsteadOfGraveyardThisTurn -> emptyList()
         is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is GainLifeLostThisWay, is GainLifeEqualToToughness, is Discard, is ExileIfDamagedDies, is RevealTopToHand, is LoseLifeEqualToRevealedMv, is PutSelfOnLibraryTop, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
     }
 
@@ -497,6 +501,10 @@ sealed interface StaticEffect {
     data class DamageCantBePrevented(val combatOnly: Boolean, val creaturesOnly: Boolean) : StaticEffect
     /** Worship: "If you control a creature, damage that would reduce your life total to less than 1 reduces it to 1 instead." */
     data class LifeFloorIfCreature(val floor: Int) : StaticEffect
+    /** Kira, Great Glass-Spinner: creatures you control have "<a triggered ability>". */
+    data class GrantTriggered(val filter: ObjFilter, val ability: TriggeredAbility) : StaticEffect
+    /** Mox Diamond: "If ~ would enter, you may discard a land card instead. If you do, put ~ onto the battlefield. If you don't, put it into its owner's graveyard." */
+    data class EntersUnlessDiscard(val filter: ObjFilter) : StaticEffect
     /** Arcane Lighthouse: "creatures your opponents control lose hexproof and indestructible … until end of turn". */
     /** "LEVEL 2-6 3/3 First strike": what a leveler is while it has that many level counters (702.87b). max null = "and up". */
     data class LevelBand(val min: Int, val max: Int?, val power: Int, val toughness: Int, val keywords: Set<String>) : StaticEffect

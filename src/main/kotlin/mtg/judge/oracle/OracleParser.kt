@@ -54,6 +54,11 @@ object OracleParser {
                 if (rider != null) lines += rider
                 lines += header + " " + modes.joinToString(" ") { "• $it" }
                 i0 = j
+            } else if (Regex("""^(?:I|II|III|IV|V|VI)(?:, (?:I|II|III|IV|V|VI))* — .+$""").matches(l.trim())) {
+                // "I, II — Draw a card." / "III — Search your library…": one chapter ability per numeral (714.2).
+                val (nums, text) = l.trim().split(" — ", limit = 2).let { it[0] to it[1] }
+                for (num in nums.split(", ")) lines += "When chapter ${mapOf("I" to 1, "II" to 2, "III" to 3, "IV" to 4, "V" to 5, "VI" to 6)[num]}, $text"
+                i0++
             } else if (Regex("""^LEVEL \d+(?:-\d+|\+)$""").matches(l.trim())) {
                 // "LEVEL 2-6" / "3/3" / "First strike": one band of a leveler (702.87), gathered into one line.
                 var j = i0 + 1; val parts = mutableListOf(l.trim())
@@ -381,6 +386,7 @@ object OracleParser {
             val n = number(m.groupValues[1]) ?: m.groupValues[1].toIntOrNull() ?: 1
             return Trigger.CountersPutOnThis(m.groupValues[2], n)
         }
+        Regex("""^chapter (\d+)$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m -> return Trigger.Chapter(m.groupValues[1].toInt()) }
         Regex("""^~ has no ([a-z+/0-9-]+) counters on it$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m ->
             return Trigger.NoCountersOnThis(m.groupValues[1].lowercase())
         }
@@ -723,6 +729,13 @@ object OracleParser {
         // (the Force cycle, Daze, Misdirection): the same thing said as an alternative cost rather than as none.
         if (Regex("""^(?:if [^,]+, )?you may .+? rather than pay (?:~'s|this spell's) mana cost\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("118.9", "601.3")))
         Regex("""^If you control a creature, damage that would reduce your life total to less than (\d+) reduces it to \1 instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.LifeFloorIfCreature(m.groupValues[1].toInt())) }
+        // Kira, Great Glass-Spinner: "Creatures you control have "Whenever …, …""
+        Regex("""^((?:creatures|artifacts|lands|permanents|enchantments)(?: you control)?) have "(.+)"\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+            val inner = parseTriggered(m.groupValues[2].trimEnd('.').replace("this creature", "~").replace("this permanent", "~"))
+            if (inner is TriggeredAbility) return listOf(StaticEffect.GrantTriggered(parseFilter(m.groupValues[1].lowercase().replace(Regex("""s(?= you control|$)"""), ""), Kind.PERMANENT), inner))
+        }
+        // Mox Diamond.
+        if (Regex("""^If ~ would enter, you may discard a land card instead\. If you do, put ~ onto the battlefield\. If you don't, put it into its owner's graveyard\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.EntersUnlessDiscard(parseFilter("land card", Kind.PERMANENT)))
         Regex("""^(Combat )?damage that would be dealt by (creatures|sources) you control can't be prevented\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.DamageCantBePrevented(m.groupValues[1].isNotEmpty(), m.groupValues[2].equals("creatures", true))) }
         if (Regex("""^Each opponent can cast spells only any time they could cast a sorcery\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsSorcerySpeed)
         if (Regex("""^Players can cast spells only during their own turns\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OwnTurnOnly)
@@ -1062,6 +1075,7 @@ object OracleParser {
         Regex("""^transform (?:~|it|target .+?)\.?$""", RegexOption.IGNORE_CASE) to listOf("701.27a"),
         Regex("""^exile ~\.?$""", RegexOption.IGNORE_CASE) to listOf("701.13a"),
         Regex("""^(?:you )?take an extra turn after this one\.?$""", RegexOption.IGNORE_CASE) to listOf("500.7"),
+        Regex("""^until end of turn, you may play lands and cast spells from your graveyard\.?$""", RegexOption.IGNORE_CASE) to listOf("601.3"),
         Regex("""^target player takes an extra turn after this one\.?$""", RegexOption.IGNORE_CASE) to listOf("500.7"),
         Regex("""^destroy ~\.?$""", RegexOption.IGNORE_CASE) to listOf("701.8a"),
         Regex("""^untap ~\.?$""", RegexOption.IGNORE_CASE) to listOf("701.26b"),
@@ -1423,6 +1437,7 @@ object OracleParser {
             val a = m.groupValues[3].trim(); val b = m.groupValues[4].trim()
             if (Generic.token(a) != null && Generic.token(b) != null) return Effect.Seq(listOf(Effect.CreateToken(w, 1, a), Effect.CreateToken(w, 1, b)))
         }
+        if (Regex("""^if a card would be put into your graveyard from anywhere this turn, exile that card instead\.?$""", RegexOption.IGNORE_CASE).matches(s.trim())) return Effect.ExileInsteadOfGraveyardThisTurn
         // Deathrite Shaman: "Exile target land card from a graveyard" — a targeted exile of a card in a graveyard,
         // which is what makes the ability use the stack rather than be a mana ability (605.1a).
         Regex("""^exile target ((?:land|instant|sorcery|creature|artifact|enchantment|instant or sorcery|nonland|permanent)(?: card)?) from (?:a|your|an opponent's|their) graveyard\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->

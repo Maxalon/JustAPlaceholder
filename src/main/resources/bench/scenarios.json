@@ -14408,7 +14408,7 @@
     "id": "land-and-sol-ring-turn-one",
     "text": "I play a land and Sol Ring turn 1, how much mana do I have",
     "expect": [
-      "You can make 3 mana right now: a basic land → one mana of any color; Sol Ring → {C}{C}."
+      "You can make 2 mana right now: a basic land → one mana of any color; Sol Ring → {C}{C}; less the 1 already spent on what was cast."
     ],
     "notExpect": [],
     "cite": []
@@ -15447,5 +15447,123 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "saga-chapter-three-then-sacrificed",
+    "text": "I have Urza's Saga on chapter 2. What happens in my precombat main phase?",
+    "expect": [
+      "Urza's Saga gets a lore counter (3).",
+      "Urza's Saga: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "Nothing changes"
+    ],
+    "cite": [
+      "714.3c",
+      "714.4"
+    ]
+  },
+  {
+    "id": "attack-her-means-the-planeswalker",
+    "text": "My opponent has Elspeth, Sun's Champion. I attack her with a 3/3 flier. They block with a 1/1 Soldier token. Does Elspeth take damage?",
+    "expect": [
+      "Soldier token can't block a 3/3 creature with flying (flying).",
+      "Elspeth, Sun's Champion has 1 loyalty."
+    ],
+    "notExpect": [
+      "opponent takes 3 damage"
+    ],
+    "cite": []
+  },
+  {
+    "id": "platinum-angel-at-three-life-bolted",
+    "text": "My opponent is at 3 life with Platinum Angel. I Bolt them. Do they lose?",
+    "expect": [
+      "opponent stays in the game: Platinum Angel keeps opponent from losing.",
+      "No: opponent is still in the game at 0 life."
+    ],
+    "notExpect": [
+      "opponent loses the game."
+    ],
+    "cite": []
+  },
+  {
+    "id": "lotus-cobra-landfall-mana-counted",
+    "text": "I have Lotus Cobra and play a Forest. How much mana do I get?",
+    "expect": [
+      "You can make 2 mana right now: Forest → {G}; plus 1 mana of any color already in your mana pool."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "ashnods-altar-per-creature",
+    "text": "I control Ashnod's Altar and two 1/1 tokens. How much mana can I make?",
+    "expect": [
+      "You can make 4 mana right now: Ashnod's Altar → {C}{C} per creature sacrificed, 2 creatures to sacrifice."
+    ],
+    "notExpect": [],
+    "cite": []
+  },
+  {
+    "id": "kira-counters-the-first-bolt",
+    "text": "I have Kira, Great Glass-Spinner. My opponent casts Lightning Bolt on it. Does it die?",
+    "expect": [
+      "Lightning Bolt is countered.",
+      "No: Kira, Great Glass-Spinner is still on the battlefield."
+    ],
+    "notExpect": [
+      "Rules text not modeled"
+    ],
+    "cite": []
+  },
+  {
+    "id": "rampant-growth-cannot-fetch-a-shockland",
+    "text": "I cast Rampant Growth. Can I fetch a Breeding Pool?",
+    "expect": [
+      "Breeding Pool can't be found with Rampant Growth: it isn't a basic land."
+    ],
+    "notExpect": [
+      "a basic land enters the battlefield"
+    ],
+    "cite": []
+  },
+  {
+    "id": "yawgmoths-will-exiles-the-bolt",
+    "text": "I control Yawgmoth's Will and cast Lightning Bolt from my graveyard. Where does it go?",
+    "expect": [
+      "Lightning Bolt: the stack → exile (exiled instead of going to the graveyard this turn)."
+    ],
+    "notExpect": [
+      "shown going to the graveyard afterwards as usual"
+    ],
+    "cite": []
+  },
+  {
+    "id": "mox-diamond-with-no-land-to-discard",
+    "text": "I have a Mox Diamond in hand and no lands. Can I play it?",
+    "expect": [
+      "Mox Diamond goes to the graveyard instead of entering (no land card to discard)."
+    ],
+    "notExpect": [
+      "Mox Diamond enters the battlefield."
+    ],
+    "cite": [
+      "614.1c"
+    ]
+  },
+  {
+    "id": "dark-ritual-into-hymn-off-one-swamp",
+    "text": "I cast Dark Ritual and then Hymn to Tourach. Can I do that with one Swamp?",
+    "expect": [
+      "You have {B}{B}{B} in your mana pool.",
+      "You have 3 available ({B} of it floating in your pool), enough."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "106.4"
+    ]
   }
 ]
