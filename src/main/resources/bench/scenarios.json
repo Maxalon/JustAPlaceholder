@@ -15369,5 +15369,83 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "worship-keeps-them-at-one",
+    "text": "My opponent has 1 life and a Worship with a creature. I attack for 5. Do they die?",
+    "expect": [
+      "opponent stays at 1 life (Worship).",
+      "No: opponent is still in the game at 1 life."
+    ],
+    "notExpect": [
+      "Rules text not modeled"
+    ],
+    "cite": [
+      "614.1b"
+    ]
+  },
+  {
+    "id": "lighthouse-strips-hexproof-for-bolt",
+    "text": "My opponent has a 2/2 with hexproof. Can I target it with Lightning Bolt if I control Arcane Lighthouse?",
+    "expect": [
+      "a 2/2 creature with hexproof loses hexproof until end of turn.",
+      "a 2/2 creature with hexproof: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "can't target Arcane Lighthouse"
+    ],
+    "cite": [
+      "613.1f"
+    ]
+  },
+  {
+    "id": "path-the-colossus-after-it-resolves",
+    "text": "My opponent casts Blightsteel Colossus. I Path it. Where does it go?",
+    "expect": [
+      "Path to Exile can't target Blightsteel Colossus while it's still a spell on the stack.",
+      "Once Blightsteel Colossus resolves and is a permanent, Path to Exile could be cast at it; say it was cast after that for what happens then."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": [
+      "109.2"
+    ]
+  },
+  {
+    "id": "clone-copies-grave-titan-no-target-noise",
+    "text": "I copy my opponent's Grave Titan with Clone. Do I get zombies?",
+    "expect": [
+      "Clone, a copy of Grave Titan, enters the battlefield.",
+      "You get a Zombie token. (×2)"
+    ],
+    "notExpect": [
+      "needs 0 targets"
+    ],
+    "cite": []
+  },
+  {
+    "id": "cryptic-modes-said-by-verb",
+    "text": "My opponent casts Cryptic Command countering my spell and bouncing my creature. Can I respond?",
+    "expect": [
+      "a spell is countered.",
+      "a creature: the battlefield → your hand."
+    ],
+    "notExpect": [
+      "Which mode(s)?"
+    ],
+    "cite": []
+  },
+  {
+    "id": "elder-sacrificed-while-blocking",
+    "text": "I sacrifice my Sakura-Tribe Elder while it's blocking a 4/4. Does the 4/4 deal damage to me?",
+    "expect": [
+      "a 4/4 creature deals no combat damage: its blocker left combat and it stays blocked."
+    ],
+    "notExpect": [
+      "You take 4 damage",
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

@@ -296,6 +296,8 @@ sealed interface Effect {
     data object CantLoseThisTurn : Effect
     /** "Damage that would reduce your life total to less than 1 reduces it to 1 instead." (Angel's Grace) */
     data class DamageLifeFloor(val floor: Int) : Effect
+    /** "Until end of turn, creatures your opponents control lose hexproof and indestructible" (Arcane Lighthouse, Glaring Spotlight). */
+    data class LoseKeywordsAll(val filter: ObjFilter, val keywords: Set<String>) : Effect
     /** Silence: "Your opponents can't cast spells this turn." */
     data class CantCastThisTurn(val who: Who) : Effect
     /** "Flip a coin. If you lose the flip, ~ deals 3 damage to you." (Mana Crypt): both branches are reported. */
@@ -336,7 +338,7 @@ sealed interface Effect {
         is Repeat -> body.targets()
         is LoseLifeUnlessSacOrDiscard -> emptyList()
         is Modal -> emptyList()   // mode targets are chosen with the mode (700.2c); handled when a mode is picked
-        is ProtectionUntilNextTurn, is PhaseOutAll, is ExileSelfSpell -> emptyList()
+        is ProtectionUntilNextTurn, is PhaseOutAll, is ExileSelfSpell, is LoseKeywordsAll -> emptyList()
         is Draw, is GainLife, is LoseLife, is Unparsed, is PumpSelf, is PumpAll, is SetBasePtAll, is AddMana, is GainLifeLostThisWay, is GainLifeEqualToToughness, is Discard, is ExileIfDamagedDies, is RevealTopToHand, is LoseLifeEqualToRevealedMv, is PutSelfOnLibraryTop, is Narrated, is ForAll, is GainKeywordsSelf -> emptyList()
     }
 
@@ -493,6 +495,9 @@ sealed interface StaticEffect {
     data class Note(val text: String, val rules: List<String>) : StaticEffect
     /** Questing Beast: "(Combat) damage that would be dealt by creatures you control can't be prevented" (615.12). */
     data class DamageCantBePrevented(val combatOnly: Boolean, val creaturesOnly: Boolean) : StaticEffect
+    /** Worship: "If you control a creature, damage that would reduce your life total to less than 1 reduces it to 1 instead." */
+    data class LifeFloorIfCreature(val floor: Int) : StaticEffect
+    /** Arcane Lighthouse: "creatures your opponents control lose hexproof and indestructible … until end of turn". */
     /** "LEVEL 2-6 3/3 First strike": what a leveler is while it has that many level counters (702.87b). max null = "and up". */
     data class LevelBand(val min: Int, val max: Int?, val power: Int, val toughness: Int, val keywords: Set<String>) : StaticEffect
     /** A continuous replacement or prevention effect from a static ability (614, 615). */

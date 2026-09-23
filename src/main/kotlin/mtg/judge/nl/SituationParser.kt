@@ -663,6 +663,24 @@ class SituationParser(private val names: NameIndex) {
             } }
             // "Can my Vampire Hexmage remove all counters from a Dark Depths": Hexmage's ability, aimed at it.
             .replace(Regex("""\b(?:can )?(?:my |the )?(c\d+) removes? all (?:the )?counters from (?:an? |my |the |their )?(c\d+)\b""", RegexOption.IGNORE_CASE), "i have $2, i activate $1 targeting $2")
+            // "I sacrifice my Elder while it's blocking a 4/4": the attack and the block come first.
+            .let { t0 -> Regex("""\b(i|we) (sacrifices?|sacs?|bounces?|blinks?|flickers?) ((?:my |the )?c\d+) (?:while|when|as) (?:it's|it is|he's|she's) blocking (?:an? |the |their )?(\d+/\d+(?: [a-z]+)?|c\d+)(?=,| and\b|$)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                "they attack with a ${r.groupValues[4]}, ${r.groupValues[1]} block it with ${r.groupValues[3]}, ${r.groupValues[1]} ${r.groupValues[2]} ${r.groupValues[3]}"
+            } }
+            // "I attack for 5": a creature of that power attacks the opponent.
+            .replace(Regex("""\b(i|we) (attacks?|swings?) for (\d+)(?: damage)?(?=,| and\b|$)""", RegexOption.IGNORE_CASE), "$1 $2 them with a $3/$3 creature")
+            // "Cryptic Command countering my spell and bouncing my creature": the modes, said by what they do.
+            .let { t0 -> Regex("""\b(they|he|she|my opponent|the opponent|@\w+) (casts?|plays?) ((?:an? |the |their )?c\d+) (countering|bouncing|tapping|drawing)( (?:my |their )?(?:spell|creature|c\d+|\d+/\d+|[a-z]+))?(?: and (countering|bouncing|tapping|drawing)( (?:my |their )?(?:spell|creature|c\d+|\d+/\d+|[a-z]+))?)?(?=,| and\b|$)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                fun mode(v: String) = when (v.lowercase()) { "countering" -> "counter"; "bouncing" -> "bounce"; "tapping" -> "tap"; else -> "draw" }
+                val modes = listOfNotNull(mode(r.groupValues[4]), r.groupValues[6].takeIf { it.isNotEmpty() }?.let { mode(it) })
+                val tg = listOf(r.groupValues[5], r.groupValues[7]).map { it.trim() }.filter { it.isNotEmpty() }
+                val setup = tg.mapNotNull { t -> when { t == "my spell" -> "i cast a spell, "; t == "my creature" -> "i have a creature, "; else -> null } }.joinToString("")
+                val targets = tg.map { t -> if (t == "my spell") "a spell" else t }
+                "$setup${r.groupValues[1]} ${r.groupValues[2]} ${r.groupValues[3]} choosing ${modes.joinToString(" and ")}${if (targets.isEmpty()) "" else " targeting " + targets.joinToString(" & ")}"
+            } }
+            // "can I target it with Bolt if I control Arcane Lighthouse": the condition is the board, read last so
+            // "it" is the creature asked about, not the Lighthouse.
+            .replace(Regex("""^can (i|we) target it with ((?:an? |the |my )?c\d+),? if ((?:i|we) (?:controls?|have) (?:an? |the )?c\d+)\??$""", RegexOption.IGNORE_CASE), "$3 and activate it, can $1 target that creature with $2")
             // "level up my Student of Warfare twice": the level up ability (702.87a), activated that many times.
             .replace(Regex("""\blevel(?:s|ed|ing)? up (?:my |their |the |his |her )?(c\d+)((?: (?:twice|once|three times|four times|\d+ times|two times))?)(?: in (?:one|a|the same|this) turn)?""", RegexOption.IGNORE_CASE), "activate $1's level up ability$2")
             // "remove two counters from Ballista to kill their 2/2": two activations of its remove-a-counter ability at that target.
@@ -2239,6 +2257,12 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("flip", player = actor ?: ctx.lastActor ?: "me", to = if (lost) "lose" else "win"); return true
         }
         // "they target me with Thoughtseize": the spell is cast at that player.
+        // "target that creature with Lightning Bolt" / "target their 2/2 with Bolt": the spell is cast at it.
+        Regex("""^(?:targets?|targeted|aims? at|points? at) (it|that|that creature|(?:my |their |his |her )?(?:creature|c\d+|\d+/\d+(?: [a-z]+)?)) with (?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->
+            val caster = actor ?: ctx.lastActor ?: "me"
+            val card = m.cards[r.groupValues[2]] ?: return@let
+            emitCast(caster, card, " targeting " + r.groupValues[1], m, ctx); return true
+        }
         Regex("""^(?:targets?|targeted|aims? at|points? at) (me|them|him|her|my opponent|the opponent|@\w+) with (?:an? |the |my |their )?(c\d+)$""").find(c)?.let { r ->
             val caster = actor ?: ctx.lastActor ?: "opp"
             val victim = when (val w = r.groupValues[1]) { "me" -> "me"; "them", "him", "her", "my opponent", "the opponent" -> pronounPlayer(ctx, w.substringAfterLast(' ')); else -> w.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } }
@@ -5023,6 +5047,11 @@ class SituationParser(private val names: NameIndex) {
                 describedCreatures("a ", q.groupValues[2], "creature", who, ctx)
         }
 
+        // "does the 4/4 deal damage to me?" / "do I take damage?": the outcome says what damage was dealt; never an attack.
+        Regex("""^(?:does|do|will|would) (?:the |their |my |his |her )?\d+/\d+(?: creature)? (?:still |even )?(?:deal|do|push|connect for)(?: any| its| combat| the)? ?(?:damage|combat damage)?(?: through)?(?: to (?:me|us|them|him|her|my opponent|the opponent|my face|their face|@\w+))?$""").find(clause0)?.let {
+            if (ctx.events.none { it.verb == "attack" || it.verb == "cast" || it.verb == "activate" }) return@let
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
         // "who dies?" / "who wins?" / "who loses?": every player's fate, one answer each.
         Regex("""^who (dies|loses|wins|survives|is dead|is alive|comes out ahead)(?: here| then| the game| now)?$""").find(clause0)?.let { q ->
             val to = when (q.groupValues[1]) { "wins", "comes out ahead" -> "playerWin"; "survives", "is alive" -> "playerSurvive"; else -> "playerDie" }
@@ -5503,6 +5532,18 @@ class SituationParser(private val names: NameIndex) {
             ?: Regex("""\b(?:targeting|aimed at)\s+(.+)$""").find(r)?.groupValues?.get(1)
             ?: return emptyList()
         val out = mutableListOf<String>()
+        // "targeting a spell" / "countering my spell": the spell last cast, on the stack.
+        Regex("""^(?:a |the |my |their |that |his |her )?spell$""").find(seg)?.let {
+            val cast = ctx.events.lastOrNull { it.verb == "cast" } ?: return@let
+            val name = cast.card?.name ?: ctx.objects[cast.obj ?: ""]?.card?.name ?: return@let
+            out += slug(name) + ":spell"; return out
+        }
+        // "target that creature": the creature last spoken of, whoever controls it.
+        Regex("""^that (?:creature|guy|dude|one)$""").find(seg)?.let {
+            val id = ctx.lastMentioned?.takeIf { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) }
+                ?: ctx.objects.values.lastOrNull { it.zone == "battlefield" && isCreatureName(it.card.name) }?.id ?: return@let
+            out += id; return out
+        }
         // "Path my commander" / "targeting their commander": the commander, whichever card it is.
         Regex("""^(my|their|his|her|my opponent's|the opponent's|@\w+'s) commander$""").find(seg)?.let { r ->
             val who = when (val w = r.groupValues[1]) { "my" -> "me"; "their", "his", "her", "my opponent's", "the opponent's" -> pronounPlayer(ctx, "their"); else -> w.removePrefix("@").removeSuffix("'s") }
@@ -5515,7 +5556,8 @@ class SituationParser(private val names: NameIndex) {
         }
         // "targeting Grizzly Bears & Hill Giant": a spell that divides its damage has more than one target.
         Regex("""^(.+?)\s*(?:&|,)\s*(.+)$""").find(seg)?.let { r ->
-            if (!Regex("""c\d+""").containsMatchIn(r.groupValues[1]) || !Regex("""c\d+""").containsMatchIn(r.groupValues[2])) return@let
+            val named = Regex("""c\d+|\d+/\d+|\ba spell\b|\b(?:my |their )?(?:creature|token|spell)\b""")
+            if (!named.containsMatchIn(r.groupValues[1]) || !named.containsMatchIn(r.groupValues[2])) return@let
             val a = targetsIn("targeting " + r.groupValues[1].trim(), m, ctx)
             val b = targetsIn("targeting " + r.groupValues[2].trim(), m, ctx)
             if (a.isNotEmpty() && b.isNotEmpty()) { out += a; out += b; return out }

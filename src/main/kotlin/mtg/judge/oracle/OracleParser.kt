@@ -722,6 +722,7 @@ object OracleParser {
         // "If it's not your turn, you may exile a blue card from your hand rather than pay this spell's mana cost"
         // (the Force cycle, Daze, Misdirection): the same thing said as an alternative cost rather than as none.
         if (Regex("""^(?:if [^,]+, )?you may .+? rather than pay (?:~'s|this spell's) mana cost\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.Note(line, listOf("118.9", "601.3")))
+        Regex("""^If you control a creature, damage that would reduce your life total to less than (\d+) reduces it to \1 instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.LifeFloorIfCreature(m.groupValues[1].toInt())) }
         Regex("""^(Combat )?damage that would be dealt by (creatures|sources) you control can't be prevented\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.DamageCantBePrevented(m.groupValues[1].isNotEmpty(), m.groupValues[2].equals("creatures", true))) }
         if (Regex("""^Each opponent can cast spells only any time they could cast a sorcery\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OpponentsSorcerySpeed)
         if (Regex("""^Players can cast spells only during their own turns\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.OwnTurnOnly)
@@ -1121,6 +1122,12 @@ object OracleParser {
         Regex("""^each mode must target a different (player|opponent|creature|permanent)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.Narrated(s.trim().trimEnd('.'), listOf("700.2c")) }
         // "You can't lose the game this turn and your opponents can't win the game this turn." (Angel's Grace)
         Regex("""^you can't lose the game(?: this turn)?(?: and your opponents can't win the game(?: this turn)?)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.CantLoseThisTurn }
+        // "Until end of turn, creatures your opponents control lose hexproof and indestructible and can't have hexproof or indestructible." (Arcane Lighthouse)
+        Regex("""^until end of turn, (creatures? (?:your opponents|an opponent) controls?|creatures?|each creature) loses? ([a-z ]+?)(?: and can't have [a-z ]+?)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            val kws = keywordsIn(m.groupValues[2].replace(" or ", " and ")) ?: return@let
+            val f = parseFilter(m.groupValues[1].replace("creatures", "creature"), Kind.CREATURE)
+            return Effect.LoseKeywordsAll(f, kws)
+        }
         // "Until end of turn, damage that would reduce your life total to less than 1 reduces it to 1 instead." (Angel's Grace)
         Regex("""^(?:until end of turn, )?damage that would reduce your life total to less than (\d+) reduces it to \1 instead\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.DamageLifeFloor(it.groupValues[1].toInt()) }
         // "Your opponents can't cast spells this turn." (Silence, Orim's Chant)

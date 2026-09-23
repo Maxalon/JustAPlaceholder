@@ -91,6 +91,8 @@ class GameObject(
 
     /** Until-end-of-turn keyword grants from resolved effects. */
     val tempKeywords = mutableSetOf<String>()
+    /** Keywords taken away until end of turn (Arcane Lighthouse): checked before anything that would grant them. */
+    val lostKeywords = mutableSetOf<String>()
     /** Monstrous: set by monstrosity and never unset while the permanent stays on the battlefield (701.31b). */
     var monstrous: Boolean = false
     /** Phased out (702.26b): still in the battlefield zone, but treated as though it doesn't exist until it phases in. */
@@ -381,6 +383,7 @@ class GameState(
 
     fun hasKeyword(obj: GameObject, keyword: String): Boolean {
         val k = keyword.lowercase()
+        if (k in obj.lostKeywords) return false
         val stripped = abilitiesLostOn(obj) != null
         if (!stripped && (obj.def.has(k) || k in obj.tempKeywords)) return true
         if (!stripped && levelBand(obj)?.keywords?.contains(k) == true) return true   // 702.87b: the band's abilities while it has that many level counters
