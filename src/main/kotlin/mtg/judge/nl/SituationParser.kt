@@ -898,6 +898,15 @@ class SituationParser(private val names: NameIndex) {
             // "a 2/2 Grizzly Bears": the size adds nothing the card doesn't say.
             .let { t0 -> Regex("""\b(an? |my |their |the )?(\d+/\d+) (c\d+)\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 if (m.cards[r.groupValues[3]]?.typeLine?.contains("Creature") == true) "${r.groupValues[1]}${r.groupValues[3]}" else r.value } }
+            // "My opponent plays a second land this turn": two land plays, the second refused by the rules.
+            .replace(Regex("""\b(plays?|played|drops?) (?:a |their |his |her |my )?(?:second|2nd) land(?: this turn| for the turn| in one turn)?\b""", RegexOption.IGNORE_CASE), "$1 a land and $1 a land")
+            // "Can I also cast Brainstorm this turn?" / "Can I cast Necropotence this turn?" with a ritual in hand: the
+            // ritual is cast first, since that is the only way the question makes sense.
+            .let { t0 -> Regex("""^can (i|we) (?:also |still |then |now |even )?cast ((?:an? |the |my )?c\d+)(?: this turn| too| as well| afterwards| after that| now| off (?:that|it|those))?\??$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                val rituals = setOf("Dark Ritual", "Cabal Ritual", "Seething Song", "Rite of Flame", "Desperate Ritual", "Pyretic Ritual", "Lotus Petal", "Simian Spirit Guide", "Elvish Spirit Guide", "Manamorphose", "Culling the Weak", "Burnt Offering", "Songs of the Damned")
+                val held = ctx.objects.values.lastOrNull { o -> o.zone == "hand" && o.controller == "me" && o.card.name in rituals }
+                if (held != null) { ctx.events += EventSpec("cast", player = "me", obj = held.id); ctx.lastActor = "me"; ctx.lastVerb = "cast"; ctx.notes += "${held.card.name} is in your hand; it's cast first, since the question only makes sense that way." }
+                "can ${r.groupValues[1]} cast ${r.groupValues[2]}" } }
             // "I Thoughtseize myself": a card used as a verb, aimed at the speaker.
             .let { t0 -> Regex("""^(i|we) (c\d+) (myself|ourselves)\??$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 if (m.cards[r.groupValues[2]]?.isSpellOnly == true) "${r.groupValues[1]} cast ${r.groupValues[2]} targeting myself" else r.value } }
@@ -1682,7 +1691,7 @@ class SituationParser(private val names: NameIndex) {
      */
     /** Mana a player is said to have. Said after they cast something, it is what they have from then on (a "manaNow" event). */
     private fun setMana(who: String, n: Int, ctx: Ctx) {
-        ctx.mana[who] = n; ctx.note(who); ctx.lastOwner = who; ctx.lastActor = who
+        ctx.mana[who] = n; ctx.note(who); ctx.lastOwner = who; ctx.lastActor = who; ctx.lastVerb = "have"
         if (ctx.events.any { it.verb == "cast" && it.player == who }) ctx.events += EventSpec("manaNow", player = who, amount = n)
     }
 
@@ -3030,7 +3039,7 @@ class SituationParser(private val names: NameIndex) {
             // this "it" took the last thing named — the Seer — and the answer sacrificed the outlet to itself.
             val outletId = r.groupValues[2].takeIf { cardRef.matches(it) }?.let { ph -> m.cards[ph]?.let { objectIdFor(it, ctx) } }
             // Only your own permanents can be sacrificed, so "it" is the actor's rather than the last one named.
-            val id = if (what == "it" || what == "itself") (ctx.lastMentioned?.takeIf { it in ctx.objects && it != outletId && ctx.objects.getValue(it).controller == who } ?: ctx.events.lastOrNull { it.verb == "cast" && it.player == who }?.card?.name?.let { slug(it) }?.takeIf { it != outletId } ?: ctx.events.lastOrNull { it.verb == "cast" || it.verb == "activate" }?.targets?.firstOrNull { it in ctx.objects && it != outletId && ctx.objects.getValue(it).controller == who } ?: ctx.objects.values.lastOrNull { it.controller == who && it.id != outletId }?.id ?: return@let)
+            val id = if (what == "it" || what == "itself") (ctx.lastMentioned?.takeIf { it in ctx.objects && it != outletId && ctx.objects.getValue(it).controller == who } ?: ctx.lastCastEntry?.takeIf { ctx.lastMentioned == "cast:" + slug(it.display) }?.let { castPermanentObject(ctx) } ?: ctx.events.lastOrNull { it.verb == "cast" && it.player == who }?.card?.name?.let { slug(it) }?.takeIf { it != outletId } ?: ctx.events.lastOrNull { it.verb == "cast" || it.verb == "activate" }?.targets?.firstOrNull { it in ctx.objects && it != outletId && ctx.objects.getValue(it).controller == who } ?: ctx.objects.values.lastOrNull { it.controller == who && it.id != outletId }?.id ?: return@let)
                      else if (Regex("""^\d+/\d+""").containsMatchIn(what)) {
                          // "sacrifice a 2/2": a creature nobody named, already on the battlefield or described now.
                          val pt = Regex("""^(\d+/\d+)""").find(what)!!.groupValues[1]
@@ -5066,6 +5075,14 @@ class SituationParser(private val names: NameIndex) {
             val who = subject ?: "me"
             val card = m.cards.getValue(r.groupValues[1])
             val id = objectIdFor(card, ctx) ?: addObject(card, who, false, ctx)
+            // "crack Arid Mesa for a Mountain" / "fetch a Plains with it": the land it finds, waiting in the library.
+            Regex("""\b(?:for|fetching|finding|getting|grabbing|to get|to fetch|to find) (?:an? |the )?(c\d+)\b""").find(r.groupValues[2])?.let { f ->
+                val found = m.cards.getValue(f.groupValues[1])
+                if (found.typeLine.contains("Land") && card.typeLine.contains("Land")) {
+                    val cardId = addObject(found, who, false, ctx, zone = "library", allowDuplicate = true)
+                    ctx.events += EventSpec("choose", player = who, obj = id, to = "put:$cardId")
+                }
+            }
             val xRe = Regex("""\b(?:with|for|where|at) x ?(?:=|equal to|equals|being|of|as) ?(\d+)\b|\bx ?= ?(\d+)\b""")
             val xValue = xRe.find(r.groupValues[2])?.let { x -> (x.groupValues[1].ifEmpty { x.groupValues[2] }).toIntOrNull() }
             // "activate it twice", "activate it three times": the ability is used that many times in a row.

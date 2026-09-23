@@ -105,7 +105,8 @@ class Engine(val state: GameState) {
                 trace.step("${(taxes.map { "${it.first.name} makes ${card.name} cost {${kotlin.math.abs(it.second.amount)}} ${if (it.second.amount < 0) "less" else "more"}" } + (if (commanderTax > 0) listOf("the commander tax adds {$commanderTax}") else emptyList())).joinToString(" and ")}: its total cost is ${card.manaCost ?: "?"} $change (${cost} mana in all).", "601.2f", "118.7")
             }
             if (tax > 0 && alternative && taxes.isNotEmpty()) state.outcomes += "${card.name} still costs {$tax} more (${taxes.joinToString(", ") { it.first.name }}): a cost increase applies to an alternative cost too (601.2f)."
-            player.mana?.let { avail -> if (cost > avail) { trace.step("${player.subject} ${player.v("has", "have")} only $avail mana available and ${card.name} costs $cost, so it can't be cast: the total cost can't be paid.", "601.2h", "601.2f"); state.outcomes += "${card.name} can't be cast (costs $cost, only $avail mana available)."; return null } else if (taxes.isNotEmpty() || commanderTax > 0) trace.step("${player.subject} ${player.v("has", "have")} $avail mana available, enough for the $cost.", "601.2h") }
+            // Mana stated as a count, or the untapped lands named ("I have 2 Islands"), less what earlier casts used.
+            (player.mana ?: availableMana(player)?.takeIf { landsOnly(player) })?.let { avail -> if (cost > avail) { trace.step("${player.subject} ${player.v("has", "have")} only $avail mana available and ${card.name} costs $cost, so it can't be cast: the total cost can't be paid.", "601.2h", "601.2f"); state.outcomes += "${card.name} can't be cast (costs $cost, only $avail mana available)."; return null } else if (taxes.isNotEmpty() || commanderTax > 0) trace.step("${player.subject} ${player.v("has", "have")} $avail mana available, enough for the $cost.", "601.2h") }
         }
         card.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CantCastBeforeTurn>().firstOrNull()?.let { c ->
             val t = state.turnNumber
@@ -2940,9 +2941,9 @@ class Engine(val state: GameState) {
                 // Everything leaves at once: abilities of permanents leaving simultaneously still see the others go (603.10a).
                 // "I have 4 lands and a Darksteel Citadel. Armageddon.": lands said only as a count are lands too.
                 if (effect.action == "destroy" && Kind.LAND in effect.filter.kinds && effect.filter.controller == null) for (p in state.players) {
+                    // "I have 4 lands and a Darksteel Citadel": the count is said alongside the named lands, not including them.
                     val counted = p.mana ?: continue
-                    val named = state.objects.values.count { it.isOnBattlefield() && it.controller == p.id && "Land" in it.def.types }
-                    if (counted > named) { val n = counted - named; trace.step("${p.subject} ${p.v("has", "have")} $n land${if (n == 1) "" else "s"} given only as a count; ${if (n == 1) "it is" else "they are"} destroyed too.", "701.8a"); state.outcomes += "${p.possessive.replaceFirstChar { it.uppercase() }} $n other land${if (n == 1) "" else "s"} ${if (n == 1) "is" else "are"} destroyed."; p.mana = 0 }
+                    if (counted > 0) { val n = counted; trace.step("${p.subject} ${p.v("has", "have")} $n land${if (n == 1) "" else "s"} given only as a count; ${if (n == 1) "it is" else "they are"} destroyed too.", "701.8a"); state.outcomes += "${p.possessive.replaceFirstChar { it.uppercase() }} $n other land${if (n == 1) "" else "s"} ${if (n == 1) "is" else "are"} destroyed."; p.mana = 0 }
                 }
                 if (effect.action in setOf("destroy", "exile", "bounce", "tuck") && affected.size > 1) { leavingTogether = affected.map { it.id }.toSet(); trace.step("All of them leave the battlefield simultaneously, so abilities that trigger on creatures dying or leaving look back and see every one of them.", "603.10a") }
                 try { for (o in affected) when (effect.action) {
@@ -3565,6 +3566,12 @@ class Engine(val state: GameState) {
     }
 
     /** What a player can pay with: the mana the situation states (or their untapped mana sources), plus what is floating in the pool. */
+    /** True when every mana source the player controls is a land: then the lands named are all the mana there is to count. */
+    private fun landsOnly(p: Player): Boolean {
+        val sources = state.objects.values.filter { it.isOnBattlefield() && it.controller == p.id && activatedAbilitiesOf(it).any { a -> isManaEffect(a.effect) } }
+        return sources.size >= 2 && sources.all { "Land" in it.def.types && "Basic" in it.def.supertypes }
+    }
+
     private fun availableMana(p: Player): Int? {
         val stated = p.mana
         val fromSources = if (stated != null) null else state.objects.values.filter { it.isOnBattlefield() && it.controller == p.id && it.tapped != true }.count { o ->

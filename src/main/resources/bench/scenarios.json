@@ -18456,5 +18456,94 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "lotus-petal-cast-and-sacrifice",
+    "text": "I cast Lotus Petal and sacrifice it. What mana do I get?",
+    "expect": [
+      "Lotus Petal enters the battlefield.",
+      "Lotus Petal's mana ability: add one mana of any color."
+    ],
+    "notExpect": [
+      "Not understood",
+      "can't be sacrificed"
+    ],
+    "cite": []
+  },
+  {
+    "id": "two-islands-counterspell-then-brainstorm",
+    "text": "I have 2 Islands and cast Counterspell. Can I also cast Brainstorm this turn?",
+    "expect": [
+      "a spell is countered.",
+      "Brainstorm can't be cast (costs 1, only 0 mana available)."
+    ],
+    "notExpect": [
+      "Not understood",
+      "You draw 3 cards."
+    ],
+    "cite": [
+      "601.2h"
+    ]
+  },
+  {
+    "id": "dark-ritual-in-hand-into-necropotence",
+    "text": "I have Dark Ritual and 1 Swamp. Can I cast Necropotence this turn?",
+    "expect": [
+      "You have {B}{B}{B} in your mana pool.",
+      "Necropotence enters the battlefield."
+    ],
+    "notExpect": [
+      "Not understood",
+      "Nothing changes"
+    ],
+    "cite": []
+  },
+  {
+    "id": "second-land-in-a-turn",
+    "text": "My opponent plays a second land this turn. Is that legal?",
+    "expect": [
+      "opponent can't play another land this turn."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "crack-arid-mesa-for-a-mountain",
+    "text": "I crack Arid Mesa for a Mountain. What do I lose?",
+    "expect": [
+      "Arid Mesa: the battlefield → your graveyard.",
+      "You pay 1 life.",
+      "Mountain enters the battlefield."
+    ],
+    "notExpect": [
+      "Not understood",
+      "which card?"
+    ],
+    "cite": []
+  },
+  {
+    "id": "mox-diamond-with-no-lands",
+    "text": "I have a Mox Diamond in hand and no lands. Can I play it?",
+    "expect": [
+      "Mox Diamond goes to the graveyard instead of entering (no land card to discard)."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
+  },
+  {
+    "id": "ancient-tomb-tap",
+    "text": "I tap Ancient Tomb for mana. What happens?",
+    "expect": [
+      "Ancient Tomb's mana ability: add {C}{C}, then it deals 2 damage to you.",
+      "You take 2 damage."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]
