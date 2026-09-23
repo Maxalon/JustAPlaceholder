@@ -424,7 +424,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     val p = state.player(e.player ?: throw JudgeException("ask needs a player"))
                     // After a Mana Drain the mana asked about is the delayed trigger's, added next main phase.
                     val drained = state.trace.steps.mapNotNull { st -> Regex("""That spell was (.+?), mana value (\d+)""").find(st.text) }.lastOrNull()
-                    if (drained != null && state.objects.values.none { it.isOnBattlefield() && it.controller == p.id && it.tapped != true && it.def.abilities.filterIsInstance<ActivatedAbility>().any { a -> engine.isManaEffect(a.effect) } }) {
+                    if (drained != null && state.objects.values.none { it.isOnBattlefield() && it.controller == p.id && it.tapped != true && engine.activatedAbilitiesOf(it).any { a -> engine.isManaEffect(a.effect) } }) {
                         state.outcomes += "${p.subject} ${p.v("adds", "add")} ${drained.groupValues[2]} colorless mana ({C} × ${drained.groupValues[2]}, ${drained.groupValues[1]}'s mana value) at the beginning of ${p.possessive.lowercase()} next main phase, from Mana Drain's delayed trigger; it's added then, not now, and lasts until that phase ends."; return
                     }
                     state.outcomes += engine.manaAvailable(p.id); return
@@ -632,8 +632,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         val p = state.player(e.player ?: "me"); state.outcomes += if (o.controller == p.id) "Yes: ${o.name} is under ${p.possessive} control." else "No: ${o.name} is under ${state.player(o.controller).possessive} control${o.controlRevertsTo?.let { r -> " until end of turn (it goes back to ${state.player(r).possessive} at cleanup)" } ?: ""}." }
                     "mana" -> state.outcomes += engine.manaOptions(o.id)
                     "activate" -> {
-                        val tapAbilities = o.def.abilities.filterIsInstance<mtg.judge.engine.ActivatedAbility>().filter { it.cost.contains("{T}") }
-                        val any = o.def.abilities.filterIsInstance<mtg.judge.engine.ActivatedAbility>()
+                        val tapAbilities = engine.activatedAbilitiesOf(o).filter { it.cost.contains("{T}") }
+                        val any = engine.activatedAbilitiesOf(o)
                         val lock = engine.activationLock(o)
                         state.outcomes += when {
                             !o.isOnBattlefield() -> "No: ${o.name} isn\'t on the battlefield, so its abilities can\'t be activated."

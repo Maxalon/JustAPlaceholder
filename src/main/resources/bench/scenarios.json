@@ -18253,5 +18253,40 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "cryptolith-rite-pacified-creature-still-taps",
+    "text": "My opponent enchants my Bears with Pacifism. Can I still tap it for Cryptolith Rite?",
+    "expect": [
+      "Yes, if it has been under your control since the turn began; a {T} ability of a creature needs that or haste (302.6)."
+    ],
+    "notExpect": [
+      "Not understood",
+      "has no activated abilities"
+    ],
+    "cite": []
+  },
+  {
+    "id": "cryptolith-rite-summoning-sick",
+    "text": "I control Cryptolith Rite and Grizzly Bears that I just cast. Can Bears tap for mana?",
+    "expect": [
+      "No: Grizzly Bears came under your control this turn and doesn't have haste, so its {T} ability can't be activated yet (302.6)."
+    ],
+    "notExpect": [
+      "Not understood",
+      "you cast Grizzly Bears targeting"
+    ],
+    "cite": []
+  },
+  {
+    "id": "cryptolith-rite-two-bears-mana",
+    "text": "I control Cryptolith Rite and two Grizzly Bears. How much mana do I have?",
+    "expect": [
+      "You can make 2 mana right now: Grizzly Bears → one mana of any color; Grizzly Bears → one mana of any color."
+    ],
+    "notExpect": [
+      "Not understood"
+    ],
+    "cite": []
   }
 ]

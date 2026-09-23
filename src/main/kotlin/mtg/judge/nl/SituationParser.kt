@@ -540,6 +540,7 @@ class SituationParser(private val names: NameIndex) {
         // "my opponent is at seven life" and "I control six Grizzly Bears" went unread. "One" is left alone: it
         // is a word in its own right ("blocks one of them", "choose one").
         val t0 = wordCounts.replace(m.text.replace(Regex("""\s+"""), " ").trim()) { r -> numberWords.getValue(r.value.lowercase()).toString() }
+        if (System.getenv("MTG_DEBUG_CLAUSE") != null) System.err.println("sentence: [$t0]")
         if (t0.isEmpty()) return true
         var any = false
 
@@ -881,6 +882,13 @@ class SituationParser(private val names: NameIndex) {
             // "My opponent has Tamiyo's Safekeeping on their creature": an instant on a creature is one they cast at it.
             .let { t0 -> Regex("""\b(i|we|they|he|she|my opponent|the opponent) (?:has|have|got) ((?:an? |the )?c\d+) on ((?:my |their |his |her |the )?(?:creature|c\d+|\d+/\d+))""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 if (m.cards[Regex("""c\d+""").find(r.groupValues[2])!!.value]?.isSpellOnly == true) "${r.groupValues[1]} cast ${r.groupValues[2]} on ${r.groupValues[3]}" else r.value } }
+            // "Can I still tap it for Cryptolith Rite?": tapping for the mana ability a permanent gives.
+            .let { t0 -> Regex("""^(can (?:i|we) (?:still |even )?)?tap (it|that|(?:my |the )?c\d+|(?:my |the )?\d+/\d+) for ((?:my |the )?c\d+)\??$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                val giver = m.cards[Regex("""c\d+""").find(r.groupValues[3])!!.value]
+                // The giver is put on the board here rather than in words, so "it" still means the creature spoken of.
+                if (giver != null && !giver.isSpellOnly && !giver.typeLine.contains("Land")) { if (objectIdFor(giver, ctx) == null) { val lm = ctx.lastMentioned; addObject(giver, "me", false, ctx); ctx.lastMentioned = lm }; "can ${r.groupValues[2]} tap for mana" } else r.value } }
+            // "Grizzly Bears that I just cast": it came down this turn (summoning sick), not a cast at something.
+            .replace(Regex("""\b(c\d+) (?:that|which) ((?:i|we|they|he|she) just (?:cast|played)(?: this turn)?)\b""", RegexOption.IGNORE_CASE), "$1 $2")
             // "I Thoughtseize myself": a card used as a verb, aimed at the speaker.
             .let { t0 -> Regex("""^(i|we) (c\d+) (myself|ourselves)\??$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 if (m.cards[r.groupValues[2]]?.isSpellOnly == true) "${r.groupValues[1]} cast ${r.groupValues[2]} targeting myself" else r.value } }
@@ -5923,7 +5931,9 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:can|could|may|is it able to) (?:it|that|(?:my |their |his |her |the |@\w+'s )?(c\d+)) (?:still |even )?(?:tap for mana|tap for it|make mana|produce mana|add mana|be tapped for mana)(?: now| yet| this turn| already)?$""").find(clause0)?.let { q ->
             val ph = q.groupValues[1]
             val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
-                     else ctx.lastMentioned?.takeIf { it in ctx.objects } ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.card?.name?.let { slug(it) } ?: return@let
+                     // "Pacifism on my Bears. Can I still tap it for mana?": an Aura's "it" is the creature it sits on.
+                     else ctx.lastMentioned?.takeIf { it in ctx.objects }?.let { lm -> ctx.objects.getValue(lm).attachedTo?.takeIf { h -> h in ctx.objects && names.lookup(Names.normalize(ctx.objects.getValue(lm).card.name ?: ""))?.typeLine?.contains("Aura") == true } ?: lm }
+                         ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.let { e -> if (names.lookup(Names.normalize(e.card!!.name!!))?.typeLine?.contains("Aura") == true) e.targets.firstOrNull { it in ctx.objects } else slug(e.card.name!!) } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, to = "activate"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "is it a 3/3 now?": the creature's size, asked as a yes/no. Without this the clause read as the

@@ -538,7 +538,7 @@ class Engine(val state: GameState) {
 
     private fun activate0(playerId: String, objectId: String, abilityIndex: Int?, targets: List<Ref>, choice: String? = null, x: Int? = null): StackItem? {
         val obj = state.obj(objectId)
-        val abilities = obj.def.abilities.filterIsInstance<ActivatedAbility>()
+        val abilities = activatedAbilitiesOf(obj)
         if ("Land" in obj.def.types && "Basic" !in obj.def.supertypes) state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.NonbasicLandsAreMountains } }?.let { moon ->
             val p = state.player(playerId)
             if (state.trace.steps.none { it.text.startsWith("${moon.name} makes ${obj.name} a Mountain") })
@@ -1855,6 +1855,17 @@ class Engine(val state: GameState) {
     }
 
     /** Kira, Great Glass-Spinner: triggered abilities a permanent has because a static grants them to what it is (613.1f). */
+    /** The activated abilities a permanent has: its own, plus any granted to it (Cryptolith Rite) while it is on the battlefield. */
+    fun activatedAbilitiesOf(obj: GameObject): List<ActivatedAbility> {
+        val own = obj.def.abilities.filterIsInstance<ActivatedAbility>()
+        if (!obj.isOnBattlefield() || state.abilitiesLostOn(obj) != null) return own
+        return own + state.objects.values.filter { it.isOnBattlefield() && state.abilitiesLostOn(it) == null }.flatMap { src ->
+            src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.GrantActivated>()
+                .filter { g -> state.matches(g.filter, obj, src.controller, src) }
+                .map { g -> g.ability.copy(text = "${g.ability.text} (from ${src.name})") }
+        }
+    }
+
     private fun grantedTriggers(obj: GameObject): List<TriggeredAbility> {
         if (!obj.isOnBattlefield()) return emptyList()
         return state.objects.values.filter { it.isOnBattlefield() && state.abilitiesLostOn(it) == null }.flatMap { src ->
@@ -3579,7 +3590,7 @@ class Engine(val state: GameState) {
         val p = state.player(playerId)
         val sources = state.objects.values.filter { it.isOnBattlefield() && it.controller == playerId && it.tapped != true }
             .mapNotNull { o ->
-                val a = o.def.abilities.filterIsInstance<ActivatedAbility>().firstOrNull { ab -> isManaEffect(ab.effect) } ?: return@mapNotNull null
+                val a = activatedAbilitiesOf(o).firstOrNull { ab -> isManaEffect(ab.effect) } ?: return@mapNotNull null
                 if (a.cost.contains("{T}") && o.def.isCreature && o.summoningSick == true && !state.hasKeyword(o, "haste")) return@mapNotNull Triple(o, "summoning sick, so it can't be tapped for mana yet", null as Int?)
                 val moon = state.objects.values.firstOrNull { m -> m.isOnBattlefield() && m.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.NonbasicLandsAreMountains } }
                 if (moon != null && "Land" in o.def.types && "Basic" !in o.def.supertypes) return@mapNotNull Triple(o, "{R} (it's a Mountain under ${moon.name})", 1)
@@ -3613,7 +3624,7 @@ class Engine(val state: GameState) {
         val o = state.obj(objectId)
         val moon = state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { e -> e.effects }.any { e -> e is StaticEffect.NonbasicLandsAreMountains } }
         if (moon != null && "Land" in o.def.types && "Basic" !in o.def.supertypes) return "${o.name} is a Mountain under ${moon.name}, so it taps for {R} and nothing else."
-        val mana = o.def.abilities.filterIsInstance<ActivatedAbility>().filter { a -> isManaEffect(a.effect) }
+        val mana = activatedAbilitiesOf(o).filter { a -> isManaEffect(a.effect) }
         if (mana.isEmpty()) return "${o.name} has no mana ability the engine recognises."
         // "Add {B} for each Swamp you control" is more useful with the count worked out for the board described.
         return "${o.name} can make: " + mana.joinToString("; ") { a ->

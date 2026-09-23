@@ -751,6 +751,8 @@ object OracleParser {
         Regex("""^((?:creatures|artifacts|lands|permanents|enchantments)(?: you control)?) have "(.+)"\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val inner = parseTriggered(m.groupValues[2].trimEnd('.').replace("this creature", "~").replace("this permanent", "~"))
             if (inner is TriggeredAbility) return listOf(StaticEffect.GrantTriggered(parseFilter(m.groupValues[1].lowercase().replace(Regex("""s(?= you control|$)"""), ""), Kind.PERMANENT), inner))
+            // Cryptolith Rite: the quoted text is an activated ability.
+            if (m.groupValues[2].contains(':')) { val act = parseActivated(m.groupValues[2].trimEnd('.').replace("this creature", "~").replace("this permanent", "~")); if (act is ActivatedAbility) return listOf(StaticEffect.GrantActivated(parseFilter(m.groupValues[1].lowercase().replace(Regex("""s(?= you control|$)"""), ""), Kind.PERMANENT), act)) }
         }
         if (Regex("""^Spells and abilities your opponents control can't cause you to sacrifice permanents\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.CantBeMadeToSacrifice)
         if (Regex("""^All permanents are artifacts in addition to their other types\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.AllPermanentsAreArtifacts)

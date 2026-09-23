@@ -531,6 +531,8 @@ sealed interface StaticEffect {
     data class LifeFloorIfCreature(val floor: Int) : StaticEffect
     /** Kira, Great Glass-Spinner: creatures you control have "<a triggered ability>". */
     data class GrantTriggered(val filter: ObjFilter, val ability: TriggeredAbility) : StaticEffect
+    /** Cryptolith Rite: "Creatures you control have "{T}: Add one mana of any color."" — an activated ability given to what fits. */
+    data class GrantActivated(val filter: ObjFilter, val ability: ActivatedAbility) : StaticEffect
     /** Mox Diamond: "If ~ would enter, you may discard a land card instead. If you do, put ~ onto the battlefield. If you don't, put it into its owner's graveyard." */
     data class EntersUnlessDiscard(val filter: ObjFilter) : StaticEffect
     /** Sigarda, Host of Herons: "Spells and abilities your opponents control can't cause you to sacrifice permanents." */
