@@ -104,6 +104,11 @@ class Engine(val state: GameState) {
             taxes.filter { it.second.perOtherSpellThisTurn }.forEach { (o, t) -> trace.step("${o.name}: ${player.subject.lowercase()} ${player.v("has", "have")} cast $earlier other spell${if (earlier == 1) "" else "s"} this turn, so ${card.name} costs {${t.amount * earlier}} more.", "601.2f") }
             val tax = taxes.sumOf { if (it.second.perOtherSpellThisTurn) it.second.amount * earlier else it.second.amount } + commanderTax
             var cost = card.manaValue.toInt() + (x ?: 0) * maxOf(0, Regex("""\{X\}""").findAll(card.manaCost ?: "").count() - 1) + tax
+            // Kicked: the kicker cost is an additional cost paid with the spell (702.33b).
+            if (kicked) Regex("""(?i)\bkicker\s+((?:\{[^}]+\})+)""").find(card.oracleText)?.let { k ->
+                val kmv = Regex("""\{([^}]+)\}""").findAll(k.groupValues[1]).sumOf { s -> s.groupValues[1].toIntOrNull() ?: if (s.groupValues[1].equals("X", true)) (x ?: 0) else 1 }
+                cost += kmv; trace.step("${card.name} is kicked, so its kicker cost ${k.groupValues[1]} is paid as an additional cost: {${cost}} in all.", "702.33b", "601.2f")
+            }
             // Trinisphere: a spell that would cost less than three costs three.
             costFloor(cost)?.let { (o, f) -> trace.step("${o.name} is untapped and says each spell that would cost less than ${f.amount} mana costs ${f.amount} mana, so ${card.name} costs {${f.amount}} in all (the extra is generic).", "601.2f", "118.7"); state.outcomes += "${card.name} costs ${f.amount} mana in all (${o.name}: a spell that would cost less than ${f.amount} costs ${f.amount})."; cost = f.amount }
             if (taxes.isNotEmpty() || commanderTax > 0) {
@@ -647,6 +652,16 @@ class Engine(val state: GameState) {
             if (left == 0) onEvent(GameEvent.CountersGone(obj, kind))
             trace.step("${p.subject} ${p.v("removes", "remove")} $n $kind counter${if (n == 1) "" else "s"} from ${obj.name} as the cost ($left left${if (obj.def.isCreature && obj.isOnBattlefield()) "; it's now ${obj.power}/${obj.toughness}" else ""}). A cost is paid as the ability is activated, so the counter is gone before the ability resolves.", "602.2b", "122.5")
             state.outcomes += "${obj.name}: $n $kind counter${if (n == 1) "" else "s"} removed as the cost ($left left)."
+        }
+        // "Crew 1" paid with a named creature: it taps, and its power has to cover the crew number.
+        choice?.takeIf { it.startsWith("crew:") }?.removePrefix("crew:")?.let { cid -> state.objects[cid] }?.let { crew ->
+            val n = Regex("""(?i)\bcrew (\d+)""").find(ability.cost)?.groupValues?.get(1)?.toIntOrNull() ?: 1
+            val p = state.player(playerId)
+            if (crew.tapped == true) { trace.step("${crew.name} is already tapped, so it can't be tapped to crew ${obj.name}.", "702.122a"); state.outcomes += "${obj.name} can't be crewed with ${crew.name} (already tapped)."; return null }
+            if ((crew.power ?: 0) < n) { trace.step("${crew.name} has power ${crew.power ?: 0}, less than the crew number $n, so on its own it can't crew ${obj.name}.", "702.122a"); state.outcomes += "${obj.name} can't be crewed by ${crew.name} alone (power ${crew.power ?: 0} < crew $n)."; return null }
+            crew.tapped = true
+            trace.step("${p.subject} ${p.v("taps", "tap")} ${crew.name} (power ${crew.power}) to pay ${obj.name}'s crew $n cost. A tapped creature is out of attacking and blocking for the turn, and since crewing isn't a {T} ability a summoning-sick creature may crew.", "702.122a", "302.6")
+            state.outcomes += "${crew.name} is tapped (it crewed ${obj.name})."
         }
         (ability.loyaltyCost ?: if (ability.loyaltyCostIsX) -(x ?: 0) else null)?.let { lc ->
             if (ability.loyaltyCostIsX) trace.step("X is ${x ?: 0}, so the −X costs ${x ?: 0} loyalty.", "107.3a", "606.4")

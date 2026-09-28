@@ -409,7 +409,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     ?: e.to?.takeIf { it == "animate" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> Regex("""\bbecomes? an? .*\bcreature\b""", RegexOption.IGNORE_CASE).containsMatchIn(a.text) }.takeIf { it >= 0 } }
                     ?: e.to?.let { cost -> obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { it.cost.replace('\u2212', '-') == cost.replace('\u2212', '-') }.takeIf { it >= 0 } }
                     ?: minusX?.first
-                engine.activate(e.player ?: obj.controller, objId, idx, targets, choice = e.to?.takeIf { it.startsWith("color:") || it.startsWith("put:") }?.substringAfter(':') ?: e.to?.takeIf { it.startsWith("sacrifice:") }, x = e.amount ?: minusX?.second)
+                engine.activate(e.player ?: obj.controller, objId, idx, targets, choice = e.to?.takeIf { it.startsWith("color:") || it.startsWith("put:") }?.substringAfter(':') ?: e.to?.takeIf { it.startsWith("sacrifice:") || it.startsWith("crew:") }, x = e.amount ?: minusX?.second)
             }
             "trigger" -> engine.assertTrigger(e.obj ?: throw JudgeException("trigger needs an object"), e.abilityIndex, targets)
             "choose" -> { val objId = e.obj ?: throw JudgeException("choose needs an object"); state.pendingChoices[objId] = e.to?.substringAfter(':') ?: throw JudgeException("choose needs a choice") }
@@ -682,8 +682,10 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         val tapAbilities = engine.activatedAbilitiesOf(o).filter { it.cost.contains("{T}") }
                         val any = engine.activatedAbilitiesOf(o)
                         val lock = engine.activationLock(o)
+                        val moon = state.objects.values.firstOrNull { it.isOnBattlefield() && it.def.abilities.filterIsInstance<mtg.judge.engine.StaticAbility>().flatMap { a -> a.effects }.any { x -> x is mtg.judge.engine.StaticEffect.NonbasicLandsAreMountains } }
                         state.outcomes += when {
                             !o.isOnBattlefield() -> "No: ${o.name} isn\'t on the battlefield, so its abilities can\'t be activated."
+                            moon != null && o.isOnBattlefield() && "Land" in o.def.types && "Basic" !in o.def.supertypes -> "No: ${moon.name} makes ${o.name} a Mountain with none of its own abilities; it has only \"{T}: Add {R}\", so it taps for one red mana and nothing else (305.7, 613.1d)."
                             lock != null && any.isNotEmpty() -> "No: ${lock.name} says ${o.name}\'s activated abilities can\'t be activated${if (lock.def.oracleText.contains("mana abilit", true)) " (mana abilities excepted, as it says)" else ""}."
                             any.isEmpty() -> "${o.name} has no activated abilities."
                             o.tapped == true && tapAbilities.isNotEmpty() && tapAbilities.size == any.size -> "No: ${o.name} is already tapped, and every one of its abilities costs {T}."
@@ -763,7 +765,12 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             // of yours were described rather than that the one you cast is summoning sick.
             "attackall" -> { val who = e.player ?: state.players.first().id; engine.emptyStackFirst("declaring attackers"); val def = targets.firstOrNull() ?: Ref.Player(state.opponentsOf(who).firstOrNull()?.id ?: throw JudgeException("no defending player")); val cs = state.objects.values.filter { it.controller == who && it.isOnBattlefield() && it.def.isCreature }; if (cs.isEmpty()) state.unsupported += mtg.judge.engine.Unsupported("attack", "${state.player(who).subject} said to attack with everything, but no creatures of ${if (state.player(who).you) "yours" else state.player(who).possessive} were described."); cs.forEach { engine.declareAttacker(who, it.id, def) } }
             "combatdamage" -> engine.combatDamage()
-            "step", "beginstep" -> engine.beginStep((e.to ?: "upkeep").lowercase(), e.player ?: state.activePlayer ?: state.players.first().id)
+            "step", "beginstep" -> {
+                // "they attack with a 2/2, then next turn …": the attack's combat damage is dealt before the turn moves on.
+                val st = (e.to ?: "upkeep").lowercase()
+                if (st in setOf("cleanup", "end", "untap", "upkeep", "draw", "main2", "second main", "end step") && state.step != "combat_damage" && state.objects.values.any { it.isOnBattlefield() && it.attacking != null }) { engine.resolveAll(); engine.combatDamage() }
+                engine.beginStep(st, e.player ?: state.activePlayer ?: state.players.first().id)
+            }
             else -> throw JudgeException("Unknown event verb '${e.verb}'")
         }
     }

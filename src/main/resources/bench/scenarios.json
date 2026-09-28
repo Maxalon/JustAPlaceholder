@@ -19043,5 +19043,86 @@
     "cite": [
       "701.21a"
     ]
+  },
+  {
+    "id": "crew-then-can-the-creature-block",
+    "text": "i crew smuggler's copter with my 1/1, can the 1/1 still block",
+    "expect": [
+      "a 1/1 creature is tapped (it crewed Smuggler's Copter).",
+      "a 1/1 creature can't block (tapped)."
+    ],
+    "cite": [
+      "702.122a"
+    ]
+  },
+  {
+    "id": "doom-blade-on-black-creature-legal",
+    "text": "they cast doom blade on my black creature, is that legal",
+    "expect": [
+      "Doom Blade can't target a black creature (not a nonblack creature)."
+    ]
+  },
+  {
+    "id": "kick-rite-of-replication-with-7-lands",
+    "text": "can i kick rite of replication with 7 lands",
+    "expect": [
+      "Rite of Replication can't be cast (costs 9, only 7 mana available)."
+    ],
+    "cite": [
+      "702.33b"
+    ]
+  },
+  {
+    "id": "fetchland-landfall-bloodghast",
+    "text": "if i sac my fetchland with bloodghast in my graveyard does it come back",
+    "expect": [
+      "Bloodghast: your graveyard → the battlefield."
+    ]
+  },
+  {
+    "id": "crewed-copter-blocked-by-2-2",
+    "text": "they attack with a crewed smuggler's copter, i block with my 2/2, what dies",
+    "expect": [
+      "a 2/2 creature can't block Smuggler's Copter (flying)."
+    ]
+  },
+  {
+    "id": "infect-twice-poison-count",
+    "text": "i have 3 poison, they hit me with a 2/2 infect twice, am i dead",
+    "expect": [
+      "You have 7 poison counters.",
+      "No: You are still in the game."
+    ]
+  },
+  {
+    "id": "batterskull-equipped-1-1-bolted",
+    "text": "i equip batterskull to my 1/1 and they bolt it, does it die",
+    "expect": [
+      "No: a 1/1 creature is still on the battlefield."
+    ],
+    "notExpect": [
+      "all targets illegal"
+    ]
+  },
+  {
+    "id": "ensnaring-bridge-stops-2-2",
+    "text": "does their ensnaring bridge stop my 2/2 if they have 1 card in hand",
+    "expect": [
+      "a 2/2 creature can't attack (Ensnaring Bridge)."
+    ]
+  },
+  {
+    "id": "blood-moon-urzas-tower-tap-for-3",
+    "text": "they play blood moon, can my urza's tower still tap for 3",
+    "expect": [
+      "No: Blood Moon makes Urza's Tower a Mountain with none of its own abilities; it has only \"{T}: Add {R}\", so it taps for one red mana and nothing else (305.7, 613.1d)."
+    ]
+  },
+  {
+    "id": "chalice-on-3-cast-3-mana-spell",
+    "text": "i have 2 cards in hand and cast a 3 mana spell into their chalice on 3",
+    "expect": [
+      "a 3 mana spell is countered."
+    ]
   }
 ]
