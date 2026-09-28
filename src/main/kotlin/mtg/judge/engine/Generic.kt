@@ -49,6 +49,7 @@ object Generic {
         // "I have 2 permanents": what they are doesn't matter to the question (Torment of Hailfire counts them).
         if (n in setOf("permanent", "a permanent", "nonland permanent", "a nonland permanent")) return OracleParser.parse("generic-permanent", "a permanent", "Artifact", "{1}", 1.0, "", null, null, emptyList(), "")
         if (n in setOf("equipment", "equipment card")) return OracleParser.parse("generic-equipment", "an Equipment", "Artifact — Equipment", "{2}", 2.0, "", null, null, emptyList(), "")
+        if (n in setOf("nonbasic land", "a nonbasic land", "non-basic land", "a non-basic land")) return OracleParser.parse("generic-nonbasic-land", "a nonbasic land", "Land", null, 0.0, "", null, null, emptyList(), "{T}: Add one mana of any color.")
         if (n in setOf("basic land", "land", "a basic land", "basic land card")) return OracleParser.parse("generic-basic-land", "a basic land", if (n.contains("basic")) "Basic Land" else "Land", null, 0.0, "", null, null, emptyList(), "{T}: Add one mana of any color.")
         val typeLine = when (n) {
             "spell", "instant", "instant spell", "noncreature spell" -> "Instant"

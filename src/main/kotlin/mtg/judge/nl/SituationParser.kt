@@ -365,7 +365,7 @@ class SituationParser(private val names: NameIndex) {
     private fun playALand(who: String, n: Int, ctx: Ctx) {
         repeat(n) {
             var id = slug("a land"); var k = 2; while (ctx.objects.containsKey(id)) id = slug("a land") + "_" + (k++)
-            ctx.objects[id] = ObjectSpec(id, CardRef(name = "a basic land"), controller = who, zone = "hand")
+            ctx.objects[id] = ObjectSpec(id, CardRef(name = if (Regex("""\bnon-?basic\b""").containsMatchIn(currentMarked?.text ?: "") || currentMarked?.cards?.values?.any { it.display == "Wasteland" } == true) "a nonbasic land" else "a basic land"), controller = who, zone = "hand")
             ctx.events += EventSpec("playLand", player = who, obj = id); ctx.lastMentioned = id
         }
         ctx.lastActor = who; ctx.lastOwner = who; ctx.lastVerb = "playLand"; ctx.note(who)
@@ -1006,6 +1006,27 @@ class SituationParser(private val names: NameIndex) {
             // "their Chalice has 3 counters": Chalice's counters are charge counters.
             .let { t0 -> Regex("""\b(c\d+) (has|with|on) (\d+) counters\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 if (m.cards[r.groupValues[1]]?.display == "Chalice of the Void") "${r.groupValues[1]} ${r.groupValues[2]} ${r.groupValues[3]} charge counters" else r.value } }
+            // "can I still Bolt in response to their spell?": their spell is cast, and the Bolt is the response.
+            .let { t0 -> Regex("""\bcan (i|we) (?:still |even )?(c\d+) in response to (?:their|a|my opponent's|his|her) spell\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                if (m.cards[r.groupValues[2]]?.isSpellOnly == true) "my opponent casts a spell, ${r.groupValues[1]} cast ${r.groupValues[2]} in response, can ${r.groupValues[1]}" else r.value } }
+            // "I have Craterhoof and 5 other creatures, is that lethal?": the Hoof is cast into that board and everything attacks.
+            .let { t0 -> Regex("""\b(i|we) have ((?:an? |my )?c\d+) and (\d+) other (?:creatures|guys|dudes|bodies)\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                val card = m.cards[Regex("""c\d+""").find(r.groupValues[2])!!.value]
+                if (card?.display == "Craterhoof Behemoth") "i have ${r.groupValues[3]} creatures, i cast ${r.groupValues[2]} and attack with everything"
+                else if (card?.typeLine?.contains("Creature") == true) "i have ${r.groupValues[3]} creatures and ${r.groupValues[2]}, i attack with everything" else r.value } }
+            .replace(Regex("""(?<=, )(?:is that lethal|is it lethal|is that game|is that gg|lethal)\??$""", RegexOption.IGNORE_CASE), "do they die")
+            // "do I gain life if I block?": the block, then the life question.
+            .replace(Regex("""\bdo (i|we) gain (?:any |the )?life if (?:i|we) block(?: with it| it)?\??$""", RegexOption.IGNORE_CASE), "i block with it, how much life do i gain")
+            // "my Delver flips": a double-faced card transforming.
+            .let { t0 -> Regex("""\b((?:my |their |his |her )?(c\d+)) flips\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                if (m.cards[r.groupValues[2]]?.typeLine?.contains("Creature") == true) "${r.groupValues[1]} transforms" else r.value } }
+            // "can I still cast my 3 drop?": a spell of that cost is cast, and the question is whether it can be.
+            .let { t0 -> Regex("""\bcan (i|we) (?:still |even )?cast (?:my |a |an |the )?(\d+)[- ](?:mana )?(creature|spell|instant|sorcery|drop)\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                "i cast a ${r.groupValues[2]} mana ${if (r.groupValues[3].lowercase() == "drop") "creature" else r.groupValues[3]}, can ${r.groupValues[1]}" } }
+            // "I have another Bolt, can I Bolt the Counterspell": the second copy is the one cast next; saying so adds nothing.
+            .let { t0 -> Regex("""\b(?:i|we) have another (c\d+),\s*(?=can (?:i|we) )""", RegexOption.IGNORE_CASE).replace(t0) { r -> if (m.cards[r.groupValues[1]]?.isSpellOnly == true) "" else r.value } }
+            // "I have 1 card" beside a discard spell: cards in hand.
+            .replace(Regex("""\b(i|we|they|he|she|my opponent|the opponent) (have|has) (\d+) (cards?)(?=[,.?]|$)""", RegexOption.IGNORE_CASE), "$1 $2 $3 $4 in hand")
             // "can my Urza's Tower still tap for 3?": whether it taps for mana at all is the question the outcome answers.
             .replace(Regex("""\btap for (\d+|two|three|four|five)( mana)?\b""", RegexOption.IGNORE_CASE), "tap for mana")
             // "Then the turn ends." / "At the end of the turn, …": until-end-of-turn effects end in the cleanup step (514.2).
@@ -1041,7 +1062,7 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\bpro[- ]?(red|white|blue|black|green) (\d+/\d+|creature|guy|dude|blocker|attacker)\b""", RegexOption.IGNORE_CASE), "$2 with protection from $1")
             .replace(Regex("""\b(\d+/\d+|creature|guy|dude) (?:with )?pro[- ]?(red|white|blue|black|green)\b""", RegexOption.IGNORE_CASE), "$1 with protection from $2")
             // "they block my deathtouch 1/1 with a 5/5": the attack is the asker's, and the block is theirs.
-            .replace(Regex("""\b(they|he|she|my opponent|the opponent) (?:chump[- ]?)?blocks? my ((?:[a-z]+ )?\d+/\d+(?: (?:with|that has) [a-z ]+?)?) with (?:a |an |their |his |her )?(\d+/\d+(?: [a-z]+)*|[a-z]+ ?\d+/\d+|creature|[a-z]+ creature)\b""", RegexOption.IGNORE_CASE), "i attack with a $2, $1 block with a $3")
+            .replace(Regex("""\b(they|he|she|my opponent|the opponent) (?:chump[- ]?)?blocks? my ((?:[a-z]+ )?\d+/\d+(?: $kwNouns)?(?: (?:with|that has) [a-z ]+?)?) with (?:a |an |their |his |her )?(\d+/\d+(?: [a-z]+)*|[a-z]+ ?\d+/\d+|creature|[a-z]+ creature)\b""", RegexOption.IGNORE_CASE), "i attack with a $2, $1 block with a $3")
             // "can Doom Blade target a black creature": the spell is cast at one and the engine says whether it can.
             .replace(Regex("""^can (c\d+) (?:target|hit|kill|destroy|exile|bounce|be cast on|be used on) (?:a |an |their |my opponent's )([a-z0-9/ ]+?)(?: creature)?\s*\??$""", RegexOption.IGNORE_CASE), "they have a $2 creature, i cast $1 on it")
             // "can I block a pro-green creature with my green creature": their attack, and the asker's block.
@@ -1818,6 +1839,26 @@ class SituationParser(private val names: NameIndex) {
             ctx.asks += EventSpec("ask", to = "text:No. The redirection rule, which let noncombat damage that would be dealt to a player be dealt to one of their planeswalkers instead, has been removed (306.7). Lightning Bolt now says \"any target\", so you choose the planeswalker as the target when you cast it (115.4); a Bolt already aimed at the player can't be moved to the planeswalker afterwards.")
             return true
         }
+        // "do I get the mana first?" when a land is about to be destroyed: tapping it is a mana ability.
+        Regex("""^(?:do|can|could) (?:i|we) (?:still )?(?:get|make|float|use|tap (?:it|the land|my land) for) the mana(?: first| in response| before it dies| before it's destroyed| before it is destroyed| off it| out of it)?$""").find(clause0)?.let {
+            ctx.asks += EventSpec("ask", to = "text:Yes. Tapping a land for mana is a mana ability: it doesn't use the stack, and you can activate it whenever you have priority, including in response to the ability that would destroy the land while it is still on the battlefield (605.3a). The mana is yours to spend right then, and whatever isn't spent empties at the end of the step (106.4).")
+            return true
+        }
+        // "can I pay 2 life with my shockland if I'm at 2?": life can be paid down to 0, and 0 loses.
+        Regex("""^can (?:i|we) pay (\d+) life\b.*?\b(?:at|with|on) (\d+)(?: life)?$""").find(clause0)?.let { r ->
+            val pay = r.groupValues[1].toInt(); val life = r.groupValues[2].toInt()
+            ctx.asks += EventSpec("ask", to = if (life >= pay) "text:Yes. Life can be paid as long as your life total is at least the amount (119.4), so at $life you can pay $pay${if (life == pay) ". That puts you at 0, and the next time state-based actions are checked you lose the game (704.5a): whatever you paid for happens, and you lose right after." else ", going to ${life - pay}."}"
+                                                     else "text:No. A cost of $pay life can be paid only if your life total is at least $pay (119.4); at $life it can't be paid, so whatever needed it doesn't happen (a shockland enters tapped instead).")
+            return true
+        }
+        // "my Delver transforms": transforming doesn't make it a new object.
+        Regex("""^(?:(?:my|their|his|her) )?(c\d+) (?:transforms?|transformed|is transformed|turns? over)$""").find(clause0)?.let { r ->
+            val card = m.cards.getValue(r.groupValues[1])
+            val who = ctx.lastOwner ?: "me"
+            if (objectIdFor(card, ctx) == null) addObject(card, who, false, ctx)
+            ctx.asks += EventSpec("ask", to = "text:${card.display} transforming doesn't make it a new object: it keeps everything that applied to it, including how long it has been under its controller's control, so it is exactly as summoning sick as it was before it transformed (712.18). If it has been under your control since your turn began, it can attack and use {T} abilities now (302.6).")
+            return true
+        }
         // "fetchland-note": the fetch was read as the land it finds entering the battlefield.
         if (clause0 == "fetchland-note") { ctx.notes += "Cracking a fetchland finds a land and puts it onto the battlefield; that land entering is what landfall and similar abilities see, and the fetch itself leaving doesn't matter to them (the search is not tracked)."; return true }
         // "does their Ensnaring Bridge stop my 2/2?": attack with it and see whether the attack is legal.
@@ -2449,6 +2490,8 @@ class SituationParser(private val names: NameIndex) {
             if (Regex("""^(?:i|we)(?: even| still| actually)?(?: cast it| cast that| do that| do this| afford it| afford that| pay for it| pay it| pay that)?$""").matches(r.groupValues[1])) {
                 val lastCast = ctx.events.lastOrNull { it.verb == "cast" }
                 val card = lastCast?.card?.name?.let { n -> names.lookup(Names.normalize(n)) }
+                // "I cast a 3 mana creature, can I?": a spell known only by its cost has no card to look up; its cost is still the question.
+                if (lastCast?.card != null && card == null && lastCast.card.oracleId == null) { ctx.asks += EventSpec("ask", card = lastCast.card, to = "spellCost"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true }
                 if (lastCast != null && card != null) {
                     val caster = lastCast.player ?: "me"
                     val id = objectIdFor(card, ctx) ?: addObject(card, caster, false, ctx).also { ctx.objects[it] = ctx.objects.getValue(it).copy(zone = "hand") }
@@ -2787,7 +2830,9 @@ class SituationParser(private val names: NameIndex) {
         // "I have 4 lands and cast Cryptic Command, can I?": whether the spell just cast can be paid for.
         Regex("""^can (?:i|we)(?: even| still| actually)?(?: cast it| cast that| do that| do this| afford it| afford that| pay for it| pay it| pay that)?$""").find(c)?.let {
             val lastCast = ctx.events.lastOrNull { it.verb == "cast" } ?: return@let
-            val card = lastCast.card?.name?.let { n -> names.lookup(Names.normalize(n)) } ?: return@let
+            // "I cast a 3 mana creature, can I?": a spell known only by its cost has no card to look up; its cost is the question.
+            val card = lastCast.card?.name?.let { n -> names.lookup(Names.normalize(n)) }
+                ?: run { if (lastCast.card != null && lastCast.card.oracleId == null) { ctx.asks += EventSpec("ask", card = lastCast.card, to = "spellCost"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true }; return@let }
             val caster = lastCast.player ?: "me"
             val id = objectIdFor(card, ctx) ?: addObject(card, caster, false, ctx).also { ctx.objects[it] = ctx.objects.getValue(it).copy(zone = "hand") }
             ctx.asks += EventSpec("ask", obj = id, to = "spellCost")
@@ -5191,11 +5236,13 @@ class SituationParser(private val names: NameIndex) {
         }
         // "I play a land" / "they put a land onto the battlefield": the same as a land entering, which is what
         // landfall cares about. A land nobody named, so its type doesn't matter.
-        Regex("""^(?:plays?|played|playing|puts?|put|putting) (an? |another |the |\d+ |two |three )?(?:basic )?lands?(?: card)?(?: onto the battlefield| into play| down| out| from (?:my|their|his|her) hand)?$""").find(c)?.let { r ->
+        Regex("""^(?:plays?|played|playing|puts?|put|putting) (an? |another |the |\d+ |two |three )?(non-?basic |basic )?lands?(?: card)?(?: onto the battlefield| into play| down| out| from (?:my|their|his|her) hand)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: ctx.lastOwner ?: "me"
             val n = r.groupValues[1].trim().let { if (it.isEmpty() || it == "a" || it == "an" || it == "another" || it == "the") 1 else number(it) ?: 1 }
+            // "I play a land and they Wasteland it": a land Wasteland is aimed at is nonbasic, or the question means nothing.
+            val nonbasic = r.groupValues[2].startsWith("non") || (r.groupValues[2].isEmpty() && m.cards.values.any { it.display == "Wasteland" })
             val ids = (1..n).map { var id = slug("a land"); var k = 2; while (ctx.objects.containsKey(id)) id = slug("a land") + "_" + (k++)
-                ctx.objects[id] = ObjectSpec(id, CardRef(name = "a basic land"), controller = who, zone = "hand"); id }
+                ctx.objects[id] = ObjectSpec(id, CardRef(name = if (nonbasic) "a nonbasic land" else "a basic land"), controller = who, zone = "hand"); id }
             val played = Regex("""^(?:plays?|played|playing)\b""").containsMatchIn(c)
             for (id in ids) ctx.events += EventSpec(if (played) "playLand" else "enter", player = if (played) who else null, obj = id)
             ctx.lastMentioned = ids.last(); ctx.lastActor = who; ctx.lastOwner = who; if (played) ctx.lastVerb = "playLand"; ctx.note(who); return true

@@ -209,6 +209,13 @@ class Engine(val state: GameState) {
             // "I Swords my Mulldrifter in response to Wrath": Wrath has no targets, so a permanent named with it is
             // what it is about, not a target — read as one, Wrath "fizzled" once that permanent was gone.
             if (needed.isEmpty() && effect != null && !effect.hasUnparsed()) { trace.step("${card.name} doesn't target anything; ${targets.joinToString(" and ") { state.nameOf(it) }} named with it ${if (targets.size == 1) "is" else "are"} not a target, so the spell affects whatever its text says.", "115.1"); targets = emptyList() }
+            // "I cast a spell and they respond with Stifle": Stifle targets an ability, and a spell isn't one.
+            else if (!asked && needed.size == 1 && targets.isEmpty() && needed[0].raw.contains("ability", true) && state.stack.isNotEmpty() && state.stack.all { it.kind == StackKind.SPELL }) {
+                val top = state.stack.last().source.name
+                trace.step("${card.name} targets ${needed[0].raw}. ${top.replaceFirstChar { it.uppercase() }} is a spell, not an ability, so it isn't a legal target, and with nothing else on the stack ${card.name} has no target and can't be cast.", "115.1", "601.2c")
+                state.outcomes += "${card.name} can't be cast at $top: it targets only an ${needed[0].raw}, and a spell isn't one (601.2c). ${top.replaceFirstChar { it.uppercase() }} resolves as normal."
+                return null
+            }
             else if (!asked) state.clarifications += Clarification("${card.name}'s target${if (needed.size == 1) "" else "s"}",
                 "${card.name} needs ${needed.size} target${if (needed.size == 1) "" else "s"} (${needed.joinToString("; ") { it.raw }}) but ${targets.size} ${if (targets.size == 1) "was" else "were"} given (601.2c).")
             if (needed.size > targets.size && (card.isInstantOrSorcery || obj.zone == Zone.HAND)) { targetsUnknown = true; trace.step("${card.name} needs a target that wasn't stated; it's put on the stack anyway so responses to it can be shown, but what it does to its target can't be.", "601.2c") }

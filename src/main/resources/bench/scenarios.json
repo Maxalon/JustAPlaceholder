@@ -19124,5 +19124,90 @@
     "expect": [
       "a 3 mana spell is countered."
     ]
+  },
+  {
+    "id": "bolt-in-response-after-3-drop-with-5-lands",
+    "text": "i have 5 lands and cast a 3 drop, can i still bolt in response to their spell",
+    "expect": [
+      "Lightning Bolt costs {R} — 1 mana. Nothing on the battlefield changes it. You have 2 available, enough."
+    ]
+  },
+  {
+    "id": "craterhoof-and-5-others-lethal",
+    "text": "my opponent has 20 life and i have craterhoof and 5 other creatures, is that lethal",
+    "expect": [
+      "Craterhoof Behemoth is 11/11 with trample until end of turn.",
+      "opponent loses the game."
+    ]
+  },
+  {
+    "id": "lifelink-blocker-gain-life",
+    "text": "they attack me with a 3/3, i have a 1/1 lifelinker, do i gain life if i block",
+    "expect": [
+      "You gain 1 life in all."
+    ],
+    "cite": [
+      "702.15b"
+    ]
+  },
+  {
+    "id": "stifle-aimed-at-a-spell",
+    "text": "i cast a spell and they respond with stifle, does that work",
+    "expect": [
+      "Stifle can't be cast at a spell: it targets only an activated or triggered ability, and a spell isn't one (601.2c). A spell resolves as normal."
+    ]
+  },
+  {
+    "id": "delver-flips-summoning-sick",
+    "text": "my delver flips, is it still summoning sick",
+    "expect": [
+      "Delver of Secrets transforming doesn't make it a new object: it keeps everything that applied to it, including how long it has been under its controller's control, so it is exactly as summoning sick as it was before it transformed (712.18). If it has been under your control since your turn began, it can attack and use {T} abilities now (302.6)."
+    ]
+  },
+  {
+    "id": "pay-2-life-at-2",
+    "text": "can i pay 2 life with my shockland if i am at 2",
+    "expect": [
+      "Yes. Life can be paid as long as your life total is at least the amount (119.4), so at 2 you can pay 2. That puts you at 0, and the next time state-based actions are checked you lose the game (704.5a): whatever you paid for happens, and you lose right after."
+    ]
+  },
+  {
+    "id": "thalia-can-i-still-cast-3-drop",
+    "text": "i have 3 lands and they play thalia, can i still cast my 3 drop",
+    "expect": [
+      "a 3 mana creature costs {3} — 3 mana. Nothing on the battlefield changes it. You have 3 available, enough."
+    ]
+  },
+  {
+    "id": "wasteland-do-i-get-the-mana-first",
+    "text": "i play a land and they crack their wasteland on it, do i get the mana first",
+    "expect": [
+      "a nonbasic land: the battlefield → your graveyard.",
+      "Yes. Tapping a land for mana is a mana ability: it doesn't use the stack, and you can activate it whenever you have priority, including in response to the ability that would destroy the land while it is still on the battlefield (605.3a). The mana is yours to spend right then, and whatever isn't spent empties at the end of the step (106.4)."
+    ]
+  },
+  {
+    "id": "hymn-with-1-card",
+    "text": "my opponent casts hymn to tourach and i have 1 card, what happens",
+    "expect": [
+      "You discard 1 card (1 → 0 in hand)."
+    ]
+  },
+  {
+    "id": "trampler-blocked-by-0-1",
+    "text": "they block my 5/5 trampler with a 0/1, how much gets through",
+    "expect": [
+      "opponent takes 4 damage."
+    ],
+    "cite": [
+      "702.19b"
+    ]
+  },
+  {
+    "id": "bolt-the-counterspell",
+    "text": "they cast counterspell on my bolt, i have another bolt, can i bolt the counterspell",
+    "expect": [
+      "Lightning Bolt can't target Counterspell while it's still a spell on the stack."
+    ]
   }
 ]
