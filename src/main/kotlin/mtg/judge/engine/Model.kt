@@ -46,6 +46,10 @@ data class ObjFilter(
     /** "instant or sorcery card in your graveyard": a card in a graveyard, not a permanent (Snapcaster Mage). */
     val inGraveyard: Boolean = false,
     val minManaValue: Int? = null,
+    /** "with mana value X or less": the bound is the X paid, filled in as the ability resolves. */
+    val maxManaValueX: Boolean = false,
+    /** "that's one or more colors" (true) / "colorless" as a requirement (false). */
+    val colored: Boolean? = null,
 ) {
     val verifiable get() = unknownWords.isEmpty()
 }
@@ -581,6 +585,8 @@ data class TriggeredAbility(val trigger: Trigger, val effect: Effect, override v
 data class ActivatedAbility(val cost: String, val effect: Effect, override val text: String, val restriction: String? = null) : Ability {
     /** Loyalty abilities have a +N / −N / 0 cost (606.2). */
     val loyaltyCost: Int? get() = Regex("""^([+\u2212-]?\d+)$""").matchEntire(cost.trim())?.groupValues?.get(1)?.replace('\u2212', '-')?.toIntOrNull()
+    /** "−X": a loyalty cost chosen as the ability is activated (Ugin, the Spirit Dragon). */
+    val loyaltyCostIsX: Boolean get() = Regex("""^[\u2212-]X$""").matches(cost.trim())
 }
 data class StaticAbility(override val text: String, val keyword: String? = null, val effects: List<StaticEffect> = emptyList()) : Ability
 data class UnparsedAbility(override val text: String) : Ability

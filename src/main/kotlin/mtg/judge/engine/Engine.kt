@@ -648,7 +648,8 @@ class Engine(val state: GameState) {
             trace.step("${p.subject} ${p.v("removes", "remove")} $n $kind counter${if (n == 1) "" else "s"} from ${obj.name} as the cost ($left left${if (obj.def.isCreature && obj.isOnBattlefield()) "; it's now ${obj.power}/${obj.toughness}" else ""}). A cost is paid as the ability is activated, so the counter is gone before the ability resolves.", "602.2b", "122.5")
             state.outcomes += "${obj.name}: $n $kind counter${if (n == 1) "" else "s"} removed as the cost ($left left)."
         }
-        ability.loyaltyCost?.let { lc ->
+        (ability.loyaltyCost ?: if (ability.loyaltyCostIsX) -(x ?: 0) else null)?.let { lc ->
+            if (ability.loyaltyCostIsX) trace.step("X is ${x ?: 0}, so the −X costs ${x ?: 0} loyalty.", "107.3a", "606.4")
             if (obj.id in state.loyaltyUsedThisTurn) {
                 trace.step("One of ${obj.name}'s loyalty abilities has already been activated this turn, and a planeswalker's loyalty abilities can be activated only once per turn in total. ${ability.cost} can't be activated now.", "606.3")
                 state.outcomes += "${obj.name}'s ${ability.cost} can't be activated: a loyalty ability of it was already activated this turn (606.3)."
@@ -2667,12 +2668,13 @@ class Engine(val state: GameState) {
                 val r = effect.replacement
                 // "The next time a source of your choice would deal damage": the source named with the spell is the choice.
                 val chosen = item.targets.singleOrNull()?.let { it as? Ref.Obj }?.id?.takeIf { r.from == null && item.source.def.oracleText.contains("source of your choice", true) }
-                if (effect.target == null) { state.shields += Shield(r, null, if (r.toPlayer == Who.YOU) item.controller else null, r.amount, item.describe, fromId = chosen); if (chosen != null) trace.step("${item.describe}'s source of your choice is ${state.obj(chosen).name}; it isn't a target, just a choice made as the spell resolves.", "608.2c"); trace.step("${item.describe} creates a prevention effect until end of turn: prevent ${r.amount?.toString() ?: "all"}${if (r.combatOnly) " combat" else ""} damage that would be dealt${r.from?.let { " by ${it.raw}" } ?: ""}${when {
+                if (effect.target == null) { state.shields += Shield(r, item.source.id.takeIf { r.to?.raw in setOf("~", "him", "her") }, if (r.toPlayer == Who.YOU) item.controller else null, r.amount, item.describe, fromId = chosen); if (chosen != null) trace.step("${item.describe}'s source of your choice is ${state.obj(chosen).name}; it isn't a target, just a choice made as the spell resolves.", "608.2c"); trace.step("${item.describe} creates a prevention effect until end of turn: prevent ${r.amount?.toString() ?: "all"}${if (r.combatOnly) " combat" else ""} damage that would be dealt${r.from?.let { " by ${it.raw}" } ?: ""}${when {
                     // "prevent all combat damage that would be dealt this turn" (Fog) covers players and permanents
                     // alike; naming players only made the line narrower than the effect.
                     r.to?.raw == "everything" -> ""
                     r.toPlayer == Who.YOU -> " to " + you.subject.lowercase()
                     r.toPlayer != null && r.to == null -> " to any player"
+                    r.to != null && r.to.raw in setOf("~", "him", "her") -> " to ${item.source.name}"
                     r.to != null -> " to ${r.to.raw}"
                     else -> ""
                 }}.", "615.1", "615.7", "611.2a"); state.outcomes += "Prevention effect until end of turn (${item.describe})." }
@@ -2952,8 +2954,9 @@ class Engine(val state: GameState) {
                 val effect = item.lastCount?.takeIf { effect.text.contains("that many") }?.let { n -> effect.copy(text = effect.text.replace("that many", "$n (that many)")) } ?: effect
                 state.lastCountered?.let { c -> if (effect.text.contains("that spell's mana value")) { val mv = c.def.manaValue.toInt(); trace.step("That spell was ${c.name}, mana value $mv. ${effect.text.replace("that spell's mana value", "$mv").replaceFirstChar { it.uppercase() }} (a delayed triggered ability created as ${item.source.name} resolves).", "202.3", "608.2h", *effect.rules.toTypedArray()); state.outcomes += "${item.source.name}: ${effect.text.replace("that spell's mana value", "$mv (${c.name}'s mana value)").replace("~", item.source.name).replaceFirstChar { it.uppercase() }.trimEnd('.')}."; return } }
                 // Text with its own subject ("You choose…", "That player discards…", "Its controller may…") is quoted as the instruction it is.
-                val ownSubject = Regex("""^(you|that player|its controller|each|the|its|their|if|search)\b""", RegexOption.IGNORE_CASE).containsMatchIn(effect.text)
-                if (ownSubject) trace.step("${item.source.name}: \"${effect.text.replace("~", item.source.name).replaceFirstChar { it.uppercase() }.trimEnd('.')}.\" (${you.subject} ${you.v("carries", "carry")} this out; the details aren't tracked here.)", *effect.rules.toTypedArray())
+                val targetSubject = Regex("""^target (?:player|opponent)\b""", RegexOption.IGNORE_CASE).containsMatchIn(effect.text)
+                val ownSubject = targetSubject || Regex("""^(you|that player|its controller|each|the|its|their|if|search)\b""", RegexOption.IGNORE_CASE).containsMatchIn(effect.text)
+                if (ownSubject) trace.step("${item.source.name}: \"${effect.text.replace("~", item.source.name).replaceFirstChar { it.uppercase() }.trimEnd('.')}.\" (${if (targetSubject) "the targeted player carries" else "${you.subject} ${you.v("carries", "carry")}"} this out; the details aren't tracked here.)", *effect.rules.toTypedArray())
                 else trace.step("${you.subject} ${thirdPerson(effectText(effect.text, item), you)}.", *effect.rules.toTypedArray())
                 val said = if (ownSubject || you.you) effect.text.replace("~", item.source.name).replaceFirstChar { it.uppercase() } else "${you.subject} ${thirdPerson(effectText(effect.text, item), you)}"
                 if (Regex("""(?i)\bsearch(?:es)? (?:your|their|his or her) library\b""").containsMatchIn(effect.text)) searchLimitNote(you.id, "the card it looks for")
@@ -2965,6 +2968,10 @@ class Engine(val state: GameState) {
                 state.outcomes += "${item.source.name}: ${said.trimEnd('.')} (not tracked in detail)."
             }
             is Effect.ForAll -> {
+                // "mana value X or less": X is what was paid (Ugin, the Spirit Dragon's −X).
+                val effect = if (!effect.filter.maxManaValueX) effect else (item.x ?: 0).let { x ->
+                    trace.step("X is $x, so it affects each ${effect.filter.raw.replace("mana value X or less", "mana value $x or less")}.", "107.3a")
+                    effect.copy(filter = effect.filter.copy(maxManaValue = x, maxManaValueX = false, raw = effect.filter.raw.replace("mana value X or less", "mana value $x or less"))) }
                 val affected = state.objects.values.filter { state.matches(effect.filter, it, item.controller) }
                 item.lastCount = affected.size
                 if (affected.isEmpty()) { trace.step("Nothing matches \"${effect.filter.raw}\", so ${effect.action} affects nothing.${if (state.objects.values.any { it.phasedOut }) " Phased-out permanents are treated as though they don't exist, so they aren't destroyed." else ""}", "702.26b"); state.outcomes += "${item.source.name} affects nothing: nothing on the battlefield is ${withArticle(effect.filter.raw.removeSuffix("s"))} to ${effect.action}${if (state.objects.values.any { it.phasedOut }) " (the phased-out permanents aren't there for it)" else ""}." }
@@ -3298,7 +3305,7 @@ class Engine(val state: GameState) {
             if (shield != null && shield.objectId != null) return tObj?.id == shield.objectId
             if (shield != null && shield.playerId != null) return tPlayer?.id == shield.playerId
             val toOk = when {
-                r.to != null && r.to.raw == "~" -> tObj != null && tObj === owner
+                r.to != null && r.to.raw in setOf("~", "him", "her") -> tObj != null && tObj === owner
                 r.to != null && r.to.raw == "everything" -> true
                 r.to != null -> tObj != null && state.matches(r.to, tObj, ownerPlayer ?: "", owner)
                 else -> false

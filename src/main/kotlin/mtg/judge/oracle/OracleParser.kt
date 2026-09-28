@@ -185,7 +185,7 @@ object OracleParser {
         val colon = line.indexOf(':')
         if (colon <= 0) return false
         val cost = line.substring(0, colon)
-        if (Regex("""^[+\u2212-]?\d+$""").matches(cost.trim())) return true   // loyalty ability (606.2)
+        if (Regex("""^[+\u2212-]?(?:\d+|X)$""").matches(cost.trim())) return true   // loyalty ability (606.2)
         return cost.contains('{') || cost.contains("Sacrifice", true) || cost.contains("Discard", true) || cost.contains("Pay", true) || cost.contains("Tap ", true) || cost.contains("Remove", true) || cost.contains("Exile", true)
     }
 
@@ -202,7 +202,7 @@ object OracleParser {
             if (rest.isEmpty()) mana else Effect.Seq(listOf(mana, parseEffect(rest)))
         } ?: parseEffect(effText)
         val cost = line.substring(0, colon).trim()
-        val isLoyalty = Regex("""^[+\u2212-]?\d+$""").matches(cost)
+        val isLoyalty = Regex("""^[+\u2212-]?(?:\d+|X)$""").matches(cost)
         return ActivatedAbility(cost, effect, line, restriction ?: if (isLoyalty) "Activate only as a sorcery and only once each turn (loyalty ability)" else null)
     }
 
@@ -1340,7 +1340,7 @@ object OracleParser {
         // Waterknot, Kasmina's Transmutation: "tap enchanted creature."
         Regex("""^tap enchanted (?:creature|permanent)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.TapAttached }
         // Mutavault, Celestial Colonnade, Inkmoth Nexus: "until end of turn, ~ becomes a 4/4 white and blue Elemental creature with flying and vigilance."
-        Regex("""^(?:until end of turn, )?~ becomes an? (\d+)/(\d+)((?: (?:white|blue|black|red|green|colorless)(?:,|(?: and)?)?)*)((?: [A-Za-z'-]+)*?) (?:artifact )?creature(?: with (.+?))?(?: until end of turn)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+        Regex("""^(?:until end of turn, )?~ becomes an? (\d+)/(\d+)((?: (?:white|blue|black|red|green|colorless)(?:,|(?: and)?)?)*)((?: [A-Za-z'-]+)*?) (?:artifact )?creature(?: with (.+?))?(?: that's still an? (?:land|planeswalker))?(?: until end of turn)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             val colours = Regex("""white|blue|black|red|green""", RegexOption.IGNORE_CASE).findAll(m.groupValues[3]).map { c ->
                 when (c.value.lowercase()) { "white" -> 'W'; "blue" -> 'U'; "black" -> 'B'; "red" -> 'R'; else -> 'G' }
             }.toSet()
@@ -1502,6 +1502,10 @@ object OracleParser {
         // Brainstorm: cards put back from hand.
         Regex("""^put (two|three|one|a|\d+) cards? from your hand on top of your library(?: in any order)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
             return Effect.PutBackFromHand(when (m.groupValues[1].lowercase()) { "a", "one" -> 1; "two" -> 2; "three" -> 3; else -> m.groupValues[1].toInt() })
+        }
+        // Ugin, the Spirit Dragon: "exile each permanent with mana value X or less that's one or more colors."
+        Regex("""^exile each permanent with mana value x or less that's one or more colors\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let {
+            return Effect.ForAll(ObjFilter(kinds = setOf(Kind.PERMANENT), raw = "permanent with mana value X or less that's one or more colors", maxManaValueX = true, colored = true), "exile")
         }
         // Living End.
         Regex("""^each player exiles all creature cards from their graveyard, then sacrifices all creatures they control, then puts all cards they exiled this way onto the battlefield\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { return Effect.LivingEnd }

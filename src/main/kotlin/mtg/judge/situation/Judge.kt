@@ -394,7 +394,9 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 e.to?.takeIf { it.startsWith("sacrifice:") }?.removePrefix("sacrifice:")?.let { sacId ->
                     if (obj.def.abilities.filterIsInstance<ActivatedAbility>().none { a -> a.cost.contains("sacrifice", true) }) { engine.sacrifice(e.player ?: state.obj(sacId).controller, sacId); return }
                 }
-                // "+1" / "-3" names a loyalty ability by its cost.
+                // "+1" / "-3" names a loyalty ability by its cost. "Ugin -3" with only a "−X" ability: X is 3.
+                val minusX = e.to?.takeIf { Regex("""^-\d+$""").matches(it.replace('\u2212', '-')) && obj.def.abilities.filterIsInstance<ActivatedAbility>().none { a -> a.cost.replace('\u2212', '-') == it.replace('\u2212', '-') } }
+                    ?.let { c -> obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> a.cost.replace('\u2212', '-') == "-X" }.takeIf { it >= 0 }?.let { it to c.replace('\u2212', '-').removePrefix("-").toInt() } }
                 val idx = e.abilityIndex
                     // "activate Nykthos for green": a colour was chosen, so the ability that uses one is the one
                     // meant — not Nykthos's plain "{T}: Add {C}", which was picked first and ignored the devotion.
@@ -403,8 +405,11 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     ?: e.to?.takeIf { it == "levelup" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> a.cost.startsWith("Level up", true) }.takeIf { it >= 0 } }
                     ?: e.to?.takeIf { it == "saddle" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> a.effect is Effect.SaddleSelf }.takeIf { it >= 0 } }
                     ?: e.to?.takeIf { it == "ultimate" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().withIndex().filter { (_, a) -> Regex("""^[\u2212-]\d+$""").matches(a.cost) }.minByOrNull { (_, a) -> a.cost.replace('\u2212', '-').toInt() }?.index }
+                    // "Gideon becomes a creature": the loyalty ability that animates him.
+                    ?: e.to?.takeIf { it == "animate" }?.let { obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { a -> Regex("""\bbecomes? an? .*\bcreature\b""", RegexOption.IGNORE_CASE).containsMatchIn(a.text) }.takeIf { it >= 0 } }
                     ?: e.to?.let { cost -> obj.def.abilities.filterIsInstance<ActivatedAbility>().indexOfFirst { it.cost.replace('\u2212', '-') == cost.replace('\u2212', '-') }.takeIf { it >= 0 } }
-                engine.activate(e.player ?: obj.controller, objId, idx, targets, choice = e.to?.takeIf { it.startsWith("color:") || it.startsWith("put:") }?.substringAfter(':') ?: e.to?.takeIf { it.startsWith("sacrifice:") }, x = e.amount)
+                    ?: minusX?.first
+                engine.activate(e.player ?: obj.controller, objId, idx, targets, choice = e.to?.takeIf { it.startsWith("color:") || it.startsWith("put:") }?.substringAfter(':') ?: e.to?.takeIf { it.startsWith("sacrifice:") }, x = e.amount ?: minusX?.second)
             }
             "trigger" -> engine.assertTrigger(e.obj ?: throw JudgeException("trigger needs an object"), e.abilityIndex, targets)
             "choose" -> { val objId = e.obj ?: throw JudgeException("choose needs an object"); state.pendingChoices[objId] = e.to?.substringAfter(':') ?: throw JudgeException("choose needs a choice") }

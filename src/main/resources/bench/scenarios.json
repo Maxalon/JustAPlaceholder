@@ -18943,5 +18943,105 @@
       "Not understood"
     ],
     "cite": []
+  },
+  {
+    "id": "pw-bolt-jace-is-he-dead",
+    "text": "i bolt their jace with 3 loyalty, is he dead",
+    "expect": [
+      "Yes: Jace, the Mind Sculptor died (it's in the graveyard)."
+    ],
+    "cite": [
+      "306.8"
+    ]
+  },
+  {
+    "id": "pw-attack-jace-and-player-two-creatures",
+    "text": "can i attack jace and the player at the same time with two creatures",
+    "expect": [
+      "Jace, the Mind Sculptor has 1 loyalty.",
+      "opponent takes 2 damage."
+    ],
+    "cite": [
+      "508.1a"
+    ]
+  },
+  {
+    "id": "pw-liliana-at-1-plus-discard-too",
+    "text": "my liliana is at 1, i +1 her, do i have to discard too",
+    "expect": [
+      "You discard 1 card.",
+      "opponent discards 1 card."
+    ]
+  },
+  {
+    "id": "pw-attack-my-planeswalker-block-with-wall",
+    "text": "they attack my planeswalker with a 2/2, can i block with my wall",
+    "expect": [
+      "a wall creature: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "can't block"
+    ],
+    "cite": [
+      "509.1a"
+    ]
+  },
+  {
+    "id": "pw-teferi-counter-on-their-turn",
+    "text": "opp has teferi time raveler, can i counter their spell on their turn",
+    "expect": [
+      "No. Teferi, Time Raveler says each opponent can cast spells only any time they could cast a sorcery: during their own main phase, when the stack is empty (307.1). On Teferi's controller's turn you can't cast any spell, so a counterspell can't even be cast; only an activated or triggered ability could counter their spell. Once Teferi leaves the battlefield you cast instants normally again (117.1a)."
+    ]
+  },
+  {
+    "id": "pw-karn-plus4-on-me",
+    "text": "karn liberated +4 on me, what do i exile",
+    "expect": [
+      "Karn Liberated: Target player exiles a card from their hand (not tracked in detail)."
+    ],
+    "notExpect": [
+      "You target player"
+    ]
+  },
+  {
+    "id": "pw-ugin-minus-x-for-3",
+    "text": "ugin -x for 3 with their grizzly bears and their glorybringer out, what gets exiled",
+    "expect": [
+      "Grizzly Bears: the battlefield → exile."
+    ],
+    "notExpect": [
+      "Glorybringer: the battlefield → exile."
+    ],
+    "cite": [
+      "107.3a"
+    ]
+  },
+  {
+    "id": "pw-redirect-bolt-to-jace",
+    "text": "i redirect the bolt to their jace, does that work",
+    "expect": [
+      "No. The redirection rule, which let noncombat damage that would be dealt to a player be dealt to one of their planeswalkers instead, has been removed (306.7). Lightning Bolt now says \"any target\", so you choose the planeswalker as the target when you cast it (115.4); a Bolt already aimed at the player can't be moved to the planeswalker afterwards."
+    ]
+  },
+  {
+    "id": "pw-gideon-becomes-creature-bolt-him",
+    "text": "gideon becomes a creature and they bolt him, does he die",
+    "expect": [
+      "Damage to Gideon, Ally of Zendikar from Lightning Bolt is prevented.",
+      "No: Gideon, Ally of Zendikar is still on the battlefield."
+    ],
+    "cite": [
+      "615.6"
+    ]
+  },
+  {
+    "id": "pw-liliana-minus-2-one-creature",
+    "text": "they use liliana -2 on me, i have one creature, do i have to sac it",
+    "expect": [
+      "a creature: the battlefield → your graveyard."
+    ],
+    "cite": [
+      "701.21a"
+    ]
   }
 ]

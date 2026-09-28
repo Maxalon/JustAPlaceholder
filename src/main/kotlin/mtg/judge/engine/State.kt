@@ -503,7 +503,7 @@ class GameState(
         val stateOk = (f.tapped == null || o.tapped == f.tapped) && (f.attacking == null || (o.attacking != null) == f.attacking)
         val powerOk = (f.minPower == null || (o.power ?: 0) >= f.minPower) && (f.maxPower == null || (o.power ?: 0) <= f.maxPower) && (f.maxManaValue == null || o.def.manaValue.toInt() <= f.maxManaValue) && (f.minManaValue == null || o.def.manaValue.toInt() >= f.minManaValue)
         val cols = colorsOf(o)
-        val colorOk = f.colors.all { it in cols } && f.notColors.none { it in cols }
+        val colorOk = f.colors.all { it in cols } && f.notColors.none { it in cols } && (f.colored == null || f.colored == cols.isNotEmpty())
         return typeOk && notOk && notSubOk && ctrlOk && subOk && kwOk && tokenOk && legOk && stateOk && powerOk && colorOk
     }
 
