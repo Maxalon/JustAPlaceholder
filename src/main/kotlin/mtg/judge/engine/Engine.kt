@@ -3684,6 +3684,8 @@ class Engine(val state: GameState) {
                 Triple(o, text, Regex("""\{[^}]+\}""").findAll(text).count().takeIf { it > 0 } ?: 1)
             }
         val stated = p.mana?.takeIf { it > 0 }
+        // "I have 3 lands and cast a 2 drop, then a 1 drop, do I have mana left?": what the casts already paid comes off.
+        if (sources.isEmpty() && stated != null && p.manaSpent > 0) return "${p.subject} ${p.v("has", "have")} ${maxOf(0, stated - p.manaSpent)} mana left${poolNote(p)}: the situation gave ${p.subject.lowercase()} $stated, and ${p.manaSpent} of it paid for what ${p.subject.lowercase()} cast."
         if (sources.isEmpty()) return (if (stated != null) "${p.subject} ${p.v("has", "have")} $stated mana available (the situation says so; no permanent it named makes mana)."
                                        else "${p.subject} ${p.v("has", "have")} no untapped permanent with a mana ability the engine recognises.")
         val usable = sources.filter { it.third != null }

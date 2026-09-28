@@ -42,6 +42,8 @@ object Generic {
         if (n in setOf("enchantment", "an enchantment", "enchantment spell")) return OracleParser.parse("generic-enchantment", "an enchantment", "Enchantment", "{2}", 2.0, "", null, null, emptyList(), "")
         if (n in setOf("flashback spell", "spell with flashback", "flashback card")) return OracleParser.parse("generic-flashback", "a flashback spell", "Instant", "{1}{U}", 2.0, "U", null, null, listOf("Flashback"), "Draw a card.\nFlashback {2}{U}")
         if (n in setOf("removal spell", "kill spell", "removal")) return OracleParser.parse("generic-removal", "a removal spell", "Instant", "{1}{B}", 2.0, "B", null, null, emptyList(), "Destroy target creature.")
+        Regex("""^(\d+) damage spell$""").find(n)?.let { m -> val d = m.groupValues[1].toInt(); return OracleParser.parse("generic-$d-damage", "a $d damage spell", "Instant", "{R}", 1.0, "R", null, null, emptyList(), "This spell deals $d damage to any target.") }
+        Regex("""^([+-]\d+)/([+-]\d+) pump$""").find(n)?.let { m -> return OracleParser.parse("generic-pump-${m.groupValues[1]}-${m.groupValues[2]}", "a ${m.groupValues[1]}/${m.groupValues[2]} pump", "Instant", "{G}", 1.0, "G", null, null, emptyList(), "Target creature gets ${m.groupValues[1]}/${m.groupValues[2]} until end of turn.") }
         if (n in setOf("burn spell", "burn")) return OracleParser.parse("generic-burn", "a burn spell", "Instant", "{R}", 1.0, "R", null, null, emptyList(), "This spell deals 3 damage to any target.")
         // "my creature with an Aura on it dies": which Aura it is doesn't matter to the question — that it is an
         // Aura does, because an Aura with nothing to enchant goes to the graveyard while an Equipment stays.

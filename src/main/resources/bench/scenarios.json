@@ -19468,5 +19468,76 @@
     "cite": [
       "615.1"
     ]
+  },
+  {
+    "id": "if-i-block-does-the-4-4-die-deathtouch",
+    "text": "they attack with a 4/4 and i have a 2/2 with deathtouch, if i block does the 4/4 die",
+    "expect": [
+      "Yes: a 4/4 creature died (it's in the graveyard)."
+    ],
+    "cite": [
+      "702.2b"
+    ]
+  },
+  {
+    "id": "counter-their-counter-on-my-bolt",
+    "text": "i cast counterspell on their counterspell that targets my bolt, does my bolt resolve",
+    "expect": [
+      "Counterspell is countered.",
+      "opponent takes 3 damage."
+    ]
+  },
+  {
+    "id": "lifelink-damage-to-planeswalker-gain",
+    "text": "my lifelink creature deals 3 damage to a planeswalker, do i gain 3",
+    "expect": [
+      "You gain 3 life."
+    ],
+    "cite": [
+      "702.15b"
+    ]
+  },
+  {
+    "id": "pro-red-vs-bolt-talk",
+    "text": "they have a 2/2 with protection from red, can i bolt it",
+    "expect": [
+      "Lightning Bolt can't target a 2/2 creature with protection from red."
+    ]
+  },
+  {
+    "id": "pump-in-combat-3-3-vs-3-3",
+    "text": "i attack with a 3/3, they block with a 3/3, i cast a +2/+2 pump, what happens",
+    "expect": [
+      "a 3/3 creature is 5/5 until end of turn.",
+      "a 3/3 creature: the battlefield → opponent's graveyard."
+    ]
+  },
+  {
+    "id": "mana-left-after-2-drop-and-1-drop",
+    "text": "i have 3 lands and cast a 2 drop, then a 1 drop, do i have mana left",
+    "expect": [
+      "You have 0 mana left: the situation gave you 3, and 3 of it paid for what you cast."
+    ]
+  },
+  {
+    "id": "3-damage-spell-on-2-2",
+    "text": "my opponent has a 2/2 and i cast a 3 damage spell on it, does it die",
+    "expect": [
+      "Yes: a 2/2 creature died (it's in the graveyard)."
+    ]
+  },
+  {
+    "id": "block-trampler-with-two",
+    "text": "can i block a creature with trample with two creatures",
+    "expect": [
+      "a creature with trample: the battlefield → opponent's graveyard."
+    ]
+  },
+  {
+    "id": "poison-how-many-more",
+    "text": "i have 4 poison counters, how many more do i need to lose",
+    "expect": [
+      "You have 4 poison counters, and a player with ten or more loses the game as a state-based action (704.5c), so 6 more are needed."
+    ]
   }
 ]
