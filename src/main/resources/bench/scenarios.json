@@ -19941,5 +19941,148 @@
       "opponent gains 3 life.",
       "You lose the game."
     ]
+  },
+  {
+    "id": "says-destroy-power-2-or-less",
+    "text": "they have a 1/1 and i cast a spell that says destroy target creature with power 2 or less, does it work on a 3/3",
+    "expect": [
+      "a 1/1 creature: the battlefield → opponent's graveyard."
+    ]
+  },
+  {
+    "id": "says-return-target-creature-on-token",
+    "text": "they cast a spell that returns target creature to its owner's hand on my token, what happens",
+    "expect": [
+      "a 1/1 token: the battlefield → your hand.",
+      "a 1/1 token ceases to exist; it doesn't stay in the zone it went to."
+    ]
+  },
+  {
+    "id": "3-toughness-2-then-1-more",
+    "text": "i have a creature with 3 toughness and they deal 2 damage to it, then 1 more later this turn, does it die",
+    "expect": [
+      "a 1/3 creature has 3 damage marked.",
+      "Yes: a 1/3 creature died (it's in the graveyard)."
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "says-tap-all-my-creatures-block",
+    "text": "my opponent casts a spell that taps all my creatures, can i still block",
+    "expect": [
+      "a creature can't block (tapped)."
+    ],
+    "cite": [
+      "509.1a"
+    ]
+  },
+  {
+    "id": "minus-3-minus-0-attacker-damage",
+    "text": "i have a 3/3 that attacks, they cast a spell that gives it -3/-0, how much damage do i deal",
+    "expect": [
+      "a 3/3 creature is 0/3 until end of turn.",
+      "No: opponent takes no damage."
+    ]
+  },
+  {
+    "id": "pro-creatures-block",
+    "text": "they have a creature with protection from creatures, can my 4/4 block it",
+    "expect": [
+      "a 4/4 creature can't block a creature with protection from creatures (protection)."
+    ]
+  },
+  {
+    "id": "says-gain-control-attack-summoning-sick",
+    "text": "i cast a spell that says gain control of target creature until end of turn on their 3/3, can i attack with it",
+    "expect": [
+      "You control a 3/3 creature until end of turn.",
+      "a 3/3 creature can't attack (summoning sick)."
+    ],
+    "cite": [
+      "302.6"
+    ]
+  },
+  {
+    "id": "says-each-player-sacrifices",
+    "text": "i have 2 creatures and they cast a spell that says each player sacrifices a creature, what happens",
+    "expect": [
+      "a creature: the battlefield → your graveyard.",
+      "opponent has no creature to sacrifice to a spell that says \"each player sacrifices a creature\"; with one, opponent would have to."
+    ]
+  },
+  {
+    "id": "says-exile-target-creature-commander",
+    "text": "they cast a spell that exiles target creature on my commander, where does it go",
+    "expect": [
+      "a commander: exile → the command zone (its owner's choice, 903.9a)."
+    ]
+  },
+  {
+    "id": "first-strike-vs-deathtouch-blocker",
+    "text": "i have a 2/2 with first strike and they block with a 2/2 with deathtouch, who dies",
+    "expect": [
+      "a 2/2 creature with deathtouch: the battlefield → opponent's graveyard.",
+      "No: a 2/2 creature with first strike is still on the battlefield."
+    ],
+    "cite": [
+      "702.7b"
+    ]
+  },
+  {
+    "id": "says-etb-draw-countered",
+    "text": "i have a creature that says when it enters draw a card, they counter it, do i draw",
+    "expect": [
+      "a creature that says \"when it enters draw a card\" is countered.",
+      "No: You don't draw."
+    ]
+  },
+  {
+    "id": "says-anthem-how-big-their-2-2",
+    "text": "they have a permanent that says creatures you control get +1/+1, how big is their 2/2",
+    "expect": [
+      "a 2/2 creature is 3/3 (2/2 base, +1/+1 from a permanent that says \"creatures you control get +1/+1\")."
+    ]
+  },
+  {
+    "id": "says-mana-rock-turn-it-comes-down",
+    "text": "i have an artifact that says tap add one mana of any color, can i use it the turn i play it",
+    "expect": [
+      "Yes: an artifact that says \"tap add one mana of any color\" can activate its ability, mana permitting."
+    ]
+  },
+  {
+    "id": "says-lifegain-draw-once-per-source",
+    "text": "i have an enchantment that says whenever you gain life draw a card, i gain 3 life from one source, how many do i draw",
+    "expect": [
+      "You draw 1 card.",
+      "Yes: You draw 1 card in all."
+    ]
+  },
+  {
+    "id": "says-opponent-casts-gain-1-twice",
+    "text": "they have a creature that says whenever an opponent casts a spell you gain 1 life, i cast two spells, how much do they gain",
+    "expect": [
+      "opponent gains 1 life. (×2)"
+    ]
+  },
+  {
+    "id": "says-upkeep-lose-1-at-1",
+    "text": "i have a creature that says at the beginning of your upkeep you lose 1 life, i am at 1, do i die on my upkeep",
+    "expect": [
+      "You lose 1 life.",
+      "Yes: You have lost the game."
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "says-dies-trigger-bolted-on-stack",
+    "text": "i cast a creature that says when it dies each opponent loses 2 life, they bolt it, what happens",
+    "expect": [
+      "Lightning Bolt can't target a creature that says \"when it dies each opponent loses 2 life\" while it's still a spell on the stack."
+    ]
   }
 ]
