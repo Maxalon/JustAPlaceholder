@@ -1103,6 +1103,29 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\bhow much (?:do|does) (they|he|she|my opponent) take (?:in )?total\b""", RegexOption.IGNORE_CASE), "how much damage do $1 take")
             // "can it attack and block in the same turn?" (vigilance): a rules answer.
             .replace(Regex("""\bcan (?:it|my creature|my c\d+|my \d+/\d+|a vigilance creature) attack and block in the same turn\b""", RegexOption.IGNORE_CASE), "vigilance-attackblock-question")
+            // "then I give mine +1/+1": a stand-in pump on that creature.
+            .let { t0 -> Regex("""\b(?:and |, )?then (i|we) give (mine|it|that|my creature) ([+-]\d+/[+-]\d+)\b(?! counter)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                ", ${r.groupValues[1]} give ${r.groupValues[2]} ${r.groupValues[3]}" } }
+            // "a spell that says destroy all creatures" / "a spell that deals 2 damage to each creature": stand-in sweepers.
+            .replace(Regex("""\ban? (?:spell|sorcery) that (?:says )?destroys? all creatures\b""", RegexOption.IGNORE_CASE), "a wrath spell")
+            .replace(Regex("""\ban? (?:spell|sorcery) that deals (\d+) damage to (?:each|every|all) creatures?\b""", RegexOption.IGNORE_CASE), "a $1 damage sweeper")
+            // "do my indestructible guys survive?": a creature with that keyword stands in.
+            .replace(Regex("""\bdo my (indestructible|hexproof|flying|shroud) (?:guys|dudes|creatures) (survive|die|live)\b""", RegexOption.IGNORE_CASE), "i have a creature with $1, does it $2")
+            // "my opponent has 1 life and hexproof from Leyline": the life total with the card beside it.
+            .replace(Regex("""\b(?:has|is at|at) (\d+) life and (?:has )?hexproof from ((?:an? |their |the )?c\d+)\b""", RegexOption.IGNORE_CASE), "is at $1 with $2")
+            // "do I take damage if I block?": the block first.
+            .replace(Regex("""\bdo (i|we) take (?:any )?damage if (?:i|we) block\b""", RegexOption.IGNORE_CASE), "i block with my creature, do i take damage")
+            // "I have Thassa's Oracle and 2 cards in library, does it win?": the Oracle is cast into that library.
+            .let { t0 -> Regex("""\b(i|we) have ((?:an? |my )?c\d+) and (\d+) cards? in (?:my |the )?library, does it win\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                if (m.cards[Regex("""c\d+""").find(r.groupValues[2])!!.value]?.display == "Thassa's Oracle") "${r.groupValues[1]} have ${r.groupValues[3]} cards in library, ${r.groupValues[1]} cast ${r.groupValues[2]}, do i win" else r.value } }
+            // "my opponent has a creature with lifelink and blocks my 3/3 with it": my attack, their block.
+            .replace(Regex("""\band blocks? my (\d+/\d+|c\d+) with (?:it|that)\b""", RegexOption.IGNORE_CASE), ", i attack with my $1 and they block with their creature")
+            // "they have a 2/2 untapped but don't block": the board, and no block.
+            .let { t0 -> Regex("""\b(they|he|she) (?:have|has) an? (?:(untapped|tapped) )?(\d+/\d+)(?: (untapped|tapped))? but (?:don't|doesn't|do not|does not) block\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                val state = (r.groupValues[2] + r.groupValues[4]).lowercase()
+                "${r.groupValues[1]} have a ${if (state == "tapped") "tapped " else ""}${r.groupValues[3]} and ${r.groupValues[1]} don't block" } }
+            // "they block the infect one": the creature with that keyword.
+            .replace(Regex("""\b(they|he|she|my opponent) blocks? the (infect|lifelink|flying|deathtouch|trample|first strike|menace|vigilance|hexproof) one\b""", RegexOption.IGNORE_CASE), "i attack with everything and $1 block the creature with $2")
             // "if I block do I take any damage?": the block, then the damage question.
             .replace(Regex("""\bif (i|we) block,? do (?:i|we) (?:still )?take (?:any |the )?damage\??$""", RegexOption.IGNORE_CASE), "i block with my creature, do i take damage")
             // "can I attack safely?": they block, and the question is whether the attacker survives.
@@ -4212,10 +4235,10 @@ class SituationParser(private val names: NameIndex) {
         }
         // "a 3 mana spell" / "casts a 2-mana creature": a spell known only by its cost.
         // "a 3 damage spell on it" / "a +2/+2 pump": a spell known only by what it does, aimed where the words say.
-        Regex("""^(?:casts?|plays?) an? (?:(\d+)[- ]mana (spell|instant|sorcery|creature spell|creature|artifact|enchantment|noncreature spell)|(\d+)[- ]damage (?:spell|burn spell|burn)|([+-]\d+/[+-]\d+(?: (?:and )?(?:trample|flying|first strike|double strike|lifelink|deathtouch|indestructible|hexproof|vigilance|haste))?) ?(?:pump|pump spell|spell|effect|buff)|(removal|kill|burn|split second|bounce) (?:spell|instant)|(exiling) counterspell)((?: (?:at|on|targeting) .*)?)$""").find(c)?.let { r ->
+        Regex("""^(?:casts?|plays?) an? (?:(\d+)[- ]mana (spell|instant|sorcery|creature spell|creature|artifact|enchantment|noncreature spell)|(\d+)[- ]damage (?:spell|burn spell|burn)|([+-]\d+/[+-]\d+(?: (?:and )?(?:trample|flying|first strike|double strike|lifelink|deathtouch|indestructible|hexproof|vigilance|haste))?) ?(?:pump|pump spell|spell|effect|buff)|(removal|kill|burn|split second|bounce|wrath) (?:spell|instant)|(exiling) counterspell|(\d+)[- ]damage sweeper)((?: (?:at|on|targeting) .*)?)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
-            val name = when { r.groupValues[1].isNotEmpty() -> "a ${r.groupValues[1]} mana ${r.groupValues[2]}"; r.groupValues[3].isNotEmpty() -> "a ${r.groupValues[3]} damage spell"; r.groupValues[5].isNotEmpty() -> "a ${r.groupValues[5]} spell"; r.groupValues[6].isNotEmpty() -> "an exiling counterspell"; else -> "a ${r.groupValues[4].replace(" and ", " ").trim()} pump" }
-            val targets = if (r.groupValues[1].isNotEmpty()) emptyList() else targetsIn(r.groupValues[7], m, ctx)
+            val name = when { r.groupValues[1].isNotEmpty() -> "a ${r.groupValues[1]} mana ${r.groupValues[2]}"; r.groupValues[3].isNotEmpty() -> "a ${r.groupValues[3]} damage spell"; r.groupValues[5].isNotEmpty() -> "a ${r.groupValues[5]} spell"; r.groupValues[6].isNotEmpty() -> "an exiling counterspell"; r.groupValues[7].isNotEmpty() -> "a ${r.groupValues[7]} damage sweeper"; else -> "a ${r.groupValues[4].replace(" and ", " ").trim()} pump" }
+            val targets = if (r.groupValues[1].isNotEmpty()) emptyList() else targetsIn(r.groupValues[8], m, ctx)
             ctx.events += EventSpec("cast", player = who, card = CardRef(name = name), targets = targets); ctx.lastActor = who; ctx.lastVerb = "cast"; ctx.lastMentioned = "cast:${slug(name)}"; ctx.note(who); return true
         }
         // "I respond with Mishra's Bauble": a noncreature artifact or enchantment can't be cast at instant speed, so

@@ -60,6 +60,7 @@ class RulesAnswersTest {
         "does my creature with vigilance still tap when it blocks" to "509.1a",
         "i mulligan to 5, how many cards do i put on the bottom" to "103.5",
         "i have a creature with shroud, can i enchant it with my own aura" to "702.18a",
+        "can i respond to a triggered ability" to "603.3",
         "if i counter my own spell does storm still count it" to "702.40a",
         "can i tap my creature for mana the turn it comes down" to "302.6",
         "can my elf tap for mana the turn it enters?" to "302.6",

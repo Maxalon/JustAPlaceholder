@@ -19776,5 +19776,90 @@
     "notExpect": [
       "gains control"
     ]
+  },
+  {
+    "id": "give-mine-plus-1-who-dies",
+    "text": "i have a 2/2 and they have a 2/2, i attack and they block, then i give mine +1/+1, who dies",
+    "expect": [
+      "a 2/2 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "your graveyard"
+    ]
+  },
+  {
+    "id": "wrath-spell-indestructible-guys",
+    "text": "they cast a spell that says destroy all creatures, do my indestructible guys survive",
+    "expect": [
+      "Yes: a creature with indestructible is still on the battlefield."
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "counter-and-minus-1-size",
+    "text": "i control a 1/1 with a +1/+1 counter and it gets -1/-1 until end of turn, what size is it",
+    "expect": [
+      "a 1/1 creature is 1/1 (1/1 base, -1/-1 until end of turn, 1 +1/+1 counter)."
+    ]
+  },
+  {
+    "id": "lifelink-blocker-gains",
+    "text": "my opponent has a creature with lifelink and blocks my 3/3 with it, do they gain life",
+    "expect": [
+      "opponent gains 1 life."
+    ],
+    "cite": [
+      "702.15b"
+    ]
+  },
+  {
+    "id": "thassas-oracle-2-cards-does-it-win",
+    "text": "i have thassa's oracle and 2 cards in library, does it win",
+    "expect": [
+      "You win the game (Thassa's Oracle: X = 2, library = 2).",
+      "Yes: You have won the game."
+    ]
+  },
+  {
+    "id": "brainstorm-empty-library",
+    "text": "i cast brainstorm with 0 cards in library, do i lose",
+    "expect": [
+      "You lose the game (drew from an empty library).",
+      "Yes: You have lost the game."
+    ],
+    "cite": [
+      "704.5b"
+    ]
+  },
+  {
+    "id": "2-damage-sweeper-vs-3-3",
+    "text": "they have a 3/3 and i cast a spell that deals 2 damage to each creature, does it die",
+    "expect": [
+      "a 3/3 creature has 2 damage marked.",
+      "No: a 3/3 creature is still on the battlefield."
+    ]
+  },
+  {
+    "id": "untapped-2-2-but-dont-block",
+    "text": "i attack with a 2/2 and they have a 2/2 untapped but don't block, how much do they take",
+    "expect": [
+      "opponent takes 2 damage."
+    ]
+  },
+  {
+    "id": "leyline-hexproof-at-1-bolt-them",
+    "text": "my opponent has 1 life and hexproof from leyline, can i bolt them",
+    "expect": [
+      "Lightning Bolt can't target opponent."
+    ]
+  },
+  {
+    "id": "wall-0-4-take-damage-if-i-block",
+    "text": "they attack me with a 1/1 and i have a 0/4 wall, do i take damage if i block",
+    "expect": [
+      "No: you take no damage."
+    ]
   }
 ]
