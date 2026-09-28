@@ -532,12 +532,14 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         "lands" -> mine.count { "Land" in it.def.types }
                         "artifacts" -> mine.count { "Artifact" in it.def.types }
                         "tokens" -> mine.count { it.token }
+                        "poison", "poison counters" -> p.poison
                         "cards", "cards in hand" -> p.handSize ?: state.objects.values.count { it.zone == Zone.HAND && it.controller == p.id }
                         // "how many Goblins do I have?": creatures of that type, by subtype or by the generic name.
                         else -> mine.count { o -> o.def.subtypes.any { st -> st.equals(what.removeSuffix("s"), true) } || o.def.name.lowercase().contains(" ${what.removeSuffix("s")}") }
                     }
-                    val noun = if (what.startsWith("cards")) "card${if (n == 1) "" else "s"} in hand" else if (n == 1) what.removeSuffix("s") else what
-                    state.outcomes += "${p.subject} ${p.v("has", "have")} $n $noun${if (n == 0 && !what.startsWith("cards")) " left" else ""}."
+                    val noun = if (what.startsWith("cards")) "card${if (n == 1) "" else "s"} in hand" else if (what.startsWith("poison")) "poison counter${if (n == 1) "" else "s"}" else if (n == 1) what.removeSuffix("s") else what
+                    val line = "${p.subject} ${p.v("has", "have")} $n $noun${if (n == 0 && !what.startsWith("cards") && !what.startsWith("poison")) " left" else ""}."
+                    if (line !in state.outcomes) state.outcomes += line
                     return
                 }
                 if (e.to == "canCounter") {

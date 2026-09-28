@@ -550,6 +550,9 @@ class SituationParser(private val names: NameIndex) {
         var t2 = t0.replace(Regex("""\balpha[- ]?strikes\b"""), "attacks").replace(Regex("""\balpha[- ]?strike\b"""), "attack")
             // "Ugin -X for 3": the X was chosen.
             .replace(Regex("""(?<=\s|^)([+\u2212-])x for (\d+)\b""", RegexOption.IGNORE_CASE), "$1$2")
+            // "I flash in a creature at end of turn" after a sweeper: cast with flash once the sweeper has resolved.
+            .let { t0 -> Regex("""\b(i|we) flash(?:es)? in (?:a |an |my )?(creature|\d+/\d+|c\d+) at (?:the )?end of (?:the |their |my |his |her )?turn\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                "then ${r.groupValues[1]} cast ${if (r.groupValues[2].startsWith("c")) r.groupValues[2] else "a ${r.groupValues[2]} with flash"}" } }
             // "can the 1/1 still block?": "still" adds nothing to a block or attack question.
             .replace(Regex("""\bcan ([^,]+?) still (block|attack)\b""", RegexOption.IGNORE_CASE), "can $1 $2")
             // "I crew Smuggler's Copter with my 1/1": kept in one clause, since "with my 1/1" is otherwise split off as a board statement.
@@ -1027,6 +1030,12 @@ class SituationParser(private val names: NameIndex) {
             .let { t0 -> Regex("""\b(?:i|we) have another (c\d+),\s*(?=can (?:i|we) )""", RegexOption.IGNORE_CASE).replace(t0) { r -> if (m.cards[r.groupValues[1]]?.isSpellOnly == true) "" else r.value } }
             // "I have 1 card" beside a discard spell: cards in hand.
             .replace(Regex("""\b(i|we|they|he|she|my opponent|the opponent) (have|has) (\d+) (cards?)(?=[,.?]|$)""", RegexOption.IGNORE_CASE), "$1 $2 $3 $4 in hand")
+            // "I have a regenerating creature": a creature with a regeneration shield on it.
+            .replace(Regex("""\b(i|we|they|he|she|my opponent|the opponent) (have|has) an? (?:regenerating|regenerated) (creature|\d+/\d+)\b""", RegexOption.IGNORE_CASE), "$1 $2 a $3, it is regenerated")
+            // "I sac my creature to Ashnod's Altar in response to Path to Exile": the Path at the creature, then the sacrifice in response.
+            .let { t0 -> Regex("""\b(i|we) (?:sac|sacrifice|sacs|sacrifices) (?:my |the |a )?(creature|\d+/\d+|c\d+) to (?:my |the )?(c\d+) in response to (?:their |a |the |my opponent's )?(c\d+)(?: on it| targeting it| at it)?\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                if (m.cards[r.groupValues[4]]?.isSpellOnly != true) r.value
+                else "${r.groupValues[1]} have ${if (r.groupValues[2].startsWith("c")) r.groupValues[2] else "a ${r.groupValues[2]}"}, they cast ${r.groupValues[4]} targeting it, ${r.groupValues[1]} sacrifice it to ${r.groupValues[3]} in response" } }
             // "can my Urza's Tower still tap for 3?": whether it taps for mana at all is the question the outcome answers.
             .replace(Regex("""\btap for (\d+|two|three|four|five)( mana)?\b""", RegexOption.IGNORE_CASE), "tap for mana")
             // "Then the turn ends." / "At the end of the turn, …": until-end-of-turn effects end in the cleanup step (514.2).
@@ -2850,7 +2859,7 @@ class SituationParser(private val names: NameIndex) {
             for (o in ctx.objects.values.filter { it.controller == opp && it.zone == "battlefield" && isCreatureName(it.card.name) && (!tokens || it.token) }) ctx.asks += EventSpec("ask", obj = o.id, to = "die")
             return true
         }
-        Regex("""^(?:do|will|would|does) (?:all )?my (creatures|guys|dudes|team|board|stuff|tokens) (?:all )?(?:die|survive|live|get destroyed|get wiped|get killed|get bounced|make it|be safe|be fine|come back|go away)(?: too| as well| also)?$""").find(c)?.let { r ->
+        Regex("""^(?:do|will|would|does) (?:all )?(?:my|our) (?:own )?(creatures|guys|dudes|team|board|stuff|tokens|permanents|nonland permanents) (?:all )?(?:die|survive|live|get destroyed|get wiped|get killed|get bounced|bounce|get exiled|get hit|make it|be safe|be fine|come back|go away)(?: too| as well| also)?$""").find(c)?.let { r ->
             val tokens = r.groupValues[1] == "tokens"
             val hadCreature = ctx.objects.values.any { it.controller == "me" && it.zone == "battlefield" && isCreatureName(it.card.name) && (!tokens || it.token) }
             if (!hadCreature) {
