@@ -478,8 +478,10 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 if (e.to == "playerGain" || e.to == "playerLost") {
                     val p = state.player(e.player ?: "me"); val subj = Regex.escape(p.subject)
                     val gain = e.to == "playerGain"
+                    // A card named by its own text ("… that says whenever a creature dies you gain 1 life") is quoted; the quotes are not gains.
                     val total = state.trace.steps.sumOf { st ->
-                        (if (gain) Regex("""(?i)(?:^|\b)$subj (?:gains?|gain) (\d+) life\b""") else Regex("""(?i)(?:^|\b)$subj,? (?:who )?(?:loses?|lose) (\d+) life\b""")).findAll(st.text).sumOf { it.groupValues[1].toInt() }
+                        val text = st.text.replace(Regex(""""[^"]*""""), "\"\"")
+                        (if (gain) Regex("""(?i)(?:^|\b)$subj (?:gains?|gain) (\d+) life\b""") else Regex("""(?i)(?:^|\b)$subj,? (?:who )?(?:loses?|lose) (\d+) life\b""")).findAll(text).sumOf { it.groupValues[1].toInt() }
                     }
                     val asked = e.amount
                     state.outcomes += when {
