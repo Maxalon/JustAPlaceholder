@@ -1046,6 +1046,15 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(they|he|she|my opponent|the opponent|i|we) (?:steals?|takes?|threatens?|borrows?) ((?:my |their |the )?(?:creature|\d+/\d+|c\d+)) with (?:an? |the |their |my )?(c\d+)\b""", RegexOption.IGNORE_CASE), "$1 cast $3 targeting $2")
             // "does my Swamp still make black?": what mana it can make.
             .replace(Regex("""\b(?:does|can|will) (my |the |their )?(c\d+) (?:still |even )?(?:make|tap for|produce|give|add) (?:black|blue|red|green|white|colorless|colored)(?: mana)?\b""", RegexOption.IGNORE_CASE), "what color mana can $1$2 make")
+            // "if I block do I take any damage?": the block, then the damage question.
+            .replace(Regex("""\bif (i|we) block,? do (?:i|we) (?:still )?take (?:any |the )?damage\??$""", RegexOption.IGNORE_CASE), "i block with my creature, do i take damage")
+            // "can I attack safely?": they block, and the question is whether the attacker survives.
+            .replace(Regex("""\bcan (i|we) (?:attack|swing) safely(?: with (?:it|my creature|everything))?\??$""", RegexOption.IGNORE_CASE), "i attack with everything and they block, do my creatures die")
+            // "has 0 life but has Platinum Angel": the life total and the card that matters to it.
+            .replace(Regex("""\b(?:has|is at|at) (\d+) life,? but (?:has|controls|with) ((?:an? |the |my |their )?c\d+)\b""", RegexOption.IGNORE_CASE), "is at $1 with $2")
+            // "respond with Brainstorm to hide my good card": why they cast it adds nothing.
+            .let { t0 -> Regex("""\s+to (hide|save|protect|dodge|keep|rescue|c\d+) (?:my |our )?(?:good |best |key |important )?cards?(?=[,.?]|$)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                if (r.groupValues[1].startsWith("c") && r.groupValues[1] != "c" && m.cards[r.groupValues[1]]?.display?.startsWith("Hide") != true) r.value else "" } }
             // "can my Urza's Tower still tap for 3?": whether it taps for mana at all is the question the outcome answers.
             .replace(Regex("""\btap for (\d+|two|three|four|five)( mana)?\b""", RegexOption.IGNORE_CASE), "tap for mana")
             // "Then the turn ends." / "At the end of the turn, …": until-end-of-turn effects end in the cleanup step (514.2).
@@ -1896,6 +1905,12 @@ class SituationParser(private val names: NameIndex) {
             if (targets.isEmpty()) return@let
             ctx.events[idx] = ctx.events[idx].copy(targets = targets)
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by aiming the spell at that creature below."; return true
+        }
+        // "does the creature go to the graveyard?" after a counter: a countered spell goes to its owner's graveyard.
+        Regex("""^(?:does|will|would) (?:the|my|that|it|the countered) ?(?:creature|spell|card)? ?(?:go|get put|end up) (?:to|in|into) (?:the|my|its owner's) graveyard$""").find(clause0)?.let {
+            if (ctx.events.none { it.verb == "cast" }) return@let
+            ctx.asks += EventSpec("ask", to = "text:Yes. A countered spell is put into its owner's graveyard (701.5a) unless the counterspell says otherwise (some exile it or put it into the library). A countered creature spell never entered the battlefield, so it didn't \"die\": nothing that triggers on a creature dying or leaving the battlefield sees it, and it can be reanimated from the graveyard like any other creature card.")
+            return true
         }
         // "fetchland-note": the fetch was read as the land it finds entering the battlefield.
         if (clause0 == "fetchland-note") { ctx.notes += "Cracking a fetchland finds a land and puts it onto the battlefield; that land entering is what landfall and similar abilities see, and the fetch itself leaving doesn't matter to them (the search is not tracked)."; return true }
@@ -6974,7 +6989,7 @@ class SituationParser(private val names: NameIndex) {
     /** Verbs that are also card names and are followed by "for" ("I tutor for Lightning Bolt"). */
     private val verbsBeforeFor = setOf("tutor", "tutors", "search", "searches", "dig", "digs", "fetch", "fetches", "look", "looks", "pay", "pays", "swing", "swings")
     /** Verbs that are also card names and take an object ("can they redirect it?", "they remove my Bears"). */
-    private val verbsBeforeAnObject = setOf("reanimate", "reanimates", "reanimated", "redirect", "redirects", "reflect", "reflects", "deflect", "deflects", "steal", "steals",
+    private val verbsBeforeAnObject = setOf("hide", "hides", "reanimate", "reanimates", "reanimated", "redirect", "redirects", "reflect", "reflects", "deflect", "deflects", "steal", "steals",
         "swap", "swaps", "remove", "removes", "nuke", "nukes", "ping", "pings", "zap", "zaps", "answer", "answers", "shrink", "shrinks",
         "wipe", "wipes", "burn", "burns", "burned")
     /** Colour words that are also the start of card names ("Black Knight"); after "protection from" they are colours. */

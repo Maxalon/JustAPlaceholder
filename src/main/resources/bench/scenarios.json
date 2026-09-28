@@ -19393,5 +19393,80 @@
     "cite": [
       "704.5b"
     ]
+  },
+  {
+    "id": "brainstorm-in-response-to-thoughtseize-hide",
+    "text": "my opponent casts thoughtseize on me, can i respond with brainstorm to hide my good card",
+    "expect": [
+      "You draw 3 cards.",
+      "You put 2 cards from your hand back on top of your library.",
+      "Thoughtseize: you discard a nonland card (which one depends on your hand)."
+    ],
+    "notExpect": [
+      "Hide"
+    ]
+  },
+  {
+    "id": "if-i-block-do-i-take-damage",
+    "text": "i have a 4/4 and they attack with a 3/3, if i block do i take any damage",
+    "expect": [
+      "No: you take no damage.",
+      "a 3/3 creature: the battlefield → opponent's graveyard."
+    ]
+  },
+  {
+    "id": "path-do-i-get-a-basic",
+    "text": "they cast path to exile on my creature, do i get a basic land",
+    "expect": [
+      "Yes: the search is yours. The card gives it to the exiled creature's controller, which is you; you may search for a basic land card and put it onto the battlefield tapped."
+    ]
+  },
+  {
+    "id": "attack-safely-flyer-into-reach",
+    "text": "i have a 2/2 flyer and they have a 4/4 with reach, can i attack safely",
+    "expect": [
+      "a 2/2 creature with flying: the battlefield → your graveyard."
+    ]
+  },
+  {
+    "id": "counterspell-creature-to-graveyard",
+    "text": "they cast counterspell on my creature spell, does the creature go to the graveyard",
+    "expect": [
+      "Yes. A countered spell is put into its owner's graveyard (701.5a) unless the counterspell says otherwise (some exile it or put it into the library). A countered creature spell never entered the battlefield, so it didn't \"die\": nothing that triggers on a creature dying or leaving the battlefield sees it, and it can be reanimated from the graveyard like any other creature card."
+    ]
+  },
+  {
+    "id": "flash-creature-in-their-draw-step",
+    "text": "can i cast a creature with flash during my opponent's draw step",
+    "expect": [
+      "a creature with flash enters the battlefield."
+    ],
+    "notExpect": [
+      "can't be cast"
+    ]
+  },
+  {
+    "id": "menace-one-blocker-talk",
+    "text": "i have two blockers and they attack with a menace creature, can i block it with one",
+    "expect": [
+      "a creature can't block a creature with menace on its own (menace). Another creature blocking alongside it would be a legal block."
+    ]
+  },
+  {
+    "id": "platinum-angel-at-0-but",
+    "text": "if my opponent has 0 life but has platinum angel do they lose",
+    "expect": [
+      "No: opponent is still in the game at 0 life."
+    ]
+  },
+  {
+    "id": "fog-6-6-take-damage",
+    "text": "my opponent attacks me with a 6/6, i cast fog, do i take damage",
+    "expect": [
+      "Damage to you from a 6/6 creature is prevented."
+    ],
+    "cite": [
+      "615.1"
+    ]
   }
 ]
