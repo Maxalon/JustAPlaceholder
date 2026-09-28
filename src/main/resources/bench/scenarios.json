@@ -19609,5 +19609,94 @@
       "You take 4 damage.",
       "You take 5 damage."
     ]
+  },
+  {
+    "id": "altar-in-response-still-get-mana",
+    "text": "they cast a removal spell on my creature and i sacrifice it to my altar, do i still get the mana",
+    "expect": [
+      "a removal spell doesn't resolve (all targets illegal).",
+      "Yes. Sacrificing the creature is the cost of the Altar's mana ability, paid as you activate it, and a mana ability makes its mana at once without using the stack (605.3a, 602.2b): you get the mana whatever happens to their spell, which now has no target and fizzles (608.2b). Spend the mana before the step ends, or it empties (106.4)."
+    ]
+  },
+  {
+    "id": "commander-in-zone-died-twice-cost",
+    "text": "my commander is in the command zone and has died twice, how much does it cost now",
+    "expect": [
+      "The commander tax adds {4} to its mana cost (903.8), because it has been cast from the command zone 2 times. Name the card for the total."
+    ]
+  },
+  {
+    "id": "bolt-the-blocker-does-my-2-2-connect",
+    "text": "i attack with a 2/2 and they block with a 2/2, i bolt the blocker, does my 2/2 deal damage to them",
+    "expect": [
+      "a 2/2 creature deals no combat damage: its blocker left combat and it stays blocked."
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "3-3-unblocked-at-3-is-it-over",
+    "text": "they have 3 life and i have a 3/3 unblocked, is it over",
+    "expect": [
+      "Yes: opponent has lost the game."
+    ]
+  },
+  {
+    "id": "pro-white-vs-swords-talk",
+    "text": "i have a creature with protection from white and they cast swords to plowshares on it, does it work",
+    "expect": [
+      "Swords to Plowshares can't target a creature with protection from white."
+    ]
+  },
+  {
+    "id": "counter-war-1-vs-2",
+    "text": "i cast a spell and they have 2 counterspells, can i win the counter war with 1 counterspell",
+    "expect": [
+      "No. Each counterspell answers one spell: they counter your spell, you counter that counterspell, and they counter yours with their next one. With 1 counterspell against their 2, their last one resolves and your spell is countered (701.5a). You would need at least as many counterspells as they have, or a spell that can't be countered."
+    ]
+  },
+  {
+    "id": "bridge-2-cards-3-3",
+    "text": "my opponent controls ensnaring bridge with 2 cards in hand, can my 3/3 attack",
+    "expect": [
+      "a 3/3 creature can't attack (Ensnaring Bridge)."
+    ]
+  },
+  {
+    "id": "which-can-block-the-flyer",
+    "text": "they attack with a 3/3 flyer and i have a 2/2 with reach and a 4/4 without, which can block",
+    "expect": [
+      "Yes: a 2/2 creature with reach can block a 3/3 creature with flying.",
+      "No: a 4/4 creature can't block a 3/3 creature with flying (flying)."
+    ]
+  },
+  {
+    "id": "pump-plus-trample-through-2-2",
+    "text": "i have a 4/4 and cast a spell that gives it +3/+3 and trample, they block with a 2/2, how much gets through",
+    "expect": [
+      "a 4/4 creature is 7/7 until end of turn.",
+      "opponent takes 5 damage."
+    ]
+  },
+  {
+    "id": "sorcery-on-my-turn-legal",
+    "text": "they cast a sorcery on my turn, is that legal",
+    "expect": [
+      "a sorcery can't be cast on your turn (no flash)."
+    ],
+    "cite": [
+      "307.1"
+    ]
+  },
+  {
+    "id": "held-wrath-not-cast-in-response",
+    "text": "i have 3 creatures and they have wrath in hand, should i attack",
+    "expect": [
+      "opponent takes 1 damage. (×3)"
+    ],
+    "notExpect": [
+      "Wrath of God is cast"
+    ]
   }
 ]

@@ -44,7 +44,10 @@ object Generic {
         if (n in setOf("split second spell", "spell with split second", "split second instant")) return OracleParser.parse("generic-split-second", "a split second spell", "Instant", "{1}{R}", 2.0, "R", null, null, listOf("Split second"), "Split second\nThis spell deals 3 damage to any target.")
         if (n in setOf("removal spell", "kill spell", "removal")) return OracleParser.parse("generic-removal", "a removal spell", "Instant", "{1}{B}", 2.0, "B", null, null, emptyList(), "Destroy target creature.")
         Regex("""^(\d+) damage spell$""").find(n)?.let { m -> val d = m.groupValues[1].toInt(); return OracleParser.parse("generic-$d-damage", "a $d damage spell", "Instant", "{R}", 1.0, "R", null, null, emptyList(), "This spell deals $d damage to any target.") }
-        Regex("""^([+-]\d+)/([+-]\d+) pump$""").find(n)?.let { m -> return OracleParser.parse("generic-pump-${m.groupValues[1]}-${m.groupValues[2]}", "a ${m.groupValues[1]}/${m.groupValues[2]} pump", "Instant", "{G}", 1.0, "G", null, null, emptyList(), "Target creature gets ${m.groupValues[1]}/${m.groupValues[2]} until end of turn.") }
+        Regex("""^([+-]\d+)/([+-]\d+)(?: ([a-z][a-z ]*?))? pump$""").find(n)?.let { m ->
+            val kw = m.groupValues[3].trim()
+            return OracleParser.parse("generic-pump-${m.groupValues[1]}-${m.groupValues[2]}${if (kw.isEmpty()) "" else "-" + kw.replace(' ', '-')}", "a ${m.groupValues[1]}/${m.groupValues[2]}${if (kw.isEmpty()) "" else " $kw"} pump", "Instant", "{G}", 1.0, "G", null, null, emptyList(),
+                if (kw.isEmpty()) "Target creature gets ${m.groupValues[1]}/${m.groupValues[2]} until end of turn." else "Target creature gets ${m.groupValues[1]}/${m.groupValues[2]} and gains $kw until end of turn.") }
         if (n in setOf("burn spell", "burn")) return OracleParser.parse("generic-burn", "a burn spell", "Instant", "{R}", 1.0, "R", null, null, emptyList(), "This spell deals 3 damage to any target.")
         // "my creature with an Aura on it dies": which Aura it is doesn't matter to the question — that it is an
         // Aura does, because an Aura with nothing to enchant goes to the graveyard while an Equipment stays.

@@ -169,7 +169,7 @@ class SituationParser(private val names: NameIndex) {
         // "I attack with a 5/5 and they have Fog": an instant a player is said to hold, while the other player does
         // something, is the answer they are holding — so it is cast in response, and the answer says so. Left in
         // hand, the question ("do I take 5?") was answered as though the card weren't there.
-        for (held in ctx.objects.values.filter { o -> o.zone == "hand" && names.lookup(Names.normalize(o.card.name ?: ""))?.isSpellOnly == true }.toList()) {
+        for (held in ctx.objects.values.filter { o -> o.zone == "hand" && names.lookup(Names.normalize(o.card.name ?: ""))?.let { e -> e.isSpellOnly && e.typeLine.contains("Instant") } == true }.toList()) {
             val who = held.controller
             if (ctx.events.any { it.verb == "cast" && it.player == who && (it.obj == held.id || it.card?.name == held.card.name) }) continue
             // A hand listed for a discard spell ("they have Bolt and Brainstorm in hand, I cast Thoughtseize") is what the
@@ -1078,6 +1078,15 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\bwhat happens to (?:the|my) (equipment|aura)\b""", RegexOption.IGNORE_CASE), "where does the $1 go")
             // "I attack with it alone": the attack rule reads "alone" of a named attacker; "it" is the creature just described.
             .replace(Regex("""\battack(s|ed|ing)? with (it|that) alone\b""", RegexOption.IGNORE_CASE), "attack$1 with $2")
+            // "my commander is in the command zone and has died twice": how many times it died is what the tax counts.
+            .replace(Regex("""\b(my|our|their) commander is in the command zone and has (died|been cast|been killed) (\d+|once|twice|three times|\d+ times)\b""", RegexOption.IGNORE_CASE), "$1 commander $2 $3")
+            // "does my 2/2 deal damage to them?" after its blocker was removed: the attacker's damage.
+            .replace(Regex("""\bdoes my (?:\d+/\d+|creature|attacker|guy|dude) (?:still )?(?:deal|do) (?:any |its |the )?damage to (them|him|her|my opponent|the opponent)\b""", RegexOption.IGNORE_CASE), "does the attacker deal damage to $1")
+            // "I have a 3/3 unblocked, is it over?": the attack that gets through, then whether they die.
+            .replace(Regex("""\b(i|we) have an? (\d+/\d+(?: with [a-z ]+?)?) unblocked\b""", RegexOption.IGNORE_CASE), "$1 attack with a $2 unblocked")
+            .replace(Regex("""(?<=, )(?:is it over|is that game|is it game|is that it|is that the game)\??$""", RegexOption.IGNORE_CASE), "do they die")
+            // "cast a spell that gives it +3/+3 and trample": a stand-in pump with the keyword.
+            .replace(Regex("""\bcast(s?) an? spell that gives (it|that|my creature|(?:my )?c\d+|(?:my )?\d+/\d+) ([+-]\d+/[+-]\d+)(?: and (trample|flying|first strike|double strike|lifelink|deathtouch|indestructible|hexproof|vigilance|haste))?\b""", RegexOption.IGNORE_CASE), "cast$1 a $3 $4 pump on $2")
             // "if I block do I take any damage?": the block, then the damage question.
             .replace(Regex("""\bif (i|we) block,? do (?:i|we) (?:still )?take (?:any |the )?damage\??$""", RegexOption.IGNORE_CASE), "i block with my creature, do i take damage")
             // "can I attack safely?": they block, and the question is whether the attacker survives.
@@ -1901,6 +1910,11 @@ class SituationParser(private val names: NameIndex) {
         }
         // "do I get the mana first?" when a land is about to be destroyed: tapping it is a mana ability.
         Regex("""^(?:do|can|could) (?:i|we) (?:still )?(?:get|make|float|use|tap (?:it|the land|my land) for) the mana(?: first| in response| before it dies| before it's destroyed| before it is destroyed| off it| out of it)?$""").find(clause0)?.let {
+            // "I sacrifice it to my Altar, do I still get the mana?": the sacrifice was the cost, so the mana is made.
+            if (ctx.events.lastOrNull { it.verb != "resolveAll" }?.verb == "sacrifice" || Regex("""\baltar\b""").containsMatchIn(m.text)) {
+                ctx.asks += EventSpec("ask", to = "text:Yes. Sacrificing the creature is the cost of the Altar's mana ability, paid as you activate it, and a mana ability makes its mana at once without using the stack (605.3a, 602.2b): you get the mana whatever happens to their spell, which now has no target and fizzles (608.2b). Spend the mana before the step ends, or it empties (106.4).")
+                return true
+            }
             ctx.asks += EventSpec("ask", to = "text:Yes. Tapping a land for mana is a mana ability: it doesn't use the stack, and you can activate it whenever you have priority, including in response to the ability that would destroy the land while it is still on the battlefield (605.3a). The mana is yours to spend right then, and whatever isn't spent empties at the end of the step (106.4).")
             return true
         }
@@ -1961,6 +1975,23 @@ class SituationParser(private val names: NameIndex) {
             return true
         }
         Regex("""^(?:does|will|would|so does) (?:the |their |that |the removal )?(?:spell |it )?(?:fizzle|still resolve|get countered)$""").find(clause0)?.let { if (ctx.asks.isEmpty()) return@let; ctx.notes += "\"${restore(clause0, m)}?\" is answered above."; return true }
+        // "they have 2 counterspells, can I win the counter war with 1?": one counter answers one spell.
+        Regex("""^can (?:i|we) win (?:the |a )?counter[- ]?(?:war|fight|battle) with (\d+|one|two|three) (?:c\d+|counterspells?|counters?)$""").find(clause0)?.let { r ->
+            val mine = number(r.groupValues[1]) ?: 1
+            val foe = ctx.other("me") ?: "opp"
+            // "they have 2 Counterspells": instants a player has are in hand whatever zone the statement left them in.
+            val theirs = (ctx.inHand[foe]?.count { it.isSpellOnly } ?: 0).takeIf { it > 0 } ?: ctx.objects.values.count { o -> o.controller == foe && (o.zone == "hand" || names.lookup(Names.normalize(o.card.name ?: ""))?.isSpellOnly == true) }
+            if (theirs == 0) return@let
+            ctx.asks += EventSpec("ask", to = if (mine >= theirs) "text:Yes, if you answer each of theirs. They counter your spell, you counter their counterspell, and so on: each counterspell can counter one spell, so with $mine to their $theirs the last counterspell cast is yours and your spell resolves (a countered spell goes to the graveyard, 701.5a; the stack resolves top down, 608.1)." else "text:No. Each counterspell answers one spell: they counter your spell, you counter that counterspell, and they counter yours with their next one. With $mine counterspell${if (mine == 1) "" else "s"} against their $theirs, their last one resolves and your spell is countered (701.5a). You would need at least as many counterspells as they have, or a spell that can't be countered.")
+            return true
+        }
+        // "which can block?": each of the asker's creatures against the attacker.
+        Regex("""^which (?:of (?:my|our) creatures |of them |ones? |creatures? )?(?:can|could) block(?: it| the attacker| that)?$""").find(clause0)?.let {
+            val mine = ctx.objects.values.filter { it.controller == "me" && it.zone == "battlefield" && isCreatureName(it.card.name) }
+            if (mine.isEmpty() || ctx.events.none { it.verb == "attack" || it.verb == "attackAll" }) return@let
+            for (o in mine) ctx.asks += EventSpec("ask", obj = o.id, to = "block")
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered for each of your creatures below."; return true
+        }
         // "how many do I need to block it?": one, unless the attacker says otherwise.
         Regex("""^how many (?:creatures |blockers |guys )?(?:do|would) (?:i|we) need to block (?:it|that|him|her|the (?:menace )?(?:creature|attacker|guy))$""").find(clause0)?.let {
             val foe = ctx.other("me") ?: "opp"
@@ -4160,9 +4191,9 @@ class SituationParser(private val names: NameIndex) {
         }
         // "a 3 mana spell" / "casts a 2-mana creature": a spell known only by its cost.
         // "a 3 damage spell on it" / "a +2/+2 pump": a spell known only by what it does, aimed where the words say.
-        Regex("""^(?:casts?|plays?) an? (?:(\d+)[- ]mana (spell|instant|sorcery|creature spell|creature|artifact|enchantment|noncreature spell)|(\d+)[- ]damage (?:spell|burn spell|burn)|([+-]\d+/[+-]\d+) (?:pump|pump spell|spell|effect|buff)|(removal|kill|burn|split second) (?:spell|instant))((?: (?:at|on|targeting) .*)?)$""").find(c)?.let { r ->
+        Regex("""^(?:casts?|plays?) an? (?:(\d+)[- ]mana (spell|instant|sorcery|creature spell|creature|artifact|enchantment|noncreature spell)|(\d+)[- ]damage (?:spell|burn spell|burn)|([+-]\d+/[+-]\d+(?: (?:and )?(?:trample|flying|first strike|double strike|lifelink|deathtouch|indestructible|hexproof|vigilance|haste))?) ?(?:pump|pump spell|spell|effect|buff)|(removal|kill|burn|split second) (?:spell|instant))((?: (?:at|on|targeting) .*)?)$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
-            val name = when { r.groupValues[1].isNotEmpty() -> "a ${r.groupValues[1]} mana ${r.groupValues[2]}"; r.groupValues[3].isNotEmpty() -> "a ${r.groupValues[3]} damage spell"; r.groupValues[5].isNotEmpty() -> "a ${r.groupValues[5]} spell"; else -> "a ${r.groupValues[4]} pump" }
+            val name = when { r.groupValues[1].isNotEmpty() -> "a ${r.groupValues[1]} mana ${r.groupValues[2]}"; r.groupValues[3].isNotEmpty() -> "a ${r.groupValues[3]} damage spell"; r.groupValues[5].isNotEmpty() -> "a ${r.groupValues[5]} spell"; else -> "a ${r.groupValues[4].replace(" and ", " ").trim()} pump" }
             val targets = if (r.groupValues[1].isNotEmpty()) emptyList() else targetsIn(r.groupValues[6], m, ctx)
             ctx.events += EventSpec("cast", player = who, card = CardRef(name = name), targets = targets); ctx.lastActor = who; ctx.lastVerb = "cast"; ctx.lastMentioned = "cast:${slug(name)}"; ctx.note(who); return true
         }
