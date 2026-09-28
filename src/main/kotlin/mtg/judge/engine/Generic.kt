@@ -51,19 +51,24 @@ object Generic {
         if (n in setOf("land destruction spell", "land destruction")) return OracleParser.parse("generic-land-destruction", "a land destruction spell", "Sorcery", "{1}{R}{R}", 3.0, "R", null, null, emptyList(), "Destroy target land.")
         if (n in setOf("dies-draw enchantment", "dies draw enchantment")) return OracleParser.parse("generic-dies-draw", "a dies-draw enchantment", "Enchantment", "{1}{B}", 2.0, "B", null, null, emptyList(), "Whenever a creature dies, draw a card.")
         // "a creature that says when it enters draw a card": a permanent whose rules text is the words given.
-        Regex("""^(creature|artifact|enchantment|permanent|land) that says (.+)$""").find(n)?.let { m ->
-            val kind = m.groupValues[1]; val raw = m.groupValues[2].replace('_', ' ').trim().trim('"')
+        Regex("""^(?:(\d+)/(\d+) )?(creature|artifact|enchantment|permanent|land) that says (.+)$""").find(n)?.let { m ->
+            val kind = m.groupValues[3]; val raw = m.groupValues[4].replace('_', ' ').trim().trim('"')
             val self = if (kind == "creature") "this creature" else "this permanent"
             var t = raw.replace(Regex("""^(when(?:ever)?) it\b"""), "$1 $self").replace(Regex("""^it (can't|can|has|gets|deals|doesn't)\b"""), "${self.replaceFirstChar { c -> c.uppercase() }} $1")
-            t = t.replace(Regex("""^tap[:,]? (add .+)$"""), "{T}: $1")
-            if (!t.contains(',')) t = t.replace(Regex("""^((?:when|whenever|at the beginning of) \S+(?: \S+)*?) (draw|create|put|sacrifice|destroy|exile|return|tap|untap|each|you (?:draw|gain|lose|may|get|create|put|sacrifice|discard)|that player|its controller|target)\b"""), "$1, $2")
+            t = t.replace(Regex("""\bon it$"""), "on $self").replace(Regex("""^tap[:,]? (add .+)$"""), "{T}: $1")
+            // "add two mana" / "add one mana": colorless, in symbols.
+            t = t.replace(Regex("""\badd (one|two|three|\d) mana(?! of)""")) { w -> "add " + "{C}".repeat(when (w.groupValues[1]) { "one" -> 1; "two" -> 2; "three" -> 3; else -> w.groupValues[1].toInt() }) }
+            if (!t.contains(',')) t = t.replace(Regex("""^((?:when|whenever|at the beginning of) \S+(?: \S+)*?) (draw|create|put|sacrifice|destroy|exile|return|tap|untap|each|it (?:gets|gains|deals|becomes)|you (?:draw|gain|lose|may|get|create|put|sacrifice|discard)|that player|its controller|target)\b"""), "$1, $2")
+            // "whenever this creature attacks, it gets +1/+0": a pump from a trigger lasts until end of turn unless said otherwise.
+            if (Regex("""^(?:when|whenever|at)\b.*\b(?:gets?|gains?) [+-]\d+/[+-]\d+$""").containsMatchIn(t)) t += " until end of turn"
             val text = t.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
             val type = when (kind) { "creature" -> "Creature"; "artifact" -> "Artifact"; "land" -> "Land"; else -> "Enchantment" }
-            return OracleParser.parse("generic-says-$kind-${raw.take(60)}", "${if (kind.first() in "aeiou") "an" else "a"} $kind that says \"$raw\"", type, if (kind == "land") null else "{2}", if (kind == "land") 0.0 else 2.0, "", if (kind == "creature") "2" else null, if (kind == "creature") "2" else null, emptyList(), text)
+            val pw = m.groupValues[1].ifEmpty { if (kind == "creature") "2" else "" }.ifEmpty { null }; val tf = m.groupValues[2].ifEmpty { if (kind == "creature") "2" else "" }.ifEmpty { null }
+            return OracleParser.parse("generic-says-$kind-${m.groupValues[1]}-${raw.take(60)}", "${if (m.groupValues[1].isNotEmpty()) "a ${m.groupValues[1]}/${m.groupValues[2]} " else if (kind.first() in "aeiou") "an " else "a "}$kind that says \"$raw\"", type, if (kind == "land") null else "{2}", if (kind == "land") 0.0 else 2.0, "", pw, tf, emptyList(), text)
         }
         // "a spell that says destroy target creature with power 2 or less": the words given are its rules text.
         Regex("""^(spell|instant|sorcery) that says (.+)$""").find(n)?.let { m ->
-            val text0 = m.groupValues[2].replace('_', ' ').trim().trim('"')
+            val text0 = m.groupValues[2].replace('_', ' ').trim().trim('"').replace(Regex("""^gains? me (\d+) life$"""), "you gain $1 life").replace(Regex("""^deals? me (\d+) damage$"""), "this spell deals $1 damage to you")
             val text = text0.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
             val type = if (m.groupValues[1] == "instant") "Instant" else "Sorcery"
             return OracleParser.parse("generic-says-${m.groupValues[2].take(60)}", "${if (m.groupValues[1] == "instant") "an instant" else "a ${m.groupValues[1]}"} that says \"$text0\"", type, "{2}", 2.0, "", null, null, emptyList(), text)

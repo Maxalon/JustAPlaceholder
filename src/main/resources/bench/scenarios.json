@@ -20084,5 +20084,70 @@
     "expect": [
       "Lightning Bolt can't target a creature that says \"when it dies each opponent loses 2 life\" while it's still a spell on the stack."
     ]
+  },
+  {
+    "id": "says-attack-trigger-plus-1-plus-0",
+    "text": "i have a 2/2 that says whenever this creature attacks it gets +1/+0, i attack, how much damage",
+    "expect": [
+      "a 2/2 creature that says \"whenever this creature attacks it gets +1/+0\" is 3/2 until end of turn.",
+      "Yes: opponent takes 3 damage in all."
+    ]
+  },
+  {
+    "id": "says-their-etb-lifegain-my-creatures",
+    "text": "they have a creature that says whenever a creature enters under your control you gain 1 life, i cast two creatures, do they gain life",
+    "expect": [
+      "No: opponent gains no life here."
+    ]
+  },
+  {
+    "id": "says-each-player-draws-2-empty-library",
+    "text": "i cast a sorcery that says each player draws two cards, my opponent has 1 card in library, do they lose",
+    "expect": [
+      "opponent draws 1 card and can't draw the rest (empty library).",
+      "Yes: opponent has lost the game."
+    ],
+    "cite": [
+      "704.5b"
+    ]
+  },
+  {
+    "id": "says-creatures-cant-attack-block",
+    "text": "they have an enchantment that says creatures can't attack, can i still block",
+    "expect": [
+      "a creature can't attack."
+    ]
+  },
+  {
+    "id": "says-land-tap-add-two",
+    "text": "i have a land that says tap add two mana, how much mana do i have with it and 2 other lands",
+    "expect": [
+      "You can make 4 mana right now: a land that says \"tap add 2 mana\" → {C}{C}; plus the 2 the situation gives from permanents it didn't name."
+    ]
+  },
+  {
+    "id": "says-destroy-all-nonblack",
+    "text": "they cast a spell that says destroy all nonblack creatures, i have a black 2/2 and a white 3/3, what happens",
+    "expect": [
+      "a 3/3 white creature: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "a 2/2 black creature: the battlefield"
+    ]
+  },
+  {
+    "id": "says-cant-be-countered-counterspelled",
+    "text": "i have a creature that says it can't be countered, they counterspell it, what happens",
+    "expect": [
+      "a creature that says \"it can't be countered\" isn't countered (it can't be).",
+      "a creature that says \"it can't be countered\" enters the battlefield."
+    ]
+  },
+  {
+    "id": "says-cast-trigger-counters-3-spells",
+    "text": "i have a creature that says whenever you cast a spell put a +1/+1 counter on it, i cast 3 spells, how big is it",
+    "expect": [
+      "a creature that says \"whenever you cast a spell put a +1/+1 counter on it\" is 5/5 (2/2 base, 3 +1/+1 counters)."
+    ]
   }
 ]

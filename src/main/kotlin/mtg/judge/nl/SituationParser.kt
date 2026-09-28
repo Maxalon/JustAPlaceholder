@@ -1144,13 +1144,20 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(i|we|they|he|she) (?:have|has) an? (\d+/\d+(?: with [a-z ]+?)?) that (?:attacks|is attacking|swings)\b""", RegexOption.IGNORE_CASE), "$1 attack with a $2")
             // "a creature that says when it enters draw a card" / "my creature says it can't be blocked by more than one creature":
             // a stand-in permanent with that rules text, kept as one token through the clause split.
-            .let { t0 -> Regex("""\b(an?|my|their|his|her|the) (creature|permanent|artifact|enchantment|land|card) that (?:says|reads) (.+?)(?=,|\?|$)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
-                val kind = r.groupValues[2].lowercase().let { if (it == "card") "permanent" else it }
-                "${r.groupValues[1]} says-${r.groupValues[3].trim().lowercase().replace(' ', '_')} $kind" } }
+            .let { t0 -> Regex("""\b(an?|my|their|his|her|the) (creature|permanent|artifact|enchantment|land|card|\d+/\d+) that (?:says|reads) (.+?)(?=,|\?|$)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                val k = r.groupValues[2].lowercase()
+                val kind = if (k == "card") "permanent" else if (k.contains('/')) "creature" else k
+                "${r.groupValues[1]} says-${if (k.contains('/')) "$k~" else ""}${r.groupValues[3].trim().lowercase().replace(' ', '_')} $kind" } }
             .let { t0 -> Regex("""\b(my|their|his|her) (creature|permanent|artifact|enchantment|land) says (.+?)(?=,|\?|$)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 "${if (r.groupValues[1].lowercase() == "my") "i have" else "they have"} a says-${r.groupValues[3].trim().lowercase().replace(' ', '_')} ${r.groupValues[2].lowercase()}" } }
+            .replace(Regex("""\bthey counterspell it\b""", RegexOption.IGNORE_CASE), "they counter it")
+            .replace(Regex("""\bdo (they|i|we) gain (?:any )?life\b(?! if)""", RegexOption.IGNORE_CASE), "how much life do $1 gain")
+            .replace(Regex("""(?<=, )how much damage\??$""", RegexOption.IGNORE_CASE), "how much damage do they take")
+            .replace(Regex("""\bhow much mana do (i|we) have with it and (\d+) other lands\b""", RegexOption.IGNORE_CASE), "i have $2 other lands, how much mana do i have")
+            .replace(Regex("""\bcan it be blocked by a (?:ground|normal|regular|non-?flying) creature\b""", RegexOption.IGNORE_CASE), "i attack with it, they have a creature, can their creature block it")
             // "I have a creature that says …, they counter it": a permanent they counter was being cast.
-            .replace(Regex("""\b(i|we) have (an? says-\S+ (?:creature|artifact|enchantment|permanent)), (?:and )?they counter it\b""", RegexOption.IGNORE_CASE), "$1 cast $2, they counter it")
+            .let { t0 -> Regex("""\b(i|we) have (an? says-\S+ (?:creature|artifact|enchantment|permanent)), (?:and )?they (counter|c\d+) it\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                if (r.groupValues[3].lowercase() == "counter" || m.cards[r.groupValues[3]]?.display == "Counterspell") "${r.groupValues[1]} cast ${r.groupValues[2]}, they ${if (r.groupValues[3].lowercase() == "counter") "counter" else "cast ${r.groupValues[3]} targeting"} it" else r.value } }
             // "how big is their 2/2?" with nothing else said of it: the creature, then the question.
             .let { t0 -> Regex("""\bhow big is (their|my) (\d+/\d+)\b""", RegexOption.IGNORE_CASE).replace(t0) { r -> "${if (r.groupValues[1].lowercase() == "my") "i have" else "they have"} a ${r.groupValues[2]}, how big is it" } }
             // "can they double block?"; "can my reach guy block their 2/2?"
@@ -3589,7 +3596,8 @@ class SituationParser(private val names: NameIndex) {
             val kind = r.groupValues[3].removeSuffix("s")
             // "I have four lands" is the mana idiom and is read as mana further down; "I control four lands" is a board.
             if (kind == "land" && !r.groupValues[1].startsWith("control") && n > 1) return@let
-            val name = if (r.prefix.startsWith("says-")) "${if (kind.first() in "aeiou") "an" else "a"} $kind that says \"${r.prefix.removePrefix("says-").trim().replace('_', ' ')}\""
+            val name = if (r.prefix.startsWith("says-")) r.prefix.removePrefix("says-").trim().let { body -> val size = body.substringBefore('~', ""); val txt = body.substringAfter('~').replace('_', ' ')
+                    if (size.isNotEmpty()) "a $size $kind that says \"$txt\"" else "${if (kind.first() in "aeiou") "an" else "a"} $kind that says \"$txt\"" }
                        else (if ((r.prefix + kind).first() in "aeiou") "an " else "a ") + r.prefix + kind
             // "they control a planeswalker with 4 loyalty": a planeswalker with no loyalty is already dead, so a
             // stand-in needs one — the asker's number if they gave it, and otherwise it is theirs to say.
