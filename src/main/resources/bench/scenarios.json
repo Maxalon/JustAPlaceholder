@@ -19209,5 +19209,63 @@
     "expect": [
       "Lightning Bolt can't target Counterspell while it's still a spell on the stack."
     ]
+  },
+  {
+    "id": "cyclonic-rift-overloaded-my-own-permanents",
+    "text": "i cast cyclonic rift overloaded, do my own permanents bounce",
+    "expect": [
+      "No: a creature is still on the battlefield."
+    ]
+  },
+  {
+    "id": "leyline-of-sanctity-stops-thoughtseize-talk",
+    "text": "does their leyline of sanctity stop my thoughtseize",
+    "expect": [
+      "Thoughtseize can't target opponent (hexproof)."
+    ]
+  },
+  {
+    "id": "ponder-with-1-card-in-library",
+    "text": "i have 1 card in library and cast ponder, do i lose",
+    "expect": [
+      "No: You are still in the game. An empty library isn't a loss by itself: you lose only when you would draw from it, at the next state-based check (704.5b)."
+    ]
+  },
+  {
+    "id": "infect-4-4-on-3-poison",
+    "text": "my opponent has 3 poison and i hit them with a 4/4 infect, how many poison do they have",
+    "expect": [
+      "opponent has 7 poison counters."
+    ],
+    "notExpect": [
+      "poison left"
+    ]
+  },
+  {
+    "id": "ashnods-altar-in-response-to-path",
+    "text": "i sac my creature to ashnod's altar in response to path to exile, what happens",
+    "expect": [
+      "Ashnod's Altar's mana ability: add {C}{C}.",
+      "Path to Exile doesn't resolve (all targets illegal)."
+    ]
+  },
+  {
+    "id": "wrath-vs-regenerating-creature",
+    "text": "they cast wrath and i have a regenerating creature, does it survive",
+    "expect": [
+      "a creature's regeneration shield doesn't help: the effect says it can't be regenerated (701.19c).",
+      "No: a creature is in the graveyard."
+    ]
+  },
+  {
+    "id": "first-striker-blocks-2-2",
+    "text": "my 2/2 first striker blocks their 2/2, who dies",
+    "expect": [
+      "No: a 2/2 creature with first strike is still on the battlefield.",
+      "Yes: a 2/2 creature died (it's in the graveyard)."
+    ],
+    "cite": [
+      "702.7b"
+    ]
   }
 ]
