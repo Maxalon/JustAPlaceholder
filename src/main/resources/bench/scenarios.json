@@ -19320,5 +19320,78 @@
     "expect": [
       "No: a 3/3 creature is still on the battlefield."
     ]
+  },
+  {
+    "id": "blood-moon-swamp-still-black",
+    "text": "they cast blood moon, does my swamp still make black",
+    "expect": [
+      "Swamp can make: {T}: Add {B}. (intrinsic, from being a Swamp)"
+    ]
+  },
+  {
+    "id": "blood-moon-underground-sea-black",
+    "text": "they cast blood moon, does my underground sea still make black",
+    "expect": [
+      "Underground Sea is a Mountain under Blood Moon, so it taps for {R} and nothing else."
+    ],
+    "cite": [
+      "305.7"
+    ]
+  },
+  {
+    "id": "two-attackers-one-blocker-talk",
+    "text": "i attack with a 1/1 and a 2/2, they have one blocker, what happens",
+    "expect": [
+      "opponent takes 2 damage."
+    ]
+  },
+  {
+    "id": "hymn-empty-hand",
+    "text": "my opponent has no cards in hand, i cast hymn to tourach, does it do anything",
+    "expect": [
+      "opponent discards 0 cards (0 → 0 in hand)."
+    ]
+  },
+  {
+    "id": "dark-ritual-one-swamp-mana",
+    "text": "i cast dark ritual with one swamp, how much mana do i have",
+    "expect": [
+      "You have {B}{B}{B} in your mana pool."
+    ]
+  },
+  {
+    "id": "reach-blocks-flyer-talk",
+    "text": "they attack with a flyer, i have a reach creature, can i block",
+    "expect": [
+      "a creature with flying: the battlefield → opponent's graveyard."
+    ]
+  },
+  {
+    "id": "sorcery-on-their-end-step",
+    "text": "can i cast a sorcery during their end step",
+    "expect": [
+      "a sorcery can't be cast on opponent's turn (no flash)."
+    ]
+  },
+  {
+    "id": "double-strike-10-10-at-20",
+    "text": "i have 20 life and they attack with a 10/10 double strike unblocked, am i dead",
+    "expect": [
+      "You take 10 damage. (×2)",
+      "Yes: You have lost the game."
+    ],
+    "cite": [
+      "702.4b"
+    ]
+  },
+  {
+    "id": "draw-from-empty-library-immediately",
+    "text": "if i draw with no cards left in my library do i lose immediately",
+    "expect": [
+      "You lose the game (drew from an empty library)."
+    ],
+    "cite": [
+      "704.5b"
+    ]
   }
 ]

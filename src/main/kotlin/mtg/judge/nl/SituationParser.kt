@@ -1044,6 +1044,8 @@ class SituationParser(private val names: NameIndex) {
                 if (n < 2 || n > 4) r.value else (1..n).joinToString(", ") { "${r.groupValues[1]} cast a ${r.groupValues[3]} mana creature" } + ", can ${r.groupValues[1]}" } }
             // "they steal my creature with Act of Treason": the spell, aimed at the creature.
             .replace(Regex("""\b(they|he|she|my opponent|the opponent|i|we) (?:steals?|takes?|threatens?|borrows?) ((?:my |their |the )?(?:creature|\d+/\d+|c\d+)) with (?:an? |the |their |my )?(c\d+)\b""", RegexOption.IGNORE_CASE), "$1 cast $3 targeting $2")
+            // "does my Swamp still make black?": what mana it can make.
+            .replace(Regex("""\b(?:does|can|will) (my |the |their )?(c\d+) (?:still |even )?(?:make|tap for|produce|give|add) (?:black|blue|red|green|white|colorless|colored)(?: mana)?\b""", RegexOption.IGNORE_CASE), "what color mana can $1$2 make")
             // "can my Urza's Tower still tap for 3?": whether it taps for mana at all is the question the outcome answers.
             .replace(Regex("""\btap for (\d+|two|three|four|five)( mana)?\b""", RegexOption.IGNORE_CASE), "tap for mana")
             // "Then the turn ends." / "At the end of the turn, …": until-end-of-turn effects end in the cleanup step (514.2).
