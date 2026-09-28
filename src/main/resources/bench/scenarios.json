@@ -19698,5 +19698,83 @@
     "notExpect": [
       "Wrath of God is cast"
     ]
+  },
+  {
+    "id": "if-they-block-first-striker-2-2",
+    "text": "i have a 3/3 and they have a 2/2 first striker, if they block do i lose my creature",
+    "expect": [
+      "No: a 3/3 creature is still on the battlefield.",
+      "a 2/2 creature with first strike: the battlefield → opponent's graveyard."
+    ]
+  },
+  {
+    "id": "bounce-spell-on-token",
+    "text": "they cast a bounce spell on my token, what happens",
+    "expect": [
+      "a 1/1 token: the battlefield → your hand.",
+      "a 1/1 token ceases to exist; it doesn't stay in the zone it went to."
+    ],
+    "cite": [
+      "704.5d"
+    ]
+  },
+  {
+    "id": "exiling-counterspell-reanimate",
+    "text": "i cast a creature and they counter it with a spell that exiles it, can i reanimate it",
+    "expect": [
+      "a creature spell: the stack → exile (an exiling counterspell exiles what it counters, so it isn't in the graveyard to reanimate)."
+    ]
+  },
+  {
+    "id": "chump-0-1-at-2-life",
+    "text": "i have 2 life and they have a 2/2, can i chump block with a 0/1",
+    "expect": [
+      "a 0/1 creature: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "You take 2 damage"
+    ]
+  },
+  {
+    "id": "one-4-4-block-both-2-2s",
+    "text": "they attack with two 2/2s and i have one 4/4, can i block both",
+    "expect": [
+      "a 4/4 creature can't block a 2/2 creature as well (a creature blocks only one attacker, 509.1a)."
+    ]
+  },
+  {
+    "id": "flyer-blocks-flyer-mine",
+    "text": "i have a creature with flying and they have a flyer too, can they block mine",
+    "expect": [
+      "a creature with flying: the battlefield → your graveyard.",
+      "a creature with flying: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "can't block"
+    ]
+  },
+  {
+    "id": "chalice-on-2-vs-5-mana",
+    "text": "they cast a 5 mana spell into my chalice on 2, does it get countered",
+    "expect": [
+      "No: a 5 mana spell isn't countered; it resolves."
+    ]
+  },
+  {
+    "id": "vigilance-attack-and-block-same-turn",
+    "text": "i have a vigilance creature, can it attack and block in the same turn",
+    "expect": [
+      "Not in the same turn, vigilance or not: you attack on your own turn, and blocking happens only in another player's combat (506.1, 509.1a). What vigilance does is keep the creature untapped when it attacks (702.20b), so it is ready to block on your opponent's turn or to use a {T} ability after attacking; a creature that attacked without vigilance is tapped and can't block until it untaps in your next untap step."
+    ]
+  },
+  {
+    "id": "they-take-it-then-burn-total",
+    "text": "i attack with a 2/2 and they take it, then i cast a 2 mana burn to the face, how much do they take total",
+    "expect": [
+      "Yes: opponent takes 5 damage in all."
+    ],
+    "notExpect": [
+      "gains control"
+    ]
   }
 ]

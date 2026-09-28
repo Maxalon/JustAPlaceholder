@@ -2405,6 +2405,8 @@ class Engine(val state: GameState) {
                 trace.step("${target.describe} is countered: it's removed from the stack and none of its effects happen" +
                     (if (target.kind == StackKind.SPELL) "; $where" else "") + ".", "701.6a")
                 state.outcomes += "${target.describe} is countered."
+                // "where does it go?" / "can I reanimate it?": a countered card's zone is part of the answer when it isn't the graveyard.
+                if (target.kind == StackKind.SPELL && instead != null) state.outcomes += "${target.source.name}: the stack → ${when (instead) { "exile" -> "exile (${item.source.name} exiles what it counters, so it isn't in the graveyard to reanimate)"; "hand" -> "its owner's hand"; else -> "its owner's library" }}."
                 if (target.kind == StackKind.TRIGGERED) state.outcomes += "Countering ${target.source.name}'s trigger doesn't remove the ability: it triggers again the next time its event happens (603.2)."
             }
             is Effect.Destroy -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { destroy(it, "${it.name} is destroyed and put into its owner's graveyard.", "701.8a", canRegenerate = !effect.noRegen) } }
