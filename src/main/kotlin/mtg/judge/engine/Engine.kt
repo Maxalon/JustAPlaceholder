@@ -1189,6 +1189,10 @@ class Engine(val state: GameState) {
                 trace.step("${item.describe}'s target${if (item.targets.size > 1) "s are" else " is"} no longer legal (${legal.joinToString("; ") { whyIllegal(item, it.first) }}), so it doesn't resolve and is removed from the stack" +
                     (if (item.kind == StackKind.SPELL) " and put into its owner's graveyard" else "") + ".", "608.2b")
                 state.outcomes += "${item.describe} doesn't resolve (all targets illegal)."
+                // "they cast a 3/3 and I Bolt it before it resolves": a creature spell isn't a creature yet.
+                if (item.kind == StackKind.SPELL) legal.filter { !it.second }.mapNotNull { (it.first as? Ref.Obj)?.let { r -> state.objects[r.id] } }.filter { it.zone == Zone.STACK }.forEach { t ->
+                    state.outcomes += "${item.describe} can't target ${t.name} while it's still a spell on the stack: a creature spell isn't a creature until it resolves. Aim it at ${t.name} once it has entered the battlefield, or counter the spell instead."
+                }
                 if (item.kind == StackKind.SPELL) item.source.zone = Zone.GRAVEYARD
                 if (item.kind == StackKind.SPELL && item.source.def.abilities.any { it is TriggeredAbility && (it.trigger is Trigger.ThisDies || it.trigger is Trigger.ThisLeavesBattlefield) }) trace.step("${item.source.name} goes to the graveyard from the stack, not from the battlefield, so its \"${item.source.def.abilities.filterIsInstance<TriggeredAbility>().first { it.trigger is Trigger.ThisDies || it.trigger is Trigger.ThisLeavesBattlefield }.text.replace("~", item.source.name)}\" ability doesn't trigger.", "603.6c", "608.2b")
                 afterResolution(); return

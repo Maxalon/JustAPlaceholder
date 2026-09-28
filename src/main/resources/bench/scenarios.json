@@ -19267,5 +19267,58 @@
     "cite": [
       "702.7b"
     ]
+  },
+  {
+    "id": "leyline-still-hit-their-creature",
+    "text": "i cast lightning bolt and they have a leyline of sanctity, can i still hit their creature",
+    "expect": [
+      "a creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "Lightning Bolt targets you"
+    ]
+  },
+  {
+    "id": "can-i-double-block-talk",
+    "text": "they attack with a 2/2 and i have a 2/2 and a 1/1, can i double block",
+    "expect": [
+      "a 2/2 creature: the battlefield → opponent's graveyard."
+    ]
+  },
+  {
+    "id": "two-4-drops-with-8-lands",
+    "text": "i have 8 lands, can i cast two 4 drops in one turn",
+    "expect": [
+      "a 4 mana creature costs {4} — 4 mana. Nothing on the battlefield changes it. You have 4 available, enough."
+    ]
+  },
+  {
+    "id": "act-of-treason-steal-get-it-back",
+    "text": "they steal my creature with act of treason, do i get it back",
+    "expect": [
+      "a creature is back under your control.",
+      "Yes: a creature is under your control."
+    ]
+  },
+  {
+    "id": "wasteland-one-of-two-lands-mana",
+    "text": "i have 2 lands and they wasteland one, how much mana do i have",
+    "expect": [
+      "You have 1 mana available (the situation says so; no permanent it named makes mana)."
+    ]
+  },
+  {
+    "id": "bolt-a-creature-spell-on-the-stack",
+    "text": "they cast a 3/3 and i bolt it before it resolves, does that work",
+    "expect": [
+      "Lightning Bolt can't target a 3/3 creature while it's still a spell on the stack: a creature spell isn't a creature until it resolves. Aim it at a 3/3 creature once it has entered the battlefield, or counter the spell instead."
+    ]
+  },
+  {
+    "id": "flash-blocker-2-2-vs-3-3",
+    "text": "i attack with a 3/3 and they flash in a 2/2 blocker, does my guy die",
+    "expect": [
+      "No: a 3/3 creature is still on the battlefield."
+    ]
   }
 ]

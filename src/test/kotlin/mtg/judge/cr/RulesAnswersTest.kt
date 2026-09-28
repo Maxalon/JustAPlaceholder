@@ -55,6 +55,7 @@ class RulesAnswersTest {
         "Does lifelink work on blockers?" to "702.15b",
         "I have 2 planeswalkers with the same name, is that ok now?" to "306.4",
         "my commander deals 21 to one player in a 4 player game, do the others lose too" to "704.6c",
+        "can i sacrifice a creature in response to their removal spell" to "608.2b",
         "if i counter my own spell does storm still count it" to "702.40a",
         "can i tap my creature for mana the turn it comes down" to "302.6",
         "can my elf tap for mana the turn it enters?" to "302.6",

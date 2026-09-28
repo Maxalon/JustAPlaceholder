@@ -1036,6 +1036,14 @@ class SituationParser(private val names: NameIndex) {
             .let { t0 -> Regex("""\b(i|we) (?:sac|sacrifice|sacs|sacrifices) (?:my |the |a )?(creature|\d+/\d+|c\d+) to (?:my |the )?(c\d+) in response to (?:their |a |the |my opponent's )?(c\d+)(?: on it| targeting it| at it)?\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 if (m.cards[r.groupValues[4]]?.isSpellOnly != true) r.value
                 else "${r.groupValues[1]} have ${if (r.groupValues[2].startsWith("c")) r.groupValues[2] else "a ${r.groupValues[2]}"}, they cast ${r.groupValues[4]} targeting it, ${r.groupValues[1]} sacrifice it to ${r.groupValues[3]} in response" } }
+            // "can I double block?": both of the asker's creatures block.
+            .replace(Regex("""\bcan (i|we) double[- ]block(?: it| that| the attacker| him| her)?\b""", RegexOption.IGNORE_CASE), "can $1 block with both")
+            // "can I cast two 4 drops in one turn?": each cast in turn, then whether the last can be paid for.
+            .let { t0 -> Regex("""\bcan (i|we) cast (\d+) (\d+)[- ](?:mana )?(?:drops?|creatures?|spells?)(?: in (?:one|a|the same) turn| this turn| in a single turn)?\??$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+                val n = r.groupValues[2].toIntOrNull() ?: 0
+                if (n < 2 || n > 4) r.value else (1..n).joinToString(", ") { "${r.groupValues[1]} cast a ${r.groupValues[3]} mana creature" } + ", can ${r.groupValues[1]}" } }
+            // "they steal my creature with Act of Treason": the spell, aimed at the creature.
+            .replace(Regex("""\b(they|he|she|my opponent|the opponent|i|we) (?:steals?|takes?|threatens?|borrows?) ((?:my |their |the )?(?:creature|\d+/\d+|c\d+)) with (?:an? |the |their |my )?(c\d+)\b""", RegexOption.IGNORE_CASE), "$1 cast $3 targeting $2")
             // "can my Urza's Tower still tap for 3?": whether it taps for mana at all is the question the outcome answers.
             .replace(Regex("""\btap for (\d+|two|three|four|five)( mana)?\b""", RegexOption.IGNORE_CASE), "tap for mana")
             // "Then the turn ends." / "At the end of the turn, …": until-end-of-turn effects end in the cleanup step (514.2).
@@ -1868,6 +1876,25 @@ class SituationParser(private val names: NameIndex) {
             ctx.asks += EventSpec("ask", to = "text:${card.display} transforming doesn't make it a new object: it keeps everything that applied to it, including how long it has been under its controller's control, so it is exactly as summoning sick as it was before it transformed (712.18). If it has been under your control since your turn began, it can attack and use {T} abilities now (302.6).")
             return true
         }
+        // "I have 2 lands and they Wasteland one": one land fewer to count mana with.
+        Regex("""^(?:they|he|she|my opponent|the opponent) (c\d+)s? (one|two|\d+)(?: of (?:my|mine|my lands|them))?$""").find(clause0)?.let { r ->
+            val card = m.cards.getValue(r.groupValues[1])
+            if (card.display !in setOf("Wasteland", "Strip Mine", "Ghost Quarter", "Field of Ruin", "Tectonic Edge", "Dust Bowl")) return@let
+            val have = ctx.mana["me"] ?: return@let
+            val n = number(r.groupValues[2]) ?: 1
+            setMana("me", maxOf(0, have - n), ctx)
+            ctx.notes += "${card.display} destroyed ${if (n == 1) "one" else "$n"} of your $have lands, leaving ${maxOf(0, have - n)}; you could tap the land for mana in response before it went (605.3a), but that mana empties at the end of the step (106.4)."
+            return true
+        }
+        // "can I still hit their creature?" after a Bolt cast with no target named: the creature is the target.
+        Regex("""^can (i|we) (?:still |even )?(?:hit|target|bolt|kill|shoot|burn|point it at) (their|my opponent's|his|her|the) (creatures?|\d+/\d+|c\d+|guy|dude)$""").find(clause0)?.let { r ->
+            val idx = ctx.events.indexOfLast { it.verb == "cast" && it.player == "me" && it.targets.isEmpty() }
+            if (idx < 0) return@let
+            val targets = targetsIn("targeting ${r.groupValues[2]} ${r.groupValues[3].removeSuffix("s")}", m, ctx)
+            if (targets.isEmpty()) return@let
+            ctx.events[idx] = ctx.events[idx].copy(targets = targets)
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered by aiming the spell at that creature below."; return true
+        }
         // "fetchland-note": the fetch was read as the land it finds entering the battlefield.
         if (clause0 == "fetchland-note") { ctx.notes += "Cracking a fetchland finds a land and puts it onto the battlefield; that land entering is what landfall and similar abilities see, and the fetch itself leaving doesn't matter to them (the search is not tracked)."; return true }
         // "does their Ensnaring Bridge stop my 2/2?": attack with it and see whether the attack is legal.
@@ -2338,9 +2365,10 @@ class SituationParser(private val names: NameIndex) {
         // "does it cost more?", "will Bolt cost extra?": the same question, asked as yes or no.
         Regex("""^(?:(?:does|will|would|is) )?($possPrefix)?(c\d+|it|that) (?:going to )?costs? (?:more|extra|less|any more|anything extra|any extra|additional|the same|1 more|one more|2 more|two more)(?: mana| to cast| now)?$""").find(clause0)?.let { q ->
             val lastCast = ctx.events.lastOrNull { it.verb == "cast" }
+            // "they cast a 3 mana creature, does it cost more?": a spell known only by its cost has no card to look up.
+            if (q.groupValues[2] in setOf("it", "that") && lastCast?.card != null && lastCast.card.oracleId == null && names.lookup(Names.normalize(lastCast.card.name ?: "")) == null) { ctx.asks += EventSpec("ask", card = lastCast.card, to = "spellCost"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true }
             val card = m.cards[q.groupValues[2]] ?: lastCast?.card?.name?.let { n -> names.lookup(Names.normalize(n)) } ?: return@let
             val caster = lastCast?.takeIf { it.card?.name == card.display }?.player ?: possessiveOwner(q.groupValues[1], ctx, m) ?: ctx.lastActor ?: "me"
-            if (q.groupValues[2] in setOf("it", "that") && lastCast?.card != null && lastCast.card.oracleId == null && names.lookup(Names.normalize(lastCast.card.name ?: "")) == null) { ctx.asks += EventSpec("ask", card = lastCast.card, to = "spellCost"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true }
             val id = objectIdFor(card, ctx) ?: addObject(card, caster, false, ctx).also { ctx.objects[it] = ctx.objects.getValue(it).copy(zone = "hand") }
             ctx.asks += EventSpec("ask", obj = id, to = "spellCost")
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
