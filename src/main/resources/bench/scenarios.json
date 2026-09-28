@@ -20248,5 +20248,71 @@
     "expect": [
       "a creature that says \"whenever another creature you control dies put a +1/+1 counter on this creature\" has 2 +1/+1 counters."
     ]
+  },
+  {
+    "id": "says-counter-unless-pays-2-tapped-out",
+    "text": "i have 5 lands, i cast a 2 drop and a 3 drop, then they cast a spell that says counter target spell unless its controller pays 2, is my 3 drop countered",
+    "expect": [
+      "a 3 mana creature is countered.",
+      "Yes: a 3 mana creature is countered."
+    ]
+  },
+  {
+    "id": "two-2-2s-one-blocked-damage",
+    "text": "i attack with two 2/2s, they have one 3/3, they block one, how much damage do they take",
+    "expect": [
+      "opponent takes 2 damage."
+    ]
+  },
+  {
+    "id": "lifelink-1-1-into-4-4-still-gain",
+    "text": "i have a 1/1 with lifelink and they have a 4/4, i attack into it and they block, do i still gain life",
+    "expect": [
+      "You gain 1 life.",
+      "a 1/1 creature with lifelink: the battlefield → your graveyard."
+    ],
+    "cite": [
+      "702.15b"
+    ]
+  },
+  {
+    "id": "says-flying-vs-says-reach",
+    "text": "i have a creature that says flying, they have a creature that says reach, can it block",
+    "expect": [
+      "Yes: a creature that says \"reach\" can block a creature that says \"flying\" if it attacks."
+    ],
+    "notExpect": [
+      "not modeled"
+    ]
+  },
+  {
+    "id": "says-destroy-flyer-on-non-flyer",
+    "text": "i cast a spell that says destroy target creature with flying on their 2/2 without flying, does it work",
+    "expect": [
+      "a spell that says \"destroy target creature with flying\" can't target a 2/2 creature (not a creature with flying)."
+    ]
+  },
+  {
+    "id": "held-minus-5-pump-on-5-5",
+    "text": "they have a 5/5 and i have a spell that says target creature gets -5/-5, does it die",
+    "expect": [
+      "a 5/5 creature is 0/0 until end of turn.",
+      "Yes: a 5/5 creature died (it's in the graveyard)."
+    ]
+  },
+  {
+    "id": "pump-wins-combat-vs-4-4",
+    "text": "i have a 2/2 and a spell that says target creature gets +3/+3, they block with a 4/4, do i win the combat if i pump",
+    "expect": [
+      "a 2/2 creature is 5/5 until end of turn.",
+      "a 4/4 creature has 5 damage marked."
+    ]
+  },
+  {
+    "id": "says-end-step-trigger-their-end-step",
+    "text": "i have a creature that says at the beginning of your end step draw a card, does it trigger on my opponent's end step",
+    "expect": [
+      "No: a creature that says \"at the beginning of your end step draw a card\"'s ability didn't trigger (nothing that happened matched its trigger condition)."
+    ]
   }
 ]

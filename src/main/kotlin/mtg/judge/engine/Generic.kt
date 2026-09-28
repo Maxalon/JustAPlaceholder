@@ -55,7 +55,7 @@ object Generic {
             val kind = m.groupValues[3]; val raw = m.groupValues[4].replace('_', ' ').trim().trim('"')
             val self = if (kind == "creature") "this creature" else "this permanent"
             var t = raw.replace(Regex("""^(when(?:ever)?) it\b"""), "$1 $self").replace(Regex("""^it (can't|can|has|gets|deals|doesn't)\b"""), "${self.replaceFirstChar { c -> c.uppercase() }} $1")
-            t = t.replace(Regex("""\bon it$"""), "on $self").replace(Regex("""^tap[:,]? (add .+)$"""), "{T}: $1")
+            t = t.replace(Regex("""\bon it$"""), "on $self").replace(Regex("""^tap[:,]? (.+)$"""), "{T}: $1")
             // Table wording into card wording: "you deal 1 damage to it", "and lose 1 life", "return it to the battlefield", "spells cost 1 more".
             t = t.replace(Regex("""\byou deals? (\d+) damage to it$"""), "$self deals $1 damage to that creature").replace(Regex("""\byou deals? (\d+) damage\b"""), "$self deals $1 damage")
             t = t.replace(Regex("""\breturn it to the battlefield$"""), "return it to the battlefield under its owner's control")
@@ -66,10 +66,12 @@ object Generic {
             if (!t.contains(',')) t = t.replace(Regex("""^((?:when|whenever|at the beginning of) \S+(?: \S+)*?) (draw|create|put|sacrifice|destroy|exile|return|tap|untap|each|it (?:gets|gains|deals|becomes)|this (?:creature|permanent) (?:deals|gets|gains|becomes)|you (?:draw|gain|lose|may|get|create|put|sacrifice|discard)|that player|its controller|target)\b"""), "$1, $2")
             // "whenever this creature attacks, it gets +1/+0": a pump from a trigger lasts until end of turn unless said otherwise.
             if (Regex("""^(?:when|whenever|at)\b.*\b(?:gets?|gains?) [+-]\d+/[+-]\d+$""").containsMatchIn(t)) t += " until end of turn"
-            val text = t.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
+            val keywordOnly = Regex("""^(?:flying|reach|trample|lifelink|deathtouch|first strike|double strike|haste|vigilance|hexproof|indestructible|menace|flash|defender|infect|wither|shroud|protection from [a-z]+)(?:, (?:flying|reach|trample|lifelink|deathtouch|first strike|double strike|haste|vigilance|hexproof|indestructible|menace|flash|defender|infect|wither|shroud|protection from [a-z]+))*$""").matches(t)
+            val text = if (keywordOnly) "" else t.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
+            val kws = if (keywordOnly) t.split(", ").map { k -> k.replaceFirstChar { c -> c.uppercase() } } else emptyList()
             val type = when (kind) { "creature" -> "Creature"; "artifact" -> "Artifact"; "land" -> "Land"; else -> "Enchantment" }
             val pw = m.groupValues[1].ifEmpty { if (kind == "creature") "2" else "" }.ifEmpty { null }; val tf = m.groupValues[2].ifEmpty { if (kind == "creature") "2" else "" }.ifEmpty { null }
-            return OracleParser.parse("generic-says-$kind-${m.groupValues[1]}-${raw.take(60)}", "${if (m.groupValues[1].isNotEmpty()) "a ${m.groupValues[1]}/${m.groupValues[2]} " else if (kind.first() in "aeiou") "an " else "a "}$kind that says \"$raw\"", type, if (kind == "land") null else "{2}", if (kind == "land") 0.0 else 2.0, "", pw, tf, emptyList(), text)
+            return OracleParser.parse("generic-says-$kind-${m.groupValues[1]}-${raw.take(60)}", "${if (m.groupValues[1].isNotEmpty()) "a ${m.groupValues[1]}/${m.groupValues[2]} " else if (kind.first() in "aeiou") "an " else "a "}$kind that says \"$raw\"", type, if (kind == "land") null else "{2}", if (kind == "land") 0.0 else 2.0, "", pw, tf, kws, text)
         }
         // "a spell that says destroy target creature with power 2 or less": the words given are its rules text.
         Regex("""^(spell|instant|sorcery) that says (.+)$""").find(n)?.let { m ->
