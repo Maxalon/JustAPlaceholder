@@ -56,9 +56,14 @@ object Generic {
             val self = if (kind == "creature") "this creature" else "this permanent"
             var t = raw.replace(Regex("""^(when(?:ever)?) it\b"""), "$1 $self").replace(Regex("""^it (can't|can|has|gets|deals|doesn't)\b"""), "${self.replaceFirstChar { c -> c.uppercase() }} $1")
             t = t.replace(Regex("""\bon it$"""), "on $self").replace(Regex("""^tap[:,]? (add .+)$"""), "{T}: $1")
+            // Table wording into card wording: "you deal 1 damage to it", "and lose 1 life", "return it to the battlefield", "spells cost 1 more".
+            t = t.replace(Regex("""\byou deals? (\d+) damage to it$"""), "$self deals $1 damage to that creature").replace(Regex("""\byou deals? (\d+) damage\b"""), "$self deals $1 damage")
+            t = t.replace(Regex("""\breturn it to the battlefield$"""), "return it to the battlefield under its owner's control")
+            t = t.replace(Regex("""^(\w[\w ]*?) cost (\d+) more to cast$""")) { w -> "${w.groupValues[1]} cost {${w.groupValues[2]}} more to cast" }
+            t = t.replace(Regex("""\b(draw (?:a|\d+|two|three) cards?) and (?:you )?(lose|gain) (\d+) life$"""), "$1. You $2 $3 life")
             // "add two mana" / "add one mana": colorless, in symbols.
             t = t.replace(Regex("""\badd (one|two|three|\d) mana(?! of)""")) { w -> "add " + "{C}".repeat(when (w.groupValues[1]) { "one" -> 1; "two" -> 2; "three" -> 3; else -> w.groupValues[1].toInt() }) }
-            if (!t.contains(',')) t = t.replace(Regex("""^((?:when|whenever|at the beginning of) \S+(?: \S+)*?) (draw|create|put|sacrifice|destroy|exile|return|tap|untap|each|it (?:gets|gains|deals|becomes)|you (?:draw|gain|lose|may|get|create|put|sacrifice|discard)|that player|its controller|target)\b"""), "$1, $2")
+            if (!t.contains(',')) t = t.replace(Regex("""^((?:when|whenever|at the beginning of) \S+(?: \S+)*?) (draw|create|put|sacrifice|destroy|exile|return|tap|untap|each|it (?:gets|gains|deals|becomes)|this (?:creature|permanent) (?:deals|gets|gains|becomes)|you (?:draw|gain|lose|may|get|create|put|sacrifice|discard)|that player|its controller|target)\b"""), "$1, $2")
             // "whenever this creature attacks, it gets +1/+0": a pump from a trigger lasts until end of turn unless said otherwise.
             if (Regex("""^(?:when|whenever|at)\b.*\b(?:gets?|gains?) [+-]\d+/[+-]\d+$""").containsMatchIn(t)) t += " until end of turn"
             val text = t.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
@@ -69,6 +74,8 @@ object Generic {
         // "a spell that says destroy target creature with power 2 or less": the words given are its rules text.
         Regex("""^(spell|instant|sorcery) that says (.+)$""").find(n)?.let { m ->
             val text0 = m.groupValues[2].replace('_', ' ').trim().trim('"').replace(Regex("""^gains? me (\d+) life$"""), "you gain $1 life").replace(Regex("""^deals? me (\d+) damage$"""), "this spell deals $1 damage to you")
+                // "destroy target creature and its controller loses 2 life": two sentences on the card.
+                .replace(Regex("""^((?:destroy|exile|return|counter|tap|bounce)\b[^.]*?) and (its controller|that player|that creature's controller|you) """)) { w -> "${w.groupValues[1]}. ${w.groupValues[2].replaceFirstChar { c -> c.uppercase() }} " }
             val text = text0.let { if (Regex("""\b(?:gets?|gains?) [+-]\d+/[+-]\d+$""").containsMatchIn(it)) "$it until end of turn" else it }.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
             // Said only as "a spell", it is an instant: the question is about what it does, not about when it can be cast.
             val type = if (m.groupValues[1] == "sorcery") "Sorcery" else "Instant"

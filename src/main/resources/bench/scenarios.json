@@ -20211,5 +20211,42 @@
     "expect": [
       "a removal spell doesn't resolve (all targets illegal)."
     ]
+  },
+  {
+    "id": "says-target-player-discards-2-with-1",
+    "text": "they cast a spell that says target player discards two cards on me with 1 card in hand, what happens",
+    "expect": [
+      "You discard 1 card (1 → 0 in hand)."
+    ]
+  },
+  {
+    "id": "says-destroy-and-controller-loses-2",
+    "text": "i cast a spell that says destroy target creature and its controller loses 2 life on their 3/3, what happens",
+    "expect": [
+      "a 3/3 creature: the battlefield → opponent's graveyard.",
+      "opponent loses 2 life."
+    ]
+  },
+  {
+    "id": "says-spells-cost-1-more-3-lands",
+    "text": "my opponent has a creature that says spells cost 1 more to cast, i have 3 lands and a 3 drop, can i cast it",
+    "expect": [
+      "a 3 mana creature can't be cast (costs 4, only 3 mana available)."
+    ]
+  },
+  {
+    "id": "says-exile-and-controller-gains-3",
+    "text": "i cast a spell that says exile target creature and its controller gains 3 life on their 4/4, what happens",
+    "expect": [
+      "a 4/4 creature: the battlefield → exile.",
+      "opponent gains 3 life."
+    ]
+  },
+  {
+    "id": "says-other-dies-counters-kill-2",
+    "text": "i have a creature that says whenever another creature you control dies put a +1/+1 counter on this creature, they kill my other 2 creatures, how big is it",
+    "expect": [
+      "a creature that says \"whenever another creature you control dies put a +1/+1 counter on this creature\" has 2 +1/+1 counters."
+    ]
   }
 ]

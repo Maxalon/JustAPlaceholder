@@ -560,7 +560,7 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\bon my only (land|creature|artifact|enchantment)\b""", RegexOption.IGNORE_CASE), "on my $1")
             // "a creature that says when it enters draw a card" / "my creature says it can't be blocked by more than one creature":
             // a stand-in permanent with that rules text, kept as one token through the clause split.
-            .let { t0 -> Regex("""\b(an?|my|their|his|her|the) (creature|permanent|artifact|enchantment|land|card|\d+/\d+) that (?:says|reads) (.+?)(?=,|\?|$| (?:on|targeting|at) (?:my|their|his|her|the|an?|one) (?!this )\b)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+            .let { t0 -> Regex("""\b(an?|my|their|his|her|the) (creature|permanent|artifact|enchantment|land|card|\d+/\d+) that (?:says|reads) (.+?)(?=,|\?|$| (?:on|targeting|at) (?:my|their|his|her|the|an?|one) (?!this )\b| and (?:i|we|they|he|she|my opponent) \b)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 val k = r.groupValues[2].lowercase()
                 val kind = if (k == "card") "permanent" else if (k.contains('/')) "creature" else k
                 "${r.groupValues[1]} says-${if (k.contains('/')) "$k~" else ""}${r.groupValues[3].trim().lowercase().replace(' ', '_')} $kind" } }
@@ -804,10 +804,11 @@ class SituationParser(private val names: NameIndex) {
                 else "my opponent casts ${r.groupValues[5]} on ${r.groupValues[3]}, can ${r.groupValues[1]} ${r.groupValues[2]} it${r.groupValues[4]} in response"
             } }
             // "casts Hymn to Tourach on me with one card in my hand": the hand size is a fact about the board, said apart.
-            .let { t0 -> Regex("""^(.+?) with (an?|one|\d+|two|three|four|five|six|seven|no) cards? in (?:(my|their|his|her|our) )?hand$""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+            .let { t0 -> Regex("""^(.+?) with (an?|one|\d+|two|three|four|five|six|seven|no) cards? in (?:(my|their|his|her|our) )?hand(?=,|$)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 val n = r.groupValues[2].lowercase().let { if (it == "a" || it == "an") "one" else it }
                 // "I cast Brainstorm with two cards in hand": no owner said, so the hand is the sentence's subject's.
-                val mine = when (r.groupValues[3].lowercase()) { "my", "our" -> true; "" -> Regex("""^(?:i|we)\b""", RegexOption.IGNORE_CASE).containsMatchIn(r.groupValues[1].trim()); else -> false }
+                // "they cast a discard spell on me with 1 card in hand": the hand is the targeted player's, the asker's.
+                val mine = when (r.groupValues[3].lowercase()) { "my", "our" -> true; "" -> Regex("""^(?:i|we)\b""", RegexOption.IGNORE_CASE).containsMatchIn(r.groupValues[1].trim()) || Regex("""\b(?:on|at|targeting) me$""", RegexOption.IGNORE_CASE).containsMatchIn(r.groupValues[1].trim()); else -> false }
                 "${r.groupValues[1]}, ${if (mine) "i have" else "they have"} $n card${if (n == "one" || n == "1") "" else "s"} in hand"
             } }
             // "casts Ephemerate on their Solitude targeting my Bears": both are the spell's targets as far as the words go;
@@ -1169,7 +1170,7 @@ class SituationParser(private val names: NameIndex) {
             // "a spell that gives it -3/-0": a stand-in pump on that creature.
             .replace(Regex("""\ban? spell that gives (it|that|my creature|(?:my |their )?c\d+|(?:my |their )?\d+/\d+) ([+-]\d+/[+-]\d+)\b""", RegexOption.IGNORE_CASE), "a $2 pump on $1")
             // "a spell that says <rules text>": the words given are its text, kept as one token so the clause split leaves them alone.
-            .let { t0 -> Regex("""\ban? (spell|instant|sorcery) that (?:(?:says|reads) |(?=(?:returns|exiles|destroys|taps|untaps|deals|counters|bounces|draws|puts|creates|makes|removes|kills|discards|mills|gains|sacrifices)\b))(.+?)(?=,|\?|$| (?:on|targeting|at) (?:my|their|his|her|the|an?|it|them|me)\b)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+            .let { t0 -> Regex("""\ban? (spell|instant|sorcery) that (?:(?:says|reads) |(?=(?:returns|exiles|destroys|taps|untaps|deals|counters|bounces|draws|puts|creates|makes|removes|kills|discards|mills|gains|sacrifices)\b))(.+?)(?=,|\?|$| (?:on|targeting|at) (?:my|their|his|her|the|an?|it|them|me)\b| and (?:i|we|they|he|she|my opponent) \b)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 var text = r.groupValues[2].trim().lowercase()
                 // "that returns target creature …" / "that deals 1 damage …": the card's own wording.
                 text = text.replace(Regex("""^deals\b"""), "this spell deals").replace(Regex("""^(returns|exiles|destroys|taps|untaps|counters|bounces|draws|puts|creates|makes|removes|kills|discards|mills|gains|sacrifices)\b""")) { w -> w.value.removeSuffix("s") }
@@ -1202,6 +1203,10 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(?:i|we) cast (?:an? (?:spell|instant|sorcery) that says \S+|(?:an? |my )?c\d+) on a (?:creature|card) that (?:was|got|is|has been) exiled\b""", RegexOption.IGNORE_CASE), "exiledtarget-question")
             // "they cast X on my other creature": another creature of mine, which is what the spell is aimed at.
             .replace(Regex("""\b(they|he|she|my opponent) casts? (an? removal spell|an? \S+ spell|c\d+) (?:on|at|targeting) my other (?:creature|guy|dude)\b""", RegexOption.IGNORE_CASE), "i have a creature, $1 cast $2 targeting it")
+            // "they kill my other 2 creatures": the creatures, then their deaths.
+            .let { t0 -> Regex("""\b(they|he|she|my opponent) kills? my other (\d+|two|three) (?:creatures|guys|dudes)\b""", RegexOption.IGNORE_CASE).replace(t0) { r -> val n = when (r.groupValues[2].lowercase()) { "two" -> "2"; "three" -> "3"; else -> r.groupValues[2] }; "i have $n other creatures, $n of my creatures die" } }
+            // "I have 3 lands and a 3 drop, can I cast it?": the cast, checked against the lands.
+            .replace(Regex("""\b(i|we) have (\d+) lands and an? (\d+)[- ]drop, can (?:i|we) cast it\b""", RegexOption.IGNORE_CASE), "$1 have $2 lands, $1 cast a $3 mana creature, can $1")
             // "if I block do I take any damage?": the block, then the damage question.
             .replace(Regex("""\bif (i|we) block,? do (?:i|we) (?:still )?take (?:any |the )?damage\??$""", RegexOption.IGNORE_CASE), "i block with my creature, do i take damage")
             // "can I attack safely?": they block, and the question is whether the attacker survives.
