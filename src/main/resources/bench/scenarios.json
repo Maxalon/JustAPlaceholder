@@ -19861,5 +19861,85 @@
     "expect": [
       "No: you take no damage."
     ]
+  },
+  {
+    "id": "spell-all-my-creatures-minus-1",
+    "text": "i have a 2/2 and they cast a spell that gives all my creatures -1/-1, what happens",
+    "expect": [
+      "a 2/2 creature is 1/1 until end of turn."
+    ]
+  },
+  {
+    "id": "triple-block-5-5-with-1-1s",
+    "text": "they attack with a 5/5 and i have three 1/1s, can i triple block and kill it",
+    "expect": [
+      "a 5/5 creature has 3 damage marked.",
+      "a 1/1 creature: the battlefield → your graveyard. (×3)"
+    ]
+  },
+  {
+    "id": "each-player-discards-with-empty-hand",
+    "text": "i cast a spell that says each player discards a card, i have 0 cards, what happens",
+    "expect": [
+      "You discard 0 cards (0 → 0 in hand).",
+      "opponent discards 1 card."
+    ]
+  },
+  {
+    "id": "damaged-creature-gets-plus-0-plus-2",
+    "text": "my creature has 2 damage on it and gets +0/+2, is it fine",
+    "expect": [
+      "Yes: a creature is still on the battlefield."
+    ]
+  },
+  {
+    "id": "unblockable-vs-fog-effect",
+    "text": "they have a creature that can't be blocked, i have a fog effect, can i stop the damage",
+    "expect": [
+      "Damage to you from a creature with unblockable is prevented.",
+      "No: you take no damage."
+    ]
+  },
+  {
+    "id": "dies-draw-enchantment-wrath-3",
+    "text": "i have a card that says whenever a creature dies draw a card, they wrath with 3 creatures on my board, how many do i draw",
+    "expect": [
+      "You draw 1 card. (×3)",
+      "Yes: You draw 3 cards in all."
+    ]
+  },
+  {
+    "id": "land-destruction-on-my-only-land",
+    "text": "they cast a spell that destroys target land on my only land, what happens",
+    "expect": [
+      "a basic land: the battlefield → your graveyard."
+    ]
+  },
+  {
+    "id": "target-creature-gets-minus-4-on-4-4",
+    "text": "i have a 4/4 and they cast a spell that says target creature gets -4/-4, is it dead",
+    "expect": [
+      "a 4/4 creature is 0/0 until end of turn.",
+      "Yes: a 4/4 creature died (it's in the graveyard)."
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "double-blocked-2-2-dies",
+    "text": "they block my 2/2 with a 1/1 and a 1/1, does my 2/2 die",
+    "expect": [
+      "Yes: a 2/2 creature died (it's in the graveyard).",
+      "a 1/1 creature: the battlefield → opponent's graveyard. (×2)"
+    ]
+  },
+  {
+    "id": "3-power-lifelink-at-3-life",
+    "text": "i have 3 life and they have a creature with 3 power and lifelink, if it hits me what happens",
+    "expect": [
+      "opponent gains 3 life.",
+      "You lose the game."
+    ]
   }
 ]
