@@ -1210,6 +1210,23 @@ class SituationParser(private val names: NameIndex) {
             .replace(Regex("""\b(i|we) have (\d+) lands and an? (\d+)[- ]drop, can (?:i|we) cast it\b""", RegexOption.IGNORE_CASE), "$1 have $2 lands, $1 cast a $3 mana creature, can $1")
             // "is my 3 drop countered?": the spell just cast.
             .replace(Regex("""\bis my (?:\d+[- ]mana (?:creature|spell)|\d+[- ]drop|creature spell|spell) (?:still )?countered\b""", RegexOption.IGNORE_CASE), "is it countered")
+            // "… and a spell that says target creature gets +1/+1, I attack, they block, I pump": the pump is cast after the block.
+            .replace(Regex("""\b(?:and|,) (an? [+-]\d+/[+-]\d+(?: \w+)? pump) on it, i attack, they block, i pump\b""", RegexOption.IGNORE_CASE), ", i attack with it, they block, i cast $1 on it")
+            // "can I cast it and a 2 drop?" after a held spell was cast: the second cast, then whether it can be paid for.
+            .replace(Regex("""\bcan (i|we) cast it and an? (\d+)[- ]drop\b""", RegexOption.IGNORE_CASE), "$1 cast a $2 mana creature, can $1")
+            // "attack with everything with three 2/2s": those three.
+            .replace(Regex("""\battack with everything with (\d+) (\d+/\d+)s\b""", RegexOption.IGNORE_CASE), "attack with $1 $2s")
+            // "it attacks twice over two turns": this turn and the next.
+            .replace(Regex("""\b(it|he|she) attacks? twice over (?:two|2) turns\b""", RegexOption.IGNORE_CASE), "$1 attacks me and they attack with it again next turn")
+            .replace(Regex("""(?<=, )how many tokens\??$""", RegexOption.IGNORE_CASE), "how many tokens do they have")
+            // "I have 6 lands and a spell that says draw three cards for 4 mana": the lands, then the spell cast.
+            .replace(Regex("""\b(i|we) have (\d+) lands and (an? (?:spell|instant|sorcery) that says \S+)\b""", RegexOption.IGNORE_CASE), "$1 have $2 lands, $1 cast $3")
+            // "they respond with a spell that says destroy target creature": the response, cast.
+            .replace(Regex("""\b(they|he|she|my opponent|i|we) responds? with (an? (?:spell|instant|sorcery) that says \S+)\b""", RegexOption.IGNORE_CASE), "$1 cast $2")
+            // "I have a 2/2 with a spell that says it gains flying": the creature, then the spell on it.
+            .replace(Regex("""\b(i|we) have an? (\d+/\d+) with (an? (?:spell|instant|sorcery) that says \S+)\b""", RegexOption.IGNORE_CASE), "$1 have a $2, $1 cast $3 on it")
+            // "they gain 2 life twice": two gains.
+            .replace(Regex("""\b(gains?|loses?|draws?) (\d+|a|one) (life|cards?) twice\b""", RegexOption.IGNORE_CASE), "$1 $2 $3 and $1 $2 $3")
             // "I attack into it" / "I attack into their 4/4": the attack; whether it blocks is said next.
             .replace(Regex("""\b(i|we) attack into (?:it|that|their creature|their \d+/\d+|the \d+/\d+)\b""", RegexOption.IGNORE_CASE), "$1 attack with my creature")
             // "I cast a 2 drop and a 3 drop": the verb once for two casts.

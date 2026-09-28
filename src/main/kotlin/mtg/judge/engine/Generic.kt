@@ -75,13 +75,15 @@ object Generic {
         }
         // "a spell that says destroy target creature with power 2 or less": the words given are its rules text.
         Regex("""^(spell|instant|sorcery) that says (.+)$""").find(n)?.let { m ->
-            val text0 = m.groupValues[2].replace('_', ' ').trim().trim('"').replace(Regex("""^gains? me (\d+) life$"""), "you gain $1 life").replace(Regex("""^deals? me (\d+) damage$"""), "this spell deals $1 damage to you")
+            var cost = 2
+            val text0 = m.groupValues[2].replace('_', ' ').trim().trim('"').replace(Regex("""\s+for (\d+) mana$""")) { w -> cost = w.groupValues[1].toInt(); "" }
+                .replace(Regex("""^exile all cards from target player's graveyard$"""), "exile target player's graveyard").replace(Regex("""^it (gains?|gets|has|loses|can't)\b"""), "target creature $1").replace(Regex("""^gains? me (\d+) life$"""), "you gain $1 life").replace(Regex("""^deals? me (\d+) damage$"""), "this spell deals $1 damage to you")
                 // "destroy target creature and its controller loses 2 life": two sentences on the card.
                 .replace(Regex("""^((?:destroy|exile|return|counter|tap|bounce)\b[^.]*?) and (its controller|that player|that creature's controller|you) """)) { w -> "${w.groupValues[1]}. ${w.groupValues[2].replaceFirstChar { c -> c.uppercase() }} " }
             val text = text0.let { if (Regex("""\b(?:gets?|gains?) [+-]\d+/[+-]\d+$""").containsMatchIn(it)) "$it until end of turn" else it }.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
             // Said only as "a spell", it is an instant: the question is about what it does, not about when it can be cast.
             val type = if (m.groupValues[1] == "sorcery") "Sorcery" else "Instant"
-            return OracleParser.parse("generic-says-${m.groupValues[2].take(60)}", "${if (m.groupValues[1] == "instant") "an instant" else "a ${m.groupValues[1]}"} that says \"$text0\"", type, "{2}", 2.0, "", null, null, emptyList(), text)
+            return OracleParser.parse("generic-says-${m.groupValues[2].take(60)}", "${if (m.groupValues[1] == "instant") "an instant" else "a ${m.groupValues[1]}"} that says \"$text0\"", type, "{$cost}", cost.toDouble(), "", null, null, emptyList(), text)
         }
         if (n in setOf("bounce spell", "bounce")) return OracleParser.parse("generic-bounce", "a bounce spell", "Instant", "{1}{U}", 2.0, "U", null, null, emptyList(), "Return target creature to its owner's hand.")
         if (n in setOf("exiling counterspell", "counterspell that exiles")) return OracleParser.parse("generic-exiling-counterspell", "an exiling counterspell", "Instant", "{1}{U}{U}", 3.0, "U", null, null, emptyList(), "Counter target spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.")

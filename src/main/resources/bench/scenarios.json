@@ -20355,5 +20355,116 @@
     "expect": [
       "a creature is 2/2 until end of turn."
     ]
+  },
+  {
+    "id": "says-cda-plus-1-per-other-creature",
+    "text": "i have a creature that says this creature gets +1/+1 for each other creature you control and 3 other creatures, how big is it",
+    "expect": [
+      "a creature that says \"this creature gets +1/+1 for each other creature you control\" is 5/5."
+    ]
+  },
+  {
+    "id": "says-indestructible-then-wrath",
+    "text": "i have a 2/2 and cast a spell that says target creature gains indestructible until end of turn, they wrath, does it survive",
+    "expect": [
+      "a 2/2 creature has indestructible until end of turn.",
+      "Yes: a 2/2 creature is still on the battlefield."
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "says-plus-2-on-your-turn-their-turn",
+    "text": "i have a creature that says it gets +2/+0 as long as it's your turn, how big is it on their turn",
+    "expect": [
+      "a creature that says \"it gets +2/+0 as long as it's your turn\" is 2/2 (2/2 base, not +2/+0 from its own ability, which needs it to be its controller's turn)."
+    ]
+  },
+  {
+    "id": "says-player-casts-loses-1",
+    "text": "they have a creature that says whenever a player casts a spell that player loses 1 life, i cast a spell, how much life do i lose",
+    "expect": [
+      "You lose 1 life in all."
+    ]
+  },
+  {
+    "id": "says-gains-flying-attack-safely",
+    "text": "i have a 2/2 with a spell that says it gains flying until end of turn, they have a 5/5 without flying, can i attack safely",
+    "expect": [
+      "a 5/5 creature can't block a 2/2 creature (flying).",
+      "opponent takes 2 damage."
+    ]
+  },
+  {
+    "id": "says-each-player-loses-3-at-3",
+    "text": "they cast a spell that says each player loses 3 life, i am at 3, what happens",
+    "expect": [
+      "You lose 3 life.",
+      "opponent loses 3 life.",
+      "You lose the game."
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "says-cant-block-get-through",
+    "text": "they have a creature that says it can't block, i attack with a 1/1, do i get through",
+    "expect": [
+      "opponent takes 1 damage."
+    ]
+  },
+  {
+    "id": "says-first-strike-plus-1-pump-block",
+    "text": "they have a 3/3 and i have a 2/2 with first strike and a spell that says target creature gets +1/+1, i attack, they block, i pump, who dies",
+    "expect": [
+      "a 2/2 creature with first strike is 3/3 until end of turn.",
+      "a 3/3 creature: the battlefield → opponent's graveyard."
+    ],
+    "cite": [
+      "702.7b"
+    ]
+  },
+  {
+    "id": "says-draw-3-for-4-and-a-2-drop",
+    "text": "i have 6 lands and a spell that says draw three cards for 4 mana, can i cast it and a 2 drop",
+    "expect": [
+      "You draw 3 cards.",
+      "a 2 mana creature costs {2} — 2 mana. Nothing on the battlefield changes it. You have 2 available, enough."
+    ]
+  },
+  {
+    "id": "says-becomes-blocked-plus-2",
+    "text": "i have a creature that says whenever this creature becomes blocked it gets +2/+2, they block it with a 3/3, does my 2/2 survive",
+    "expect": [
+      "a creature that says \"whenever this creature becomes blocked it gets +2/+2\" is 4/4 until end of turn."
+    ]
+  },
+  {
+    "id": "says-hexproof-indestructible-edict",
+    "text": "i have a creature that says it has hexproof and indestructible, they cast a spell that says each player sacrifices a creature, do i lose it",
+    "expect": [
+      "a creature that says \"it has hexproof and indestructible\": the battlefield → your graveyard."
+    ],
+    "cite": [
+      "701.21a"
+    ]
+  },
+  {
+    "id": "says-creatures-cant-block-three-2-2s",
+    "text": "they have an enchantment that says creatures can't block, i attack with everything with three 2/2s into their 4/4, how much damage",
+    "expect": [
+      "a 4/4 creature can't block.",
+      "opponent takes 2 damage. (×3)"
+    ]
+  },
+  {
+    "id": "says-etb-gain-3-countered",
+    "text": "i cast a creature that says when it enters you gain 3 life, they counter it, do i gain life",
+    "expect": [
+      "a creature that says \"when it enters you gain 3 life\" is countered.",
+      "No: you gain no life here."
+    ]
   }
 ]
