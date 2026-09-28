@@ -1042,7 +1042,7 @@ class SituationParser(private val names: NameIndex) {
                 if (m.cards[r.groupValues[2]]?.isSpellOnly == true) "my opponent casts a spell, ${r.groupValues[1]} cast ${r.groupValues[2]} in response, can ${r.groupValues[1]}" else r.value } }
             // "I have Craterhoof and 5 other creatures, is that lethal?": the Hoof is cast into that board and everything attacks.
             .let { t0 -> Regex("""\b(i|we) have ((?:an? |my )?(?:c\d+|says-\S+ creature)) and (\d+) other (?:creatures|guys|dudes|bodies)\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
-                if (r.groupValues[2].contains("says-")) return@replace "${r.groupValues[1]} have ${r.groupValues[3]} creatures and ${r.groupValues[2]}"
+                if (r.groupValues[2].contains("says-")) return@replace "${r.groupValues[1]} have ${r.groupValues[3]} creatures, ${r.groupValues[1]} have ${r.groupValues[2]}"
                 val card = m.cards[Regex("""c\d+""").find(r.groupValues[2])!!.value]
                 if (card?.display == "Craterhoof Behemoth") "i have ${r.groupValues[3]} creatures, i cast ${r.groupValues[2]} and attack with everything"
                 else if (card?.typeLine?.contains("Creature") == true) "i have ${r.groupValues[3]} creatures and ${r.groupValues[2]}, i attack with everything" else r.value } }
@@ -6790,6 +6790,13 @@ class SituationParser(private val names: NameIndex) {
     private fun needsSpellTarget(card: NameIndex.Entry) = card.display in setOf("Counterspell", "Negate", "Mana Drain", "Force of Will", "Swan Song", "Dovin's Veto", "Arcane Denial", "Mana Leak", "Dispel", "Miscast", "Spell Pierce", "Force of Negation", "Fierce Guardianship", "Mystical Dispute", "Memory Lapse", "Remand", "Daze", "Stubborn Denial", "Cancel", "Dissolve", "Absorb", "Essence Scatter", "Counterflux", "Render Silent", "Disallow", "Void Shatter", "Syncopate", "Power Sink", "Mana Tithe", "Delay", "Rewind", "Hinder", "Spell Snare", "An Offer You Can't Refuse", "Flusterstorm", "Red Elemental Blast", "Pyroblast", "Hydroblast", "Blue Elemental Blast")
 
     private fun emitCast(who: String, card: NameIndex.Entry, restIn: String, m: Marked, ctx: Ctx) {
+        // "I cast Giant Growth, they Wrath": a sorcery (or a creature without flash) can't be cast in response, so the
+        // other player's spell has resolved first. Without this the Wrath went on the stack above the pump and killed
+        // the creature before the pump resolved.
+        run {
+            val last = ctx.events.lastOrNull() ?: return@run
+            if (last.verb == "cast" && last.player != null && last.player != who && !card.typeLine.contains("Instant") && card.isSpellOnly) ctx.events += EventSpec("resolveAll")
+        }
         // "cast Snapcaster targeting Bolt in my graveyard": the named card is in that graveyard, and the phrase isn't part of the target.
         val rest0000 = Regex("""\b(c\d+) (?:that's |that is |which is |sitting )?in (my|their|his|her|the|@\w+'s) graveyard\b""").replace(restIn) { g ->
             val gc = m.cards.getValue(g.groupValues[1])

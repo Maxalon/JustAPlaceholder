@@ -20314,5 +20314,46 @@
     "expect": [
       "No: a creature that says \"at the beginning of your end step draw a card\"'s ability didn't trigger (nothing that happened matched its trigger condition)."
     ]
+  },
+  {
+    "id": "says-fog-do-i-take-damage",
+    "text": "they attack with a 4/4 and i cast a spell that says prevent all combat damage that would be dealt this turn, do i take damage",
+    "expect": [
+      "Damage to you from a 4/4 creature is prevented.",
+      "No: you take no damage."
+    ]
+  },
+  {
+    "id": "says-damage-trigger-lose-1-more",
+    "text": "they have a creature that says whenever this creature deals damage to an opponent that player loses 1 life, it hits me for 2, how much do i lose",
+    "expect": [
+      "You take 2 damage.",
+      "You lose 1 life."
+    ]
+  },
+  {
+    "id": "says-bounce-their-token",
+    "text": "i cast a spell that says return target creature to its owner's hand on their token, what happens",
+    "expect": [
+      "a 1/1 token: the battlefield → opponent's hand.",
+      "a 1/1 token ceases to exist; it doesn't stay in the zone it went to."
+    ]
+  },
+  {
+    "id": "says-etb-each-opponent-sacrifices-which",
+    "text": "they cast a creature that says when this creature enters each opponent sacrifices a creature and i have a 1/1 and a 5/5, which do i lose",
+    "expect": [
+      "a 1/1 creature: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "a 5/5 creature: the battlefield"
+    ]
+  },
+  {
+    "id": "says-tap-pump-on-their-creature",
+    "text": "i have an artifact that says tap: target creature gets +1/+1 until end of turn, can i use it on their creature",
+    "expect": [
+      "a creature is 2/2 until end of turn."
+    ]
   }
 ]
