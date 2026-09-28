@@ -19539,5 +19539,75 @@
     "expect": [
       "You have 4 poison counters, and a player with ten or more loses the game as a state-based action (704.5c), so 6 more are needed."
     ]
+  },
+  {
+    "id": "split-second-can-i-counter",
+    "text": "my opponent casts a spell with split second, can i counter it",
+    "expect": [
+      "a counterspell can't be cast while a split second spell is on the stack (split second)."
+    ],
+    "cite": [
+      "702.61a"
+    ]
+  },
+  {
+    "id": "attack-planeswalker-back-talk",
+    "text": "my opponent controls a planeswalker and attacks me, can i attack the planeswalker back on my turn",
+    "expect": [
+      "Yes. On your turn, as you declare attackers, you choose for each attacking creature whether it attacks your opponent or a planeswalker they control (508.1a); their having attacked you first changes nothing. Damage dealt to the planeswalker removes that many loyalty counters (306.8), and at 0 loyalty it goes to the graveyard (704.5i)."
+    ]
+  },
+  {
+    "id": "wrath-token-graveyard",
+    "text": "they cast wrath and i have a token, does the token go to the graveyard",
+    "expect": [
+      "a 1/1 token: the battlefield → your graveyard.",
+      "a 1/1 token ceases to exist; it doesn't stay in the zone it went to."
+    ],
+    "cite": [
+      "704.5d"
+    ]
+  },
+  {
+    "id": "exalted-attack-alone-size",
+    "text": "i have a 2/2 with exalted and attack alone, how big is it",
+    "expect": [
+      "a 2/2 creature with exalted is 3/3 (2/2 base, +1/+1 until end of turn)."
+    ]
+  },
+  {
+    "id": "hexproof-in-response-fizzle",
+    "text": "they cast a spell targeting my creature and i give it hexproof in response, does the spell fizzle",
+    "expect": [
+      "Yes. A spell's targets are checked again as it starts to resolve, and a target that is no longer legal is ignored; with every target illegal the spell doesn't resolve at all (it \"fizzles\") and goes to its owner's graveyard (608.2b). Giving the creature hexproof in response makes it an illegal target for your opponent's spell (702.11b), so their spell fizzles and the creature is untouched."
+    ],
+    "notExpect": [
+      "your graveyard."
+    ]
+  },
+  {
+    "id": "equipment-when-creature-dies-talk",
+    "text": "i have an equipment on my creature and it dies, what happens to the equipment",
+    "expect": [
+      "an Equipment stays on the battlefield, unattached."
+    ],
+    "cite": [
+      "704.5n"
+    ]
+  },
+  {
+    "id": "menace-how-many-blockers",
+    "text": "they have a 2/2 with menace, i have 3 creatures, how many do i need to block it",
+    "expect": [
+      "Two. a 2/2 creature with menace has menace, so it can't be blocked except by two or more creatures (702.111b); one blocker on its own isn't a legal block, and any two of your creatures together are."
+    ]
+  },
+  {
+    "id": "double-strike-trample-chump-1-1",
+    "text": "i have 10 life and they have a 5/5 with double strike and trample, i block with a 1/1, how much do i take",
+    "expect": [
+      "You take 4 damage.",
+      "You take 5 damage."
+    ]
   }
 ]
