@@ -32,7 +32,7 @@ object Generic {
 
     /** "a spell", "an instant", "a creature spell", "a creature" (an unnamed 1/1 whose stats are assumed). */
     fun spell(name: String): CardDef? {
-        val n = name.lowercase().removePrefix("a ").removePrefix("an ").trim()
+        val n = name.lowercase().replace('，', ',').removePrefix("a ").removePrefix("an ").trim()
         creature(n)?.let { return it }
         if (n in setOf("counterspell", "counter", "counter spell", "generic counterspell")) return OracleParser.parse("generic-counterspell", "a counterspell", "Instant", "{1}{U}", 2.0, "U", null, null, emptyList(), "Counter target spell.")
         Regex("""^(\d+)[- ]mana (spell|instant|sorcery|creature spell|creature|artifact|enchantment|noncreature spell)$""").find(n)?.let { m ->

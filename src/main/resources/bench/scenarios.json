@@ -22050,5 +22050,85 @@
     "cite": [
       "704.5i"
     ]
+  },
+  {
+    "id": "lifelink-relative-deals-am-i-winning",
+    "text": "my opponent is at 3 and i have a creature with lifelink that deals 3 damage to them, am i winning",
+    "expect": [
+      "Yes: opponent has lost the game, so you win.",
+      "You gain 3 life."
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "am-i-winning-on-life",
+    "text": "i'm at 12 and they're at 8, i attack with a 3/3 unblocked, am i winning",
+    "expect": [
+      "Yes, on life: you at 12 to opponent at 5; nobody has lost yet."
+    ]
+  },
+  {
+    "id": "says-etb-exile-until-leaves-then-killed",
+    "text": "i have a creature that says when this creature enters, exile target creature until this creature leaves the battlefield, i cast it targeting their 3/3, then they kill my creature, what happens",
+    "expect": [
+      "a 3/3 creature: the battlefield → exile.",
+      "a 3/3 creature: exile → the battlefield (opponent's control), returned because a creature that says \"when this creature enters, exile target creature until this creature leaves the battlefield\" left."
+    ],
+    "notExpect": [
+      "not modeled"
+    ]
+  },
+  {
+    "id": "says-cant-be-blocked-power-2-what-can-block",
+    "text": "i control a creature that says this creature can't be blocked by creatures with power 2 or less, i attack, they have a 2/2 and a 3/3, what can block",
+    "expect": [
+      "No: a 2/2 creature can't block a creature that says \"this creature can't be blocked by creatures with power 2 or less\".",
+      "Yes: a 3/3 creature can block a creature that says \"this creature can't be blocked by creatures with power 2 or less\"."
+    ]
+  },
+  {
+    "id": "first-strike-2-2-vs-2-2-who-dies",
+    "text": "i have a 2/2 with first strike and they block with a 2/2, who dies",
+    "expect": [
+      "Yes: a 2/2 creature died (it's in the graveyard).",
+      "No: a 2/2 creature with first strike is still on the battlefield."
+    ],
+    "cite": [
+      "702.7b"
+    ]
+  },
+  {
+    "id": "minus-2-2-then-plus-1-1-response",
+    "text": "they have a 2/2 and i cast a spell that says target creature gets -2/-2 until end of turn on it, then they cast a spell that says target creature gets +1/+1 until end of turn in response, does it die",
+    "expect": [
+      "a 2/2 creature is 3/3 until end of turn.",
+      "a 2/2 creature is 1/1 until end of turn.",
+      "No: a 2/2 creature is still on the battlefield."
+    ]
+  },
+  {
+    "id": "trample-5-5-vs-deathtouch-1-1",
+    "text": "my 5/5 has trample and they block with a 1/1 with deathtouch, what happens",
+    "expect": [
+      "opponent takes 4 damage.",
+      "a 5/5 creature with trample: the battlefield → your graveyard.",
+      "a 1/1 creature with deathtouch: the battlefield → opponent's graveyard."
+    ],
+    "cite": [
+      "702.19b",
+      "702.2b"
+    ]
+  },
+  {
+    "id": "said-vigilance-enchantment-attack-tapped",
+    "text": "i have an enchantment that says creatures you control have vigilance, i attack with my 3/3, is it tapped",
+    "expect": [
+      "a 3/3 creature is untapped (vigilance: attacking didn't tap it)."
+    ],
+    "cite": [
+      "702.20b"
+    ]
   }
 ]
