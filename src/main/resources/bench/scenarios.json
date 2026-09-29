@@ -23325,5 +23325,113 @@
     "cite": [
       "104.3b"
     ]
+  },
+  {
+    "id": "bolt-face-at-3",
+    "text": "i cast Lightning Bolt on my opponent who is at 3, do they die",
+    "expect": [
+      "Yes: opponent has lost the game."
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "leyline-of-sanctity-vs-bolt-face",
+    "text": "they have Leyline of Sanctity and i cast Lightning Bolt at their face, what happens",
+    "expect": [
+      "Lightning Bolt can't target opponent."
+    ],
+    "cite": [
+      "702.11c"
+    ]
+  },
+  {
+    "id": "fog-vs-5-5",
+    "text": "they attack with a 5/5 and i have Fog in hand, i cast it, how much damage do i take",
+    "expect": [
+      "No: you take no damage."
+    ]
+  },
+  {
+    "id": "swords-own-4-4-gain",
+    "text": "i cast Swords to Plowshares on my own creature that's a 4/4, how much life do i gain",
+    "expect": [
+      "You gain 4 life in all."
+    ]
+  },
+  {
+    "id": "ensnaring-bridge-empty-hand-2-2",
+    "text": "they have Ensnaring Bridge and 0 cards in hand, i attack with a 2/2, can i",
+    "expect": [
+      "a 2/2 creature can't attack (Ensnaring Bridge)."
+    ]
+  },
+  {
+    "id": "mother-of-runes-saves-bears",
+    "text": "i have Mother of Runes and they cast Doom Blade on my Grizzly Bears, can i save it",
+    "expect": [
+      "Grizzly Bears has protection from black until end of turn.",
+      "Doom Blade doesn't resolve (all targets illegal)."
+    ],
+    "cite": [
+      "702.16b"
+    ]
+  },
+  {
+    "id": "terminate-vs-darksteel-colossus",
+    "text": "i cast Terminate on their Darksteel Colossus, does it die",
+    "expect": [
+      "No: Darksteel Colossus is still on the battlefield."
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "torpor-orb-mulldrifter",
+    "text": "they have Torpor Orb and i cast Mulldrifter, do i draw",
+    "expect": [
+      "No: You don't draw."
+    ]
+  },
+  {
+    "id": "aether-vial-flash-in-two-drop-vs-wrath",
+    "text": "i have Aether Vial with 2 counters and they cast Wrath of God, can i flash in a 2 drop in response",
+    "expect": [
+      "a 2 mana creature enters the battlefield.",
+      "a 2 mana creature: the battlefield → your graveyard."
+    ]
+  },
+  {
+    "id": "damnation-vs-avacyn",
+    "text": "they cast Damnation and i have Avacyn, Angel of Hope out, what dies",
+    "expect": [
+      "Avacyn, Angel of Hope is indestructible and isn't destroyed."
+    ]
+  },
+  {
+    "id": "thalia-tax-bolt-two-mountains-can-they",
+    "text": "I have Thalia, Guardian of Thraben. They have two Mountains and cast Lightning Bolt at it. Can they?",
+    "expect": [
+      "Lightning Bolt costs {R} plus {1} (Thalia, Guardian of Thraben makes it cost {1} more) — 2 mana in all. opponent has 2 available, enough.",
+      "Thalia, Guardian of Thraben: the battlefield → your graveyard."
+    ],
+    "cite": [
+      "601.2f"
+    ]
+  },
+  {
+    "id": "thalia-tax-bolt-one-mountain-can-they",
+    "text": "I have Thalia, Guardian of Thraben. They have one Mountain and cast Lightning Bolt at it. Can they?",
+    "expect": [
+      "Lightning Bolt can't be cast (costs 2, only 1 mana available)."
+    ],
+    "notExpect": [
+      "Thalia, Guardian of Thraben: the battlefield → your graveyard."
+    ],
+    "cite": [
+      "601.2h"
+    ]
   }
 ]

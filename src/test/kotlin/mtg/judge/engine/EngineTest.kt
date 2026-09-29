@@ -12,6 +12,7 @@ class EngineTest {
 
     private val bears = card("Grizzly Bears", "Creature — Bear", "", "{1}{G}", "2", "2")
     private val bolt = card("Lightning Bolt", "Instant", "Lightning Bolt deals 3 damage to any target.", "{R}")
+    private val doomBlade = card("Doom Blade", "Instant", "Destroy target nonblack creature.", "{1}{B}")
     private val growth = card("Giant Growth", "Instant", "Target creature gets +3/+3 until end of turn.", "{G}")
     private val counterspell = card("Counterspell", "Instant", "Counter target spell.", "{U}{U}")
     private val stifle = card("Stifle", "Instant", "Counter target activated or triggered ability.", "{U}")
@@ -99,11 +100,17 @@ class EngineTest {
 
     @Test
     fun `missing target is asked for when there are several candidates, and defaults to the opponent when only players qualify`() {
+        // "They cast Lightning Bolt" with a creature out: "any target" said with no target is read as the face, and the assumption is noted.
         val s = state(); s.add("bears", bears, "me"); val e = Engine(s)
         val item = e.cast("opp", bolt, emptyList())
-        assertTrue(item != null && item.targetsUnknown, "the spell still goes on the stack, with its target unknown")
-        assertTrue(s.clarifications.any { it.about.contains("target") })
-        e.resolveAll(); assertEquals(20, s.player("me").life); assertEquals(Zone.BATTLEFIELD, s.obj("bears").zone)
+        assertTrue(item != null && !item.targetsUnknown, "the spell goes on the stack aimed at the opponent")
+        assertTrue(s.assumptions.any { "assuming its controller's opponent rather than" in it })
+        e.resolveAll(); assertEquals(17, s.player("me").life); assertEquals(Zone.BATTLEFIELD, s.obj("bears").zone)
+        // A creature-only target with several candidates is still asked for.
+        val s1 = state(); s1.add("bears", bears, "me"); s1.add("bears2", bears, "me"); val e1 = Engine(s1)
+        val item1 = e1.cast("opp", doomBlade, emptyList())
+        assertTrue(item1 != null && item1.targetsUnknown, "the spell still goes on the stack, with its target unknown")
+        assertTrue(s1.clarifications.any { it.about.contains("target") })
         val s2 = state(); val e2 = Engine(s2)
         assertTrue(e2.cast("opp", bolt, emptyList()) != null)
         assertTrue(s2.assumptions.any { "assuming its controller's opponent" in it })

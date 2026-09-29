@@ -114,6 +114,8 @@ class GameObject(
     var mustGoToGraveyard = false
     /** The mana its caster could pay with as it was cast, for "can I?" asked afterwards. */
     var manaAvailableAtCast: Int? = null
+    /** The cost-raising permanents that applied as it was cast (name to amount), for "how much did it cost?" asked once they have left. */
+    var taxesAtCast: List<Pair<String, Int>>? = null
     /** Monstrous: set by monstrosity and never unset while the permanent stays on the battlefield (701.31b). */
     var monstrous: Boolean = false
     /** Phased out (702.26b): still in the battlefield zone, but treated as though it doesn't exist until it phases in. */
@@ -235,6 +237,8 @@ class GameState(
 ) {
     val trace = Trace()
     var combatDamageDealt = false
+    /** The question is whether a spell can be paid for ("they have one Mountain … can they?"): then even a single described land is the whole mana base. */
+    var describedLandsAreTheBase = false
     /** The game's turn number, when the situation said so. */
     var turnNumber: Int? = null
     /** Creatures whose combat damage, dealt and received, is prevented this turn (Maze of Ith). */

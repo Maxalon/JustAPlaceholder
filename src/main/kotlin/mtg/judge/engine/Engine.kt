@@ -103,6 +103,7 @@ class Engine(val state: GameState) {
             val earlier = state.spellsThisTurn[playerId] ?: 0
             taxes.filter { it.second.perOtherSpellThisTurn }.forEach { (o, t) -> trace.step("${o.name}: ${player.subject.lowercase()} ${player.v("has", "have")} cast $earlier other spell${if (earlier == 1) "" else "s"} this turn, so ${card.name} costs {${t.amount * earlier}} more.", "601.2f") }
             val tax = taxes.sumOf { if (it.second.perOtherSpellThisTurn) it.second.amount * earlier else it.second.amount } + commanderTax
+            obj.taxesAtCast = taxes.map { it.first.name to (if (it.second.perOtherSpellThisTurn) it.second.amount * earlier else it.second.amount) }
             var cost = card.manaValue.toInt() + (x ?: 0) * maxOf(0, Regex("""\{X\}""").findAll(card.manaCost ?: "").count() - 1) + tax
             // Kicked: the kicker cost is an additional cost paid with the spell (702.33b).
             if (kicked) Regex("""(?i)\bkicker\s+((?:\{[^}]+\})+)""").find(card.oracleText)?.let { k ->
@@ -1204,8 +1205,10 @@ class Engine(val state: GameState) {
             val legal = item.targets.map { it to isTargetLegal(item, it) }
             val illegalCount = legal.count { !it.second }
             if (illegalCount == item.targets.size) {
+                // Protection or hexproof gained in response: the rule that makes the target illegal is cited with 608.2b.
+                val why = legal.filter { !it.second }.mapNotNull { (it.first as? Ref.Obj)?.let { r -> if (state.objects[r.id]?.zone == item.targetZones[r.id]) targetingProblem(item.source, item.controller, r)?.second else null } }.distinct()
                 trace.step("${item.describe}'s target${if (item.targets.size > 1) "s are" else " is"} no longer legal (${legal.joinToString("; ") { whyIllegal(item, it.first) }}), so it doesn't resolve and is removed from the stack" +
-                    (if (item.kind == StackKind.SPELL) " and put into its owner's graveyard" else "") + ".", "608.2b")
+                    (if (item.kind == StackKind.SPELL) " and put into its owner's graveyard" else "") + ".", *(listOf("608.2b") + why).toTypedArray())
                 state.outcomes += "${item.describe} doesn't resolve (all targets illegal)."
                 // "they cast a 3/3 and I Bolt it before it resolves": a creature spell isn't a creature yet.
                 if (item.kind == StackKind.SPELL) legal.filter { !it.second }.mapNotNull { (it.first as? Ref.Obj)?.let { r -> state.objects[r.id] } }.filter { it.zone == Zone.STACK }.forEach { t ->
@@ -3778,7 +3781,10 @@ class Engine(val state: GameState) {
             val extra = fb.groupValues[2].trim().takeIf { it.isNotEmpty() }?.let { ", plus ${it.lowercase()}" } ?: ""
             return "${card.name} cast with flashback costs ${fb.groupValues[1]}$extra (its flashback cost, 702.34a); the printed ${printed} isn't paid. It's exiled as it resolves."
         }
-        val taxes = state.objects.values.filter { it.isOnBattlefield() }
+        // "They Bolt Thalia. Can they?": the cost is what it was as the spell was cast, when Thalia was still there.
+        val recorded = (obj.taxesAtCast ?: state.objects.values.filter { it.def.name == obj.def.name && it.controller == obj.controller }.mapNotNull { it.taxesAtCast }.lastOrNull())?.takeIf { it.isNotEmpty() }
+        val taxes: List<Pair<GameObject, StaticEffect.CostTax>> = recorded?.map { (n, amt) -> (state.objects.values.firstOrNull { it.def.name == n } ?: obj) to StaticEffect.CostTax(ObjFilter(kinds = emptySet()), amt) }
+            ?: state.objects.values.filter { it.isOnBattlefield() }
             .flatMap { o -> o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CostTax>()
                 .filter { t -> (t.whose == null || (t.whose == Who.YOU) == (o.controller == obj.controller)) && spellMatches(t.filter, card) }.map { o to it } }
         val commanderTax = if (obj.commander && obj.commanderCasts > 0) 2 * obj.commanderCasts else 0
@@ -3809,7 +3815,7 @@ class Engine(val state: GameState) {
     private fun landsOnly(p: Player): Boolean {
         val sources = state.objects.values.filter { it.isOnBattlefield() && it.controller == p.id && activatedAbilitiesOf(it).any { a -> isManaEffect(a.effect) } }
         // Two or more lands or mana creatures (Llanowar Elves and two Forests) are the whole mana base described.
-        return sources.size >= 2 && sources.all { "Land" in it.def.types || it.def.isCreature }
+        return sources.size >= (if (state.describedLandsAreTheBase) 1 else 2) && sources.all { "Land" in it.def.types || it.def.isCreature }
     }
 
     private fun availableMana(p: Player): Int? {
@@ -4052,6 +4058,9 @@ class Engine(val state: GameState) {
                 // Nothing but players to choose from (or "any target" with only players around): the opponent is the sensible default.
                 val opp = state.opponentsOf(controller).singleOrNull()
                 if (opp != null && distinct.all { it is Ref.Player }) { state.assumptions += "$what targets ${state.nameOf(Ref.Player(opp.id))} (\"${spec.raw}\" with no target named; assuming its controller's opponent)."; listOf(Ref.Player(opp.id)) }
+                // "they cast Lightning Bolt" with my creatures out: "any target" said without a target is read as the face.
+                else if (opp != null && harmful && spec.raw.equals("any target", true) && distinct.any { it is Ref.Player && it.id == opp.id } && distinct.all { it is Ref.Player || (it is Ref.Obj && state.objects[it.id]?.controller == opp.id) }) {
+                    state.assumptions += "$what targets ${state.nameOf(Ref.Player(opp.id))} (\"any target\" with no target named; assuming its controller's opponent rather than one of ${state.player(opp.id).possessive} creatures — say the creature if that was the target)."; listOf(Ref.Player(opp.id)) }
                 else { state.clarifications += Clarification("$what's target", "$what needs a target (${spec.raw}); it could be ${distinct.joinToString(", ") { state.nameOf(it) }}. Which?"); emptyList<Ref>().also { return null } }
             }
         }
