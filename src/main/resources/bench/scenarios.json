@@ -21953,5 +21953,102 @@
     "cite": [
       "702.15b"
     ]
+  },
+  {
+    "id": "says-each-player-discards-hand-counts",
+    "text": "i cast a spell that says each player discards their hand, i have 2 cards and they have 4, what happens",
+    "expect": [
+      "You discard your hand (2 cards).",
+      "opponent discards their hand (4 cards)."
+    ]
+  },
+  {
+    "id": "red-said-spell-vs-pro-red",
+    "text": "they have a creature with protection from red, i cast a red spell that says destroy target creature on it, what happens",
+    "expect": [
+      "a red spell that says \"destroy target creature\" can't target a creature with protection from red."
+    ],
+    "cite": [
+      "702.16b"
+    ]
+  },
+  {
+    "id": "held-reanimate-said-spell-2-2-graveyard",
+    "text": "i have a spell that says return target creature card from your graveyard to the battlefield and a 2/2 in my graveyard, i cast it, what happens",
+    "expect": [
+      "a 2/2 creature enters the battlefield."
+    ]
+  },
+  {
+    "id": "says-upkeep-lose-1-at-1-upkeep-comes",
+    "text": "i have a creature that says at the beginning of your upkeep you lose 1 life, i'm at 1, my upkeep comes, do i lose",
+    "expect": [
+      "You lose the game.",
+      "Yes: You have lost the game."
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "reach-can-i-block-flier",
+    "text": "they attack me with a 4/4 flier, i have a 2/2 with reach, can i block it",
+    "expect": [
+      "Yes: a 2/2 creature with reach can block a 4/4 creature with flying."
+    ],
+    "cite": [
+      "702.17b"
+    ]
+  },
+  {
+    "id": "no-reach-can-i-block-flier",
+    "text": "they attack me with a 4/4 flier, i have a 2/2, can i block it",
+    "expect": [
+      "No: a 2/2 creature can't block a 4/4 creature with flying (flying)."
+    ],
+    "cite": [
+      "702.9b"
+    ]
+  },
+  {
+    "id": "destroy-all-lands-who-has-more",
+    "text": "they cast a spell that says destroy all lands, i have 4 lands and they have 3, who has more lands after",
+    "expect": [
+      "Your 4 other lands are destroyed.",
+      "Opponent's 3 other lands are destroyed.",
+      "Neither: you have 0 and opponent has 0 lands."
+    ],
+    "notExpect": [
+      "affects nothing"
+    ]
+  },
+  {
+    "id": "wrath-who-has-more-creatures",
+    "text": "i have 3 creatures and they have 2, i cast a spell that says destroy all creatures, who has more creatures after",
+    "expect": [
+      "Neither: you have 0 and opponent has 0 creatures."
+    ]
+  },
+  {
+    "id": "menace-2-2-one-blocker",
+    "text": "i attack with a 2/2 with menace, they have one 3/3 untapped, can they block",
+    "expect": [
+      "a 3/3 creature can't block a 2/2 creature with menace on its own (menace).",
+      "opponent takes 2 damage."
+    ],
+    "cite": [
+      "702.111b"
+    ]
+  },
+  {
+    "id": "attack-planeswalker-4-loyalty-5-5",
+    "text": "they have a planeswalker with 4 loyalty, i attack it with a 5/5, they don't block, what happens",
+    "expect": [
+      "a planeswalker has 0 loyalty.",
+      "a planeswalker: the battlefield → opponent's graveyard."
+    ],
+    "cite": [
+      "704.5i"
+    ]
   }
 ]

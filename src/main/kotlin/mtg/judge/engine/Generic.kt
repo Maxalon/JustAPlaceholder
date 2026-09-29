@@ -105,9 +105,12 @@ object Generic {
             return OracleParser.parse("generic-says-$kind-${m.groupValues[1]}-${raw.take(60)}", "${if (m.groupValues[1].isNotEmpty()) "a ${m.groupValues[1]}/${m.groupValues[2]} " else if (kind.first() in "aeiou") "an " else "a "}$kind that says \"$raw\"", type, if (kind == "land") null else "{2}", if (kind == "land") 0.0 else 2.0, "", pw, tf, kws2, text, loyalty = if (kind == "planeswalker") "3" else null)
         }
         // "a spell that says destroy target creature with power 2 or less": the words given are its rules text.
-        Regex("""^(spell|instant|sorcery) that says (.+)$""").find(n)?.let { m ->
+        Regex("""^(?:(white|blue|black|red|green|colorless) )?(spell|instant|sorcery) that says (.+)$""").find(n)?.let { m ->
             var cost = 2
-            val text0 = m.groupValues[2].replace('_', ' ').trim().trim('"').replace(Regex("""\s+for (\d+) mana$""")) { w -> cost = w.groupValues[1].toInt(); "" }
+            // "a red spell that says destroy target creature": the colour rides along as a sentence of its own.
+            var color = when (m.groupValues[1]) { "white" -> "W"; "blue" -> "U"; "black" -> "B"; "red" -> "R"; "green" -> "G"; else -> "" }
+            val text0 = m.groupValues[3].replace('_', ' ').trim().trim('"').replace(Regex("""\.?\s*this spell is (white|blue|black|red|green|colorless)\.?$""")) { w -> color = when (w.groupValues[1]) { "white" -> "W"; "blue" -> "U"; "black" -> "B"; "red" -> "R"; "green" -> "G"; else -> "" }; "" }
+                .replace(Regex("""\s+for (\d+) mana$""")) { w -> cost = w.groupValues[1].toInt(); "" }
                 .replace(Regex("""^exile all cards from target player's graveyard$"""), "exile target player's graveyard")
                 // "target creature fights another target creature": the two the situation aims it at; "target player draws two cards and loses 2 life": two sentences.
                 .replace(Regex("""^target creature fights another target creature$"""), "target creature you control fights target creature you don't control")
@@ -123,8 +126,8 @@ object Generic {
             val text = text0.let { if (Regex("""\b(?:gets?|gains?) [+-]\d+/[+-]\d+$""").containsMatchIn(it)) "$it until end of turn" else it }.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
                 .replace(Regex("""\. ([a-z])""")) { w -> ". " + w.groupValues[1].uppercase() }
             // Said only as "a spell", it is an instant: the question is about what it does, not about when it can be cast.
-            val type = if (m.groupValues[1] == "sorcery") "Sorcery" else "Instant"
-            return OracleParser.parse("generic-says-${m.groupValues[2].take(60)}", "${if (m.groupValues[1] == "instant") "an instant" else "a ${m.groupValues[1]}"} that says \"$text0\"", type, "{$cost}", cost.toDouble(), "", null, null, emptyList(), text)
+            val type = if (m.groupValues[2] == "sorcery") "Sorcery" else "Instant"
+            return OracleParser.parse("generic-says-${m.groupValues[3].take(60)}", "${if (m.groupValues[1].isNotEmpty()) "a ${m.groupValues[1]} ${m.groupValues[2]}" else if (m.groupValues[2] == "instant") "an instant" else "a ${m.groupValues[2]}"} that says \"$text0\"", type, if (color.isEmpty()) "{$cost}" else "{${cost - 1}}{$color}", cost.toDouble(), color, null, null, emptyList(), text)
         }
         if (n in setOf("bounce spell", "bounce")) return OracleParser.parse("generic-bounce", "a bounce spell", "Instant", "{1}{U}", 2.0, "U", null, null, emptyList(), "Return target creature to its owner's hand.")
         if (n in setOf("exiling counterspell", "counterspell that exiles")) return OracleParser.parse("generic-exiling-counterspell", "an exiling counterspell", "Instant", "{1}{U}{U}", 3.0, "U", null, null, emptyList(), "Counter target spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.")
