@@ -9324,7 +9324,7 @@
     "text": "I control Ember Swallower and activate its monstrosity. What happens?",
     "expect": [
       "Ember Swallower is monstrous",
-      "Each player sacrifices three lands"
+      "You have no land to sacrifice to Ember Swallower; with one, you would have to."
     ],
     "notExpect": [
       "Not understood"
@@ -22744,6 +22744,119 @@
     ],
     "cite": [
       "509.1h"
+    ]
+  },
+  {
+    "id": "kill-blocker-before-damage-no-damage-through",
+    "text": "i have a 2/2 and they have a 2/2, i attack, they block, before damage i cast a spell that says destroy target creature on their blocker, do i deal damage to them",
+    "expect": [
+      "a 2/2 creature deals no combat damage: its blocker left combat and it stays blocked."
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "said-block-additional-can-it-block-both",
+    "text": "they have a creature that says this creature can block an additional creature each combat, i attack with a 2/2 and a 3/3, can it block both",
+    "expect": [
+      "a creature that says \"this creature can block an additional creature each combat\" has 5 damage marked."
+    ],
+    "notExpect": [
+      "not modeled",
+      "its blocker left combat"
+    ]
+  },
+  {
+    "id": "minus-1-1-on-token-ceases",
+    "text": "i cast a spell that says target creature gets -1/-1 until end of turn on their 1/1 token, what happens",
+    "expect": [
+      "a 1/1 token: the battlefield → opponent's graveyard.",
+      "a 1/1 token ceases to exist; it doesn't stay in the zone it went to."
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "said-each-player-sacrifices-two",
+    "text": "my opponent has two creatures and i cast a spell that says each player sacrifices two creatures, i have one creature, what happens",
+    "expect": [
+      "a creature: the battlefield → your graveyard.",
+      "a creature: the battlefield → opponent's graveyard. (×2)"
+    ],
+    "notExpect": [
+      "not tracked"
+    ],
+    "cite": [
+      "701.21a"
+    ]
+  },
+  {
+    "id": "said-plus-2-2-as-long-as-artifact",
+    "text": "i have a creature that says this creature gets +2/+2 as long as you control an artifact, i control an artifact, it's a 1/1, how big is it",
+    "expect": [
+      "a 1/1 creature that says \"this creature gets +2/+2 as long as you control an artifact\" is 3/3 (1/1 base, +2/+2 from its own ability (condition met))."
+    ]
+  },
+  {
+    "id": "destroy-target-artifact-on-artifact-creature",
+    "text": "they cast a spell that says destroy target artifact on my artifact creature, does it work",
+    "expect": [
+      "an artifact creature: the battlefield → your graveyard."
+    ]
+  },
+  {
+    "id": "flying-vs-reach-and-plain-which-can-block",
+    "text": "i have a creature with flying and they have a creature with reach and a creature without, i attack, which can block",
+    "expect": [
+      "Yes: a creature with reach can block a creature with flying.",
+      "No: a creature can't block a creature with flying (flying)."
+    ],
+    "cite": [
+      "702.17b"
+    ]
+  },
+  {
+    "id": "five-lands-three-then-two-then-one",
+    "text": "i have 5 lands and cast a spell that costs 3, then another that costs 2, then can i cast a third spell that costs 1",
+    "expect": [
+      "a 1 mana spell can't be cast (costs 1, only 0 mana available)."
+    ]
+  },
+  {
+    "id": "said-attack-trigger-pump-vs-3-3-block",
+    "text": "i have a creature that says whenever this creature attacks, it gets +1/+1 until end of turn, it's a 2/2, i attack and they block with a 3/3, what happens",
+    "expect": [
+      "a 3/3 creature: the battlefield → opponent's graveyard.",
+      "a 2/2 creature that says \"whenever this creature attacks, it gets +1/+1 until end of turn\": the battlefield → your graveyard."
+    ]
+  },
+  {
+    "id": "planeswalker-2-damage-then-1-1-attack-does-it-die",
+    "text": "they have a planeswalker with 3 loyalty and i cast a spell that says deal 2 damage to any target on it, then attack it with a 1/1, does it die",
+    "expect": [
+      "Yes: a planeswalker died (it's in the graveyard)."
+    ],
+    "cite": [
+      "704.5i"
+    ]
+  },
+  {
+    "id": "can-i-take-it-back",
+    "text": "i cast a spell that says target creature gets +3/+3 until end of turn on their creature by mistake, can i take it back",
+    "expect": [
+      "No. Once a spell has been cast, its targets were chosen as part of casting it (601.2c) and the spell is on the stack; a player can't take the spell back or choose different targets. Only an effect that says it changes targets can do that (115.7). Casual games may allow a takeback by agreement, but the rules don't."
+    ]
+  },
+  {
+    "id": "said-dies-return-to-battlefield",
+    "text": "i have a creature that says when this creature dies, return it to the battlefield, they destroy it, what happens",
+    "expect": [
+      "a creature that says \"when this creature dies, return it to the battlefield\": your graveyard → the battlefield."
+    ],
+    "notExpect": [
+      "not modeled"
     ]
   }
 ]

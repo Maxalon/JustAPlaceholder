@@ -1094,7 +1094,7 @@ class Engine(val state: GameState) {
             val frozen = (mine - held.toSet()).filter { it.skipNextUntap && it.tapped == true }
             for (o in frozen) { o.skipNextUntap = false; trace.step("${o.name} doesn't untap: an effect said it doesn't untap during this untap step.", "502.3", "611.2a"); state.outcomes += "${o.name} stays tapped (it doesn't untap this untap step)." }
             val wereTapped = (mine - held.toSet() - frozen.toSet()).filter { it.tapped == true }
-            (mine - held.toSet() - frozen.toSet()).forEach { it.tapped = false; it.summoningSick = false; it.attacking = null; it.blocking = null }
+            (mine - held.toSet() - frozen.toSet()).forEach { it.tapped = false; it.summoningSick = false; it.attacking = null; it.blocking = null; it.alsoBlocking.clear() }
             for (o in wereTapped) state.outcomes += "${o.name} untaps."
             // Seedborn Muse: another player's permanents untap in this player's untap step too.
             for (src in state.objects.values.filter { it.isOnBattlefield() && it.controller != activePlayer }) {
@@ -1104,7 +1104,7 @@ class Engine(val state: GameState) {
                 trace.step("${src.name} untaps ${state.player(src.controller).possessive} ${e.filter.raw ?: "permanents"} during this player's untap step as well.", "502.3", "614.1")
                 theirs.forEach { it.tapped = false; state.outcomes += "${it.name} untaps (${src.name})." }
             }
-            held.forEach { it.summoningSick = false; it.attacking = null; it.blocking = null }
+            held.forEach { it.summoningSick = false; it.attacking = null; it.blocking = null; it.alsoBlocking.clear() }
             // A new turn, so the land plays and the extra ones an effect gave start over (305.2).
             state.landsPlayed.clear(); state.extraLandsThisTurn.clear(); state.loyaltyUsedThisTurn.clear()
             trace.step("${p.possessive.replaceFirstChar { it.uppercase() }} turn begins: ${p.subject.lowercase()} ${p.v("untaps", "untap")} all ${p.possessive} permanents, and everything ${p.subject.lowercase()} ${p.v("has", "have")} controlled since the turn began can attack and use {T} abilities.", "502.3", "302.6")
@@ -1537,7 +1537,8 @@ class Engine(val state: GameState) {
         if (cant(b, "block")) { trace.step(if (b.has("cant-block") || b.tempKeywords.any { it.startsWith("cant-block@") }) "${b.name} can't block: an effect says it can't block${if (b.tempKeywords.any { it.startsWith("cant-block@") }) " until its caster's next turn" else " this turn"}." else "${b.name} can't block (a rules text says so${cantSource(b, "block")?.let { ": $it" } ?: ""}).", "509.1b"); state.outcomes += if (b.has("cant-block") || b.tempKeywords.any { it.startsWith("cant-block@") }) "${b.name} doesn't block (an effect says it can't block)." else "${b.name} can't block."; return }
         cantBlockWhy(a, b)?.let { (why, rules, out) -> trace.step(why, *rules.toTypedArray()); state.outcomes += out; return }
         val firstBlocker = blockersOf(a).isEmpty()
-        b.blocking = a.id; a.wasBlocked = true
+        if (b.blocking != null && b.blocking != a.id) b.alsoBlocking += a.id else b.blocking = a.id
+        a.wasBlocked = true
         trace.step("${p.subject} ${p.v("blocks", "block")} ${a.name} with ${b.name} (${state.describePt(b)}). ${a.name} is now a blocked creature and stays blocked even if ${b.name} leaves combat.", "509.1a", "509.1g", "509.1h")
         if (firstBlocker) onEvent(GameEvent.BecomesBlocked(a))
         onEvent(GameEvent.BecomesBlockedBy(a, b))
@@ -1579,7 +1580,7 @@ class Engine(val state: GameState) {
         trace.step("The active player receives priority.", "510.3")
     }
 
-    private fun blockersOf(a: GameObject) = state.objects.values.filter { it.blocking == a.id && it.isOnBattlefield() }
+    private fun blockersOf(a: GameObject) = state.objects.values.filter { (it.blocking == a.id || a.id in it.alsoBlocking) && it.isOnBattlefield() }
 
     private fun dealCombatDamage(attackers: List<GameObject>, deals: (GameObject) -> Boolean) {
         data class Hit(val source: GameObject, val target: Ref, val amount: Int) { var dealt = 0 }
@@ -1619,6 +1620,8 @@ class Engine(val state: GameState) {
             for (b in blockers) if (deals(b)) {
                 val bp = b.power ?: 0
                 if (bp <= 0) trace.step("${b.name} has power $bp and assigns no combat damage.", "510.1a")
+                // A creature blocking two attackers divides its damage as its controller chooses (510.1d); all of it goes to the first one it blocked.
+                else if (a.id in b.alsoBlocking) { trace.step("${b.name} also blocks ${a.name}; its controller divides its damage among the creatures it blocks, and it is assumed to assign all $bp to ${state.objects[b.blocking]?.name ?: "the first"}.", "510.1d"); state.assumptions += "${b.name} blocks two creatures and assigns all its damage to ${state.objects[b.blocking]?.name ?: "the first one"} (510.1d lets its controller divide it)." }
                 else { trace.step("${b.name} assigns $bp damage to ${a.name}.", "510.1d"); hits += Hit(b, Ref.Obj(a.id), bp) }
             }
         }
@@ -2699,7 +2702,10 @@ class Engine(val state: GameState) {
                 // Sigarda, Host of Herons: an opponent's spell or ability can't make her controller sacrifice anything.
                 val sigarda = state.objects.values.firstOrNull { it.isOnBattlefield() && it.controller == p.id && it.def.abilities.filterIsInstance<StaticAbility>().flatMap { a -> a.effects }.any { e -> e is StaticEffect.CantBeMadeToSacrifice } }
                 if (sigarda != null && item.controller != p.id) { trace.step("${sigarda.name} says spells and abilities ${p.possessive} opponents control can't cause ${p.subject.lowercase()} to sacrifice permanents, and ${item.describe} is controlled by an opponent, so ${p.subject.lowercase()} ${p.v("sacrifices", "sacrifice")} nothing.", "701.21a"); state.outcomes += "${p.subject} ${p.v("sacrifices", "sacrifice")} nothing (${sigarda.name})."; continue }
+                // "each player sacrifices two creatures": one at a time, so the second choice sees the first one gone.
+                for (sacIndex in 0 until effect.count) {
                 val mine = state.objects.values.filter { it.isOnBattlefield() && it.controller == p.id && state.matches(effect.filter, it, p.id) }
+                if (mine.isEmpty() && sacIndex > 0) break   // said once: nothing left to sacrifice
                 when {
                     mine.isEmpty() -> { trace.step("${p.subject} ${p.v("controls", "control")} no ${effect.filter.raw}, so ${p.subject.lowercase()} ${p.v("sacrifices", "sacrifice")} nothing.", "701.21a"); state.outcomes += "${p.subject} ${p.v("has", "have")} no ${effect.filter.raw} to sacrifice to ${item.source.name}; with one, ${p.subject.lowercase()} would have to." }
                     mine.size == 1 -> move(mine[0], Zone.GRAVEYARD, "${p.subject} ${p.v("sacrifices", "sacrifice")} ${mine[0].name} (${p.possessive} only ${effect.filter.raw}).", "701.21a")
@@ -2709,7 +2715,7 @@ class Engine(val state: GameState) {
                         move(pick, Zone.GRAVEYARD, "${p.subject} ${p.v("sacrifices", "sacrifice")} ${pick.name}, ${p.possessive} creature with the greatest power ($top)${if (mine.size > 1) " (not ${mine.filter { it !== pick }.joinToString(", ") { "${it.name}, power ${it.power ?: 0}" }})" else ""}.", "701.21a")
                     }
                     else -> { val pick = mine.minWith(compareBy({ it.power ?: 0 }, { it.toughness ?: 0 })); state.assumptions += "${p.subject} ${p.v("sacrifices", "sacrifice")} ${pick.name} (${p.subject.lowercase()} ${p.v("chooses", "choose")} which ${effect.filter.raw}; assuming the smallest)."; move(pick, Zone.GRAVEYARD, "${p.subject} ${p.v("sacrifices", "sacrifice")} ${pick.name}, ${p.possessive} choice among ${mine.joinToString(", ") { it.name }}.", "701.21a") }
-                }
+                } }
             }
             is Effect.GainLifeEqualToPower -> {
                 val o = item.targets.firstOrNull()?.let { objOf(it) }
@@ -3359,7 +3365,7 @@ class Engine(val state: GameState) {
             }
         }
         if (obj.isOnBattlefield()) obj.lkiPower = obj.power
-        obj.zone = to; obj.damage = 0; obj.pumps.clear(); obj.tempKeywords.clear(); obj.lostKeywords.clear(); obj.basePt = null; obj.animatedAs = null; obj.saddled = false; obj.saddledThisTurn = 0; obj.tapped = false; obj.attacking = null; obj.blocking = null; obj.dealtDeathtouchDamage = false
+        obj.zone = to; obj.damage = 0; obj.pumps.clear(); obj.tempKeywords.clear(); obj.lostKeywords.clear(); obj.basePt = null; obj.animatedAs = null; obj.saddled = false; obj.saddledThisTurn = 0; obj.tapped = false; obj.attacking = null; obj.blocking = null; obj.alsoBlocking.clear(); obj.dealtDeathtouchDamage = false
     }
 
     /** Destruction with regeneration (701.19a, 614.8): returns true if the destruction was replaced. */
@@ -3369,7 +3375,7 @@ class Engine(val state: GameState) {
         if (shield != null && !canRegenerate) { trace.step("${obj.name} has a regeneration shield, but the effect says it can't be regenerated, so the shield can't replace this destruction.", "701.19c", "614.8"); state.outcomes += "${obj.name}'s regeneration shield doesn't help: the effect says it can't be regenerated (701.19c)." }
         if (shield != null && canRegenerate) {
             shield.remaining = 0
-            obj.tapped = true; obj.damage = 0; obj.attacking = null; obj.blocking = null
+            obj.tapped = true; obj.damage = 0; obj.attacking = null; obj.blocking = null; obj.alsoBlocking.clear()
             trace.step("$text But ${obj.name} has a regeneration shield from ${shield.sourceName}: instead of being destroyed, it's tapped, all damage is removed from it and it's removed from combat.", *rules, "701.19a", "614.8")
             state.outcomes += "${obj.name} regenerates."
             return true

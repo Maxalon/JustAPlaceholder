@@ -91,6 +91,8 @@ class GameObject(
     var attachedTo: String? = null
     var attacking: Ref? = null            // what this creature is attacking
     var blocking: String? = null          // id of the attacker this creature blocks
+    /** Further attackers this creature blocks ("can block an additional creature each combat"). */
+    val alsoBlocking = mutableSetOf<String>()
     var wasBlocked = false                // declared blocked this combat: stays blocked even if the blocker leaves (509.1h)
     var dealtDeathtouchDamage = false     // for 704.5h
     /** Set by "if a creature dealt damage this way would die this turn, exile it instead": the effect's name. */

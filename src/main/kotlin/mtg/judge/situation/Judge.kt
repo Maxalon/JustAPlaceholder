@@ -809,7 +809,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
             "step", "beginstep" -> {
                 // "they attack with a 2/2, then next turn …": the attack's combat damage is dealt before the turn moves on.
                 val st = (e.to ?: "upkeep").lowercase()
-                if (st in setOf("cleanup", "end", "untap", "upkeep", "draw", "main2", "second main", "end step") && state.step != "combat_damage" && state.objects.values.any { it.isOnBattlefield() && it.attacking != null }) { engine.resolveAll(); engine.combatDamage(); state.objects.values.forEach { it.attacking = null; it.blocking = null }; state.combatDamageDealt = false }
+                if (st in setOf("cleanup", "end", "untap", "upkeep", "draw", "main2", "second main", "end step") && state.step != "combat_damage" && state.objects.values.any { it.isOnBattlefield() && it.attacking != null }) { engine.resolveAll(); engine.combatDamage(); state.objects.values.forEach { it.attacking = null; it.blocking = null; it.alsoBlocking.clear() }; state.combatDamageDealt = false }
                 engine.beginStep(st, e.player ?: state.activePlayer ?: state.players.first().id)
             }
             else -> throw JudgeException("Unknown event verb '${e.verb}'")

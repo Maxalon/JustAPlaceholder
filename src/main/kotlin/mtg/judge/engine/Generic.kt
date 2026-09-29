@@ -60,6 +60,8 @@ object Generic {
             val self = if (kind == "creature") "this creature" else "this permanent"
             var t = raw.replace(Regex("""^(when(?:ever)?) it\b"""), "$1 $self").replace(Regex("""^it (can't|can|has|gets|deals|doesn't)\b"""), "${self.replaceFirstChar { c -> c.uppercase() }} $1")
             t = t.replace(Regex("""\bon it$"""), "on $self").replace(Regex("""^tap[:,]? (.+)$"""), "{T}: $1")
+            // "when this creature dies, return it to the battlefield": "it" is this creature, back from the graveyard.
+            t = t.replace(Regex("""^(when(?:ever)? $self dies,? )return it to the battlefield(?: under (?:its owner's|your) control)?$""", RegexOption.IGNORE_CASE), "$1return $self from your graveyard to the battlefield")
             // "it enters with two +1/+1 counters": in card wording.
             t = t.replace(Regex("""^it enters(?: the battlefield)? with (a|an|\d+|two|three|four) ([+-]\d/[+-]\d) counters?$""")) { w -> "${self.replaceFirstChar { c -> c.uppercase() }} enters with ${mapOf("1" to "a", "2" to "two", "3" to "three", "4" to "four")[w.groupValues[1]] ?: w.groupValues[1]} ${w.groupValues[2]} counter${if (w.groupValues[1] in setOf("a", "an", "1")) "" else "s"} on it" }
             // "a land that says it enters tapped", "it must be blocked if able".
@@ -178,7 +180,9 @@ object Generic {
         val n = desc.lowercase().removePrefix("a ").removePrefix("an ").trim()
         val m = creatureRe.matchEntire(n) ?: return null
         if (m.groupValues[1].isEmpty() && m.groupValues[3].isEmpty() && m.groupValues[4].isEmpty()) return null
-        val subs = m.groupValues[3].trim().split(' ').filter { it.isNotEmpty() && it !in colorMap.keys }.joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+        // "an artifact creature" / "an enchantment creature": the word is a card type, not a creature type.
+        val extraTypes = m.groupValues[3].trim().split(' ').filter { it in setOf("artifact", "enchantment", "legendary") }
+        val subs = m.groupValues[3].trim().split(' ').filter { it.isNotEmpty() && it !in colorMap.keys && it !in extraTypes }.joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
         val colors = m.groupValues[3].trim().split(' ').mapNotNull { colorMap[it] }.joinToString("")
         val keywords0 = m.groupValues[4].split(Regex("""\s*,\s*|\s+and\s+""")).map { it.trim() }.filter { it.isNotEmpty() }
         // "a Dragon" / "an Angel": the type says it flies, whatever else was left out.
@@ -186,7 +190,8 @@ object Generic {
         val keywords = if (subs.lowercase().split(' ').any { it in flyers } && keywords0.none { it.equals("flying", true) }) keywords0 + "flying" else keywords0
         val kwLine = keywords.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
         val article = if (n.first().lowercaseChar() in "aeiou") "an" else "a"
-        return OracleParser.parse("generic-$n", "$article $n", "Creature" + (if (subs.isEmpty()) "" else " — $subs"), "{1}", 1.0, colors,
+        val typeLine = (if ("legendary" in extraTypes) "Legendary " else "") + (if ("artifact" in extraTypes) "Artifact " else "") + (if ("enchantment" in extraTypes) "Enchantment " else "") + "Creature" + (if (subs.isEmpty()) "" else " — $subs")
+        return OracleParser.parse("generic-$n", "$article $n", typeLine, "{1}", 1.0, colors,
             m.groupValues[1].ifEmpty { "1" }, m.groupValues[2].ifEmpty { "1" }, keywords, kwLine)
     }
 

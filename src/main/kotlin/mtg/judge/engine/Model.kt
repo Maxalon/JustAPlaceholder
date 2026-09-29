@@ -199,7 +199,7 @@ sealed interface Effect {
     /** "Exile target player's graveyard" (Bojuka Bog, Relic of Progenitus): every card in it leaves at once. */
     data class ExileGraveyard(val who: Who) : Effect
     /** "Each other player sacrifices a creature of their choice." */
-    data class SacrificeEach(val who: Who, val filter: ObjFilter, val greatestPower: Boolean = false) : Effect
+    data class SacrificeEach(val who: Who, val filter: ObjFilter, val greatestPower: Boolean = false, val count: Int = 1) : Effect
     /** Cloudshift, Ephemerate: "Exile target creature you control, then return it to the battlefield under your / its owner's control." */
     data class Blink(val target: TargetSpec, val ownersControl: Boolean) : Effect
     /** Spellskite: "Change a target of target spell or ability to ~." */
@@ -475,6 +475,8 @@ sealed interface StaticEffect {
     data object PlayerHexproof : StaticEffect
     /** "You can't lose the game and your opponents can't win the game" (Platinum Angel). */
     data object CantLose : StaticEffect
+    /** "~ can block an additional creature each combat": checked by its words as blockers are declared. */
+    data object CanBlockMore : StaticEffect
     /** "You have no maximum hand size." (Reliquary Tower and the rest) — nothing is discarded at cleanup. */
     data object NoMaximumHandSize : StaticEffect
     /** Seedborn Muse: "Untap all permanents you control during each other player's untap step." */

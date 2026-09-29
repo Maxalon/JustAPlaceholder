@@ -670,6 +670,8 @@ object OracleParser {
             return listOf(StaticEffect.EntersWithCounters(m.groupValues[2], n, onlyIfKicked = true))
         }
         Regex("""^~ can't (block|attack|be countered|be blocked|attack or block)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { return listOf(StaticEffect.Cant(it.groupValues[1].lowercase())) }
+        // "~ can block an additional creature each combat." / "~ can block any number of creatures.": the engine reads the words when blockers are declared.
+        if (Regex("""^~ can block (?:an additional creature(?: each combat)?|any number of creatures|two additional creatures each combat)\.?$""", RegexOption.IGNORE_CASE).matches(line)) return listOf(StaticEffect.CanBlockMore)
         Regex("""^(enchanted|equipped) (creature|permanent) can't (block|attack|attack or block|be blocked)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             return listOf(StaticEffect.Cant(m.groupValues[3].lowercase(), applies = ObjFilter(setOf(Kind.PERMANENT), raw = "${m.groupValues[1].lowercase()} ${m.groupValues[2].lowercase()}", attachedToSource = true)))
         }
@@ -1389,7 +1391,7 @@ object OracleParser {
         // "It's still a land." always follows an animation; it changes nothing on its own but shouldn't read as unmodeled.
         Regex("""^it's still an? (?:land|artifact|enchantment)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.Seq(emptyList()) }
         // Bloodghast: "return ~ from your graveyard to the battlefield."
-        Regex("""^return ~ from your graveyard to the battlefield( tapped)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.ReturnSelfFromGraveyard(m.groupValues[1].isNotEmpty()) }
+        Regex("""^return (?:~|this card|this creature|this permanent)(?: from your graveyard)? to the battlefield(?: under (?:its owner's|your) control)?( tapped)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.ReturnSelfFromGraveyard(m.groupValues[1].isNotEmpty()) }
         // Boros Reckoner: "it deals that much damage to any target."
         Regex("""^(?:~|it) deals that much damage to any target\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.DamageThatMuch(target("any target")) }
         // Questing Beast: "it deals that much damage to target planeswalker that player controls."
@@ -1506,10 +1508,11 @@ object OracleParser {
             return Effect.Discard(w, n, x = m.groupValues[2].equals("X", true), random = m.groupValues[3].isNotEmpty())
         }
         // "Each opponent sacrifices a creature (with the greatest power among creatures that player controls)": modeled, so it goes before the narrated table.
-        Regex("""^each (other player|opponent|player) sacrifices (?:a|an|one) (.+?)(?: of their choice)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
-            val greatest = Regex("""^(.+?) with the greatest power among (?:creatures|permanents) (?:that player controls|they control)$""", RegexOption.IGNORE_CASE).matchEntire(m.groupValues[2])
-            val f = parseFilter(greatest?.groupValues?.get(1) ?: m.groupValues[2], Kind.CREATURE)
-            if (f.verifiable) return Effect.SacrificeEach(if (m.groupValues[1].lowercase() == "player") Who.EACH_PLAYER else Who.EACH_OPPONENT, f, greatestPower = greatest != null)
+        Regex("""^each (other player|opponent|player) sacrifices (a|an|one|two|three|four|\d+) (.+?)(?: of their choice)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val greatest = Regex("""^(.+?) with the greatest power among (?:creatures|permanents) (?:that player controls|they control)$""", RegexOption.IGNORE_CASE).matchEntire(m.groupValues[3])
+            val f = parseFilter((greatest?.groupValues?.get(1) ?: m.groupValues[3]).replace(Regex("""^(creature|permanent|artifact|enchantment|land)s\b"""), "$1"), Kind.CREATURE)
+            val count = number(m.groupValues[2]) ?: 1
+            if (f.verifiable) return Effect.SacrificeEach(if (m.groupValues[1].lowercase() == "player") Who.EACH_PLAYER else Who.EACH_OPPONENT, f, greatestPower = greatest != null, count = count)
         }
         if (Regex("""^put ~ on top of its owner's library\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.PutSelfOnLibraryTop
         Regex("""^~ deals (\d+) damage to you\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.DamagePlayer(Who.YOU, m.groupValues[1].toInt()) }
