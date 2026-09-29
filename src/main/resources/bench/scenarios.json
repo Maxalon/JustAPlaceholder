@@ -23097,5 +23097,120 @@
     "expect": [
       "They don't trigger at the same time. \"At the beginning of your upkeep\" means the upkeep of the permanent's controller (109.5), so each ability triggers only on its controller's turn. On your turn only your ability triggers; the other triggers on its controller's own upkeep. If two abilities did trigger at once, they would go on the stack in APNAP order: the active player's first, so the other player's would resolve first (603.3b)."
     ]
+  },
+  {
+    "id": "hexproof-do-i-have-to-sacrifice",
+    "text": "i have a creature with hexproof and they cast a spell that says each player sacrifices a creature, do i have to sacrifice it",
+    "expect": [
+      "a creature with hexproof: the battlefield → your graveyard.",
+      "Yes, if a creature is there to sacrifice: the effect makes each player sacrifice one, and the player chooses which. Hexproof, shroud, protection and indestructible don't help: \"each player sacrifices\" doesn't target (115.1, 702.11b), and a sacrifice isn't destruction (701.21a)."
+    ]
+  },
+  {
+    "id": "minus-2-0-then-attack-no-damage",
+    "text": "they have a 2/2 and i cast a spell that says target creature gets -2/-0 until end of turn on it, then they attack me with it, how much damage do i take",
+    "expect": [
+      "a 2/2 creature is 0/2 until end of turn.",
+      "No: you take no damage."
+    ]
+  },
+  {
+    "id": "said-cant-be-blocked-by-fliers-what-can-block",
+    "text": "i have a 3/3 that says this creature can't be blocked by creatures with flying, they have a 4/4 with flying and a 1/1, i attack, what can block",
+    "expect": [
+      "No: a 4/4 creature with flying can't block a 3/3 creature that says \"this creature can't be blocked by creatures with flying\".",
+      "Yes: a 1/1 creature can block a 3/3 creature that says \"this creature can't be blocked by creatures with flying\"."
+    ]
+  },
+  {
+    "id": "said-cast-trigger-that-player-loses-1-at-2",
+    "text": "my opponent has a creature that says whenever a player casts a spell, that player loses 1 life, i cast two spells, i'm at 2, what happens",
+    "expect": [
+      "You lose 1 life. (×2)",
+      "You lose the game."
+    ]
+  },
+  {
+    "id": "pump-theirs-by-accident-who-dies",
+    "text": "i have a 2/2 and they have a 2/2, i attack, they block, i cast a spell that says target creature gets +1/+1 until end of turn on theirs by accident, who dies",
+    "expect": [
+      "a 2/2 creature: the battlefield → your graveyard.",
+      "No: opponent's 2/2 creature is still on the battlefield."
+    ]
+  },
+  {
+    "id": "said-conditional-flying-can-i-block",
+    "text": "they have a creature that says this creature has flying as long as you control an artifact, they control an artifact, i have a 2/2 without flying, they attack, can i block",
+    "expect": [
+      "No: a 2/2 creature can't block a creature that says \"this creature has flying as long as you control an artifact\" (flying)."
+    ],
+    "cite": [
+      "702.9b"
+    ]
+  },
+  {
+    "id": "correction-just-the-token",
+    "text": "i cast a spell that says destroy target creature on my opponent's 2/2 token and a real 2/2, wait i mean just the token, what happens",
+    "expect": [
+      "a 2/2 token: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "a 2/2 creature: the battlefield",
+      "but 2 were given"
+    ]
+  },
+  {
+    "id": "said-combat-damage-that-player-sacrifices-permanent",
+    "text": "i have a creature that says whenever this creature deals combat damage to a player, that player sacrifices a permanent, i attack and it's unblocked, they have 2 lands and a creature, what do they sacrifice",
+    "expect": [
+      "opponent takes 2 damage.",
+      "a creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "not modeled"
+    ]
+  },
+  {
+    "id": "double-block-one-of-two-attackers",
+    "text": "they attack me with a 3/3 and a 3/3, i have two 2/2s, i double block one of them, what happens",
+    "expect": [
+      "You take 3 damage.",
+      "a 3/3 creature: the battlefield → opponent's graveyard."
+    ],
+    "cite": [
+      "510.1c"
+    ]
+  },
+  {
+    "id": "lifelink-3-3-blocks-3-3-at-1",
+    "text": "i have a creature with lifelink, it's a 3/3, they attack with a 3/3 and i block, i'm at 1, do i survive",
+    "expect": [
+      "Yes: You are still in the game at 4 life."
+    ],
+    "cite": [
+      "702.15b"
+    ]
+  },
+  {
+    "id": "said-counter-war-exile-resolves",
+    "text": "i cast a spell that says exile target creature and they cast a spell that says counter target spell in response, then i cast a spell that says counter target spell in response to that, what happens",
+    "expect": [
+      "a spell that says \"counter target spell\" is countered.",
+      "a creature: the battlefield → exile."
+    ],
+    "notExpect": [
+      "Can't verify"
+    ]
+  },
+  {
+    "id": "said-opponents-creature-dies-gain-2",
+    "text": "they have a 1/1 and i have a creature that says whenever an opponent's creature dies, you gain 2 life, i cast a spell that says destroy target creature on their 1/1, what happens",
+    "expect": [
+      "a 1/1 creature: the battlefield → opponent's graveyard.",
+      "You gain 2 life."
+    ],
+    "notExpect": [
+      "not modeled"
+    ]
   }
 ]

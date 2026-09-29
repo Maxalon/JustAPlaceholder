@@ -589,7 +589,7 @@ class SituationParser(private val names: NameIndex) {
             // "a creature that says when this creature enters, exile target creature until …": the comma after the
             // trigger condition belongs to the said text; it is carried as a fullwidth comma so the clause split
             // leaves the text whole, and turned back into a comma where the text is read.
-        t2 = t2.replace(Regex("""\b(that (?:says|reads) (?:when(?:ever)?|at the beginning of) (?:this creature|this permanent|it|this|an? creature|another creature|an opponent|you|a player|your upkeep|each upkeep|your end step|combat)(?: [a-z' ]+?)?), (?=(?:exile|destroy|return|draw|deal|deals|tap|untap|create|put|you|each|target|sacrifice|gain|gains|lose|search|counter|look|reveal|scry|its controller|that|this creature|it|the) \b)""", RegexOption.IGNORE_CASE), "$1， ")
+        t2 = t2.replace(Regex("""\b(that (?:says|reads) (?:when(?:ever)?|at the beginning of) [a-z'/+ ]+?), (?=(?:exile|destroy|return|draw|deal|deals|tap|untap|create|put|you|each|target|sacrifice|gain|gains|lose|search|counter|look|reveal|scry|its controller|that|this creature|it|the|its|their|all|add|choose|remove|discard|mill|prevent|double|copy|transform|flip|shuffle|scry|surveil|investigate|proliferate) \b)""", RegexOption.IGNORE_CASE), "$1， ")
             // "a creature that says when it enters draw a card" / "my creature says it can't be blocked by more than one creature":
             // a stand-in permanent with that rules text, kept as one token through the clause split.
         t2 = t2.let { t0 -> Regex("""\b(an?|my|their|his|her|the) ((?:\d+/\d+ )?creature|permanent|artifact|enchantment|equipment|aura|land|planeswalker|card|\d+/\d+) that (?:says|reads) (.+?)(?=,|\?|$| with \d+ loyalty\b| (?:on|targeting|at) (?:my|their|his|her|the|an?|one) (?!this )\b| and (?:i|we|they|he|she|my opponent) \b| and (?:\d+|two|three|four|an? |my |their ) ?(?:other )?(?:creatures?|lands?|artifacts?|enchantments?|\d+/\d+)\b)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
@@ -1284,7 +1284,7 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""\ban? spell that gives (it|that|my creature|(?:my |their )?c\d+|(?:my |their )?\d+/\d+) ([+-]\d+/[+-]\d+)\b""", RegexOption.IGNORE_CASE), "a $2 pump on $1")
             // "a spell that says <rules text>": the words given are its text, kept as one token so the clause split leaves them alone.
         t2 = t2.replace(Regex("""\ban? (white|blue|black|red|green|colorless|colourless) (spell|instant|sorcery) that (says|reads) (.+?)(?=,|\?|$| (?:on|targeting|at) (?:my|their|his|her|the|an?|it|th|both|each)\w*)""", RegexOption.IGNORE_CASE)) { r -> "a ${r.groupValues[2]} that says ${r.groupValues[4].trim()}. this spell is ${r.groupValues[1].lowercase().replace("colourless", "colorless")}" }
-        t2 = t2.let { t0 -> Regex("""\ban? (spell|instant|sorcery) that (?:(?:says|reads) |(?=(?:returns|exiles|destroys|taps|untaps|deals|counters|bounces|draws|puts|creates|makes|removes|kills|discards|mills|gains|sacrifices)\b))(.+?)(?=,|\?|$| (?:on|targeting|at) (?:my|their|his|her|the|an?|it|them|me|myself|yourself|themselves|mine|theirs|both|each)\b| with (?:my|their|his|her|mine|theirs) \b| and (?:i|we|they|he|she|my opponent) \b| and (?:an? |my |their )?(?:creature|\d+/\d+|c\d+)\b)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+        t2 = t2.let { t0 -> Regex("""\ban? (spell|instant|sorcery) that (?:(?:says|reads) |(?=(?:returns|exiles|destroys|taps|untaps|deals|counters|bounces|draws|puts|creates|makes|removes|kills|discards|mills|gains|sacrifices)\b))(.+?)(?=,|\?|$| in response\b| (?:on|targeting|at) (?:my|their|his|her|the|an?|it|them|me|myself|yourself|themselves|mine|theirs|both|each)\b| with (?:my|their|his|her|mine|theirs) \b| and (?:i|we|they|he|she|my opponent) \b| and (?:an? |my |their )?(?:creature|\d+/\d+|c\d+)\b)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 var text = r.groupValues[2].trim().lowercase()
                 // "that returns target creature …" / "that deals 1 damage …": the card's own wording.
                 text = text.replace(Regex("""^deals?\b"""), "this spell deals").replace(Regex("""^(returns|exiles|destroys|taps|untaps|counters|bounces|draws|puts|creates|makes|removes|kills|discards|mills|gains|sacrifices)\b""")) { w -> w.value.removeSuffix("s") }
@@ -2117,7 +2117,7 @@ class SituationParser(private val names: NameIndex) {
         return false
     }
 
-    private fun isNoise(clause: String) = Regex("""(?i)^(what happens|what now|so|then|now|ok|okay|right|they're|they are|i'm|i am|he's|she's|we're|it's|does it wear off|do(?:es)? (?:it|that|they) (?:wear off|go away|end|stay)|after (?:combat )?damage|after blockers|after blocks|after combat|after that|after this|before damage|i don't respond|they don't respond|i do(?:n't| not) respond|no response|no responses|nobody responds|no one responds|i pass|they pass|everyone passes|all players pass|does it work|is that right|correct|yes or no|y/n|legal|is that legal|is it legal|allowed|is that allowed|and|but|also|too|as well|no wait|wait|never mind|nevermind|sorry|hmm|uh|um|actually|they durdle|i durdle|durdles?|they do nothing|i do nothing|nothing happens)\??$""").matches(clause.trim()) ||
+    private fun isNoise(clause: String) = Regex("""(?i)^(what happens|it is unblocked|it's unblocked|it goes unblocked|it isn't blocked|it is not blocked|nobody blocks|no blocks|what now|so|then|now|ok|okay|right|they're|they are|i'm|i am|he's|she's|we're|it's|does it wear off|do(?:es)? (?:it|that|they) (?:wear off|go away|end|stay)|after (?:combat )?damage|after blockers|after blocks|after combat|after that|after this|before damage|i don't respond|they don't respond|i do(?:n't| not) respond|no response|no responses|nobody responds|no one responds|i pass|they pass|everyone passes|all players pass|does it work|is that right|correct|yes or no|y/n|legal|is that legal|is it legal|allowed|is that allowed|and|but|also|too|as well|no wait|wait|never mind|nevermind|sorry|hmm|uh|um|actually|they durdle|i durdle|durdles?|they do nothing|i do nothing|nothing happens)\??$""").matches(clause.trim()) ||
         (!Regex("""c\d+""").containsMatchIn(clause) && Regex("""^(?:do|does|did|can|could|will|would|is|are|was|were|what|who|which|how|should|when|why|am)\b""").matches(clause.trim().substringBefore(' ')) &&
             // "is blocked by a 1/1", "was countered": a passive statement whose subject was left out opens with
             // the same word a question does, and dropping it as noise lost the block with nothing said about it.
@@ -3456,7 +3456,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.events += EventSpec("leave", obj = id, to = zone); ctx.lastMentioned = id; return true
         }
         // "they attack with a 4/4, I block with both": every creature of the blocker's blocks the attacker.
-        Regex("""^(?:(?:i|we|they|he|she|my opponent|the opponent|@\w+) )?(?:double[- ]?|chump[- ]?)?blocks?(?: it| that| the attacker| their attacker| their creature| their \d+/\d+)? with (?:both|both of them|both of my creatures|both of mine|all of them|all my creatures|everything|everyone|all of mine|(two|three|2|3) of (?:them|my creatures|mine))$""").find(c)?.let { rr ->
+        Regex("""^(?:(?:i|we|they|he|she|my opponent|the opponent|@\w+) )?(?:double[- ]?|chump[- ]?)?blocks?(?: it| that| the attacker| their attacker| their creature| their \d+/\d+)? with (?:both|both of them|both of my creatures|both of mine|all of them|all my creatures|everything|everyone|all of mine|(two|three|2|3) of (?:them|my creatures|mine))$|^(?:(?:i|we|they|he|she|my opponent|the opponent|@\w+) )?double[- ]?blocks? (?:one|one of them|the first|the first one|an attacker|one attacker|one of the attackers)$""").find(c)?.let { rr ->
             val who = actorOfClause(c) ?: ctx.other(ctx.lastActor ?: "me") ?: "opp"
             val attacker = ctx.events.lastOrNull { it.verb == "attack" && it.player != who }?.obj
                 ?: ctx.events.lastOrNull { it.verb == "attackAll" && it.player != who }?.let { a -> ctx.objects.values.firstOrNull { o -> o.controller == a.player && o.zone == "battlefield" && isCreatureName(o.card.name) }?.id }
@@ -4295,7 +4295,7 @@ class SituationParser(private val names: NameIndex) {
             val adjWords = adj.replace("first strike", "first-strike").replace("double strike", "double-strike").split(' ').filter { it.isNotEmpty() }
             val adjKw = adjWords.map { it.replace('-', ' ') }.filter { it in keywordAdjectives }
             val plainAdj = adjWords.map { it.replace('-', ' ') }.filter { it !in keywordAdjectives }
-            if (plainAdj.any { it !in setOf("vanilla", "big", "small", "random", "chump", "spare", "extra", "red", "green", "white", "blue", "black", "artifact", "enchantment", "legendary") }) return@let
+            if (plainAdj.any { it !in setOf("vanilla", "big", "small", "random", "chump", "spare", "extra", "real", "regular", "normal", "actual", "nontoken", "red", "green", "white", "blue", "black", "artifact", "enchantment", "legendary") }) return@let
             // "an artifact creature": the card type rides along in the description.
             val typeAdj = plainAdj.filter { it in setOf("artifact", "enchantment", "legendary") }.joinToString(" ")
             val who = actor ?: (if (hasVerb) subject else ctx.lastOwner ?: subject) ?: "me"
@@ -7012,6 +7012,41 @@ class SituationParser(private val names: NameIndex) {
             for (a in attackers) ctx.events += EventSpec("block", player = who, obj = blocker, targets = listOf(a))
             ctx.lastVerb = "block"; ctx.lastActor = who
             ctx.notes += "\"${restore(clause0, m)}?\" is read as declaring ${ctx.objects.getValue(blocker).card.name} as a blocker for each attacker; the outcome says whether it may."; return true
+        }
+        // "… on my opponent's 2/2 token and a real 2/2": a second creature named right after a cast joins its targets
+        // (the judge then says whether the spell can take two).
+        if (ctx.lastVerb == "cast" && ctx.events.lastOrNull { it.verb == "cast" }?.let { it.targets.isNotEmpty() && it.player == (ctx.lastActor ?: "me") } == true) Regex("""^(an? |the )?((?:real |regular |normal |actual |nontoken |vanilla )?)(\d+/\d+)((?: (?!with\b)[a-z]+)*)$""").find(clause0)?.let { r ->
+            val castIdx = ctx.events.indexOfLast { it.verb == "cast" }
+            val cast = ctx.events[castIdx]
+            val owner = ctx.objects[cast.targets.first()]?.controller ?: ctx.other(cast.player ?: "me") ?: "opp"
+            val kws = Regex("""$kwNouns""").findAll(r.groupValues[4]).map { k -> k.value.removeSuffix("s").replace("flier", "flying").replace("flyer", "flying").replace("trampler", "trample") }.joinToString(", ")
+            val id = describedCreatures("a ", r.groupValues[3], "creature", owner, ctx, kws).firstOrNull() ?: return@let
+            ctx.events[castIdx] = cast.copy(targets = cast.targets + id); ctx.lastMentioned = id
+            ctx.notes += "${ctx.objects[id]?.card?.name ?: "a creature"} is read as a second target of ${cast.card?.name ?: "the spell"}."; return true
+        }
+        // "wait, I mean just the token": the last spell cast is aimed at that one thing only.
+        Regex("""^(?:wait|no|actually|sorry|oops|hold on|correction)?,? ?(?:i mean|i meant|make that|scratch that|correction|rather)?,? ?(?:just |only )(the token|the tokens?|the \d+/\d+|it|that one|the first one|the real one|the other one|the creature)$""").find(clause0)?.let { r ->
+            val idx = ctx.events.indexOfLast { it.verb == "cast" && it.player == "me" }
+            if (idx < 0) return@let
+            val w = r.groupValues[1]
+            val cast = ctx.events[idx]
+            val cands = ctx.objects.values.filter { it.zone == "battlefield" && it.controller != "me" && isCreatureName(it.card.name) }.ifEmpty { ctx.objects.values.filter { it.zone == "battlefield" && isCreatureName(it.card.name) } }
+            val pick = when {
+                w.startsWith("the token") -> cands.lastOrNull { it.token || (it.card.name ?: "").contains("token") }?.id
+                Regex("""^the \d+/\d+$""").matches(w) -> cands.lastOrNull { (it.card.name ?: "").startsWith("a ${w.removePrefix("the ")}") && !it.token }?.id
+                w == "the real one" || w == "the creature" -> cands.lastOrNull { !it.token && !(it.card.name ?: "").contains("token") }?.id
+                w == "the first one" -> cast.targets.firstOrNull()
+                else -> cast.targets.lastOrNull() ?: ctx.lastMentioned
+            } ?: return@let
+            ctx.events[idx] = cast.copy(targets = listOf(pick)); ctx.lastMentioned = pick
+            val pickName = (ctx.objects[pick]?.card?.name ?: pick).let { n -> if (Regex("""^(?:an?|the|my|their) """).containsMatchIn(n)) n else "the $n" }
+            ctx.notes += "Correction read: ${cast.card?.name ?: "the spell"} is aimed at $pickName only."; return true
+        }
+        // "do I have to sacrifice it?" with hexproof or shroud on it: sacrificing isn't targeting.
+        Regex("""^(?:do|does) (?:i|we|they|he|she|my opponent) (?:have to|need to|still have to|really have to) (?:sacrifice|sac) (?:it|that|my creature|their creature|one|a creature)(?: anyway| too)?$""").find(clause0)?.let {
+            val words = ctx.objects.values.mapNotNull { it.card.name }.joinToString(" ").lowercase()
+            val why = if (Regex("""hexproof|shroud|protection|indestructible""").containsMatchIn(words)) " Hexproof, shroud, protection and indestructible don't help: \"each player sacrifices\" doesn't target (115.1, 702.11b), and a sacrifice isn't destruction (701.21a)." else " A sacrifice isn't a target and isn't destruction (701.21a)."
+            ctx.asks += EventSpec("ask", to = "text:Yes, if a creature is there to sacrifice: the effect makes each player sacrifice one, and the player chooses which.$why"); return true
         }
         // "whose triggers first on my turn?": APNAP order (603.3b).
         Regex("""^whose (?:(?:triggers?|abilit(?:y|ies)|upkeep triggers?) )?(?:go(?:es)? (?:on the stack )?first|triggers? first|resolves? first|happens? first|is first)(?: on (my|their|his|her) turn)?$|^(?:who|which|whose) (?:goes|triggers|resolves) first(?: on (my|their|his|her) turn)?$""").find(clause0)?.let { r ->
