@@ -70,6 +70,7 @@ object Generic {
             t = t.replace(Regex("""^(whenever a creature) attacks you\b(?: or a planeswalker you control)?"""), "$1 attacks").replace(Regex("""\bto the creature it blocks$"""), "to that creature").replace(Regex("""^whenever this creature blocks it\b"""), "whenever this creature blocks a creature, it")
             t = t.replace(Regex("""^(?:this creature|this permanent|it) can't be blocked except by (?:2|two) or more creatures$""", RegexOption.IGNORE_CASE), "menace")
             t = t.replace(Regex("""^(?:this creature|this permanent|this spell|it) can't be countered$""", RegexOption.IGNORE_CASE), "This spell can't be countered")
+            t = t.replace(Regex("""^(?:this creature|this permanent|it) can't be destroyed$""", RegexOption.IGNORE_CASE), "indestructible").replace(Regex("""^(?:this creature|this permanent|it) can't be blocked$""", RegexOption.IGNORE_CASE), "This creature can't be blocked")
             t = t.replace(Regex("""^(?:this creature|this permanent|it) can't be the target of spells(?: or abilities)?$""", RegexOption.IGNORE_CASE), "shroud").replace(Regex("""^(?:this creature|this permanent|it) can't be the target of spells or abilities your opponents control$""", RegexOption.IGNORE_CASE), "hexproof")
             // Table wording into card wording: "you deal 1 damage to it", "and lose 1 life", "return it to the battlefield", "spells cost 1 more".
             t = t.replace(Regex("""\byou deals? (\d+) damage to it$"""), "$self deals $1 damage to that creature").replace(Regex("""\byou deals? (\d+) damage\b"""), "$self deals $1 damage")
@@ -112,6 +113,8 @@ object Generic {
             val text0 = m.groupValues[3].replace('_', ' ').trim().trim('"').replace(Regex("""\.?\s*this spell is (white|blue|black|red|green|colorless)\.?$""")) { w -> color = when (w.groupValues[1]) { "white" -> "W"; "blue" -> "U"; "black" -> "B"; "red" -> "R"; "green" -> "G"; else -> "" }; "" }
                 .replace(Regex("""\s+for (\d+) mana$""")) { w -> cost = w.groupValues[1].toInt(); "" }
                 .replace(Regex("""^exile all cards from target player's graveyard$"""), "exile target player's graveyard")
+                // "deal 3 damage to any target": the card says "~ deals".
+                .replace(Regex("""^deals? (\d+|x) damage\b""", RegexOption.IGNORE_CASE), "this spell deals $1 damage")
                 // "target creature fights another target creature": the two the situation aims it at; "target player draws two cards and loses 2 life": two sentences.
                 .replace(Regex("""^target creature fights another target creature$"""), "target creature you control fights target creature you don't control")
                 .replace(Regex("""^copy target (creature |instant or sorcery |instant |sorcery )?spell$"""), "copy target $1spell. You may choose new targets for the copy")

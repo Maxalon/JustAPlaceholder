@@ -22130,5 +22130,295 @@
     "cite": [
       "702.20b"
     ]
+  },
+  {
+    "id": "can-they-block-with-flier-played-out",
+    "text": "i have a 2/2 and they have a 2/2 with flying, i attack, can they block with it",
+    "expect": [
+      "Yes: a 2/2 creature with flying can block, and did (above)."
+    ]
+  },
+  {
+    "id": "hexproof-can-i-target-with-said-spell",
+    "text": "they have a creature with hexproof, can i target it with a spell that says destroy target creature",
+    "expect": [
+      "a spell that says \"destroy target creature\" can't target a creature with hexproof."
+    ],
+    "cite": [
+      "702.11b"
+    ]
+  },
+  {
+    "id": "said-draw-for-each-creature",
+    "text": "i cast a spell that says draw a card for each creature you control, i have 3 creatures, how many cards do i draw",
+    "expect": [
+      "You draw 3 cards.",
+      "Yes: You draw 3 cards in all."
+    ],
+    "notExpect": [
+      "not tracked"
+    ]
+  },
+  {
+    "id": "flash-creature-blocks-is-that-allowed",
+    "text": "they cast a creature with flash during my combat and block with it, is that allowed",
+    "expect": [
+      "Yes. A creature with flash can be cast any time its controller could cast an instant (702.8a), so it can be cast during the declare attackers step; it is on the battlefield untapped when blockers are declared and can block (509.1a). It couldn't have been cast after blockers were declared and still block."
+    ]
+  },
+  {
+    "id": "said-deal-3-any-target-on-planeswalker",
+    "text": "i have a planeswalker with 3 loyalty and they cast a spell that says deal 3 damage to any target on it, what happens",
+    "expect": [
+      "a planeswalker has 0 loyalty.",
+      "a planeswalker: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "not modeled"
+    ],
+    "cite": [
+      "704.5i"
+    ]
+  },
+  {
+    "id": "said-cost-increase-3-lands-3-drop",
+    "text": "i have 3 lands and they have a creature that says spells cost 1 more to cast, can i cast a 3 mana spell",
+    "expect": [
+      "a 3 mana spell can't be cast (costs 4, only 3 mana available)."
+    ]
+  },
+  {
+    "id": "said-dies-trigger-wrath-lookback",
+    "text": "my opponent has a creature that says whenever a creature dies, you lose 1 life, i cast a spell that says destroy all creatures, they have 2 creatures and i have 1, what happens",
+    "expect": [
+      "opponent loses 1 life. (×4)"
+    ],
+    "cite": [
+      "603.10a"
+    ]
+  },
+  {
+    "id": "pro-creatures-blocked",
+    "text": "i have a creature with protection from creatures and they block it with a 2/2, what happens",
+    "expect": [
+      "a 2/2 creature can't block a creature with protection from creatures (protection).",
+      "opponent takes 1 damage."
+    ],
+    "cite": [
+      "702.16f"
+    ]
+  },
+  {
+    "id": "attack-both-they-block-one",
+    "text": "i have two 2/2s and they have a 4/4, i attack with both, they block one, how much damage do they take",
+    "expect": [
+      "opponent takes 2 damage.",
+      "Yes: opponent takes 2 damage in all."
+    ]
+  },
+  {
+    "id": "says-enters-with-two-counters-size",
+    "text": "i have a creature that says this creature enters with two +1/+1 counters, i cast it, how big is it if it's a 1/1",
+    "expect": [
+      "a 1/1 creature that says \"this creature enters with 2 +1/+1 counters\" is 3/3 (1/1 base, 2 +1/+1 counters)."
+    ],
+    "notExpect": [
+      "not modeled"
+    ]
+  },
+  {
+    "id": "tap-their-3-3-can-it-block",
+    "text": "they have a 3/3 and i cast a spell that says tap target creature on it, then i attack with a 2/2, can it block",
+    "expect": [
+      "No: a 3/3 creature is tapped, and a tapped creature can't be declared as a blocker (509.1a).",
+      "opponent takes 2 damage."
+    ]
+  },
+  {
+    "id": "haste-can-i-attack-this-turn",
+    "text": "i have a 2/2 with haste that i just cast, can i attack with it this turn",
+    "expect": [
+      "Yes: a 2/2 creature with haste can attack.",
+      "opponent takes 2 damage."
+    ],
+    "cite": [
+      "702.10b"
+    ]
+  },
+  {
+    "id": "says-cant-be-destroyed-vs-destroy",
+    "text": "my opponent casts a spell that says destroy target creature on my creature that says this creature can't be destroyed, what happens",
+    "expect": [
+      "a creature that says \"this creature can't be destroyed\" is indestructible and isn't destroyed."
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "indestructible-minus-3-3-dies",
+    "text": "i have a creature with indestructible and they cast a spell that says target creature gets -3/-3 until end of turn on it, it's a 2/2, does it die",
+    "expect": [
+      "Yes: a 2/2 creature with indestructible died (it's in the graveyard)."
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "first-strike-deathtouch-blocker-vs-4-4",
+    "text": "i have a 4/4 and they have a 2/2 with first strike and deathtouch, i attack and they block, what happens",
+    "expect": [
+      "a 4/4 creature: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "a 2/2 creature with first strike and deathtouch: the battlefield"
+    ],
+    "cite": [
+      "702.7b",
+      "702.2b"
+    ]
+  },
+  {
+    "id": "says-sac-outlet-pump",
+    "text": "i have a creature that says sacrifice a creature: this creature gets +2/+2 until end of turn, i sacrifice my 1/1 to it, how big is it if it's a 2/2",
+    "expect": [
+      "a 2/2 creature that says \"sacrifice a creature: this creature gets +2/+2 until end of turn\" is 4/4 (2/2 base, +2/+2 until end of turn)."
+    ]
+  },
+  {
+    "id": "counter-my-creature-spell-generic",
+    "text": "they cast a spell that says counter target spell on my creature spell, what happens",
+    "expect": [
+      "a creature is countered."
+    ],
+    "cite": [
+      "701.6a"
+    ]
+  },
+  {
+    "id": "counter-creature-then-said-raise-dead-on-it",
+    "text": "they cast a spell that says counter target spell on my creature spell, then i cast a spell that says return target creature card from your graveyard to your hand on it, what happens",
+    "expect": [
+      "a creature is countered.",
+      "a creature: your graveyard → your hand."
+    ],
+    "notExpect": [
+      "all targets illegal"
+    ]
+  },
+  {
+    "id": "raise-dead-bears-in-graveyard",
+    "text": "i have Grizzly Bears in my graveyard and cast Raise Dead on it, what happens",
+    "expect": [
+      "Grizzly Bears: your graveyard → your hand."
+    ],
+    "notExpect": [
+      "not tracked"
+    ],
+    "cite": [
+      "400.7"
+    ]
+  },
+  {
+    "id": "said-minus-2-2-on-it-twice",
+    "text": "i have a 3/3 and they cast a spell that says target creature gets -2/-2 until end of turn on it twice, does it die",
+    "expect": [
+      "a 3/3 creature is -1/-1 until end of turn.",
+      "Yes: a 3/3 creature died (it's in the graveyard)."
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "said-each-creature-self-damage",
+    "text": "they have two 2/2s and i cast a spell that says each creature deals damage to itself equal to its power, what happens",
+    "expect": [
+      "a 2/2 creature: the battlefield → opponent's graveyard. (×2)"
+    ],
+    "notExpect": [
+      "not modeled"
+    ]
+  },
+  {
+    "id": "said-dies-draw-wrath-three",
+    "text": "i have a creature that says whenever a creature you control dies, draw a card, i have two other creatures, they cast a spell that says destroy all creatures, how many cards do i draw",
+    "expect": [
+      "Yes: You draw 3 cards in all."
+    ],
+    "cite": [
+      "603.10a"
+    ]
+  },
+  {
+    "id": "attack-5-5-block-2-2-pumped-plus-2",
+    "text": "i attack with a 5/5, they block with a 2/2 and cast a spell that says target creature gets +2/+2 until end of turn on it, what happens",
+    "expect": [
+      "a 2/2 creature is 4/4 until end of turn.",
+      "a 2/2 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "a 5/5 creature: the battlefield"
+    ]
+  },
+  {
+    "id": "said-discard-two-with-one-in-hand",
+    "text": "my opponent has 1 card in hand and i cast a spell that says target player discards two cards on them, what happens",
+    "expect": [
+      "opponent discards 1 card (1 → 0 in hand)."
+    ]
+  },
+  {
+    "id": "said-pump-for-each-creature",
+    "text": "i have a 2/2 and cast a spell that says target creature gets +1/+1 for each creature you control until end of turn, i control 3 creatures, how big is it",
+    "expect": [
+      "a 2/2 creature is 6/6 (2/2 base, +4/+4 until end of turn)."
+    ],
+    "notExpect": [
+      "not modeled"
+    ]
+  },
+  {
+    "id": "block-their-attacker-with-both",
+    "text": "they have a 4/4 and i have a 2/2 and a 3/3, i block their attacker with both, does it die",
+    "expect": [
+      "Yes: a 4/4 creature died (it's in the graveyard)."
+    ]
+  },
+  {
+    "id": "said-plus-1-per-artifact-its-a-1-1",
+    "text": "i control a creature that says this creature gets +1/+1 for each artifact you control, i have 2 artifacts, it's a 1/1, how big is it",
+    "expect": [
+      "a 1/1 creature that says \"this creature gets +1/+1 for each artifact you control\" is 3/3."
+    ]
+  },
+  {
+    "id": "said-remove-all-counters",
+    "text": "they have a creature with 3 +1/+1 counters and i cast a spell that says remove all counters from target permanent on it, it's a 1/1 base, how big is it now",
+    "expect": [
+      "a 1/1 creature loses all its counters (3 +1/+1).",
+      "a 1/1 creature is 1/1."
+    ]
+  },
+  {
+    "id": "deathtouch-1-1-blocks-5-5-trample",
+    "text": "i have a 1/1 with deathtouch and i block their 5/5 with trample, how much damage do i take",
+    "expect": [
+      "You take 4 damage.",
+      "a 5/5 creature with trample: the battlefield → opponent's graveyard.",
+      "Yes: you take 4 damage in all."
+    ],
+    "cite": [
+      "702.19b",
+      "702.2b"
+    ]
+  },
+  {
+    "id": "said-gain-life-equal-toughness",
+    "text": "i cast a spell that says you gain life equal to target creature's toughness on their 4/6, how much do i gain",
+    "expect": [
+      "You gain 6 life in all."
+    ]
   }
 ]

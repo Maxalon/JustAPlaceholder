@@ -138,7 +138,8 @@ sealed interface Trigger {
 }
 
 sealed interface Effect {
-    data class Draw(val who: Who, val count: Int, val x: Boolean = false) : Effect
+    /** [countBy]: "draw a card for each creature you control". */
+    data class Draw(val who: Who, val count: Int, val x: Boolean = false, val countBy: CountExpr? = null) : Effect
     /** `x` = the amount is X, chosen when the spell is cast (107.3a). */
     data class Damage(val amount: Int, val target: TargetSpec, val x: Boolean = false, val kickedAmount: Int? = null, val sacrificedPower: Boolean = false, val masteryAmount: Int? = null) : Effect
     /** "Proliferate" (701.34a): assumed to choose everything of yours and your opponents' poison counters. */

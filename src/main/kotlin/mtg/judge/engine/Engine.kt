@@ -285,6 +285,18 @@ class Engine(val state: GameState) {
         if (modeEffect != null && targets.isEmpty() && modeEffect.targets().size == 1) {
             inferTarget(card.name, modeEffect.targets()[0], playerId, harmful = isHarmful(modeEffect), source = obj, beneficial = isBeneficial(modeEffect))?.takeIf { it.isNotEmpty() }?.let { targets = it }
         }
+        // Two chosen modes, each with a target nobody named (Kolaghan's Command: damage and a creature card back):
+        // each is inferred on its own; a card in the caster's graveyard that nobody described is assumed to be there.
+        if (modeEffect != null && targets.isEmpty() && modeEffect.targets().size > 1) {
+            val picked = modeEffect.targets().map { spec ->
+                inferTarget(card.name, spec, playerId, harmful = isHarmful(modeEffect), source = obj, beneficial = isBeneficial(modeEffect))?.firstOrNull()
+                    ?: if (spec.filter.inGraveyard && Regex("""\byour graveyard""", RegexOption.IGNORE_CASE).containsMatchIn(spec.raw)) {
+                        val kind = spec.raw.substringBefore(" card").trim().ifEmpty { "creature" }
+                        Generic.spell(kind)?.let { def -> val g = state.add(GameObject(freshObjectId(def.name), def, Zone.GRAVEYARD, playerId)); state.assumptions += "No ${spec.raw} was named for ${card.name}; assuming ${def.name} is there."; Ref.Obj(g.id) }
+                    } else null
+            }
+            if (picked.all { it != null }) targets = picked.map { it!! }
+        }
         // "I copy their Grave Titan with Clone": the permanent named is what Clone copies, not a target it doesn't have.
         val copyChoice = if (needed.isEmpty() && targets.size == 1 && targets[0] is Ref.Obj && choice == null && card.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.EntersAsCopy }) { trace.step("${card.name} has no targets; ${state.nameOf(targets[0])} named with it is what it will enter as a copy of.", "707.9", "614.1c"); "copy:" + (targets[0] as Ref.Obj).id } else choice
         if (copyChoice != choice) targets = emptyList()
@@ -2098,13 +2110,7 @@ class Engine(val state: GameState) {
                     applyEffect(effect.effect, item)
                 }
             }
-            is Effect.Draw -> {
-                val players = resolvePlayers(effect.who, item)
-                if (players.isEmpty()) { state.unsupported += Unsupported(item.describe, "Couldn't work out who draws."); return }
-                val n = if (effect.x) (item.x ?: 0) else effect.count
-                if (effect.x) trace.step("X is ${item.x ?: 0}, so ${describe(effect, item).replace("X", (item.x ?: 0).toString())}.", "107.3a")
-                for (who in players) drawCards(who, n)
-            }
+            is Effect.Draw -> applyEffectMore(effect, item)
             is Effect.Damage -> {
                 val sacAmount = if (effect.sacrificedPower) {
                     val s = state.lastSacrificed
@@ -2216,6 +2222,8 @@ class Engine(val state: GameState) {
                     "bounce" -> move(o, Zone.HAND, "${o.name} is returned to its owner's hand.", "400.7")
                     "tuck" -> move(o, Zone.LIBRARY, "${o.name} is put on the bottom of its owner's library. It isn't destroyed, so indestructible doesn't help, and it isn't a death, so \"when this dies\" abilities don't trigger.", "400.7")
                     "tap" -> { o.tapped = true; trace.step("${o.name} becomes tapped.", "701.26a"); state.outcomes += "${o.name} is tapped." }
+                    // "Each creature deals damage to itself equal to its power": its own power, as a source of damage to itself.
+                    "selfdamage" -> { val n = o.power ?: 0; if (n > 0) applyDamage(o.name, Ref.Obj(o.id), n, o) else trace.step("${o.name} has power $n, so it deals no damage to itself.", "120.1") }
                     else -> state.unsupported += Unsupported(item.describe, "Unknown action ${effect.action}")
                 } } finally { leavingTogether = emptySet() }
             }
@@ -3015,33 +3023,7 @@ class Engine(val state: GameState) {
                 }
                 state.outcomes += "${item.source.name}: ${said.trimEnd('.')} (not tracked in detail)."
             }
-            is Effect.ForAll -> {
-                // "mana value X or less": X is what was paid (Ugin, the Spirit Dragon's −X).
-                val effect = if (!effect.filter.maxManaValueX) effect else (item.x ?: 0).let { x ->
-                    trace.step("X is $x, so it affects each ${effect.filter.raw.replace("mana value X or less", "mana value $x or less")}.", "107.3a")
-                    effect.copy(filter = effect.filter.copy(maxManaValue = x, maxManaValueX = false, raw = effect.filter.raw.replace("mana value X or less", "mana value $x or less"))) }
-                val affected = state.objects.values.filter { state.matches(effect.filter, it, item.controller) }
-                item.lastCount = affected.size
-                val countedLandsToo = effect.action == "destroy" && Kind.LAND in effect.filter.kinds && effect.filter.controller == null && state.players.any { (it.mana ?: 0) > 0 }
-                if (affected.isEmpty() && !countedLandsToo) { trace.step("Nothing matches \"${effect.filter.raw}\", so ${effect.action} affects nothing.${if (state.objects.values.any { it.phasedOut }) " Phased-out permanents are treated as though they don't exist, so they aren't destroyed." else ""}", "702.26b"); state.outcomes += "${item.source.name} affects nothing: nothing on the battlefield is ${withArticle(effect.filter.raw.removeSuffix("s"))} to ${effect.action}${if (state.objects.values.any { it.phasedOut }) " (the phased-out permanents aren't there for it)" else ""}." }
-                // Everything leaves at once: abilities of permanents leaving simultaneously still see the others go (603.10a).
-                // "I have 4 lands and a Darksteel Citadel. Armageddon.": lands said only as a count are lands too.
-                if (effect.action == "destroy" && Kind.LAND in effect.filter.kinds && effect.filter.controller == null) for (p in state.players) {
-                    // "I have 4 lands and a Darksteel Citadel": the count is said alongside the named lands, not including them.
-                    val counted = p.mana ?: continue
-                    if (counted > 0) { val n = counted; trace.step("${p.subject} ${p.v("has", "have")} $n land${if (n == 1) "" else "s"} given only as a count; ${if (n == 1) "it is" else "they are"} destroyed too.", "701.8a"); state.outcomes += "${p.possessive.replaceFirstChar { it.uppercase() }} $n other land${if (n == 1) "" else "s"} ${if (n == 1) "is" else "are"} destroyed."; p.mana = 0 }
-                }
-                if (effect.action in setOf("destroy", "exile", "bounce", "tuck") && affected.size > 1) { leavingTogether = affected.map { it.id }.toSet(); trace.step("All of them leave the battlefield simultaneously, so abilities that trigger on creatures dying or leaving look back and see every one of them.", "603.10a") }
-                try { for (o in affected) when (effect.action) {
-                    "destroy" -> destroy(o, "${o.name} is destroyed.", "701.8a", canRegenerate = !effect.noRegen)
-                    "exile" -> move(o, Zone.EXILE, "${o.name} is exiled.", "701.13a")
-                    "bounce" -> move(o, Zone.HAND, "${o.name} is returned to its owner's hand.", "400.7")
-                    "tuck" -> move(o, Zone.LIBRARY, "${o.name} is put on the bottom of its owner's library. It isn't destroyed, so indestructible doesn't help, and it isn't a death, so \"when this dies\" abilities don't trigger.", "400.7")
-                    "tap" -> { o.tapped = true; trace.step("${o.name} becomes tapped.", "701.26a"); state.outcomes += "${o.name} is tapped." }
-                    "untap" -> { o.tapped = false; trace.step("${o.name} becomes untapped.", "701.26b") }
-                    "damage" -> { applyDamage(item.source.name, Ref.Obj(o.id), effect.amount, item.source); item.damaged += o.id }
-                } } finally { leavingTogether = emptySet() }
-            }
+            is Effect.ForAll -> applyEffectMore(effect, item)
             is Effect.ExileSelfSpell ->
                 if (item.source.isOnBattlefield()) move(item.source, Zone.EXILE, "${item.source.name} is exiled.", "701.13a")
                 else trace.step("${item.source.name} exiles itself as it finishes resolving: it goes to exile instead of its owner's graveyard.", "701.13a", "608.2n")
@@ -3127,6 +3109,48 @@ class Engine(val state: GameState) {
     /** The newer one-shot effects, kept out of [applyEffect] so that method stays under the JVM's 64 KB limit. */
     private fun applyEffectMore(effect: Effect, item: StackItem) {
         when (effect) {
+            is Effect.ForAll -> {
+                // "mana value X or less": X is what was paid (Ugin, the Spirit Dragon's −X).
+                val effect = if (!effect.filter.maxManaValueX) effect else (item.x ?: 0).let { x ->
+                    trace.step("X is $x, so it affects each ${effect.filter.raw.replace("mana value X or less", "mana value $x or less")}.", "107.3a")
+                    effect.copy(filter = effect.filter.copy(maxManaValue = x, maxManaValueX = false, raw = effect.filter.raw.replace("mana value X or less", "mana value $x or less"))) }
+                val affected = state.objects.values.filter { state.matches(effect.filter, it, item.controller) }
+                item.lastCount = affected.size
+                val countedLandsToo = effect.action == "destroy" && Kind.LAND in effect.filter.kinds && effect.filter.controller == null && state.players.any { (it.mana ?: 0) > 0 }
+                if (affected.isEmpty() && !countedLandsToo) { trace.step("Nothing matches \"${effect.filter.raw}\", so ${effect.action} affects nothing.${if (state.objects.values.any { it.phasedOut }) " Phased-out permanents are treated as though they don't exist, so they aren't destroyed." else ""}", "702.26b"); state.outcomes += "${item.source.name} affects nothing: nothing on the battlefield is ${withArticle(effect.filter.raw.removeSuffix("s"))} to ${effect.action}${if (state.objects.values.any { it.phasedOut }) " (the phased-out permanents aren't there for it)" else ""}." }
+                // Everything leaves at once: abilities of permanents leaving simultaneously still see the others go (603.10a).
+                // "I have 4 lands and a Darksteel Citadel. Armageddon.": lands said only as a count are lands too.
+                if (effect.action == "destroy" && Kind.LAND in effect.filter.kinds && effect.filter.controller == null) for (p in state.players) {
+                    // "I have 4 lands and a Darksteel Citadel": the count is said alongside the named lands, not including them.
+                    val counted = p.mana ?: continue
+                    if (counted > 0) { val n = counted; trace.step("${p.subject} ${p.v("has", "have")} $n land${if (n == 1) "" else "s"} given only as a count; ${if (n == 1) "it is" else "they are"} destroyed too.", "701.8a"); state.outcomes += "${p.possessive.replaceFirstChar { it.uppercase() }} $n other land${if (n == 1) "" else "s"} ${if (n == 1) "is" else "are"} destroyed."; p.mana = 0 }
+                }
+                if (effect.action in setOf("destroy", "exile", "bounce", "tuck") && affected.size > 1) { leavingTogether = affected.map { it.id }.toSet(); trace.step("All of them leave the battlefield simultaneously, so abilities that trigger on creatures dying or leaving look back and see every one of them.", "603.10a") }
+                try { for (o in affected) when (effect.action) {
+                    "destroy" -> destroy(o, "${o.name} is destroyed.", "701.8a", canRegenerate = !effect.noRegen)
+                    "exile" -> move(o, Zone.EXILE, "${o.name} is exiled.", "701.13a")
+                    "bounce" -> move(o, Zone.HAND, "${o.name} is returned to its owner's hand.", "400.7")
+                    "tuck" -> move(o, Zone.LIBRARY, "${o.name} is put on the bottom of its owner's library. It isn't destroyed, so indestructible doesn't help, and it isn't a death, so \"when this dies\" abilities don't trigger.", "400.7")
+                    "tap" -> { o.tapped = true; trace.step("${o.name} becomes tapped.", "701.26a"); state.outcomes += "${o.name} is tapped." }
+                    "untap" -> { o.tapped = false; trace.step("${o.name} becomes untapped.", "701.26b") }
+                    "damage" -> { applyDamage(item.source.name, Ref.Obj(o.id), effect.amount, item.source); item.damaged += o.id }
+                    // "Each creature deals damage to itself equal to its power": its own power, as a source of damage to itself.
+                    "selfdamage" -> { val n = o.power ?: 0; if (n > 0) applyDamage(o.name, Ref.Obj(o.id), n, o) else trace.step("${o.name} has power $n, so it deals no damage to itself.", "120.1") }
+                } } finally { leavingTogether = emptySet() }
+            }
+            is Effect.Draw -> {
+                val players = resolvePlayers(effect.who, item)
+                if (players.isEmpty()) { state.unsupported += Unsupported(item.describe, "Couldn't work out who draws."); return }
+                val counted = effect.countBy?.let { c -> when (c) {
+                    is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }.also { trace.step("${state.player(item.controller).subject} ${state.player(item.controller).v("controls", "control")} $it ${c.filter.raw}${if (it == 1) "" else "s"}, so that many cards are drawn.", "608.2c") }
+                    is CountExpr.CardsInHand -> (state.player(item.controller).handSize ?: 0).also { trace.step("${state.player(item.controller).subject} ${state.player(item.controller).v("has", "have")} $it card${if (it == 1) "" else "s"} in hand, so that many cards are drawn.", "608.2c") }
+                    is CountExpr.YourLifeTotal -> state.player(item.controller).life ?: 0
+                    else -> { state.unsupported += Unsupported(item.describe, "Couldn't count what the draw depends on."); return }
+                } }
+                val n = if (effect.x) (item.x ?: 0) else counted ?: effect.count
+                if (effect.x) trace.step("X is ${item.x ?: 0}, so ${describe(effect, item).replace("X", (item.x ?: 0).toString())}.", "107.3a")
+                for (who in players) drawCards(who, n)
+            }
             is Effect.DamageCausing -> {
                 val o = item.causedObject?.let { state.objects[it] }
                 if (o == null || !o.isOnBattlefield()) trace.step("The creature that caused the trigger isn't on the battlefield, so the damage isn't dealt.", "611.2c")
@@ -4054,6 +4078,9 @@ class Engine(val state: GameState) {
         is Ref.Obj -> {
             val o = state.objects[ref.id] ?: return false
             if (o.zone == Zone.STACK) { val s = state.stack.firstOrNull { it.source.id == o.id }; s != null && filterMatchesSpell(f, s, controller) }
+            // "creature card in your graveyard": the filter says which zone, so it is checked in full there.
+            // "… from a graveyard" (Deathrite Shaman, Surgical Extraction) is anyone's; "your graveyard" is the controller's.
+            else if (f.inGraveyard) state.matches(f, o, if (Regex("""\byour graveyard""", RegexOption.IGNORE_CASE).containsMatchIn(f.raw)) controller else o.owner, source)
             else if (!o.isOnBattlefield()) Kind.CARD in f.kinds
             else state.matches(f, o, controller, source)
         }
@@ -4146,7 +4173,7 @@ class Engine(val state: GameState) {
     private fun objOf(ref: Ref): GameObject? = (ref as? Ref.Obj)?.let { state.objects[it.id] }
     private fun describeTargets(targets: List<Ref>) = if (targets.isEmpty()) "" else " targeting " + targets.joinToString(" and ") { state.nameOf(it) }
     private fun describe(effect: Effect, item: StackItem): String = when (effect) {
-        is Effect.Draw -> "draw ${if (effect.x) "X" else effect.count.toString()} card${if (effect.count > 1 || effect.x) "s" else ""}"
+        is Effect.Draw -> if (effect.countBy != null) "draw a card for each ${when (val c = effect.countBy) { is CountExpr.Permanents -> c.filter.raw; is CountExpr.CardsInHand -> "card in your hand"; is CountExpr.YourLifeTotal -> "life you have"; else -> "…" }}" else "draw ${if (effect.x) "X" else effect.count.toString()} card${if (effect.count > 1 || effect.x) "s" else ""}"
         is Effect.Damage -> "deal ${effect.amount} damage to ${effect.target.raw}"
         is Effect.CounterThatSpell -> "counter that spell"; is Effect.Counter -> "counter ${effect.target.raw}"; is Effect.Fight -> "${effect.mine.raw} fights ${effect.theirs.raw}"; is Effect.DealsPowerTo -> "${effect.mine.raw} deals damage equal to its power to ${effect.theirs.raw}"; is Effect.RedirectToSelf -> "change a target of ${effect.target.raw} to ${item.source.name}"; is Effect.Blink -> "exile ${effect.target.raw}, then return it to the battlefield under ${if (effect.ownersControl) "its owner's" else "your"} control"; is Effect.CopySpell -> "copy ${effect.target.raw}"; is Effect.StormCopy -> "copy it for each spell cast before it this turn"; is Effect.Monstrosity -> "become monstrous with ${effect.amount} +1/+1 counters"; is Effect.ReflectPrevented -> "deal damage prevented this way back to ${if (effect.toCreature) "that creature" else "the source's controller"}"; is Effect.MoveSourceCounters -> "put its ${effect.kind} counters on ${effect.target.raw}"; is Effect.Evolve -> "put a +1/+1 counter on it if the creature that entered is bigger"; is Effect.ChangeTarget -> "change the target of ${effect.target.raw}"; is Effect.DamageDivided -> "deal ${if (effect.x) "X" else effect.amount.toString()} damage divided${if (effect.evenly) " evenly" else ""} as you choose among ${effect.maxTargets?.let { "up to $it " } ?: ""}${effect.target.raw}"; is Effect.PreventCombatToAndBy -> "prevent all combat damage dealt to and by ${effect.target.raw} this turn"; is Effect.WinIfCastBefore -> "win the game if another spell with this name was cast this game, otherwise tuck it seventh from the top and gain ${effect.life} life"; is Effect.Destroy -> "destroy ${effect.target.raw}${if (effect.noRegen) " (it can't be regenerated)" else ""}"; is Effect.Exile -> "exile ${effect.target.raw}"
         is Effect.DamageCausing -> "${item.source.name} deals ${effect.amount} damage to that creature"; is Effect.PumpCausing -> "that creature gets ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.CantLoseThisTurn -> "you can't lose the game this turn"; is Effect.LoseKeywordsAll -> "${effect.filter.raw} lose ${effect.keywords.joinToString(" and ")} until end of turn"; is Effect.ExileInsteadOfGraveyardThisTurn -> "cards that would go to your graveyard this turn are exiled instead"; is Effect.DamageLifeFloor -> "damage can't reduce your life total below ${effect.floor} this turn"; is Effect.ExtraLandThisTurn -> "play ${effect.count} additional land${if (effect.count == 1) "" else "s"} this turn"; is Effect.CoinFlip -> "flip a coin"; is Effect.CantCastThisTurn -> "stop spells being cast this turn"; is Effect.Proliferate -> "proliferate"; is Effect.ForAllTargeted -> "${effect.action} all ${effect.filter.raw} ${effect.target.raw} controls"; is Effect.LoseLifeThatMuch -> "lose that much life"; is Effect.AnimateSelf -> "${item.source.name} becomes a ${effect.power}/${effect.toughness} creature until end of turn"; is Effect.SaddleSelf -> "${item.source.name} becomes saddled"; is Effect.BecomeMonarch -> "become the monarch"; is Effect.PumpSelfCount -> "${item.source.name} gets ${signed(effect.power)}/${signed(effect.toughness)} for each of them"; is Effect.TapAttached -> "tap the creature ${item.source.name} is attached to"; is Effect.ReturnSelfFromGraveyard -> "return ${item.source.name} from your graveyard to the battlefield${if (effect.tapped) " tapped" else ""}"; is Effect.DamageThatMuch -> "deal that much damage to ${effect.target.raw}"; is Effect.PumpAllCount -> "${effect.filter.raw} get +X/+X${if (effect.keywords.isEmpty()) "" else " and gain " + effect.keywords.joinToString(" and ")}"; is Effect.ShuffleIntoLibrary -> "shuffle ${effect.target.raw} into its owner's library"
@@ -4162,7 +4189,7 @@ class Engine(val state: GameState) {
         is Effect.PumpAll -> "${effect.filter.raw} get ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.SetBasePtAll -> "${effect.filter.raw} have base power and toughness ${if (effect.x) "X/X" else "${effect.power}/${effect.toughness}"} until end of turn"
         is Effect.PutCounters -> "put ${effect.count} ${effect.kind} counter(s) on ${effect.target?.raw ?: item.source.name}"; is Effect.RemoveAllCounters -> "remove all counters from ${effect.target.raw}"
         is Effect.AddMana -> "add ${effect.text}"; is Effect.AddManaPer -> "add ${effect.symbol} for each ${effect.filter.raw}"; is Effect.AddManaDevotion -> "choose a colour and add that much mana of it as your devotion to it"; is Effect.AddManaInstead -> "add ${effect.text} instead if you control ${effect.required.joinToString(" and ") { "an $it" }}"; is Effect.Narrated -> effect.text.replace("~", item.source.name).replaceFirstChar { it.lowercase() }
-        is Effect.ForAll -> "${effect.action} ${if (effect.action == "damage") "${effect.amount} to " else ""}each ${effect.filter.raw}"
+        is Effect.ForAll -> if (effect.action == "selfdamage") "each ${effect.filter.raw} deals damage to itself equal to its power" else "${effect.action} ${if (effect.action == "damage") "${effect.amount} to " else ""}each ${effect.filter.raw}"
         is Effect.IfYouDo -> "${describe(effect.choice, item)}, and if so ${describe(effect.then, item)}"; is Effect.IfKicked -> "${describe(effect.otherwise, item)} (${describe(effect.then, item)} if kicked)"
         is Effect.IfCondition -> "if ${effect.raw}, ${describe(effect.then, item)}"
         is Effect.Attach -> "attach ${item.source.name} to ${effect.target.raw}"

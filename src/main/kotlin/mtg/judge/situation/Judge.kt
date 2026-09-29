@@ -672,6 +672,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                                         "Yes: ${o.name} can block ${att.name}."
                                     }
                             }
+                        // "can they block with it?" when the block was then played out: it could, and did, even if it died in the combat.
+                        e.to == "block" && state.trace.steps.any { Regex("""\bblocks? .+ with ${Regex.escape(o.name)} \(""").containsMatchIn(it.text) } -> "Yes: ${o.name} can block, and did (above)."
                         // "Can it block?" with nothing attacking: the one creature across the table is what it would block.
                         e.to == "block" && state.objects.values.count { it.isOnBattlefield() && it.controller != o.controller && (it.def.isCreature || it.animatedAs != null) } == 1 ->
                             state.objects.values.first { it.isOnBattlefield() && it.controller != o.controller && (it.def.isCreature || it.animatedAs != null) }.let { att ->
@@ -935,6 +937,13 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 // "they cast an artifact, can I counter it?": the spell's stand-in was named one way by the parser and another by the
                 // card it became; with exactly one spell of that kind on the stack, it is the one meant.
                 ?: state.stack.filter { it.kind == wanted }.singleOrNull()?.also { state.assumptions += "\"$objId\" is read as ${it.source.name}, the only $kind on the stack." }
+                // "they counter my creature spell, I cast a reanimation spell on it": the spell is gone from the stack
+                // and "it" is now the card where the counter put it.
+                ?: run {
+                    val o = state.objects[objId] ?: state.objects.values.singleOrNull { it.name.lowercase().replace(Regex("""[^a-z0-9]+"""), "_").trim('_') == objId }
+                    if (o != null && o.zone != Zone.STACK && o.zone != Zone.BATTLEFIELD) { state.assumptions += "\"${o.name}\" is no longer on the stack; it is read as that card in ${state.player(o.controller).possessive} ${o.zone.name.lowercase()}."; return Ref.Obj(o.id) }
+                    null
+                }
                 ?: throw JudgeException("No ${kind} from '$objId' is on the stack")
             return Ref.Stack(item.id)
         }

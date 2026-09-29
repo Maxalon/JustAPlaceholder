@@ -655,7 +655,7 @@ object OracleParser {
             val f = parseFilter(m.groupValues[1], Kind.CREATURE)
             return if (f.verifiable) listOf(StaticEffect.Cant("be blocked", f)) else emptyList()
         }
-        Regex("""^~ enters(?: the battlefield)? with (a|an|X|\w+) ([+-]\d/[+-]\d|\w+) counters? on it\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
+        Regex("""^~ enters(?: the battlefield)? with (a|an|X|\w+) ([+-]\d/[+-]\d|\w+) counters?(?: on it)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val n = if (m.groupValues[1].equals("x", true)) null else (number(m.groupValues[1]) ?: return emptyList())
             return listOf(StaticEffect.EntersWithCounters(m.groupValues[2], n))
         }
@@ -901,6 +901,14 @@ object OracleParser {
     }
 
     /** "the number of Islands you control", "the number of creatures you control", else unknown. */
+    /** "for each creature you control" / "for each card in your hand" / "for each artifact on the battlefield": what is counted. */
+    private fun forEachCount(what0: String): CountExpr? {
+        val what = what0.trim().trimEnd('.')
+        if (Regex("""^card in your hand$""", RegexOption.IGNORE_CASE).matches(what)) return CountExpr.CardsInHand(Who.YOU)
+        val plural = Regex("""^(.+?)( you control| on the battlefield| an opponent controls| your opponents control)?$""", RegexOption.IGNORE_CASE).matchEntire(what)!!.let { m ->
+            val noun = m.groupValues[1].trim(); "${if (noun.endsWith("s")) noun else noun + "s"}${m.groupValues[2]}" }
+        return parseCount("the number of $plural").takeIf { it !is CountExpr.Unknown }
+    }
     fun parseCount(text: String): CountExpr {
         val t = text.trim().trimEnd('.')
         Regex("""^the number of (.+?) you control$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { m ->
@@ -1471,6 +1479,18 @@ object OracleParser {
             if (f.verifiable) return Effect.PutFromHand(f, null, tapped = m.groupValues[2].isNotEmpty(), fromGraveyard = true)
         }
         zurRe.matchEntire(s)?.let { m -> zurEffect(m)?.let { return it } }
+        // "Each creature deals damage to itself equal to its power."
+        Regex("""^each (creature|creature without flying|creature with flying|nonblack creature|nonwhite creature) deals damage to itself equal to its power\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val f = parseFilter(m.groupValues[1], Kind.CREATURE)
+            if (f.verifiable) return Effect.ForAll(f, "selfdamage")
+        }
+        // Raise Dead: "return target creature card from your graveyard to your hand".
+        Regex("""^return target (.+?) card from your graveyard to your hand\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val f = parseFilter(m.groupValues[1], Kind.CARD)
+            val raw = "${m.groupValues[1].lowercase()} card in your graveyard"
+            // No controller on the filter: a card in a graveyard is matched by its owner (State.matches).
+            if (f.verifiable) return Effect.Bounce(TargetSpec(f.copy(kinds = if (f.kinds.isEmpty()) setOf(Kind.CARD) else f.kinds, raw = raw, inGraveyard = true), raw))
+        }
         // Sun Titan: "return target permanent card with mana value 3 or less from your graveyard to the battlefield"
         Regex("""^return target (.+?) card(?: with mana value (\d+) or less)? from your graveyard to the battlefield(?: tapped)?(?: under your control)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             val f = parseFilter(m.groupValues[1], Kind.PERMANENT)
@@ -1576,6 +1596,22 @@ object OracleParser {
             val raw = "${m.groupValues[1].lowercase()} from a graveyard"
             return Effect.Exile(TargetSpec(parseFilter(raw, Kind.PERMANENT).copy(raw = raw), raw))
         }
+        // "Target creature gets +X/+X until end of turn, where X is the number of creatures you control."
+        Regex("""^(target creature(?: you control)?) gets \+X/\+X until end of turn,? where X is the number of (.+?) you control\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val f = parseFilter(m.groupValues[2] + " you control", Kind.CREATURE)
+            if (f.verifiable) return Effect.PumpCount(target(m.groupValues[1]), CountExpr.Permanents(f))
+        }
+        // "Target creature gets +1/+1 until end of turn for each card in your hand" / "… for each creature you control".
+        Regex("""^(target creature(?: you control)?) gets ([+-]\d+)/([+-]\d+)(?: until end of turn)? for each (.+?)(?: until end of turn)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            if (m.groupValues[2].toInt() == m.groupValues[3].toInt() && m.groupValues[2].toInt() == 1) {
+                forEachCount(m.groupValues[4])?.let { count -> return Effect.PumpCount(target(m.groupValues[1]), count) }
+            }
+        }
+        // "Draw a card for each creature you control" / "for each card in your hand".
+        Regex("""^(?:you |target player |each player )?draws? a card for each (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val who = when (m.groupValues[0].lowercase().substringBefore(" draw")) { "target player" -> Who.TARGET_PLAYER; "each player" -> Who.EACH_PLAYER; else -> Who.YOU }
+            forEachCount(m.groupValues[1])?.let { c -> return Effect.Draw(who, 0, countBy = c) }
+        }
         for ((re, rules) in narratedRes) if (re.matches(s)) return Effect.Narrated(s.trimEnd('.'), rules)
         // "You draw a card and you lose 1 life." / "Each opponent loses 1 life and you gain 1 life.": two effects joined by "and".
         Regex("""^(.+?)(?: and |, then |, and then )(you |each opponent |target player |that player |it |~ |create |draw |gain |lose |put |exile |destroy |sacrifice |tap |untap |return |scry |mill |discard )(.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trimEnd('.'))?.let { m ->
@@ -1661,20 +1697,6 @@ object OracleParser {
         Regex("""^gain control of (target .+?) until end of turn\. untap (?:that|it|that creature|that permanent).*?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> val t = target(m.groupValues[1]); return Effect.Seq(listOf(Effect.GainControl(t, true), Effect.Untap(t))) }
         untapRe.matchEntire(s)?.let { return Effect.Untap(target(it.groupValues[1])) }
         pumpRe.matchEntire(s)?.let { return Effect.Pump(target(it.groupValues[1]), it.groupValues[2].toInt(), it.groupValues[3].toInt()) }
-        // "Target creature gets +X/+X until end of turn, where X is the number of creatures you control."
-        Regex("""^(target creature(?: you control)?) gets \+X/\+X until end of turn,? where X is the number of (.+?) you control\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
-            val f = parseFilter(m.groupValues[2] + " you control", Kind.CREATURE)
-            if (f.verifiable) return Effect.PumpCount(target(m.groupValues[1]), CountExpr.Permanents(f))
-        }
-        // "Target creature gets +1/+1 until end of turn for each card in your hand" / "… for each creature you control".
-        Regex("""^(target creature(?: you control)?) gets ([+-]\d+)/([+-]\d+) until end of turn for each (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
-            if (m.groupValues[2].toInt() == m.groupValues[3].toInt() && m.groupValues[2].toInt() == 1) {
-                val what = m.groupValues[4]
-                val count: CountExpr? = if (Regex("""^card in your hand$""", RegexOption.IGNORE_CASE).matches(what)) CountExpr.CardsInHand(Who.YOU)
-                    else parseCount("the number of ${what}s".replace("ss", "s")).takeIf { it !is CountExpr.Unknown }
-                if (count != null) return Effect.PumpCount(target(m.groupValues[1]), count)
-            }
-        }
         // "Remove a counter from target permanent." / "Remove two +1/+1 counters from target creature."
         Regex("""^remove (a|an|\d+|two|three|four) (?:([+-]\d/[+-]\d|[a-z]+) )?counters? from (target .+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             val n = number(m.groupValues[1]) ?: 1
