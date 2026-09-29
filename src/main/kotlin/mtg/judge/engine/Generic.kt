@@ -60,6 +60,8 @@ object Generic {
             val self = if (kind == "creature") "this creature" else "this permanent"
             var t = raw.replace(Regex("""^(when(?:ever)?) it\b"""), "$1 $self").replace(Regex("""^it (can't|can|has|gets|deals|doesn't)\b"""), "${self.replaceFirstChar { c -> c.uppercase() }} $1")
             t = t.replace(Regex("""\bon it$"""), "on $self").replace(Regex("""^tap[:,]? (.+)$"""), "{T}: $1")
+            // "it enters with two +1/+1 counters": in card wording.
+            t = t.replace(Regex("""^it enters(?: the battlefield)? with (a|an|\d+|two|three|four) ([+-]\d/[+-]\d) counters?$""")) { w -> "${self.replaceFirstChar { c -> c.uppercase() }} enters with ${mapOf("1" to "a", "2" to "two", "3" to "three", "4" to "four")[w.groupValues[1]] ?: w.groupValues[1]} ${w.groupValues[2]} counter${if (w.groupValues[1] in setOf("a", "an", "1")) "" else "s"} on it" }
             // "a land that says it enters tapped", "it must be blocked if able".
             t = t.replace(Regex("""^it enters(?: the battlefield)? tapped$"""), "${self.replaceFirstChar { c -> c.uppercase() }} enters tapped").replace(Regex("""^it must be blocked if able$"""), "All creatures able to block ${self} do so")
             // "an opponent's creature dies", "whenever this creature blocks it deals 1 damage to the creature it blocks", "it can't be the target of spells".
@@ -103,6 +105,7 @@ object Generic {
                 .replace(Regex("""^exile all cards from target player's graveyard$"""), "exile target player's graveyard")
                 // "target creature fights another target creature": the two the situation aims it at; "target player draws two cards and loses 2 life": two sentences.
                 .replace(Regex("""^target creature fights another target creature$"""), "target creature you control fights target creature you don't control")
+                .replace(Regex("""^copy target (creature |instant or sorcery |instant |sorcery )?spell$"""), "copy target $1spell. You may choose new targets for the copy")
                 .replace(Regex("""^target player draws (a|\d+|two|three) cards? and loses (\d+) life$""")) { w -> "target player draws ${w.groupValues[1]} card${if (w.groupValues[1] == "a") "" else "s"}. That player loses ${w.groupValues[2]} life" }.replace(Regex("""^it (gains?|gets|has|loses|can't)\b"""), "target creature $1").replace(Regex("""^gains? me (\d+) life$"""), "you gain $1 life").replace(Regex("""^deals? me (\d+) damage$"""), "this spell deals $1 damage to you")
                 // "destroy target creature and its controller loses 2 life": two sentences on the card.
                 .replace(Regex("""^((?:destroy|exile|return|counter|tap|bounce)\b[^.]*?) and (its controller|that player|that creature's controller|you) """)) { w -> "${w.groupValues[1]}. ${w.groupValues[2].replaceFirstChar { c -> c.uppercase() }} " }
