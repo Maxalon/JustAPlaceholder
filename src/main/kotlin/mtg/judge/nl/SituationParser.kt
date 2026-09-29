@@ -1300,6 +1300,8 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""\battack with everything with (\d+) (\d+/\d+)s\b""", RegexOption.IGNORE_CASE), "attack with $1 $2s")
             // "it attacks twice over two turns": this turn and the next.
         t2 = t2.replace(Regex("""\b(it|he|she) attacks? twice over (?:two|2) turns\b""", RegexOption.IGNORE_CASE), "$1 attacks me and they attack with it again next turn")
+        // "I attack twice over two turns unblocked": with the creature just described, this turn and the next.
+        t2 = t2.replace(Regex("""\b(i|we) attacks? twice over (?:two|2) turns(?: unblocked)?\b""", RegexOption.IGNORE_CASE), "$1 attack with it and $1 attack with it again next turn")
         // "I attack with it twice over two turns": this turn and the next.
         t2 = t2.replace(Regex("""\b(i|we|they) attacks? with (it|(?:my |their )?c\d+|(?:my |their )?\d+/\d+) twice over (?:two|2) turns\b""", RegexOption.IGNORE_CASE), "$1 attack with $2 and $1 attack with $2 again next turn")
         // "my opponent has hexproof from an enchantment that says you have hexproof": the enchantment is what they have.
@@ -2313,6 +2315,20 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastVerb = "block"; ctx.lastActor = who; ctx.note(who)
             ctx.notes += "\"${restore(clause0, m)}\" is read as blocking with ${blockers.joinToString(" and ") { it.card.name ?: it.id }}."
             return true
+        }
+        // "a creature that says it can't be the target of abilities, can I target it with a spell?": spells aren't abilities.
+        Regex("""^can (?:i|we|they) (?:still |even )?target (?:it|that|their creature|my creature|the creature) with (?:a |an |my )?(spell|ability|instant|sorcery|creature's ability|activated ability)$""").find(clause0)?.let { r ->
+            val o = ctx.lastMentioned?.takeIf { it in ctx.objects }?.let { ctx.objects.getValue(it) } ?: return@let
+            val n = o.card.name ?: return@let
+            val w = r.groupValues[1]
+            val text = when {
+                Regex("""can't be the target of abilities""", RegexOption.IGNORE_CASE).containsMatchIn(n) && !n.contains("spells", true) ->
+                    if (w in setOf("spell", "instant", "sorcery")) "Yes. Its words stop only abilities: a spell isn't an ability (113.1, 115.1), so a spell can target it. An activated or triggered ability can't." else "No. Its words say it can't be the target of abilities, and that is one (113.1, 115.1)."
+                Regex("""can't be the target of spells\b""", RegexOption.IGNORE_CASE).containsMatchIn(n) && !n.contains("abilities", true) ->
+                    if (w in setOf("spell", "instant", "sorcery")) "No. Its words say it can't be the target of spells (115.1)." else "Yes. Its words stop only spells; an ability isn't a spell (113.1), so an ability can target it."
+                else -> return@let
+            }
+            ctx.asks += EventSpec("ask", to = "text:$text"); return true
         }
         // "target creature's controller sacrifices it, can I regenerate it?": a sacrifice isn't destruction.
         Regex("""^can (?:i|we|they) (?:still |even )?regenerate (?:it|that|my creature|their creature|the creature|(?:my |their |the )?\d+/\d+)$""").find(clause0)?.let {
@@ -4657,6 +4673,10 @@ class SituationParser(private val names: NameIndex) {
             }
             // "can they respond with a spell that says regenerate target creature": the response goes on the stack above what it answers.
             if (inResponse && ctx.events.lastOrNull()?.verb == "resolveAll") ctx.events.removeAt(ctx.events.size - 1)
+            // "I cast a spell that says target creature gains hexproof on my 2/2, they cast destroy target creature on it": said one after the
+            // other with no "in response", the first has resolved before the second is cast; a counter aimed at the spell is a response by nature.
+            if (!inResponse && !Regex("""counter""", RegexOption.IGNORE_CASE).containsMatchIn(name)) ctx.events.lastOrNull()?.let { last ->
+                if (last.verb == "cast" && last.player != null && last.player != who) ctx.events += EventSpec("resolveAll") }
             // A permanent said by its words is cast as a card in hand, so that once it resolves "it", "my creature" and its size all find it.
             if (Regex("""^an? (?:\d+/\d+ )?(?:creature|artifact|enchantment|planeswalker) that says """).containsMatchIn(name)) {
                 val kind = Regex("""(creature|artifact|enchantment|planeswalker) that says""").find(name)!!.groupValues[1]

@@ -21824,5 +21824,79 @@
 "a 1/1 token: the battlefield → your graveyard.",
 "a 1/1 token ceases to exist; it doesn't stay in the zone it went to."
 ]
+},
+{
+"id": "destroy-target-attacking-after-no-block",
+"text": "i attack with a 2/2 and they have a 1/1, they don't block, then they cast a spell that says destroy target attacking creature, what happens",
+"expect": [
+"a 2/2 creature: the battlefield → your graveyard."
+]
+},
+{
+"id": "says-combat-damage-counter-two-turns",
+"text": "i have a creature that says whenever this creature deals combat damage to a player put a +1/+1 counter on it, i attack twice over two turns unblocked, how big is it",
+"expect": [
+"a creature that says \"whenever this creature deals combat damage to a player put a +1/+1 counter on it\" is 4/4 (2/2 base, 2 +1/+1 counters)."
+]
+},
+{
+"id": "says-creatures-cant-block-enchantment",
+"text": "they have an enchantment that says creatures can't block, i attack with a 3/3, they have a 5/5, what happens",
+"expect": [
+"opponent takes 3 damage."
+]
+},
+{
+"id": "two-says-creatures-counter-on-their-creature",
+"text": "i have two creatures that say whenever another creature enters put a +1/+1 counter on this creature, they cast a creature, do mine get counters",
+"expect": [
+"a creature that says \"whenever another creature enters put a +1/+1 counter on this creature\" has 1 +1/+1 counter. (×2)"
+]
+},
+{
+"id": "says-opponent-casts-counter-three-spells-1-1",
+"text": "they have a creature that says whenever an opponent casts a spell put a +1/+1 counter on this creature, i cast 3 spells, how big is it if it's a 1/1",
+"expect": [
+"a 1/1 creature that says \"whenever an opponent casts a spell put a +1/+1 counter on this creature\" is 4/4 (1/1 base, 3 +1/+1 counters)."
+]
+},
+{
+"id": "says-hexproof-then-their-destroy",
+"text": "i cast a spell that says target creature gains hexproof until end of turn on my 2/2, they cast a spell that says destroy target creature on it, can they",
+"expect": [
+"a 2/2 creature has hexproof until end of turn.",
+"a spell that says \"destroy target creature\" can't target a 2/2 creature."
+],
+"cite": [
+"702.11b"
+]
+},
+{
+"id": "plus-0-2-on-their-blocked-attacker",
+"text": "they attack with a 2/2 and i block with a 2/2, they cast a spell that says target creature gets +0/+2 until end of turn on theirs, who dies",
+"expect": [
+"a 2/2 creature is 2/4 until end of turn.",
+"Yes: your 2/2 creature died (it's in the graveyard).",
+"No: opponent's 2/2 creature is still on the battlefield."
+]
+},
+{
+"id": "says-cant-be-target-of-abilities-spell",
+"text": "my opponent has a creature that says it can't be the target of abilities, can i target it with a spell",
+"notExpect": [
+"Nothing changes",
+"Not understood"
+],
+"cite": [
+"113.1",
+"115.1"
+]
+},
+{
+"id": "says-land-two-mana-plus-two-lands",
+"text": "i have a land that says tap: add two mana, and 2 other lands, how much mana do i have",
+"expect": [
+"You can make 4 mana right now: a land that says \"tap: add 2 mana\" → {C}{C}; plus the 2 the situation gives from permanents it didn't name."
+]
 }
 ]
