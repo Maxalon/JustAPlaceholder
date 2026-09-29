@@ -576,6 +576,9 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""\b(spell that says [^,?]*?\bfights\b[^,?]*?) with (?=(?:my|their|his|her|the|mine|theirs)\b)""", RegexOption.IGNORE_CASE), "$1 targeting ")
         // "can I target them with a discard spell?": whether the spell can be cast at that player.
         t2 = t2.replace(Regex("""\bcan (i|we|they) (?:even |still )?target (them|him|her|me|my opponent|the opponent) with (an? (?:discard|removal|burn|bounce|kill) spell)\b""", RegexOption.IGNORE_CASE), "can $1 cast $3 targeting $2")
+        // "I have a spell that says counter target creature spell, they cast an artifact, can I counter it?": the held
+        // counter is cast at their spell, and the answer is whether it can be.
+        t2 = t2.replace(Regex("""^(?:i|we) (?:have|hold|am holding|'ve got) (an? (?:spell|instant) that says counter[^,]*?), ((?:they|he|she|my opponent) casts? [^,]+?), can (?:i|we) counter (?:it|that)\??$""", RegexOption.IGNORE_CASE), "$2, i cast $1 on it")
         // "on myself": the caster.
         t2 = t2.replace(Regex("""\b(on|targeting|at) myself\b""", RegexOption.IGNORE_CASE), "$1 me")
         // "can I also cast a 3 drop this turn?": the question is whether it can be cast now.
@@ -4451,12 +4454,12 @@ class SituationParser(private val names: NameIndex) {
             val name = when { r.groupValues[1].isNotEmpty() -> "a ${r.groupValues[1]} mana ${r.groupValues[2]}"; r.groupValues[3].isNotEmpty() -> "a ${r.groupValues[3]} damage spell"; r.groupValues[5].isNotEmpty() -> "a ${r.groupValues[5]} spell"; r.groupValues[6].isNotEmpty() -> "an exiling counterspell"; r.groupValues[7].isNotEmpty() -> "a ${r.groupValues[7]} damage sweeper"; r.groupValues[8].isNotEmpty() -> "a ${r.groupValues[8]} pump"; r.groupValues[9].isNotEmpty() -> r.groupValues[9].substringBefore(" that says ").let { k -> "${if (k.first() in "aeiou") "an" else "a"} $k that says \"${r.groupValues[9].substringAfter(" that says ").replace('_', ' ')}\"" }; r.groupValues[10].isNotEmpty() -> r.groupValues[10].substringAfterLast(' ').let { k -> "${if (k.first() in "aeiou") "an" else "a"} $k that says \"${r.groupValues[10].substringBeforeLast(' ').removePrefix("says-").replace('_', ' ')}\"" }; else -> "a ${r.groupValues[4].replace(" and ", " ").trim()} pump" }
             var targets = if (r.groupValues[1].isNotEmpty()) emptyList() else targetsIn(r.groupValues[11], m, ctx)
             // "they cast a spell that says counter target spell unless its controller pays 2": the spell on the stack is the target.
-            if (targets.isEmpty() && name.contains("counter target spell") && ctx.events.none { it.verb == "cast" && it.player != who }) {
+            if (targets.isEmpty() && Regex("""counter target .*spell""").containsMatchIn(name) && ctx.events.none { it.verb == "cast" && it.player != who }) {
                 // "I cast a spell that says counter target spell unless its controller pays 3, they have 2 lands untapped": their spell wasn't said; one is assumed.
                 ctx.events += EventSpec("cast", player = if (who == "me") (ctx.playerIds().firstOrNull { it != "me" } ?: "opp") else "me", card = CardRef(name = "a spell"))
                 ctx.notes += "No spell of theirs was said to be on the stack; a counterspell needs one, so a spell of theirs is assumed to be there."
             }
-            if (targets.isEmpty() && name.contains("counter target spell")) targets = targetsIn("targeting the spell", m, ctx)
+            if (targets.isEmpty() && Regex("""counter target .*spell""").containsMatchIn(name)) targets = targetsIn("targeting the spell", m, ctx)
             // "I play a land that says it enters tapped, can I tap it for mana?": a land is played, not cast, and "it" afterwards is the land.
             if (Regex("""^an? land that says """).containsMatchIn(name)) {
                 var id = slug(name); var k = 2; while (ctx.objects.containsKey(id)) id = slug(name) + "_" + (k++)

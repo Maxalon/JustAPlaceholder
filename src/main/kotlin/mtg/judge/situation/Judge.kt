@@ -903,7 +903,11 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         if (':' in s) {
             val (objId, kind) = s.split(':', limit = 2)
             val wanted = when (kind.lowercase()) { "trigger", "triggered" -> StackKind.TRIGGERED; "ability", "activated" -> StackKind.ACTIVATED; else -> StackKind.SPELL }
-            val item = state.stack.lastOrNull { it.source.id == objId && it.kind == wanted } ?: throw JudgeException("No ${kind} from '$objId' is on the stack")
+            val item = state.stack.lastOrNull { it.source.id == objId && it.kind == wanted }
+                // "they cast an artifact, can I counter it?": the spell's stand-in was named one way by the parser and another by the
+                // card it became; with exactly one spell of that kind on the stack, it is the one meant.
+                ?: state.stack.filter { it.kind == wanted }.singleOrNull()?.also { state.assumptions += "\"$objId\" is read as ${it.source.name}, the only $kind on the stack." }
+                ?: throw JudgeException("No ${kind} from '$objId' is on the stack")
             return Ref.Stack(item.id)
         }
         // A card name: is that card on the stack or battlefield?

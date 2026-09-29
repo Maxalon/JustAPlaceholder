@@ -21063,5 +21063,92 @@
 "a 6/6 creature: the battlefield → opponent's graveyard.",
 "a 1/1 creature with deathtouch: the battlefield → your graveyard."
 ]
+},
+{
+"id": "held-counter-creature-spell-vs-artifact",
+"text": "i have a spell that says counter target creature spell, they cast an artifact, can i counter it",
+"expect": [
+"a spell that says \"counter target creature spell\" can't target an artifact (it isn't a creature spell).",
+"an artifact enters the battlefield."
+]
+},
+{
+"id": "held-counter-creature-spell-vs-creature",
+"text": "i have a spell that says counter target creature spell, they cast a creature, can i counter it",
+"expect": [
+"a creature spell is countered."
+]
+},
+{
+"id": "says-indestructible-vs-destroy-all",
+"text": "i cast a spell that says destroy all creatures, i have a creature that says it has indestructible, what happens",
+"expect": [
+"a creature that says \"it has indestructible\" is indestructible and isn't destroyed."
+],
+"cite": [
+"702.12b"
+]
+},
+{
+"id": "says-dies-gain-1-wrath-three",
+"text": "i have an enchantment that says whenever a creature dies you gain 1 life, they wrath with 3 creatures on my side, how much life do i gain",
+"expect": [
+"You gain 1 life. (×3)",
+"You gain 3 life in all."
+]
+},
+{
+"id": "says-lifelink-blocked",
+"text": "i have a creature that says it has lifelink, i attack and they block with a 2/2, do i gain life",
+"expect": [
+"You gain 2 life in all."
+]
+},
+{
+"id": "pump-attacker-after-block-both-die",
+"text": "they attack with a 2/2 and i block with a 2/2, then they cast a spell that says target creature gets +2/+0 until end of turn on theirs, what happens",
+"expect": [
+"a 2/2 creature is 4/2 until end of turn.",
+"a 2/2 creature: the battlefield → opponent's graveyard.",
+"a 2/2 creature: the battlefield → your graveyard."
+]
+},
+{
+"id": "counters-then-minus-2-2-survives",
+"text": "i have a 1/1 and cast a spell that says put two +1/+1 counters on target creature on it, then they cast a spell that says target creature gets -2/-2 until end of turn on it, does it die",
+"expect": [
+"a 1/1 creature has 2 +1/+1 counters.",
+"No: a 1/1 creature is still on the battlefield."
+]
+},
+{
+"id": "says-prowess-two-instants",
+"text": "i control a creature that says whenever you cast an instant or sorcery spell this creature gets +1/+1 until end of turn, i cast two instants, how big is it",
+"expect": [
+"a creature that says \"whenever you cast an instant or sorcery spell this creature gets +1/+1 until end of turn\" is 4/4 (2/2 base, +2/+2 until end of turn)."
+]
+},
+{
+"id": "says-cant-be-blocked-by-power-2-which-blocks",
+"text": "they have a creature that says it can't be blocked by creatures with power 2 or less, i have a 2/2 and a 3/3, which can block it",
+"expect": [
+"No: a 2/2 creature can't block a creature that says \"it can't be blocked by creatures with power 2 or less\".",
+"Yes: a 3/3 creature can block a creature that says \"it can't be blocked by creatures with power 2 or less\"."
+]
+},
+{
+"id": "says-opponent-casts-you-draw-two",
+"text": "my opponent has a creature that says whenever an opponent casts a spell you draw a card, i cast two spells, how many do they draw",
+"expect": [
+"opponent draws 1 card. (×2)",
+"Yes: opponent draws 2 cards in all."
+]
+},
+{
+"id": "says-end-step-draw",
+"text": "i have a creature that says at the beginning of your end step draw a card, what happens at my end step",
+"expect": [
+"You draw 1 card."
+]
 }
 ]
