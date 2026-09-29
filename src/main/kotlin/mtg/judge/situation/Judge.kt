@@ -481,6 +481,23 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     }
                     state.outcomes += engine.manaAvailable(p.id); return
                 }
+                if (e.to == "attackCount") {
+                    val p = state.player(e.player ?: "me")
+                    val opp = state.opponentsOf(p.id).firstOrNull() ?: throw JudgeException("no other player")
+                    val mine = state.objects.values.filter { it.isOnBattlefield() && it.controller == p.id && (it.def.isCreature || it.animatedAs != null) }
+                    val able = mine.filter { it.tapped != true && !(it.summoningSick == true && !state.hasKeyword(it, "haste")) && !state.hasKeyword(it, "defender") }
+                    val taxes = state.objects.values.filter { it.isOnBattlefield() && it.controller == opp.id }.flatMap { o -> o.def.abilities.filterIsInstance<mtg.judge.engine.StaticAbility>().flatMap { it.effects }.filterIsInstance<mtg.judge.engine.StaticEffect.AttackTax>().map { o to it } }
+                    val perAttacker = taxes.sumOf { (_, t) -> Regex("""\{(\d+)\}""").find(t.cost)?.groupValues?.get(1)?.toIntOrNull() ?: 0 }
+                    val mana = p.mana ?: state.objects.values.count { it.isOnBattlefield() && it.controller == p.id && it.tapped != true && "Land" in it.def.types }.takeIf { it > 0 }
+                    val sitting = mine.size - able.size
+                    val unable = if (sitting > 0) " ($sitting of ${p.possessive} ${mine.size} can't attack at all: tapped, summoning sick or defender.)" else ""
+                    state.outcomes += when {
+                        taxes.isEmpty() -> "All ${able.size} of ${p.possessive} creatures that can attack may: nothing taxes attacking ${opp.name}.$unable"
+                        mana == null -> "${taxes.joinToString(" and ") { (o, t) -> "${o.name} charges ${t.cost}" }} for each creature attacking ${opp.name}, so each attacker costs {$perAttacker}; how many of ${p.possessive} ${able.size} can attack depends on how much mana ${p.subject.lowercase()} ${p.v("has", "have")}, which wasn't stated (508.1c).$unable"
+                        else -> { val n = if (perAttacker == 0) able.size else minOf(able.size, mana / perAttacker); state.trace.step("${taxes.joinToString(" and ") { (o, t) -> "${o.name} says creatures can't attack ${opp.name} unless their controller pays ${t.cost} for each" }}; with $mana mana ${p.subject.lowercase()} can pay for $n attacker${if (n == 1) "" else "s"}.", "508.1c"); "$n of ${p.possessive} ${able.size} creatures can attack: ${taxes.joinToString(" and ") { (o, _) -> o.name }} ${if (taxes.size == 1) "makes" else "make"} each attacker cost {$perAttacker}, and ${p.subject.lowercase()} ${p.v("has", "have")} $mana mana (508.1c).$unable" }
+                    }
+                    return
+                }
                 if (e.to == "attackThenBlock") {
                     val o = state.obj(e.obj ?: throw JudgeException("ask needs an object")); val p = state.player(o.controller)
                     val opp = state.opponentsOf(o.controller).firstOrNull()
@@ -619,6 +636,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     val p = state.player(e.player ?: "me")
                     val searched = state.trace.steps.any { Regex("""(?i)^${Regex.escape(p.subject)} (?:may )?(?:choose(?:s)? to )?search(?:es)? (?:your|their|${Regex.escape(p.possessive)}) library for a (?:basic )?land""").containsMatchIn(it.text) } ||
                         state.outcomes.any { Regex("""(?i)^${Regex.escape(p.subject)} choose(?:s)? to search""").containsMatchIn(it) && it.contains("land") }
+                    val reveal = state.outcomes.firstOrNull { it.contains("If it's a land card, that player puts it into their hand") }?.substringBefore(":")
+                    if (reveal != null && !searched) { state.outcomes += "It depends on the top card of ${p.possessive} library: $reveal's trigger reveals it, and if it's a land card ${p.subject.lowercase()} ${p.v("puts", "put")} it into ${p.possessive} hand. The library's order isn't known here, so it can't be said either way."; return }
                     state.outcomes += if (searched) "Yes: the search is ${if (p.you) "yours" else p.name + "'s"}. The card gives it to the exiled creature's controller, which is ${p.subject.lowercase()}; ${p.subject.lowercase()} may search for a basic land card and put it onto the battlefield tapped."
                         else "No: nothing here has ${p.subject.lowercase()} search for a land."
                     return

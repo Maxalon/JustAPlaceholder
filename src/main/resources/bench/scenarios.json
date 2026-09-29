@@ -23697,5 +23697,106 @@
       "Ponder: Look at the top three cards of your library, then put them back in any order (not tracked in detail).",
       "You draw 1 card."
     ]
+  },
+  {
+    "id": "bolt-the-blocker-after-blocks-bears-deals-no-damage",
+    "text": "I attack with Grizzly Bears and they block with a 1/1. After blockers I cast Lightning Bolt on the blocker. Does my Bears deal damage to them?",
+    "expect": [
+      "No: Grizzly Bears dealt no damage to opponent (it was blocked, and a blocked creature stays blocked even if its blocker leaves combat; without trample it assigns no damage to the player, 509.1h)."
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "fog-3-3-vs-3-3-does-anything-die",
+    "text": "I have a 3/3 and they have a 3/3. I attack and they block. I cast Fog. Does anything die?",
+    "expect": [
+      "No: opponent's 3/3 creature is still on the battlefield."
+    ],
+    "notExpect": [
+      "a 3/3 creature: the battlefield → your graveyard."
+    ]
+  },
+  {
+    "id": "ghostly-prison-three-creatures-4-lands-how-many-attack",
+    "text": "They have Ghostly Prison. I have three creatures and 4 lands. How many can I attack with?",
+    "expect": [
+      "2 of your 3 creatures can attack: Ghostly Prison makes each attacker cost {2}, and you have 4 mana (508.1c)."
+    ],
+    "cite": [
+      "508.1c"
+    ]
+  },
+  {
+    "id": "aether-vial-flash-in-thalia-vs-wrath",
+    "text": "I have Aether Vial with 2 counters. They cast Wrath of God. Can I flash in my Thalia in response?",
+    "expect": [
+      "Thalia, Guardian of Thraben enters the battlefield.",
+      "Thalia, Guardian of Thraben: the battlefield → your graveyard."
+    ]
+  },
+  {
+    "id": "duress-bolt-bears-swamp-what-can-i-take",
+    "text": "I cast Duress. They have Lightning Bolt, Grizzly Bears and Swamp in hand. What can I take?",
+    "expect": [
+      "Duress lets you choose a noncreature, nonland card from opponent's hand: Lightning Bolt; Grizzly Bears, Swamp can't be chosen (not noncreature, nonland card)."
+    ]
+  },
+  {
+    "id": "spirit-of-the-labyrinth-vs-brainstorm",
+    "text": "I have Spirit of the Labyrinth. They cast Brainstorm. What happens?",
+    "expect": [
+      "opponent draws only 1 card of the 3 (Spirit of the Labyrinth).",
+      "opponent puts 2 cards from their hand back on top of their library."
+    ]
+  },
+  {
+    "id": "goblin-guide-do-they-get-a-land",
+    "text": "They have a 2/2 and I have Goblin Guide. I attack. Do they get a land?",
+    "expect": [
+      "It depends on the top card of opponent's library: Goblin Guide's trigger reveals it, and if it's a land card opponent puts it into opponent's hand. The library's order isn't known here, so it can't be said either way."
+    ]
+  },
+  {
+    "id": "fatal-push-one-of-two-bears-does-the-other-die",
+    "text": "I have two Grizzly Bears. They cast Fatal Push on one. Does the other die?",
+    "expect": [
+      "Grizzly Bears: the battlefield → your graveyard.",
+      "No: Grizzly Bears is still on the battlefield."
+    ]
+  },
+  {
+    "id": "double-block-4-4-with-two-2-2s-damage-each",
+    "text": "They block my 4/4 with a 2/2 and a 2/2. How much damage does each take?",
+    "expect": [
+      "a 2/2 creature has 2 damage marked. (×2)",
+      "a 4/4 creature: the battlefield → your graveyard."
+    ],
+    "cite": [
+      "510.1c"
+    ]
+  },
+  {
+    "id": "ensnaring-bridge-one-card-can-my-2-2-attack",
+    "text": "I have Ensnaring Bridge and 1 card in hand. Can my 2/2 attack?",
+    "expect": [
+      "a 2/2 creature can't attack (Ensnaring Bridge)."
+    ]
+  },
+  {
+    "id": "blood-moon-steam-vents-what-does-it-tap-for",
+    "text": "I have Blood Moon. They have a Steam Vents. What does it tap for?",
+    "expect": [
+      "Steam Vents is a Mountain under Blood Moon, so it taps for {R} and nothing else."
+    ]
+  },
+  {
+    "id": "fireball-x-3-how-much-mana-do-i-need",
+    "text": "My opponent has 3 life. I cast Fireball for 3 at their face with X = 3. How much mana do I need?",
+    "expect": [
+      "Fireball costs {X}{R} — 4 mana. Nothing on the battlefield changes it.",
+      "opponent loses the game."
+    ]
   }
 ]
