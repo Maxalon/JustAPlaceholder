@@ -21914,7 +21914,7 @@
     "text": "i have a 1/1 and they cast a spell that says target creature can't block this turn on it, then they attack with a 2/2, can i block",
     "expect": [
       "a 1/1 creature can't block this turn.",
-      "a 1/1 creature doesn't block (it can't block this turn).",
+      "a 1/1 creature doesn't block (an effect says it can't block).",
       "You take 2 damage."
     ],
     "cite": [
@@ -22531,6 +22531,106 @@
     ],
     "notExpect": [
       "Can't verify"
+    ]
+  },
+  {
+    "id": "double-strike-2-2-vs-3-3",
+    "text": "i have a creature with double strike that's a 2/2 and they block with a 3/3, what happens",
+    "expect": [
+      "a 2/2 creature with double strike: the battlefield → your graveyard.",
+      "a 3/3 creature: the battlefield → opponent's graveyard."
+    ],
+    "cite": [
+      "702.4b"
+    ]
+  },
+  {
+    "id": "said-opponent-draws-ping-draw-three",
+    "text": "they have a creature that says whenever an opponent draws a card, this creature deals 1 damage to that player, i cast a spell that says draw three cards, how much damage do i take",
+    "expect": [
+      "Yes: you take 3 damage in all."
+    ]
+  },
+  {
+    "id": "said-exile-and-controller-gains-4",
+    "text": "i cast a spell that says exile target creature and its controller gains 4 life on their 2/2, they're at 10, what's their life",
+    "expect": [
+      "a 2/2 creature: the battlefield → exile.",
+      "opponent is at 14 life."
+    ]
+  },
+  {
+    "id": "trample-4-4-double-blocked",
+    "text": "i have a 4/4 with trample and they block with a 2/2 and a 1/1, how much damage do they take",
+    "expect": [
+      "opponent takes 1 damage."
+    ],
+    "cite": [
+      "702.19b"
+    ]
+  },
+  {
+    "id": "mill-five-with-three",
+    "text": "they cast a spell that says target player mills five cards on me, i have 3 cards in my library, what happens",
+    "expect": [
+      "You mill 3 cards (0 left in library)."
+    ]
+  },
+  {
+    "id": "two-lifelinkers-both-2-2",
+    "text": "i have two creatures with lifelink, both 2/2, i attack and they don't block, i'm at 5, what's my life",
+    "expect": [
+      "You are at 9 life."
+    ],
+    "cite": [
+      "702.15b"
+    ]
+  },
+  {
+    "id": "said-cant-attack-or-block-until-your-next-turn",
+    "text": "i cast a spell that says target creature can't attack or block until your next turn on their 3/3, can they attack me with it next turn",
+    "expect": [
+      "a 3/3 creature can't attack."
+    ],
+    "notExpect": [
+      "not modeled",
+      "You take 3 damage"
+    ]
+  },
+  {
+    "id": "vigilance-attack-then-block-on-their-turn",
+    "text": "i have a 2/2 with vigilance and attack, then they attack me on their turn with a 2/2, can i block",
+    "expect": [
+      "Yes: a 2/2 creature with vigilance can block, and did (above).",
+      "a 2/2 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "can't attack on opponent's turn"
+    ]
+  },
+  {
+    "id": "menace-block-with-two-of-them",
+    "text": "they have a creature with menace and i have three 1/1s, they attack, can i block with two of them",
+    "expect": [
+      "a creature with menace: the battlefield → opponent's graveyard."
+    ]
+  },
+  {
+    "id": "destroy-my-own-says-dies-each-opponent-loses-3",
+    "text": "i cast a spell that says destroy target creature on my own creature that says when this creature dies, each opponent loses 3 life, they're at 3, what happens",
+    "expect": [
+      "opponent loses 3 life.",
+      "opponent loses the game."
+    ]
+  },
+  {
+    "id": "said-any-colour-land-plus-two-costs-2-and-blue",
+    "text": "i have a land that says tap: add one mana of any color and 2 other lands, can i cast a spell that costs 2 and a blue mana",
+    "expect": [
+      "You have 3 available, enough."
+    ],
+    "notExpect": [
+      "can't be cast"
     ]
   }
 ]

@@ -1263,9 +1263,11 @@ object OracleParser {
         }
         // "Target creature can't block this turn" — carried as a pseudo-keyword for the turn, like "unblockable".
         if (Regex("""^(?:~|it) can't block this turn\.?$""", RegexOption.IGNORE_CASE).matches(s.trim())) return Effect.GainKeywordsSelf(setOf("cant-block"))
-        Regex("""^target (.+?) can't (block|attack|attack or block) this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+        Regex("""^target (.+?) can't (block|attack|attack or block) (this turn|until your next turn)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
             val t = target(m.groupValues[1], Kind.CREATURE)
-            val kw = when (m.groupValues[2].lowercase()) { "block" -> setOf("cant-block"); "attack" -> setOf("cant-attack"); else -> setOf("cant-attack", "cant-block") }
+            // "until your next turn" lasts past this turn's cleanup: the keyword is tagged so cleanup keeps it until that turn begins.
+            val tag = if (m.groupValues[3].lowercase() == "until your next turn") "@until-your-next-turn" else ""
+            val kw = when (m.groupValues[2].lowercase()) { "block" -> setOf("cant-block$tag"); "attack" -> setOf("cant-attack$tag"); else -> setOf("cant-attack$tag", "cant-block$tag") }
             if (t.filter.verifiable) return Effect.GainKeywords(t, kw)
         }
         // Snapcaster Mage: "target instant or sorcery card in your graveyard gains flashback until end of turn."

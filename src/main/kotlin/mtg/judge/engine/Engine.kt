@@ -117,7 +117,8 @@ class Engine(val state: GameState) {
             }
             if (tax > 0 && alternative && taxes.isNotEmpty()) state.outcomes += "${card.name} still costs {$tax} more (${taxes.joinToString(", ") { it.first.name }}): a cost increase applies to an alternative cost too (601.2f)."
             // Mana stated as a count, or the untapped lands named ("I have 2 Islands"), less what earlier casts used.
-            (player.mana?.let { maxOf(0, it - player.manaSpent) + player.manaPool } ?: availableMana(player)?.takeIf { landsOnly(player) })?.let { avail -> if (cost > avail) { trace.step("${player.subject} ${player.v("has", "have")} only $avail mana available and ${card.name} costs $cost, so it can't be cast: the total cost can't be paid.", "601.2h", "601.2f"); state.outcomes += "${card.name} can't be cast (costs $cost, only $avail mana available)."; return null } else if (taxes.isNotEmpty() || commanderTax > 0) trace.step("${player.subject} ${player.v("has", "have")} $avail mana available, enough for the $cost.", "601.2h") }
+            // A stated count plus any described mana sources (availableMana adds them up); described sources alone only when nothing else could pay.
+            (if (player.mana != null) availableMana(player) else availableMana(player)?.takeIf { landsOnly(player) })?.let { avail -> if (cost > avail) { trace.step("${player.subject} ${player.v("has", "have")} only $avail mana available and ${card.name} costs $cost, so it can't be cast: the total cost can't be paid.", "601.2h", "601.2f"); state.outcomes += "${card.name} can't be cast (costs $cost, only $avail mana available)."; return null } else if (taxes.isNotEmpty() || commanderTax > 0) trace.step("${player.subject} ${player.v("has", "have")} $avail mana available, enough for the $cost.", "601.2h") }
         }
         card.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.CantCastBeforeTurn>().firstOrNull()?.let { c ->
             val t = state.turnNumber
@@ -1076,6 +1077,8 @@ class Engine(val state: GameState) {
                 p.lifeLocked = false; p.protectedFromEverything = false
                 trace.step("It is ${p.possessive} next turn, so the effect that gave ${p.subject.lowercase()} protection from everything and locked ${p.possessive} life total ends.", "611.2a")
             }
+            // "Target creature can't attack or block until your next turn": that turn has come, so the effect ends.
+            for (o in state.objects.values) if (o.tempKeywords.removeAll { k -> k.endsWith("@until-turn:$activePlayer") }) trace.step("It is ${state.player(activePlayer).possessive} next turn, so the effect on ${o.name} that lasted until then ends.", "611.2a")
             val mine = state.objects.values.filter { it.isOnBattlefield() && it.controller == activePlayer }
             // Meekstone and its cousins: some permanents don't untap at all (302.6 doesn't apply to them).
             val held = mine.filter { o -> state.objects.values.any { src -> src.isOnBattlefield() &&
@@ -1129,7 +1132,7 @@ class Engine(val state: GameState) {
             state.cantCastThisTurn.clear()
             state.damageLifeFloor.clear()
             state.landsPlayed.clear(); state.extraLandsThisTurn.clear(); state.loyaltyUsedThisTurn.clear()
-            for (o in affected) { o.pumps.clear(); o.tempKeywords.clear(); o.lostKeywords.clear(); o.basePt = null; o.animatedAs = null; o.saddled = false; o.saddledThisTurn = 0; o.damage = 0; trace.step("${o.name} is back to ${if (o.def.isCreature) state.describePt(o) else "normal"} with no damage.", "514.2"); state.outcomes += "${o.name}'s until-end-of-turn effects and damage are gone (cleanup)." }
+            for (o in affected) { o.pumps.clear(); o.tempKeywords.retainAll { it.contains("@until-turn:") }; o.lostKeywords.clear(); o.basePt = null; o.animatedAs = null; o.saddled = false; o.saddledThisTurn = 0; o.damage = 0; trace.step("${o.name} is back to ${if (o.def.isCreature) state.describePt(o) else "normal"} with no damage.", "514.2"); state.outcomes += "${o.name}'s until-end-of-turn effects and damage are gone (cleanup)." }
             state.shields.clear(); state.objects.values.forEach { it.exileOnDeath = null }
             return
         }
@@ -1393,7 +1396,7 @@ class Engine(val state: GameState) {
             state.outcomes += "${p.subject} can't attack on ${state.player(active).possessive} turn."; return
         }
         if (a.has("defender")) { trace.step("${a.name} has defender and can't attack.", "702.3b"); state.outcomes += "${a.name} can't attack (defender)."; return }
-        if (cant(a, "attack")) { trace.step(if (a.has("cant-attack")) "${a.name} can't attack: an effect says it can't attack this turn." else "${a.name} can't attack (a rules text says so${cantSource(a, "attack")?.let { ": $it" } ?: ""}).", "508.1c"); state.outcomes += "${a.name} can't attack."; return }
+        if (cant(a, "attack")) { trace.step(if (a.has("cant-attack") || a.tempKeywords.any { it.startsWith("cant-attack@") }) "${a.name} can't attack: an effect says it can't attack${if (a.tempKeywords.any { it.startsWith("cant-attack@") }) " until its caster's next turn" else " this turn"}." else "${a.name} can't attack (a rules text says so${cantSource(a, "attack")?.let { ": $it" } ?: ""}).", "508.1c"); state.outcomes += "${a.name} can't attack."; return }
         if (a.tapped == true) { trace.step("${a.name} is tapped, so it can't be declared as an attacker.", "508.1a"); state.outcomes += "${a.name} can't attack (tapped)."; return }
         if (a.summoningSick == true && !a.has("haste")) { trace.step("${a.name} came under ${p.possessive} control this turn and doesn't have haste, so it can't attack (\"summoning sickness\").", "508.1a", "302.6"); state.outcomes += "${a.name} can't attack (summoning sick)."; return }
         (defender as? Ref.Obj)?.let { d -> val o = state.objects[d.id]; if (o == null || !o.isOnBattlefield() || !(o.def.isPlaneswalker || "Battle" in o.def.types)) { trace.step("${state.nameOf(defender)} isn't a player, planeswalker or battle, so it can't be attacked.", "506.3"); return } else if (o.controller == playerId) { trace.step("${o.name} is ${p.possessive} own permanent; only an opponent's planeswalker or a battle can be attacked.", "506.2", "508.1b"); return } }
@@ -1531,7 +1534,7 @@ class Engine(val state: GameState) {
             if (!extra) { trace.step("${b.name} is already blocking ${state.objects[b.blocking!!]?.name ?: "another attacker"}. As blockers are declared, each blocking creature is chosen to block one attacking creature; only an effect like \"can block an additional creature\" allows more.", "509.1a"); state.outcomes += "${b.name} can't block ${a.name} as well (a creature blocks only one attacker, 509.1a)."; return }
             trace.step("${b.name} is already blocking ${state.objects[b.blocking!!]?.name ?: "another attacker"}, and its text lets it block an additional creature, so it blocks ${a.name} too.", "509.1a")
         }
-        if (cant(b, "block")) { trace.step(if (b.has("cant-block")) "${b.name} can't block: an effect says it can't block this turn." else "${b.name} can't block (a rules text says so${cantSource(b, "block")?.let { ": $it" } ?: ""}).", "509.1b"); state.outcomes += if (b.has("cant-block")) "${b.name} doesn't block (it can't block this turn)." else "${b.name} can't block."; return }
+        if (cant(b, "block")) { trace.step(if (b.has("cant-block") || b.tempKeywords.any { it.startsWith("cant-block@") }) "${b.name} can't block: an effect says it can't block${if (b.tempKeywords.any { it.startsWith("cant-block@") }) " until its caster's next turn" else " this turn"}." else "${b.name} can't block (a rules text says so${cantSource(b, "block")?.let { ": $it" } ?: ""}).", "509.1b"); state.outcomes += if (b.has("cant-block") || b.tempKeywords.any { it.startsWith("cant-block@") }) "${b.name} doesn't block (an effect says it can't block)." else "${b.name} can't block."; return }
         cantBlockWhy(a, b)?.let { (why, rules, out) -> trace.step(why, *rules.toTypedArray()); state.outcomes += out; return }
         val firstBlocker = blockersOf(a).isEmpty()
         b.blocking = a.id; a.wasBlocked = true
@@ -2757,11 +2760,14 @@ class Engine(val state: GameState) {
             is Effect.GainKeywords -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let {
                 val kws = effect.keywords.map { k -> if (k == "protection from the color of your choice") "protection from ${item.choice ?: run { state.clarifications += Clarification("${item.describe}'s colour", "${item.describe} grants protection from a colour of your choice; which colour? (assuming none)"); "nothing" }}" else k }
                 if (kws.toSet() != effect.keywords.toSet()) { trace.step("${state.player(item.controller).subject} ${state.player(item.controller).v("chooses", "choose")} ${item.choice ?: "no colour"}.", "608.2c"); it.tempKeywords += kws; trace.step("${it.name} gains ${kws.joinToString(" and ")} until end of turn.", "611.2a"); state.outcomes += "${it.name} has ${kws.joinToString(" and ")} until end of turn."; return@let }
-                it.tempKeywords += effect.keywords
+                // "until your next turn" keywords are tagged with the caster, and cleanup keeps them until that turn begins.
+                val untilNext = effect.keywords.any { k -> k.endsWith("@until-your-next-turn") }
+                it.tempKeywords += effect.keywords.map { k -> k.replace("@until-your-next-turn", "@until-turn:${item.controller}") }
+                val dur = if (untilNext) "until ${state.player(item.controller).possessive} next turn" else "until end of turn"
                 // "unblockable" is how the engine carries "can't be blocked"; it isn't a keyword anybody prints.
-                val said = effect.keywords.joinToString(" and ") { k -> when (k) { "unblockable" -> "\"can't be blocked\""; "cant-block" -> "\"can't block\""; "cant-attack" -> "\"can't attack\""; else -> k } }
-                trace.step("${it.name} gains $said until end of turn.", "611.2a")
-                state.outcomes += when (effect.keywords.singleOrNull()) { "unblockable" -> "${it.name} can't be blocked this turn."; "cant-block" -> "${it.name} can't block this turn."; "cant-attack" -> "${it.name} can't attack this turn."; else -> "${it.name} has $said until end of turn." }
+                val said = effect.keywords.joinToString(" and ") { k -> when (k.substringBefore('@')) { "unblockable" -> "\"can't be blocked\""; "cant-block" -> "\"can't block\""; "cant-attack" -> "\"can't attack\""; else -> k } }
+                trace.step("${it.name} gains $said $dur.", "611.2a")
+                state.outcomes += when (effect.keywords.singleOrNull()?.substringBefore('@')) { "unblockable" -> "${it.name} can't be blocked ${if (untilNext) dur else "this turn"}."; "cant-block" -> "${it.name} can't block ${if (untilNext) dur else "this turn"}."; "cant-attack" -> "${it.name} can't attack ${if (untilNext) dur else "this turn"}."; else -> "${it.name} has $said $dur." }
             } }
             is Effect.GainLife -> resolvePlayers(effect.who, item).forEach { p -> gainLife(p, effect.amount) }
             is Effect.LoseLife -> { val n = if (effect.x) (item.x ?: 0) else effect.amount; resolvePlayers(effect.who, item).forEach { p -> p.life = p.life?.minus(n); item.lifeLost += n; trace.step("${p.subject} ${p.v("loses", "lose")} $n life${p.life?.let { " ($it)" } ?: ""}.", "119.3"); state.outcomes += "${p.subject} ${p.v("loses", "lose")} $n life." } }
@@ -3376,8 +3382,8 @@ class Engine(val state: GameState) {
         // "Target creature can't be blocked this turn" is granted for the turn, not printed on the card.
         if (what == "be blocked" && o.has("unblockable")) return true
         // "Target creature can't block this turn" / "can't attack this turn" are carried the same way.
-        if (what == "block" && o.has("cant-block")) return true
-        if (what == "attack" && o.has("cant-attack")) return true
+        if (what == "block" && (o.has("cant-block") || o.tempKeywords.any { it.startsWith("cant-block@") })) return true
+        if (what == "attack" && (o.has("cant-attack") || o.tempKeywords.any { it.startsWith("cant-attack@") })) return true
         val own = o.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { it is StaticEffect.Cant && it.by == null && it.applies == null && !it.powerAboveHand && it.unlessDefenderControls == null && it.unlessYouControl == null && (it.what == what || it.what == "attack or block" && (what == "attack" || what == "block")) }
         if (own) return true
         // "Enchanted creature can't attack or block" and the like, from other permanents.
@@ -3760,11 +3766,13 @@ class Engine(val state: GameState) {
 
     private fun availableMana(p: Player): Int? {
         val stated = p.mana
-        val fromSources = if (stated != null) null else state.objects.values.filter { it.isOnBattlefield() && it.controller == p.id && it.tapped != true }.count { o ->
+        // "a land that says tap: add one mana of any color and 2 other lands": a count said alongside described
+        // mana sources is in addition to them (the "other" lands), so both are added up.
+        val fromSources = state.objects.values.filter { it.isOnBattlefield() && it.controller == p.id && it.tapped != true }.count { o ->
             val a = o.def.abilities.filterIsInstance<ActivatedAbility>().firstOrNull { ab -> isManaEffect(ab.effect) }
             a != null && !(a.cost.contains("{T}") && o.def.isCreature && o.summoningSick == true && !state.hasKeyword(o, "haste"))
         }.takeIf { it > 0 }
-        val base = stated ?: fromSources
+        val base = if (stated == null) fromSources else stated + (fromSources ?: 0)
         if (base == null) return if (p.manaPool > 0) p.manaPool else null
         return maxOf(0, base - p.manaSpent) + p.manaPool
     }
@@ -4183,7 +4191,8 @@ class Engine(val state: GameState) {
         is Effect.Tap -> "tap ${effect.target.raw}"; is Effect.Untap -> "untap ${effect.target.raw}"
         is Effect.DoublePower -> "${effect.target.raw}'s power is doubled"; is Effect.SacrificeTarget -> "${effect.target.raw}'s controller sacrifices it"; is Effect.GainLifeEqualTo -> "you gain life equal to ${effect.target.raw}'s ${effect.stat}"; is Effect.FreezeUntap -> "${effect.target.raw} doesn't untap during its controller's next untap step"; is Effect.RemoveCounters -> "remove ${effect.n} ${effect.kind ?: ""} counter(s) from ${effect.target.raw}"; is Effect.ExileUntilLeaves -> "exile ${effect.target.raw} until this leaves the battlefield"; is Effect.PumpCount -> "${effect.target.raw} gets +X/+X"; is Effect.LoseHalfLife -> "${effect.who} loses half their life"; is Effect.Pump -> "${effect.target.raw} gets ${signed(effect.power)}/${signed(effect.toughness)}"
         is Effect.PumpSameName -> "${effect.target.raw} and all other creatures with the same name get ${signed(effect.power)}/${signed(effect.toughness)}"
-        is Effect.GainKeywords -> if (effect.keywords == setOf("cant-block")) "${effect.target.raw} can't block this turn" else if (effect.keywords == setOf("cant-attack")) "${effect.target.raw} can't attack this turn" else if (effect.keywords == setOf("unblockable")) "${effect.target.raw} can't be blocked this turn" else "${effect.target.raw} gains ${effect.keywords.joinToString(" and ")}"
+        is Effect.GainKeywords -> effect.keywords.map { it.substringBefore('@') }.toSet().let { ks -> val dur = if (effect.keywords.any { it.contains('@') }) "until your next turn" else "this turn"
+            if (ks == setOf("cant-block")) "${effect.target.raw} can't block $dur" else if (ks == setOf("cant-attack")) "${effect.target.raw} can't attack $dur" else if (ks == setOf("cant-attack", "cant-block")) "${effect.target.raw} can't attack or block $dur" else if (ks == setOf("unblockable")) "${effect.target.raw} can't be blocked this turn" else "${effect.target.raw} gains ${ks.joinToString(" and ")}" }
         is Effect.GainControl -> "gain control of ${effect.target.raw}${if (effect.untilEndOfTurn) " until end of turn" else ""}"
         is Effect.PumpSelf -> "${item.source.name} gets ${signed(effect.power)}/${signed(effect.toughness)}"
         is Effect.PumpAll -> "${effect.filter.raw} get ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.SetBasePtAll -> "${effect.filter.raw} have base power and toughness ${if (effect.x) "X/X" else "${effect.power}/${effect.toughness}"} until end of turn"
