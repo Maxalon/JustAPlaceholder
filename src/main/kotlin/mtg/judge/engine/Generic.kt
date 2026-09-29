@@ -60,6 +60,7 @@ object Generic {
             t = t.replace(Regex("""^it enters(?: the battlefield)? tapped$"""), "${self.replaceFirstChar { c -> c.uppercase() }} enters tapped").replace(Regex("""^it must be blocked if able$"""), "All creatures able to block ${self} do so")
             // "an opponent's creature dies", "whenever this creature blocks it deals 1 damage to the creature it blocks", "it can't be the target of spells".
             t = t.replace(Regex("""\ban opponent's creature\b"""), "a creature an opponent controls").replace(Regex("""\bto the creature it blocks$"""), "to that creature").replace(Regex("""^whenever this creature blocks it\b"""), "whenever this creature blocks a creature, it")
+            t = t.replace(Regex("""^(?:this creature|this permanent|it) can't be blocked except by (?:2|two) or more creatures$""", RegexOption.IGNORE_CASE), "menace")
             t = t.replace(Regex("""^(?:this creature|this permanent|it) can't be the target of spells(?: or abilities)?$""", RegexOption.IGNORE_CASE), "shroud").replace(Regex("""^(?:this creature|this permanent|it) can't be the target of spells or abilities your opponents control$""", RegexOption.IGNORE_CASE), "hexproof")
             // Table wording into card wording: "you deal 1 damage to it", "and lose 1 life", "return it to the battlefield", "spells cost 1 more".
             t = t.replace(Regex("""\byou deals? (\d+) damage to it$"""), "$self deals $1 damage to that creature").replace(Regex("""\byou deals? (\d+) damage\b"""), "$self deals $1 damage")

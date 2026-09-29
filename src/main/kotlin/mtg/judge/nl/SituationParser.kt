@@ -2155,6 +2155,11 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "\"${restore(clause0, m)}?\" is answered for each of your creatures below."; return true
         }
         // "can it attack and block in the same turn?": only one player attacks in a turn.
+        // "do they have to block?": blocking is the defending player's choice unless an effect requires it.
+        if (Regex("""^(?:do|does) (?:they|i|we|he|she|my opponent|the opponent) (?:have|need) to block(?: it| that| with it| with anything| at all)?$""").matches(clause0)) {
+            ctx.asks += EventSpec("ask", to = "text:No. Blocking is never required by the rules: the defending player chooses which creatures they control, if any, will block (509.1a). Only an effect that says a creature must block, or that all creatures able to block a creature do so, takes that choice away (509.1c). The outcome below assumes no block.")
+            return true
+        }
         if (clause0 == "vigilance-attackblock-question") {
             ctx.asks += EventSpec("ask", to = "text:Not in the same turn, vigilance or not: you attack on your own turn, and blocking happens only in another player's combat (506.1, 509.1a). What vigilance does is keep the creature untapped when it attacks (702.20b), so it is ready to block on your opponent's turn or to use a {T} ability after attacking; a creature that attacked without vigilance is tapped and can't block until it untaps in your next untap step.")
             return true
@@ -3614,7 +3619,7 @@ class SituationParser(private val names: NameIndex) {
             applyStateWords(id, "with " + r.groupValues[3], ctx)
             return readClause((if (who == "me") "i " else if (who == "opp") "they " else "@$who ") + r.groupValues[1] + " " + r.groupValues[2] + r.groupValues[4], m, ctx)
         }
-        Regex("""^(?:sacrifices?|sacs?|sacrificing|saccing) (?:an? |the |my |one |another )?(c\d+|it|itself|(?:\d+/\d+)(?: (?!to\b|into\b|targeting\b|at\b|on\b)[a-z]+)*)(?: (?:to|into) (?:an? |the |my )?(c\d+|it|that)(?:'s ability)?)?(.*)$""").find(c.replace(Regex("""\s+(?:in response(?: to (?:it|that|the spell))?|for mana|for value|instead|first|before it resolves|with (?:the )?(?:trigger|spell) on the stack)(?=\s|$)"""), ""))?.let { r ->
+        Regex("""^(?:sacrifices?|sacs?|sacrificing|saccing) (?:an? |the |my |one |another )?(c\d+|it|itself|says-\S+ (?:creature|artifact|enchantment|permanent|land)|(?:\d+/\d+)(?: (?!to\b|into\b|targeting\b|at\b|on\b)[a-z]+)*)(?: (?:to|into) (?:an? |the |my )?(c\d+|it|that)(?:'s ability)?)?(.*)$""").find(c.replace(Regex("""\s+(?:in response(?: to (?:it|that|the spell))?|for mana|for value|instead|first|before it resolves|with (?:the )?(?:trigger|spell) on the stack)(?=\s|$)"""), ""))?.let { r ->
             val who = actor ?: subject ?: "me"
             val what = r.groupValues[1]
             // "I sacrifice it to Viscera Seer": the Seer is the outlet, never the thing being fed to it. Without
@@ -3622,6 +3627,15 @@ class SituationParser(private val names: NameIndex) {
             val outletId = r.groupValues[2].takeIf { cardRef.matches(it) }?.let { ph -> m.cards[ph]?.let { objectIdFor(it, ctx) } }
             // Only your own permanents can be sacrificed, so "it" is the actor's rather than the last one named.
             val id = if (what == "it" || what == "itself") (ctx.lastMentioned?.takeIf { it in ctx.objects && it != outletId && ctx.objects.getValue(it).controller == who } ?: ctx.lastCastEntry?.takeIf { ctx.lastMentioned == "cast:" + slug(it.display) }?.let { castPermanentObject(ctx) } ?: ctx.events.lastOrNull { it.verb == "cast" && it.player == who }?.card?.name?.let { slug(it) }?.takeIf { it != outletId } ?: ctx.events.lastOrNull { it.verb == "cast" || it.verb == "activate" }?.targets?.firstOrNull { it in ctx.objects && it != outletId && ctx.objects.getValue(it).controller == who } ?: ctx.objects.values.lastOrNull { it.controller == who && it.id != outletId }?.id ?: return@let)
+                     else if (what.startsWith("says-")) {
+                         // "I sacrifice a creature that says when this creature dies each opponent loses 2 life": a stand-in named by its text, on the battlefield now.
+                         val kind = what.substringAfterLast(' '); val body = what.substringBeforeLast(' ').removePrefix("says-")
+                         val size = body.substringBefore('~', ""); val txt = body.substringAfter('~').replace('_', ' ')
+                         val name = if (size.isNotEmpty()) "a $size $kind that says \"$txt\"" else "${if (kind.first() in "aeiou") "an" else "a"} $kind that says \"$txt\""
+                         ctx.objects.values.firstOrNull { it.controller == who && it.card.name == name }?.id ?: run {
+                             var id = slug(kind); var k = 2; while (ctx.objects.containsKey(id)) id = slug(kind) + "_" + (k++)
+                             ctx.objects[id] = ObjectSpec(id, CardRef(name = name), controller = who); id }
+                     }
                      else if (Regex("""^\d+/\d+""").containsMatchIn(what)) {
                          // "sacrifice a 2/2": a creature nobody named, already on the battlefield or described now.
                          val pt = Regex("""^(\d+/\d+)""").find(what)!!.groupValues[1]

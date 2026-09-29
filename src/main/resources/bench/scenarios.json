@@ -20679,5 +20679,90 @@
 "Preordain: Scry 2 (not tracked in detail).",
 "You draw 1 card."
 ]
+},
+{
+"id": "do-they-have-to-block",
+"text": "i attack with a 2/2 and they have a 1/1, do they have to block",
+"expect": [
+"opponent takes 2 damage."
+],
+"notExpect": [
+"Not understood"
+],
+"cite": [
+"509.1a",
+"509.1c"
+]
+},
+{
+"id": "says-menace-in-words-one-blocker",
+"text": "i have a creature that says it can't be blocked except by two or more creatures, they have one 5/5, can they block",
+"expect": [
+"a 5/5 creature can't block a creature that says \"it can't be blocked except by 2 or more creatures\" on its own (menace).",
+"opponent takes 2 damage."
+]
+},
+{
+"id": "menace-two-1-1s-can-block",
+"text": "they have a 2/2 with menace, i have two 1/1s, can i block it",
+"expect": [
+"Yes: a 1/1 creature can block a 2/2 creature with menace if it attacks, but only together with another of your creatures (menace, 702.111b)."
+],
+"cite": [
+"702.111b"
+]
+},
+{
+"id": "says-sac-dies-opponents-lose-2",
+"text": "i sacrifice a creature that says when this creature dies each opponent loses 2 life, they are at 2, do they lose",
+"expect": [
+"opponent loses 2 life.",
+"opponent loses the game.",
+"Yes: opponent has lost the game."
+]
+},
+{
+"id": "trample-4-4-into-1-1-damage",
+"text": "i have a 4/4 with trample and they block with a 1/1, how much damage do they take",
+"expect": [
+"opponent takes 3 damage.",
+"Yes: opponent takes 3 damage in all."
+]
+},
+{
+"id": "says-destroy-artifact-on-creature",
+"text": "they cast a spell that says destroy target artifact on my creature, can they",
+"expect": [
+"a spell that says \"destroy target artifact\" can't target a creature (not an artifact)."
+]
+},
+{
+"id": "says-draw-three-two-in-library",
+"text": "i cast a spell that says draw three cards, i have 2 cards in library, what happens",
+"expect": [
+"You draw 2 cards and can't draw the rest (empty library).",
+"You lose the game (drew from an empty library)."
+]
+},
+{
+"id": "says-cast-trigger-draw-two-spells",
+"text": "i have an enchantment that says whenever you cast a spell draw a card, i cast two spells, how many do i draw",
+"expect": [
+"Yes: You draw 2 cards in all."
+]
+},
+{
+"id": "says-discard-two-with-one",
+"text": "they cast a spell that says target player discards two cards, i have 1 card, what happens",
+"expect": [
+"You discard 1 card (1 → 0 in hand)."
+]
+},
+{
+"id": "says-destroy-flyer-on-ground",
+"text": "i cast a spell that says destroy target creature with flying on their 2/2 without flying, can i",
+"expect": [
+"a spell that says \"destroy target creature with flying\" can't target a 2/2 creature (not a creature with flying)."
+]
 }
 ]

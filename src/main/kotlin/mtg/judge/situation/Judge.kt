@@ -474,7 +474,13 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 }
                 if (e.to == "spellCost") { state.outcomes += engine.spellCost(e.obj ?: e.card?.name?.let { n -> state.objects.values.lastOrNull { it.def.name.equals(n, true) }?.id } ?: throw JudgeException("ask needs an object")); return }
                 if (e.to == "identity") { val o = state.obj(e.obj ?: throw JudgeException("ask needs an object")); val where = o.zone.name.lowercase().replace('_', ' '); state.outcomes += "It's ${o.def.name} in ${if (o.zone == Zone.HAND) "${state.player(o.controller).possessive} hand" else where}${if (state.trace.steps.any { it.text.contains("stops being a copy") || it.text.contains("was a copy of") }) ": a copy effect lasts only while the permanent is on the battlefield (400.7)" else ""}."; return }
-                if (e.to?.startsWith("text:") == true) { state.outcomes += e.to.removePrefix("text:"); return }
+                if (e.to?.startsWith("text:") == true) {
+                    val text = e.to.removePrefix("text:"); state.outcomes += text
+                    // The rules the answer quotes are its citations, so they are listed and checked like any step's.
+                    val quoted = Regex("""\b(\d{3}\.\d+[a-z]?)\b""").findAll(text).map { it.groupValues[1] }.distinct().toList()
+                    if (quoted.isNotEmpty()) state.trace.step("The question is answered from the rules themselves: ${quoted.joinToString(", ")}.", *quoted.toTypedArray())
+                    return
+                }
                 if (e.to == "playerGain" || e.to == "playerLost") {
                     val p = state.player(e.player ?: "me"); val subj = Regex.escape(p.subject)
                     val gain = e.to == "playerGain"
@@ -644,6 +650,7 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                                 (if (state.hasKeyword(att, "menace") && state.objects.values.count { b -> b.isOnBattlefield() && b.controller == o.controller && (b.def.isCreature || b.animatedAs != null) && b.tapped != true } < 2) "No: ${att.name} has menace and can't be blocked except by two or more creatures, and ${o.name} is the only creature that could block it (702.110b)." else null)
                                     ?: engine.cantBlockWhy(att, o)?.let { (why, rules, out) -> state.trace.step(why, *rules.toTypedArray()); "No: $out" }
                                     ?: engine.cantWhy(o.id, e.to)?.let { why -> "No: ${o.name} can't block (${if (why == o.name) "its own ability" else why} says so)." }
+                                    ?: (if (state.hasKeyword(att, "menace")) { state.trace.step("${att.name} has menace: it can't be blocked except by two or more creatures, so ${o.name} can block it only together with another creature.", "702.111b"); "Yes: ${o.name} can block ${att.name} if it attacks, but only together with another of your creatures (menace, 702.111b)." } else null)
                                     ?: "Yes: ${o.name} can block ${att.name} if it attacks."
                             }
                         else -> engine.cantWhy(o.id, e.to)?.let { why -> "No: ${o.name} can't ${e.to} (${if (why == o.name) "its own ability" else why} says so)." }
