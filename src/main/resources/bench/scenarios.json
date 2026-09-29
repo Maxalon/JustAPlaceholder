@@ -16337,7 +16337,7 @@
     "id": "rhystic-three-unpaid",
     "text": "I control Rhystic Study. My opponent casts three spells and never pays. How many cards do I draw?",
     "expect": [
-      "Yes: You draw 3 cards in all."
+      "You draw 3 cards in all."
     ],
     "notExpect": [
       "Not understood"
@@ -16694,7 +16694,7 @@
     "id": "two-rhystic-studies-how-many-cards",
     "text": "I control two Rhystic Studies. My opponent casts a spell and doesn't pay. How many cards?",
     "expect": [
-      "Yes: You draw 2 cards in all."
+      "You draw 2 cards in all."
     ],
     "notExpect": [
       "Not understood"
@@ -17879,7 +17879,7 @@
     "text": "I control Consecrated Sphinx and my opponent draws for their turn. How many cards do I draw?",
     "expect": [
       "You draw 2 cards.",
-      "Yes: You draw 2 cards in all."
+      "You draw 2 cards in all."
     ],
     "notExpect": [
       "Not understood"
@@ -18149,7 +18149,7 @@
     "text": "I cast Ephemerate on my Mulldrifter. How many cards do I draw?",
     "expect": [
       "You draw 2 cards.",
-      "Yes: You draw 2 cards in all."
+      "You draw 2 cards in all."
     ],
     "notExpect": [
       "Not understood"
@@ -18820,7 +18820,7 @@
     "text": "I control two Mentor of the Meek and cast a 1/1. How many cards can I draw?",
     "expect": [
       "You draw 1 card. (×2)",
-      "Yes: You draw 2 cards in all."
+      "You draw 2 cards in all."
     ],
     "notExpect": [
       "Not understood"
@@ -19906,7 +19906,7 @@
     "text": "i have a card that says whenever a creature dies draw a card, they wrath with 3 creatures on my board, how many do i draw",
     "expect": [
       "You draw 1 card. (×3)",
-      "Yes: You draw 3 cards in all."
+      "You draw 3 cards in all."
     ]
   },
   {
@@ -20058,7 +20058,7 @@
     "text": "i have an enchantment that says whenever you gain life draw a card, i gain 3 life from one source, how many do i draw",
     "expect": [
       "You draw 1 card.",
-      "Yes: You draw 1 card in all."
+      "You draw 1 card in all."
     ]
   },
   {
@@ -20750,7 +20750,7 @@
     "id": "says-cast-trigger-draw-two-spells",
     "text": "i have an enchantment that says whenever you cast a spell draw a card, i cast two spells, how many do i draw",
     "expect": [
-      "Yes: You draw 2 cards in all."
+      "You draw 2 cards in all."
     ]
   },
   {
@@ -21142,7 +21142,7 @@
     "text": "my opponent has a creature that says whenever an opponent casts a spell you draw a card, i cast two spells, how many do they draw",
     "expect": [
       "opponent draws 1 card. (×2)",
-      "Yes: opponent draws 2 cards in all."
+      "opponent draws 2 cards in all."
     ]
   },
   {
@@ -21528,7 +21528,7 @@
     "text": "i have a creature that says whenever a creature you control dies draw a card, i block their 5/5 with two 1/1s, how many cards do i draw",
     "expect": [
       "a 1/1 creature: the battlefield → your graveyard. (×2)",
-      "Yes: You draw 2 cards in all."
+      "You draw 2 cards in all."
     ]
   },
   {
@@ -22153,7 +22153,7 @@
     "text": "i cast a spell that says draw a card for each creature you control, i have 3 creatures, how many cards do i draw",
     "expect": [
       "You draw 3 cards.",
-      "Yes: You draw 3 cards in all."
+      "You draw 3 cards in all."
     ],
     "notExpect": [
       "not tracked"
@@ -22345,7 +22345,7 @@
     "id": "said-dies-draw-wrath-three",
     "text": "i have a creature that says whenever a creature you control dies, draw a card, i have two other creatures, they cast a spell that says destroy all creatures, how many cards do i draw",
     "expect": [
-      "Yes: You draw 3 cards in all."
+      "You draw 3 cards in all."
     ],
     "cite": [
       "603.10a"
@@ -22946,7 +22946,7 @@
     "text": "i control a creature that says whenever you gain life, draw a card, and a creature with lifelink, my lifelinker deals 3 damage, how many cards do i draw",
     "expect": [
       "You gain 3 life.",
-      "Yes: You draw 1 card in all."
+      "You draw 1 card in all."
     ]
   },
   {
@@ -23797,6 +23797,101 @@
     "expect": [
       "Fireball costs {X}{R} — 4 mana. Nothing on the battlefield changes it.",
       "opponent loses the game."
+    ]
+  },
+  {
+    "id": "rancor-when-bears-doom-bladed",
+    "text": "I have Grizzly Bears enchanted with Rancor. They Doom Blade it. Where does Rancor go?",
+    "expect": [
+      "Rancor: the battlefield → your graveyard.",
+      "Rancor: your graveyard → your hand."
+    ],
+    "cite": [
+      "704.5m"
+    ]
+  },
+  {
+    "id": "giant-growth-vs-0-4-wall-after-block",
+    "text": "I attack with a 2/2 and they block with a 0/4 wall. Then I Giant Growth my creature. Does the wall die?",
+    "expect": [
+      "Yes: a 0/4 wall creature died (it's in the graveyard)."
+    ]
+  },
+  {
+    "id": "hymn-three-cards-how-many-do-i-keep",
+    "text": "They cast Hymn to Tourach on me. I have 3 cards. How many do I keep?",
+    "expect": [
+      "You discard 2 cards (3 → 1 in hand).",
+      "You have 1 card in hand."
+    ]
+  },
+  {
+    "id": "teferi-time-raveler-vs-counterspell-on-my-turn",
+    "text": "I control Teferi, Time Raveler. They try to cast Counterspell on my turn. Can they?",
+    "expect": [
+      "Counterspell can't be cast (Teferi, Time Raveler: sorcery speed only)."
+    ]
+  },
+  {
+    "id": "meddling-mage-naming-bolt",
+    "text": "I have Meddling Mage naming Lightning Bolt. They cast Lightning Bolt. What happens?",
+    "expect": [
+      "Lightning Bolt can't be cast (Meddling Mage names it)."
+    ]
+  },
+  {
+    "id": "unsummon-my-blocked-attacker-takes-no-damage",
+    "text": "I have a 2/2 and cast Unsummon on it during their combat after they block it. Does my creature take damage?",
+    "expect": [
+      "a 2/2 creature: the battlefield → your hand.",
+      "No: a 2/2 creature wasn't dealt any damage."
+    ]
+  },
+  {
+    "id": "brainstorm-with-2-cards-how-many-after",
+    "text": "I cast Brainstorm with 2 cards in hand. How many cards do I have after?",
+    "expect": [
+      "You draw 3 cards.",
+      "You have 3 cards in hand."
+    ]
+  },
+  {
+    "id": "pacifism-can-it-still-block",
+    "text": "They have a 5/5 and I cast Pacifism on it. Can it still block?",
+    "expect": [
+      "No: a 5/5 creature can't block (Pacifism says so). (×2)"
+    ]
+  },
+  {
+    "id": "torpor-orb-vs-snapcaster",
+    "text": "I control Torpor Orb and cast Snapcaster Mage. Does its ability trigger?",
+    "expect": [
+      "No: Torpor Orb stops it. Snapcaster Mage entering doesn't cause any ability to trigger, its own included."
+    ]
+  },
+  {
+    "id": "mind-twist-for-3-with-2-cards",
+    "text": "They cast Mind Twist for 3. I have 2 cards in hand. What happens?",
+    "expect": [
+      "You discard 2 cards (2 → 0 in hand)."
+    ]
+  },
+  {
+    "id": "1-1-vs-1-1-first-strike-who-dies",
+    "text": "I have a 1/1 and they have a 1/1 with first strike. I attack and they block. Who dies?",
+    "expect": [
+      "Yes: a 1/1 creature died (it's in the graveyard).",
+      "No: a 1/1 creature with first strike is still on the battlefield."
+    ],
+    "cite": [
+      "702.7b"
+    ]
+  },
+  {
+    "id": "sylvan-library-how-many-in-draw-step",
+    "text": "I have Sylvan Library. How many cards do I draw in my draw step?",
+    "expect": [
+      "You draw 3 cards in all."
     ]
   }
 ]

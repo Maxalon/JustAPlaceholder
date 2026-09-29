@@ -578,6 +578,8 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""\bcan (they|i|we|he|she) block (?:with )?(it|that|my creature|their creature|(?:my |their |the )?c\d+|(?:my |their |the )?\d+/\d+) and (?:still |also |then )?attack(?: with it| with that)? (?:next turn|on (?:their|my|his|her) (?:next )?turn|the next turn)\b""", RegexOption.IGNORE_CASE), "$1 block with $2, can $1 attack with it next turn")
             // "can it attack and still block on their turn?": one question about the creature staying untapped, kept in one clause.
         t2 = t2.replace(Regex("""\bcan (it|that|(?:my |the )?c\d+|my \d+/\d+) (?:attack|swing) and (?:still |also |then )?block(?: on their (?:next )?turn| next turn| later| on the (?:next|following) turn| when they (?:attack|swing)(?: back)?| during their turn)?(?=\?|$|,)""", RegexOption.IGNORE_CASE), "can $1 attackthenblock")
+            // "I have a 2/2 and cast Unsummon on it during their combat after they block it": the attack, the block, then the spell.
+        t2 = t2.replace(Regex("""\b((?:cast|play) c\d+ on (?:it|that|my creature|my \d+/\d+)) (?:during (?:their|my|the) combat |in combat )?after (?:they|he|she|my opponent) blocks? (?:it|that)\b""", RegexOption.IGNORE_CASE), "attack with it, they block it, and $1")
             // "how much mana do I need (for it)?": the cost of the spell just cast.
         t2 = t2.replace(Regex("""\bhow much (?:mana )?(?:do|would|will) (?:i|we) need(?: for (?:it|that|this)| to cast (?:it|that|this)| to pay for (?:it|that)| in (?:total|all))?(?=\?|$)""", RegexOption.IGNORE_CASE), "how much does it cost")
             // "a spell that costs 3": a 3 mana spell.
@@ -2645,7 +2647,7 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:(?:does|do|did|will|would) (i|we|they|he|she|my opponent|the opponent|opponent|@\w+) (?:still |even |actually )?draw(?: any(?: cards?)?| a card| cards| anything)?|how many cards? (?:do|does|did|will|would|can|could|may) (i|we|they|he|she|my opponent|the opponent|opponent|@\w+) draw|how many cards?(?: in (?:all|total))?)$""").find(clause0)?.let { q ->
             val w = q.groupValues[1].ifEmpty { q.groupValues[2] }.ifEmpty { "i" }
             val who = when (w) { "i", "we" -> "me"; else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w.substringAfterLast(' ')) }
-            ctx.asks += EventSpec("ask", player = who, to = "playerDraw"); ctx.note(who)
+            ctx.asks += EventSpec("ask", player = who, to = if (clause0.startsWith("how many")) "drawCount" else "playerDraw"); ctx.note(who)
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "Does damage go through?" after a block: what the defending player takes.
@@ -3120,8 +3122,8 @@ class SituationParser(private val names: NameIndex) {
             ctx.asks += EventSpec("ask", card = CardRef(name = name), player = "me", to = "hitsOwn"); return true
         }
         // "What's my hand size after?": the cards in hand once everything is done.
-        Regex("""^what(?:'s| is| will be) (my|their|his|her) hand size(?: after(?: that| this)?| now| then| afterwards)?$|^how many cards (?:do|does|will|would) (i|we|they|he|she|my opponent|the opponent) (?:have|hold|end up with|be holding)(?: in (?:my |their |his |her )?hand)?(?: after(?: that| this)?| now| then| afterwards| at the end| left)?$""").find(clause0)?.let { r ->
-            val w = r.groupValues[1].ifEmpty { r.groupValues[2] }
+        Regex("""^what(?:'s| is| will be) (my|their|his|her) hand size(?: after(?: that| this)?| now| then| afterwards)?$|^how many (?:cards )?(?:do|does|will|would) (i|we|they|he|she|my opponent|the opponent) (?:keep|get to keep|have left|still have|hold on to)(?: in (?:my |their |his |her )?hand)?$|^how many cards (?:do|does|will|would) (i|we|they|he|she|my opponent|the opponent) (?:have|hold|end up with|be holding)(?: in (?:my |their |his |her )?hand)?(?: after(?: that| this)?| now| then| afterwards| at the end| left)?$""").find(clause0)?.let { r ->
+            val w = r.groupValues[1].ifEmpty { r.groupValues[2] }.ifEmpty { r.groupValues[3] }
             val who = if (w in setOf("my", "i", "we")) "me" else ctx.other("me") ?: "opp"
             ctx.asks += EventSpec("ask", player = who, to = "count:cards in hand"); ctx.note(who); return true
         }
@@ -7212,7 +7214,10 @@ class SituationParser(private val names: NameIndex) {
             val blocks = ctx.events.filter { it.verb == "block" }
             // "Who wins?" after a block is about the two creatures too, not about who is still in the game.
             if (blocks.isNotEmpty()) {
-                val ids = (blocks.mapNotNull { it.obj } + blocks.mapNotNull { it.targets.firstOrNull() }).distinct().filter { it in ctx.objects }
+                // "I attack and they block. Who dies?": a block with no attacker named is of whatever attacked.
+                val attackers = if (blocks.any { it.targets.isEmpty() }) ctx.events.filter { it.verb == "attack" }.mapNotNull { it.obj } +
+                    ctx.events.filter { it.verb == "attackAll" }.flatMap { a -> ctx.objects.values.filter { it.controller == a.player && it.zone == "battlefield" && isCreatureName(it.card.name) }.map { it.id } } else emptyList()
+                val ids = (blocks.mapNotNull { it.obj } + blocks.mapNotNull { it.targets.firstOrNull() } + attackers).distinct().filter { it in ctx.objects }
                 if (ids.isNotEmpty()) {
                     for (id in ids) ctx.asks += EventSpec("ask", obj = id, to = if (to == "playerDie") "die" else "survive")
                     ctx.notes += "\"${restore(clause0, m)}?\" is answered for each creature in that combat in the outcome below."
@@ -7254,7 +7259,7 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:(?:does|do|did|will|would) (i|we|they|he|she|my opponent|the opponent|opponent|@\w+) (?:still |even |actually )?draw(?: any(?: cards?)?| a card| cards| anything)?|how many cards? (?:do|does|did|will|would|can|could|may) (i|we|they|he|she|my opponent|the opponent|opponent|@\w+) draw|how many cards?(?: in (?:all|total))?)$""").find(clause0)?.let { q ->
             val w = q.groupValues[1].ifEmpty { q.groupValues[2] }.ifEmpty { "i" }
             val who = when (w) { "i", "we" -> "me"; else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w.substringAfterLast(' ')) }
-            ctx.asks += EventSpec("ask", player = who, to = "playerDraw"); ctx.note(who)
+            ctx.asks += EventSpec("ask", player = who, to = if (clause0.startsWith("how many")) "drawCount" else "playerDraw"); ctx.note(who)
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "what's their life total?" / "how much life do I have left?" / "what am I at?"
