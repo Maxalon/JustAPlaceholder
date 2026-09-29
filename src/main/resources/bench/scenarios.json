@@ -22990,5 +22990,112 @@
     "cite": [
       "509.1b"
     ]
+  },
+  {
+    "id": "flier-vs-flier-can-they-block",
+    "text": "i have a 2/2 with flying and they have a 2/2 with flying, i attack, can they block",
+    "expect": [
+      "Yes: a 2/2 creature with flying can block, and did (above)."
+    ]
+  },
+  {
+    "id": "said-dealt-damage-that-much-to-you",
+    "text": "they have a creature that says whenever this creature is dealt damage, it deals that much damage to you, i cast a spell that says deal 3 damage to any target on it, what happens",
+    "expect": [
+      "opponent takes 3 damage."
+    ],
+    "notExpect": [
+      "not modeled"
+    ]
+  },
+  {
+    "id": "said-plus-1-0-per-other-and-two-others",
+    "text": "i control a creature that says this creature gets +1/+0 for each other creature you control and 2 other creatures, it's a 1/1, i attack with it, how much damage do they take",
+    "expect": [
+      "Yes: opponent takes 3 damage in all."
+    ]
+  },
+  {
+    "id": "said-each-creature-1-damage-to-controller",
+    "text": "my opponent casts a spell that says each creature deals 1 damage to its controller, i have 3 creatures, how much do i lose",
+    "expect": [
+      "You take 1 damage. (×3)"
+    ],
+    "notExpect": [
+      "not modeled"
+    ]
+  },
+  {
+    "id": "vigilance-attack-then-they-attack-block",
+    "text": "i have a creature with vigilance and lifelink, i attack with it and they don't block, then they attack me, can i block with it",
+    "expect": [
+      "Yes: a creature with vigilance, lifelink can block, and did (above)."
+    ],
+    "notExpect": [
+      "doesn't control it"
+    ]
+  },
+  {
+    "id": "said-cant-be-regenerated-vs-regenerate-ability",
+    "text": "they cast a spell that says target creature can't be regenerated this turn and destroy it on my creature that says regenerate this creature: pay 2, what happens",
+    "expect": [
+      "a creature that says \"regenerate this creature: pay 2\": the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "not modeled"
+    ]
+  },
+  {
+    "id": "said-blocks-plus-0-3-survives",
+    "text": "i have a creature that says whenever this creature blocks, it gets +0/+3 until end of turn, it's a 2/2, i block a 4/4, does it survive",
+    "expect": [
+      "a 2/2 creature that says \"whenever this creature blocks, it gets +0/+3 until end of turn\" is 2/5 until end of turn.",
+      "Yes: a 2/2 creature that says \"whenever this creature blocks, it gets +0/+3 until end of turn\" is still on the battlefield."
+    ]
+  },
+  {
+    "id": "shield-counter-vs-destroy",
+    "text": "they have a creature with a shield counter and i cast a spell that says destroy target creature on it, what happens",
+    "expect": [
+      "a creature loses a shield counter instead of being destroyed."
+    ],
+    "cite": [
+      "122.1c"
+    ]
+  },
+  {
+    "id": "said-lose-life-equal-hand",
+    "text": "i cast a spell that says target player loses life equal to the number of cards in their hand on them, they have 4 cards, i'm at 3 and they're at 4, what happens",
+    "expect": [
+      "opponent loses 4 life.",
+      "opponent loses the game."
+    ],
+    "notExpect": [
+      "not modeled"
+    ]
+  },
+  {
+    "id": "double-power-twice-on-1-1",
+    "text": "i have a 1/1 and cast a spell that says double target creature's power until end of turn on it twice, how big is it",
+    "expect": [
+      "a 1/1 creature is 4/1 (1/1 base, +3/+0 until end of turn)."
+    ]
+  },
+  {
+    "id": "block-one-take-other-at-3",
+    "text": "they attack with a 3/3 and a 3/3 and i have a 5/5, i block one and take the other, i'm at 3, do i die",
+    "expect": [
+      "Yes: You have lost the game."
+    ],
+    "cite": [
+      "704.5a"
+    ]
+  },
+  {
+    "id": "your-upkeep-triggers-whose-first",
+    "text": "i have a creature that says at the beginning of your upkeep, draw a card, and my opponent has one that says the same, whose triggers first on my turn",
+    "expect": [
+      "They don't trigger at the same time. \"At the beginning of your upkeep\" means the upkeep of the permanent's controller (109.5), so each ability triggers only on its controller's turn. On your turn only your ability triggers; the other triggers on its controller's own upkeep. If two abilities did trigger at once, they would go on the stack in APNAP order: the active player's first, so the other player's would resolve first (603.3b)."
+    ]
   }
 ]

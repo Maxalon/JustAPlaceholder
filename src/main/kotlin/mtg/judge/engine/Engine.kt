@@ -1011,7 +1011,7 @@ class Engine(val state: GameState) {
 
     private fun targetsAPlayer(e: Effect): Boolean = when (e) {
         is Effect.Draw -> e.who == Who.TARGET_PLAYER; is Effect.GainLife -> e.who == Who.TARGET_PLAYER; is Effect.LoseLife -> e.who == Who.TARGET_PLAYER; is Effect.DamagePlayer -> e.who == Who.TARGET_PLAYER; is Effect.NarratedTargeted -> e.text.startsWith("target opponent", ignoreCase = true) || Kind.PLAYER in e.target.filter.kinds
-        is Effect.CantCastThisTurn -> e.who == Who.TARGET_PLAYER; is Effect.CreateToken -> e.who == Who.TARGET_PLAYER; is Effect.Discard -> e.who == Who.TARGET_PLAYER; is Effect.DiscardChosen -> e.who == Who.TARGET_PLAYER; is Effect.DiscardNamed -> e.who == Who.TARGET_PLAYER; is Effect.Mill -> e.who == Who.TARGET_PLAYER; is Effect.ExileGraveyard -> e.who == Who.TARGET_PLAYER; is Effect.SacrificeEach -> e.who == Who.TARGET_PLAYER; is Effect.LoseLifeThatMuch -> e.who == Who.TARGET_PLAYER
+        is Effect.CantCastThisTurn -> e.who == Who.TARGET_PLAYER; is Effect.CreateToken -> e.who == Who.TARGET_PLAYER; is Effect.Discard -> e.who == Who.TARGET_PLAYER; is Effect.DiscardChosen -> e.who == Who.TARGET_PLAYER; is Effect.DiscardNamed -> e.who == Who.TARGET_PLAYER; is Effect.Mill -> e.who == Who.TARGET_PLAYER; is Effect.ExileGraveyard -> e.who == Who.TARGET_PLAYER; is Effect.SacrificeEach -> e.who == Who.TARGET_PLAYER; is Effect.LoseLifeThatMuch -> e.who == Who.TARGET_PLAYER; is Effect.LoseLifeEqual -> e.who == Who.TARGET_PLAYER
         is Effect.Seq -> e.effects.any { targetsAPlayer(it) }; is Effect.May -> targetsAPlayer(e.effect); is Effect.UnlessPays -> targetsAPlayer(e.effect); is Effect.Modal -> e.modes.any { targetsAPlayer(it) }
         is Effect.Narrated -> e.text.startsWith("target player", ignoreCase = true); else -> false
     }
@@ -2053,7 +2053,7 @@ class Engine(val state: GameState) {
     private fun applyEffect(effect: Effect, item: StackItem) {
         val you = state.player(item.controller)
         when (effect) {
-            is Effect.DamageCausing, is Effect.DoublePower, is Effect.PumpCount, is Effect.LoseHalfLife, is Effect.ExileUntilLeaves, is Effect.SacrificeTarget, is Effect.GainLifeEqualTo, is Effect.FreezeUntap, is Effect.RemoveCounters, is Effect.SetBasePtTarget -> applyEffectMore(effect, item)
+            is Effect.DamageCausing, is Effect.DoublePower, is Effect.PumpCount, is Effect.LoseHalfLife, is Effect.ExileUntilLeaves, is Effect.SacrificeTarget, is Effect.GainLifeEqualTo, is Effect.FreezeUntap, is Effect.RemoveCounters, is Effect.SetBasePtTarget, is Effect.LoseLifeEqual -> applyEffectMore(effect, item)
             is Effect.Seq -> effect.effects.forEach { applyEffect(it, item) }
             is Effect.CantCastThisTurn -> {
                 val who = when (effect.who) {
@@ -2219,6 +2219,12 @@ class Engine(val state: GameState) {
                 val n = item.causedAmount ?: run { state.unsupported += Unsupported(item.describe, "\"That much\" refers to an amount the engine didn't record."); return }
                 trace.step("\"That much\" is $n \u2014 the damage the trigger was about.", "608.2h")
                 forEachLegalTarget(item, effect.target) { applyDamage(item.source.name, it, n) }
+            }
+            // "Whenever ~ is dealt damage, it deals that much damage to you": "you" is the source's controller.
+            is Effect.DamageThatMuchTo -> {
+                val n = item.causedAmount ?: run { state.unsupported += Unsupported(item.describe, "\"That much\" refers to an amount the engine didn't record."); return }
+                trace.step("\"That much\" is $n \u2014 the damage the trigger was about.", "608.2h")
+                for (p in resolvePlayers(effect.who, item)) applyDamage(item.source.name, Ref.Player(p.id), n, item.source)
             }
             is Effect.Proliferate -> proliferate(item.controller)
             is Effect.ForAllTargeted -> forEachLegalTarget(item, effect.target) { ref ->
@@ -3159,7 +3165,18 @@ class Engine(val state: GameState) {
                     "damage" -> { applyDamage(item.source.name, Ref.Obj(o.id), effect.amount, item.source); item.damaged += o.id }
                     // "Each creature deals damage to itself equal to its power": its own power, as a source of damage to itself.
                     "selfdamage" -> { val n = o.power ?: 0; if (n > 0) applyDamage(o.name, Ref.Obj(o.id), n, o) else trace.step("${o.name} has power $n, so it deals no damage to itself.", "120.1") }
+                    // "Each creature deals 1 damage to its controller."
+                    "controllerdamage" -> applyDamage(o.name, Ref.Player(o.controller), effect.amount, o)
                 } } finally { leavingTogether = emptySet() }
+            }
+            is Effect.LoseLifeEqual -> for (p in resolvePlayers(effect.who, item)) {
+                val n = when (val c = effect.count) {
+                    is CountExpr.CardsInHand -> (p.handSize ?: state.objects.values.count { it.zone == Zone.HAND && it.controller == p.id }).also { trace.step("${p.subject} ${p.v("has", "have")} $it card${if (it == 1) "" else "s"} in hand.", "608.2h") }
+                    is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, p.id) }
+                    is CountExpr.YourLifeTotal -> p.life ?: 0
+                    else -> { state.unsupported += Unsupported(item.describe, "Couldn't count what the life loss depends on."); continue }
+                }
+                loseLifeEvent(p.id, n)
             }
             is Effect.Draw -> {
                 val players = resolvePlayers(effect.who, item)
@@ -3382,6 +3399,13 @@ class Engine(val state: GameState) {
     /** Destruction with regeneration (701.19a, 614.8): returns true if the destruction was replaced. */
     private fun destroy(obj: GameObject, text: String, vararg rules: String, canRegenerate: Boolean = true): Boolean {
         if (obj.has("indestructible")) { trace.step("${obj.name} is indestructible and can't be destroyed.", "702.12b"); state.outcomes += "${obj.name} is indestructible and isn't destroyed."; return true }
+        // A shield counter: instead of being destroyed, the permanent loses a shield counter (122.1c).
+        if ((obj.counters["shield"] ?: 0) > 0) {
+            obj.counters["shield"] = (obj.counters["shield"] ?: 0) - 1
+            if ((obj.counters["shield"] ?: 0) <= 0) obj.counters.remove("shield")
+            trace.step("$text But ${obj.name} has a shield counter: instead of being destroyed, a shield counter is removed from it.", *rules, "122.1c")
+            state.outcomes += "${obj.name} loses a shield counter instead of being destroyed${(obj.counters["shield"] ?: 0).let { if (it > 0) " ($it left)" else "" }}."; return true
+        }
         val shield = state.shields.firstOrNull { it.replacement == Replacement.Regenerate && it.objectId == obj.id && (it.remaining ?: 0) > 0 }
         if (shield != null && !canRegenerate) { trace.step("${obj.name} has a regeneration shield, but the effect says it can't be regenerated, so the shield can't replace this destruction.", "701.19c", "614.8"); state.outcomes += "${obj.name}'s regeneration shield doesn't help: the effect says it can't be regenerated (701.19c)." }
         if (shield != null && canRegenerate) {
@@ -3497,6 +3521,12 @@ class Engine(val state: GameState) {
             trace.step("${p.subject} ${p.v("has", "have")} protection from everything, so the $amount damage $sourceName would deal to ${p.subject.lowercase()} is prevented.", "702.16e", "615.1")
             state.outcomes += "Damage to ${p.subject.lowercase()} from $sourceName is prevented (protection from everything)."; return 0
         }
+        // A shield counter: damage that would be dealt to the permanent is prevented and a shield counter is removed instead (122.1c).
+        if (target is Ref.Obj && amount > 0) state.objects[target.id]?.let { o -> if ((o.counters["shield"] ?: 0) > 0) {
+            o.counters["shield"] = (o.counters["shield"] ?: 0) - 1; if ((o.counters["shield"] ?: 0) <= 0) o.counters.remove("shield")
+            trace.step("${o.name} has a shield counter: the $amount damage $sourceName would deal to it is prevented and a shield counter is removed instead.", "122.1c")
+            state.outcomes += "Damage to ${o.name} from $sourceName is prevented; it loses a shield counter."; return 0
+        } }
         if (inCombatDamage && (source?.id in state.combatDamageMuted || (target as? Ref.Obj)?.id in state.combatDamageMuted)) {
             val who = if (source?.id in state.combatDamageMuted) source!!.name else state.nameOf(target)
             trace.step("All combat damage dealt to and by $who is prevented this turn (Maze of Ith-style effect), so the $amount combat damage ${if (source?.id in state.combatDamageMuted) "it would deal to ${state.nameOf(target)}" else "$sourceName would deal to it"} is prevented.", "615.1", "615.6")
@@ -4215,7 +4245,7 @@ class Engine(val state: GameState) {
         is Effect.SetBasePtTarget -> "${effect.target.raw}${if (effect.loseAbilities) " loses all abilities and" else ""} becomes ${effect.power}/${effect.toughness} until end of turn"; is Effect.PumpAll -> "${effect.filter.raw} get ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.SetBasePtAll -> "${effect.filter.raw} have base power and toughness ${if (effect.x) "X/X" else "${effect.power}/${effect.toughness}"} until end of turn"
         is Effect.PutCounters -> "put ${effect.count} ${effect.kind} counter(s) on ${effect.target?.raw ?: item.source.name}"; is Effect.RemoveAllCounters -> "remove all counters from ${effect.target.raw}"
         is Effect.AddMana -> "add ${effect.text}"; is Effect.AddManaPer -> "add ${effect.symbol} for each ${effect.filter.raw}"; is Effect.AddManaDevotion -> "choose a colour and add that much mana of it as your devotion to it"; is Effect.AddManaInstead -> "add ${effect.text} instead if you control ${effect.required.joinToString(" and ") { "an $it" }}"; is Effect.Narrated -> effect.text.replace("~", item.source.name).replaceFirstChar { it.lowercase() }
-        is Effect.ForAll -> if (effect.action == "selfdamage") "each ${effect.filter.raw} deals damage to itself equal to its power" else "${effect.action} ${if (effect.action == "damage") "${effect.amount} to " else ""}each ${effect.filter.raw}"
+        is Effect.DamageThatMuchTo -> "${item.source.name} deals that much damage to ${when (effect.who) { Who.YOU -> "you"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }}"; is Effect.LoseLifeEqual -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "you" }} loses life equal to ${when (val c = effect.count) { is CountExpr.CardsInHand -> "the number of cards in their hand"; is CountExpr.Permanents -> "the number of ${c.filter.raw}s"; else -> "that number" }}"; is Effect.ForAll -> if (effect.action == "selfdamage") "each ${effect.filter.raw} deals damage to itself equal to its power" else if (effect.action == "controllerdamage") "each ${effect.filter.raw} deals ${effect.amount} damage to its controller" else "${effect.action} ${if (effect.action == "damage") "${effect.amount} to " else ""}each ${effect.filter.raw}"
         is Effect.IfYouDo -> "${describe(effect.choice, item)}, and if so ${describe(effect.then, item)}"; is Effect.IfKicked -> "${describe(effect.otherwise, item)} (${describe(effect.then, item)} if kicked)"
         is Effect.IfCondition -> "if ${effect.raw}, ${describe(effect.then, item)}"
         is Effect.Attach -> "attach ${item.source.name} to ${effect.target.raw}"

@@ -799,12 +799,12 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                 engine.dealDamage(srcName, targets.firstOrNull() ?: throw JudgeException("damage needs a target"), e.amount ?: throw JudgeException("damage needs an amount"))
             }
             "statecheck" -> engine.stateBasedActions()
-            "attack" -> { val objId = e.obj ?: throw JudgeException("attack needs an object"); engine.declareAttacker(e.player ?: state.obj(objId).controller, objId, targets.firstOrNull() ?: Ref.Player(state.opponentsOf(state.obj(objId).controller).firstOrNull()?.id ?: throw JudgeException("no defending player"))) }
+            "attack" -> { val objId = e.obj ?: throw JudgeException("attack needs an object"); nextTurnIfOtherAttacks(e.player ?: state.obj(objId).controller, state, engine); engine.declareAttacker(e.player ?: state.obj(objId).controller, objId, targets.firstOrNull() ?: Ref.Player(state.opponentsOf(state.obj(objId).controller).firstOrNull()?.id ?: throw JudgeException("no defending player"))) }
             "block" -> { val objId = e.obj ?: throw JudgeException("block needs an object"); val att = (targets.firstOrNull() as? Ref.Obj)?.id ?: state.objects.values.lastOrNull { it.attacking != null }?.id ?: throw JudgeException("block needs the attacker"); engine.declareBlocker(e.player ?: state.obj(objId).controller, objId, att) }
             // The stack empties before attackers are declared. Without this a creature cast in the same breath
             // ("I cast Grizzly Bears and attack") was still on the stack, and the answer was that no creatures
             // of yours were described rather than that the one you cast is summoning sick.
-            "attackall" -> { val who = e.player ?: state.players.first().id; engine.emptyStackFirst("declaring attackers"); val def = targets.firstOrNull() ?: Ref.Player(state.opponentsOf(who).firstOrNull()?.id ?: throw JudgeException("no defending player")); val cs = state.objects.values.filter { it.controller == who && it.isOnBattlefield() && it.def.isCreature }; if (cs.isEmpty()) state.unsupported += mtg.judge.engine.Unsupported("attack", "${state.player(who).subject} said to attack with everything, but no creatures of ${if (state.player(who).you) "yours" else state.player(who).possessive} were described."); cs.forEach { engine.declareAttacker(who, it.id, def) } }
+            "attackall" -> { val who = e.player ?: state.players.first().id; nextTurnIfOtherAttacks(who, state, engine); engine.emptyStackFirst("declaring attackers"); val def = targets.firstOrNull() ?: Ref.Player(state.opponentsOf(who).firstOrNull()?.id ?: throw JudgeException("no defending player")); val cs = state.objects.values.filter { it.controller == who && it.isOnBattlefield() && it.def.isCreature }; if (cs.isEmpty()) state.unsupported += mtg.judge.engine.Unsupported("attack", "${state.player(who).subject} said to attack with everything, but no creatures of ${if (state.player(who).you) "yours" else state.player(who).possessive} were described."); cs.forEach { engine.declareAttacker(who, it.id, def) } }
             "combatdamage" -> engine.combatDamage()
             "step", "beginstep" -> {
                 // "they attack with a 2/2, then next turn …": the attack's combat damage is dealt before the turn moves on.
@@ -816,6 +816,20 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
         }
     }
 
+    /**
+     * "I attack with my 2/2, then they attack me": the second attack can only be on the other player's turn, so the
+     * earlier combat is finished and that player's turn begins before it is declared.
+     */
+    private fun nextTurnIfOtherAttacks(who: String, state: GameState, engine: Engine) {
+        val active = state.activePlayer ?: return
+        if (active == who) return
+        val earlier = state.combatDamageDealt || state.objects.values.any { it.attacking != null && it.controller != who }
+        if (!earlier) return
+        if (state.objects.values.any { it.isOnBattlefield() && it.attacking != null } && !state.combatDamageDealt) { engine.resolveAll(); engine.combatDamage() }
+        state.objects.values.forEach { it.attacking = null; it.blocking = null; it.alsoBlocking.clear() }; state.combatDamageDealt = false
+        state.assumptions += "${state.player(who).subject} attack${if (state.player(who).you) "" else "s"} after the earlier combat, so that is read as ${state.player(who).possessive} next turn."
+        engine.beginStep("untap", who); engine.beginStep("upkeep", who)
+    }
     /** The attacker a creature would be blocking: one attacking its controller, or a planeswalker they control. */
     /** "my 2/2 blocks their 2/2, who dies?": a permanent whose description another player's shares is named by whose it is. */
     private fun sideName(o: mtg.judge.engine.GameObject, state: GameState): String =

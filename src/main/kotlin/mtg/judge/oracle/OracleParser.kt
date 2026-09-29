@@ -1485,6 +1485,22 @@ object OracleParser {
             if (f.verifiable) return Effect.PutFromHand(f, null, tapped = m.groupValues[2].isNotEmpty(), fromGraveyard = true)
         }
         zurRe.matchEntire(s)?.let { m -> zurEffect(m)?.let { return it } }
+        // Boros Reckoner's cousin: "~ deals that much damage to you" / "to each opponent" / "to that player".
+        Regex("""^(?:~|it) deals that much damage to (you|each opponent|that player|its controller|that creature's controller)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            return Effect.DamageThatMuchTo(when (m.groupValues[1].lowercase()) { "you" -> Who.YOU; "each opponent" -> Who.EACH_OPPONENT; else -> Who.THAT_PLAYER })
+        }
+        // "Each creature deals 1 damage to its controller." / "Each creature deals damage equal to its power to its controller."
+        Regex("""^each (creature|creature without flying|creature with flying|nonblack creature) deals (\d+) damage to its controller\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val f = parseFilter(m.groupValues[1], Kind.CREATURE)
+            if (f.verifiable) return Effect.ForAll(f, "controllerdamage", m.groupValues[2].toInt())
+        }
+        // "Target player loses life equal to the number of cards in their hand."
+        Regex("""^(target player|target opponent|each opponent|each player|you) loses? life equal to the number of (cards? in (?:their|your) hand|creatures? (?:they|you) control|lands? (?:they|you) control)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val who = when (m.groupValues[1].lowercase()) { "target player", "target opponent" -> Who.TARGET_PLAYER; "each opponent" -> Who.EACH_OPPONENT; "each player" -> Who.EACH_PLAYER; else -> Who.YOU }
+            val what = m.groupValues[2].lowercase()
+            val count: CountExpr = if (what.startsWith("card")) CountExpr.CardsInHand(Who.THAT_PLAYER) else parseCount("the number of ${what.replace(Regex("""^(creature|land)s? (they|you) control"""), "$1s you control")}")
+            if (count !is CountExpr.Unknown) return Effect.LoseLifeEqual(who, count)
+        }
         // "Each creature deals damage to itself equal to its power."
         Regex("""^each (creature|creature without flying|creature with flying|nonblack creature|nonwhite creature) deals damage to itself equal to its power\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             val f = parseFilter(m.groupValues[1], Kind.CREATURE)

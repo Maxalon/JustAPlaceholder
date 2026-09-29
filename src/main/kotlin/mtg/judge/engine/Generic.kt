@@ -60,6 +60,8 @@ object Generic {
             val self = if (kind == "creature") "this creature" else "this permanent"
             var t = raw.replace(Regex("""^(when(?:ever)?) it\b"""), "$1 $self").replace(Regex("""^it (can't|can|has|gets|deals|doesn't)\b"""), "${self.replaceFirstChar { c -> c.uppercase() }} $1")
             t = t.replace(Regex("""\bon it$"""), "on $self").replace(Regex("""^tap[:,]? (.+)$"""), "{T}: $1")
+            // "regenerate this creature: pay 2" / "pay 2: regenerate this creature": the card writes "{2}: Regenerate ~."
+            t = t.replace(Regex("""^regenerate (?:this creature|it|this permanent)[:,]? (?:pay )?(\d+)(?: mana)?$""", RegexOption.IGNORE_CASE), "{$1}: Regenerate $self").replace(Regex("""^(?:pay )?(\d+)(?: mana)?: regenerate (?:this creature|it|this permanent)$""", RegexOption.IGNORE_CASE), "{$1}: Regenerate $self")
             // "when this creature dies, return it to the battlefield": "it" is this creature, back from the graveyard.
             t = t.replace(Regex("""^(when(?:ever)? $self dies,? )return it to the battlefield(?: under (?:its owner's|your) control)?$""", RegexOption.IGNORE_CASE), "$1return $self from your graveyard to the battlefield")
             // "it enters with two +1/+1 counters": in card wording.
@@ -115,6 +117,9 @@ object Generic {
             val text0 = m.groupValues[3].replace('_', ' ').trim().trim('"').replace(Regex("""\.?\s*this spell is (white|blue|black|red|green|colorless)\.?$""")) { w -> color = when (w.groupValues[1]) { "white" -> "W"; "blue" -> "U"; "black" -> "B"; "red" -> "R"; "green" -> "G"; else -> "" }; "" }
                 .replace(Regex("""\s+for (\d+) mana$""")) { w -> cost = w.groupValues[1].toInt(); "" }
                 .replace(Regex("""^exile all cards from target player's graveyard$"""), "exile target player's graveyard")
+                // "target creature can't be regenerated this turn and destroy it": the card's order and sentences.
+                .replace(Regex("""^target creature can't be regenerated this turn and destroy it$"""), "destroy target creature. it can't be regenerated")
+                .replace(Regex("""^destroy target creature and it can't be regenerated this turn$"""), "destroy target creature. it can't be regenerated")
                 // "counter target spell unless its controller pays 3": the card writes the mana as a symbol.
                 .replace(Regex("""unless (its controller|that player|they) pays? (\d+)(?=[.,]|$)""")) { w -> "unless ${w.groupValues[1]} pays {${w.groupValues[2]}}" }
                 // "deal 3 damage to any target": the card says "~ deals".
