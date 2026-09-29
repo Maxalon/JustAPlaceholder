@@ -23893,5 +23893,95 @@
     "expect": [
       "You draw 3 cards in all."
     ]
+  },
+  {
+    "id": "bolt-vs-healing-salve-at-3-life",
+    "text": "I cast Lightning Bolt at them and they respond with Healing Salve gaining 3 life. They were at 3. Do they die?",
+    "expect": [
+      "opponent gains 3 life.",
+      "opponent takes 3 damage.",
+      "No: opponent is still in the game."
+    ]
+  },
+  {
+    "id": "tragic-slip-without-morbid-on-bears",
+    "text": "I have Grizzly Bears. They cast Tragic Slip on it without morbid. Does it die?",
+    "expect": [
+      "Grizzly Bears is 1/1 until end of turn.",
+      "No: Grizzly Bears is still on the battlefield."
+    ]
+  },
+  {
+    "id": "three-1-1-tokens-attack-how-much",
+    "text": "I attack with three 1/1 tokens. They have a 2/2. How much damage do they take?",
+    "expect": [
+      "Yes: opponent takes 3 damage in all."
+    ]
+  },
+  {
+    "id": "overrun-two-creatures-no-blockers",
+    "text": "I have two creatures and cast Overrun. I attack with both. They have no blockers. How much damage?",
+    "expect": [
+      "a creature is 4/4 with trample until end of turn. (×2)",
+      "opponent takes 4 damage. (×2)"
+    ]
+  },
+  {
+    "id": "menace-2-2-vs-one-creature-can-i-block",
+    "text": "They attack me with a 2/2 with menace. I have one creature. Can I block?",
+    "expect": [
+      "No: a 2/2 creature with menace has menace and can't be blocked except by two or more creatures, and a creature is the only one that could (702.111b)."
+    ],
+    "cite": [
+      "702.111b"
+    ]
+  },
+  {
+    "id": "fog-does-not-save-from-lava-spike",
+    "text": "I'm at 2 life and they cast Lava Spike. I have Fog. Does Fog save me?",
+    "expect": [
+      "Fog doesn't stop Lava Spike's damage: it prevents only combat damage.",
+      "No: You have lost the game."
+    ],
+    "cite": [
+      "615.1"
+    ]
+  },
+  {
+    "id": "cryptic-command-counter-and-draw-their-spell",
+    "text": "I cast Cryptic Command choosing counter and draw, targeting their spell. What happens?",
+    "expect": [
+      "a spell is countered.",
+      "You draw 1 card."
+    ]
+  },
+  {
+    "id": "maze-of-ith-on-my-lone-attacker",
+    "text": "I have a 3/3 and they have Maze of Ith. I attack. Does my creature deal damage?",
+    "expect": [
+      "a 3/3 creature is untapped.",
+      "No: a 3/3 creature dealt no damage to opponent."
+    ]
+  },
+  {
+    "id": "vindicate-my-land-tap-for-mana-first",
+    "text": "They cast Vindicate on my land. Can I tap it for mana first?",
+    "expect": [
+      "Yes. Tapping a land for mana is a mana ability: it doesn't use the stack, and you can activate it whenever you have priority, including in response to the ability that would destroy the land while it is still on the battlefield (605.3a). The mana is yours to spend right then, and whatever isn't spent empties at the end of the step (106.4)."
+    ]
+  },
+  {
+    "id": "tarmogoyf-theirs-has-a-creature",
+    "text": "I have Tarmogoyf. My graveyard has a land and an instant, theirs has a creature. How big is it?",
+    "expect": [
+      "Tarmogoyf is 3/4 (3/4 base, base set by its own ability (layer 7a: 3 card types in graveyards (Creature, Instant, Land)))."
+    ]
+  },
+  {
+    "id": "dark-ritual-then-specter-mana-left",
+    "text": "I cast Dark Ritual and then Hypnotic Specter. Do I have mana left with 1 Swamp?",
+    "expect": [
+      "Hypnotic Specter enters the battlefield."
+    ]
   }
 ]

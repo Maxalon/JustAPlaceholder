@@ -722,6 +722,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                         e.to == "block" && attackerFacing(o, state) != null ->
                             attackerFacing(o, state)!!.let { att ->
                                 engine.cantBlockWhy(att, o)?.let { (why, rules, out) -> state.trace.step(why, *rules.toTypedArray()); "No: $out" }
+                                    // "They attack with a 2/2 with menace. I have one creature. Can I block?": one blocker isn't enough.
+                                    ?: (if (state.hasKeyword(att, "menace") && state.objects.values.count { b -> b.isOnBattlefield() && b.controller == o.controller && (b.def.isCreature || b.animatedAs != null) && b.tapped != true } < 2) { state.trace.step("${att.name} has menace and can't be blocked except by two or more creatures; ${o.name} is the only untapped creature ${state.player(o.controller).subject.lowercase()} ${state.player(o.controller).v("has", "have")}.", "702.111b"); "No: ${att.name} has menace and can't be blocked except by two or more creatures, and ${o.name} is the only one that could (702.111b)." } else null)
                                     ?: run {
                                         if (state.hasKeyword(att, "flying") && !state.hasKeyword(o, "flying") && state.hasKeyword(o, "reach")) state.trace.step("${att.name} has flying, which only creatures with flying or reach can block; ${o.name} has reach, so it can.", "702.9b", "702.17b")
                                         // "Can I block to save her?": the planeswalker attacked takes nothing from a blocked attacker without trample.
