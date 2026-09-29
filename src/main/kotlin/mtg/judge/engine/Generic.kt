@@ -195,7 +195,10 @@ object Generic {
         // "a Dragon" / "an Angel": the type says it flies, whatever else was left out.
         val flyers = setOf("dragon", "angel", "bird", "drake", "phoenix", "sphinx", "bat", "faerie", "griffin", "pegasus", "thopter", "spirit")
         val keywords = if (subs.lowercase().split(' ').any { it in flyers } && keywords0.none { it.equals("flying", true) }) keywords0 + "flying" else keywords0
-        val kwLine = keywords.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
+        // "a 3/3 with regenerate": regeneration is an ability with a cost, not a keyword; it is written as the card would, "{1}: Regenerate ~".
+        val regen = keywords.any { it.lowercase() in setOf("regenerate", "regeneration", "regen") }
+        val kwLine = keywords.filter { it.lowercase() !in setOf("regenerate", "regeneration", "regen") }.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } } +
+            (if (regen) "\n{1}: Regenerate this creature." else "")
         val article = if (n.first().lowercaseChar() in "aeiou") "an" else "a"
         val typeLine = (if ("legendary" in extraTypes) "Legendary " else "") + (if ("artifact" in extraTypes) "Artifact " else "") + (if ("enchantment" in extraTypes) "Enchantment " else "") + "Creature" + (if (subs.isEmpty()) "" else " — $subs")
         return OracleParser.parse("generic-$n", "$article $n", typeLine, "{1}", 1.0, colors,

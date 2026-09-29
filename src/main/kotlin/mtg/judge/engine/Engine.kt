@@ -3418,6 +3418,14 @@ class Engine(val state: GameState) {
             state.outcomes += "${obj.name} regenerates."
             return true
         }
+        // "They have a 3/3 with regenerate, I cast Wrath": no shield was made, but the creature has the ability, so say
+        // whether activating it in response would have helped (Day of Judgment) or not (Wrath of God).
+        val regenAbility = if (shield == null) obj.def.abilities.filterIsInstance<ActivatedAbility>().firstOrNull { it.effect is Effect.Regenerate && it.effect.target == null } else null
+        if (regenAbility != null) {
+            val owner = state.player(obj.controller)
+            if (!canRegenerate) { trace.step("$text ${obj.name} has \"${regenAbility.text.replace("\n", " ")}\", but the effect says it can't be regenerated, so a regeneration shield couldn't have replaced this destruction.", *rules, "701.19c", "614.8"); state.outcomes += "${obj.name}'s regeneration ability doesn't help: the effect says it can't be regenerated." }
+            else { trace.step("$text ${obj.name} has \"${regenAbility.text.replace("\n", " ")}\", which wasn't activated: had ${owner.subject.lowercase()} activated it in response (paying ${regenAbility.cost}), it would have been tapped and removed from combat instead of destroyed.", *rules, "701.19a", "614.8"); state.outcomes += "${obj.name} could have been regenerated (its ability wasn't activated in response)." }
+        }
         move(obj, Zone.GRAVEYARD, text, *rules)
         return false
     }

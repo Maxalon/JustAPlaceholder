@@ -23433,5 +23433,162 @@
     "cite": [
       "601.2h"
     ]
+  },
+  {
+    "id": "first-strike-2-2-blocks-3-3-does-mine-die",
+    "text": "I attack with a 3/3 and they block with a 2/2 that has first strike. Does mine die?",
+    "expect": [
+      "No: a 3/3 creature is still on the battlefield.",
+      "a 2/2 creature with first strike: the battlefield → opponent's graveyard."
+    ]
+  },
+  {
+    "id": "menace-4-4-vs-two-2-2s-can-i-block",
+    "text": "They have a 4/4 with menace. I have two 2/2s. Can I block it?",
+    "expect": [
+      "Yes: a 2/2 creature can block a 4/4 creature with menace if it attacks, but only together with another of your creatures (menace, 702.111b)."
+    ]
+  },
+  {
+    "id": "wrath-vs-3-3-with-regenerate",
+    "text": "I cast Wrath of God. They have a 3/3 with regenerate. What happens?",
+    "expect": [
+      "a 3/3 creature with regenerate's regeneration ability doesn't help: the effect says it can't be regenerated.",
+      "a 3/3 creature with regenerate: the battlefield → opponent's graveyard."
+    ],
+    "cite": [
+      "701.19c"
+    ]
+  },
+  {
+    "id": "day-of-judgment-vs-3-3-with-regenerate",
+    "text": "I cast Day of Judgment. They have a 3/3 with regenerate. What happens?",
+    "expect": [
+      "a 3/3 creature with regenerate could have been regenerated (its ability wasn't activated in response).",
+      "a 3/3 creature with regenerate: the battlefield → opponent's graveyard."
+    ],
+    "cite": [
+      "701.19a"
+    ]
+  },
+  {
+    "id": "doom-blade-vs-3-3-with-regenerate-can-they-save",
+    "text": "They have a 3/3 with regenerate. I cast Doom Blade on it. Can they save it?",
+    "expect": [
+      "a 3/3 creature with regenerate regenerates."
+    ],
+    "notExpect": [
+      "a 3/3 creature with regenerate: the battlefield → opponent's graveyard."
+    ]
+  },
+  {
+    "id": "disfigure-vs-bears-with-counter",
+    "text": "I have Grizzly Bears with a +1/+1 counter. They cast Disfigure on it. Does it die?",
+    "expect": [
+      "Grizzly Bears is 1/1 until end of turn.",
+      "No: Grizzly Bears is still on the battlefield."
+    ]
+  },
+  {
+    "id": "elves-came-down-this-turn-tap-for-mana",
+    "text": "I have a Llanowar Elves that came down this turn. Can I tap it for mana?",
+    "expect": [
+      "Llanowar Elves's {T} ability can't be activated (summoning sickness)."
+    ],
+    "cite": [
+      "302.6"
+    ]
+  },
+  {
+    "id": "trample-5-5-vs-1-1-how-much-do-i-take",
+    "text": "They attack with a 5/5 trampler and I block with a 1/1. How much do I take?",
+    "expect": [
+      "You take 4 damage."
+    ],
+    "cite": [
+      "702.19b"
+    ]
+  },
+  {
+    "id": "serra-angel-attack-and-still-block-their-turn",
+    "text": "I have Serra Angel. Can it attack and still block on their turn?",
+    "expect": [
+      "Yes: Serra Angel has vigilance, so attacking doesn't tap it (702.20b); it's untapped on opponent's turn and can block, unless something else taps it."
+    ],
+    "cite": [
+      "702.20b"
+    ]
+  },
+  {
+    "id": "3-3-attack-and-still-block-their-turn",
+    "text": "I have a 3/3. Can it attack and still block on their turn?",
+    "expect": [
+      "No: a 3/3 creature taps when it attacks (508.1f) and doesn't untap until your next untap step (502.3), so it's still tapped on opponent's turn and can't block (509.1a). Vigilance would let it do both."
+    ],
+    "cite": [
+      "508.1f",
+      "509.1a"
+    ]
+  },
+  {
+    "id": "electrickery-two-1-1s-do-both-die",
+    "text": "I have two 1/1s and they cast Electrickery. Do both die?",
+    "expect": [
+      "Yes: a 1/1 creature died (it's in the graveyard). (×2)"
+    ]
+  },
+  {
+    "id": "thoughtseize-bolt-and-forest-what-can-they-take",
+    "text": "They cast Thoughtseize on me. I have Bolt and a Forest in hand. What can they take?",
+    "expect": [
+      "Thoughtseize lets opponent choose a nonland card from your hand: Lightning Bolt; Forest can't be chosen (not nonland card).",
+      "opponent loses 2 life."
+    ]
+  },
+  {
+    "id": "birds-can-it-block-a-2-2-flier",
+    "text": "I have a Birds of Paradise. Can it block a 2/2 with flying?",
+    "expect": [
+      "Yes: Birds of Paradise can block a 2/2 creature with flying.",
+      "Birds of Paradise: the battlefield → your graveyard."
+    ]
+  },
+  {
+    "id": "deathtouch-3-3-blocked-by-6-6-does-mine-die",
+    "text": "They have a 3/3 with deathtouch and I block it with my 6/6. Does mine die?",
+    "expect": [
+      "Yes: a 6/6 creature died (it's in the graveyard)."
+    ],
+    "cite": [
+      "702.2b"
+    ]
+  },
+  {
+    "id": "hexproof-5-5-doom-blade-can-they",
+    "text": "I have a 5/5 with hexproof. They cast Doom Blade on it. Can they?",
+    "expect": [
+      "Doom Blade can't target a 5/5 creature with hexproof."
+    ],
+    "cite": [
+      "702.11b"
+    ]
+  },
+  {
+    "id": "untapped-3-3-do-they-have-to-block",
+    "text": "I attack with a 3/3 into their untapped 3/3. Do they have to block?",
+    "expect": [
+      "No. Blocking is never required by the rules: the defending player chooses which creatures they control, if any, will block (509.1a). Only an effect that says a creature must block, or that all creatures able to block a creature do so, takes that choice away (509.1c). The outcome below assumes no block."
+    ],
+    "cite": [
+      "509.1a"
+    ]
+  },
+  {
+    "id": "anger-of-the-gods-2-2-and-3-3-do-both-die",
+    "text": "They cast Anger of the Gods. I have a 2/2 and a 3/3. Do both die?",
+    "expect": [
+      "No: a 2/2 creature didn't die, but it left the battlefield; it's in exile.",
+      "No: a 3/3 creature didn't die, but it left the battlefield; it's in exile."
+    ]
   }
 ]
