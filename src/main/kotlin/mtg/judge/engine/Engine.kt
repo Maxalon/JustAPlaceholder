@@ -2321,7 +2321,8 @@ class Engine(val state: GameState) {
                             trace.step("The division is chosen as ${item.describe} is cast, and each target must be assigned at least 1 damage, so $n targets can't share ${effect.amount} damage.", "601.2d")
                         } else {
                             trace.step("${item.source.name} deals ${effect.amount} damage divided among ${legal.joinToString(" and ") { state.nameOf(it) }}. The division was chosen as it was cast, each target assigned at least 1, and it can't be changed now.", "601.2d", "119.4")
-                            if (n > 1) state.assumptions += "${item.describe}'s ${effect.amount} damage is split as evenly as it goes among the $n targets named (${legal.joinToString(" and ") { state.nameOf(it) }}); the caster could have divided it any other way as it was cast."
+                            if (n > 1) state.assumptions += if (item.source.def.oracleText.contains("divided evenly", true)) "${item.describe}'s ${effect.amount} damage is divided evenly among the $n targets named (${legal.joinToString(" and ") { state.nameOf(it) }}), rounded down, as its own text requires."
+                                else "${item.describe}'s ${effect.amount} damage is split as evenly as it goes among the $n targets named (${legal.joinToString(" and ") { state.nameOf(it) }}); the caster could have divided it any other way as it was cast."
                             legal.forEachIndexed { i, ref -> applyDamage(item.source.name, ref, base + if (i < extra) 1 else 0, item.source) }
                             stateBasedActions()
                         }

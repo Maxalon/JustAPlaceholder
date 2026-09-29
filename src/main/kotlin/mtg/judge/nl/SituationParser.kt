@@ -600,6 +600,8 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""\b(choosing|picking|selecting) ((?:the )?[a-z0-9' ]+?), (targeting|aimed at|on|at)\b""", RegexOption.IGNORE_CASE), "$1 $2 $3")
             // "My graveyard has a land and an instant, theirs has a creature": the other graveyard, said by a pronoun.
         if (Regex("""\bgraveyard""", RegexOption.IGNORE_CASE).containsMatchIn(t2)) t2 = t2.replace(Regex("""\b(theirs|mine) (has|have|contains?|holds?) ((?:an? |two |three |\d+ )?(?:instant|sorcery|sorceries|creature|land|artifact|enchantment|planeswalker|battle)s?(?: cards?)?)""", RegexOption.IGNORE_CASE)) { r -> "${if (r.groupValues[1].lowercase() == "theirs") "their" else "my"} graveyard ${r.groupValues[2]} ${r.groupValues[3]}" }
+            // "I cast Ajani Goldmane's -1": the planeswalker is cast and then its loyalty ability is activated.
+        t2 = t2.replace(Regex("""\b(casts?|plays?) ((?:my |an? |the )?c\d+)'s ([+-]\d+)\b""", RegexOption.IGNORE_CASE), "$1 $2 and $3")
             // "how much mana do I need (for it)?": the cost of the spell just cast.
         t2 = t2.replace(Regex("""\bhow much (?:mana )?(?:do|would|will) (?:i|we) need(?: for (?:it|that|this)| to cast (?:it|that|this)| to pay for (?:it|that)| in (?:total|all))?(?=\?|$)""", RegexOption.IGNORE_CASE), "how much does it cost")
             // "a spell that costs 3": a 3 mana spell.
@@ -2008,6 +2010,8 @@ class SituationParser(private val names: NameIndex) {
         // "targeting Grizzly Bears and Hill Giant": both are targets of the one spell, so the "and" is not a
         // clause break — split there and the second card was read as a spell of its own being cast.
         t2 = t2.replace(Regex("""\b(targeting|aimed at) ((?:$possPrefix|an? )?c\d+) and ((?:$possPrefix|an? )?c\d+)\b"""), "$1 $2 & $3")
+        // "Fireball for 4 split between me and my 2/2": a player can be one of the things the damage is divided among.
+        t2 = t2.replace(Regex("""\b((?:split|divided|spread) (?:between|among)) (me|them|him|her|my face|their face|(?:$possPrefix|an? )?(?:c\d+|\d+/\d+)) and (me|them|him|her|my face|their face|(?:$possPrefix|an? )?(?:c\d+|\d+/\d+))\b"""), "$1 $2 & $3")
         // "they attack my planeswalker with a 5/5 … does Jace die": the planeswalker is the one named later.
         Regex("""\b(my|their|his|her) planeswalker\b""").find(t2)?.let { r ->
             val pw = Regex("""c\d+""").findAll(t2).map { it.value }.firstOrNull { ph -> m.cards[ph]?.typeLine?.contains("Planeswalker", true) == true }
@@ -2709,6 +2713,32 @@ class SituationParser(private val names: NameIndex) {
             if (i < 0) return@let
             if (ctx.events[i].player != "me") ctx.events[i] = ctx.events[i].copy(player = "me")
             ctx.asks += EventSpec("ask", card = CardRef(name = "a spell"), to = "countered"); ctx.notes += "\"${restore(clause0, m)}?\" is about the spell your counter was protecting; it wasn't named, so it stands in as \"a spell\"."; return true
+        }
+        // "I have a 2/2 with a -1/-1 counter. What is it?": the size of the creature just described.
+        Regex("""^what (?:is|'s) (?:it|that)(?: then| after that)?$""").find(clause0)?.let {
+            val id = ctx.lastMentioned?.takeIf { it in ctx.objects } ?: return@let
+            val o = ctx.objects.getValue(id)
+            if (o.zone != "battlefield" || !Regex("""^an? \d+/\d+\b""").containsMatchIn(o.card.name ?: "") || ctx.events.any { it.verb == "cast" || it.verb == "leave" }) return@let
+            ctx.asks += EventSpec("ask", obj = id, to = "pt"); ctx.notes += "\"${restore(clause0, m)}?\" is read as asking its size; the outcome says."; return true
+        }
+        // "Does Bonesplitter stay?" / "does the aura fall off?": whether that permanent is still on the battlefield.
+        Regex("""^(?:does|will|would|is) (?:my |the |their )?(c\d+|it|that|the equipment|the aura) (?:still |even )?(?:stay|stays|remain|remains|stick around|survive|survives|fall off|go away|goes away|still there|still around|stay around)(?: on the battlefield| in play| attached| there| around)?$""").find(clause0)?.let { r ->
+            val w = r.groupValues[1]
+            val id = m.cards[w]?.let { objectIdFor(it, ctx) } ?: (if (w in setOf("the equipment", "the aura")) ctx.objects.values.lastOrNull { it.zone == "battlefield" && names.lookup(Names.normalize(it.card.name ?: ""))?.typeLine?.let { t -> t.contains("Equipment") || t.contains("Aura") } == true }?.id else ctx.lastMentioned?.takeIf { it in ctx.objects }) ?: return@let
+            if (ctx.events.isEmpty()) return@let
+            ctx.asks += EventSpec("ask", obj = id, to = "survive"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
+        // "is it still 5/5?" (after "on my next turn" has been read): whether the size is still that.
+        Regex("""^(?:is )?(it|that|my creature|my \d+/\d+|(?:my |the )?(c\d+)) (?:still |even )(?:an? )?(\d+/\d+)(?: now| then| after that| at that point)?$""").find(clause0)?.let { r ->
+            val id = r.groupValues[2].takeIf { it.isNotEmpty() }?.let { m.cards[it] }?.let { objectIdFor(it, ctx) }
+                ?: ctx.events.lastOrNull { it.verb == "cast" }?.targets?.firstOrNull { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) }
+                ?: ctx.lastMentioned?.takeIf { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) }
+                ?: ctx.objects.values.lastOrNull { it.controller == "me" && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id ?: return@let
+            ctx.asks += EventSpec("ask", obj = id, to = "sizeIs:${r.groupValues[3]}"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
+        // "Do I untap my lands on the extra turn?": an extra turn is a whole turn, untap step included.
+        Regex("""^(?:do|will|would) (?:i|we|my lands|my permanents|my creatures|things) (?:still |also )?(?:untap|get to untap)(?: (?:my |our )?(?:lands|permanents|creatures|stuff|everything))? (?:on|during|in|at the start of) (?:the|my|an|that) extra turn$""").find(clause0)?.let {
+            ctx.asks += EventSpec("ask", to = "text:Yes. An extra turn is a complete turn with every step of a normal one, so it begins with your untap step and you untap all your permanents then (500.1, 502.3); you also draw for it, unless it's the first turn of the game (504.1). Only what the effect says is skipped is skipped."); return true
         }
         // "I'm at 2 and they cast Lava Spike. I have Fog. Does Fog save me?": whether the asker is still in the game.
         Regex("""^(?:does|will|would|can) (?:my |the )?(?:c\d+|it|that) (?:still )?(?:save me|save us|keep me alive|stop (?:it|that|the damage)|prevent (?:it|that|the damage))$""").find(clause0)?.let {
@@ -6033,7 +6063,7 @@ class SituationParser(private val names: NameIndex) {
                 else ctx.objects[id] = ctx.objects.getValue(id).copy(attachedTo = hostId)
             }
             // "Sword of Fire and Ice equipped to a 2/2": the thing it is on is a creature nobody named.
-            Regex("""^\s*(?:equipped|attached|enchanting) (?:to |on )?(?:an? |the |my |their )?((\d+/\d+)(?: [a-z]+)*)$""").find(rest)?.let { a ->
+            Regex("""^\s*(?:(?:equipped|attached|enchanting) (?:to |on )?|on )(?:an? |the |my |their )?((\d+/\d+)(?: [a-z]+)*)$""").find(rest)?.takeIf { a -> !a.value.trim().startsWith("on") || hostCard.typeLine.contains("Equipment") || hostCard.typeLine.contains("Aura") }?.let { a ->
                 val wornBy = ctx.objects.values.lastOrNull { o -> o.controller == owner && o.id != hostId && (o.card.name ?: "").startsWith("a ${a.groupValues[2]}") }?.id
                     ?: describedCreatures("a ", a.groupValues[2], "creature", owner, ctx, "").firstOrNull()
                 if (wornBy != null) { ctx.objects[hostId] = ctx.objects.getValue(hostId).copy(attachedTo = wornBy); ctx.lastMentioned = wornBy }
@@ -7988,7 +8018,7 @@ class SituationParser(private val names: NameIndex) {
         }
         // "targeting Grizzly Bears & Hill Giant": a spell that divides its damage has more than one target.
         Regex("""^(.+?)\s*(?:&|,)\s*(.+)$""").find(seg)?.let { r ->
-            val named = Regex("""c\d+|\d+/\d+|\ba spell\b|\b(?:my |their )?(?:creature|token|spell)\b""")
+            val named = Regex("""c\d+|\d+/\d+|\ba spell\b|\b(?:my |their )?(?:creature|token|spell)\b|^(?:me|my face|them|him|her|my opponent|the opponent|their face)$""")
             if (!named.containsMatchIn(r.groupValues[1]) || !named.containsMatchIn(r.groupValues[2])) return@let
             val a = targetsIn("targeting " + r.groupValues[1].trim(), m, ctx)
             val b = targetsIn("targeting " + r.groupValues[2].trim(), m, ctx)
