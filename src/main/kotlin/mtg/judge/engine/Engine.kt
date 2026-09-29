@@ -1347,7 +1347,7 @@ class Engine(val state: GameState) {
                     val what = if (isCopy) "The copy of ${obj.name}" else if (obj.name.endsWith("token", true)) obj.name else "${obj.name} token"
                     if (isCopy) trace.step("$what ceases to exist once it has left the stack: a copy of a spell exists only there.", "707.10", "111.7")
                     else trace.step("$what ceases to exist (a token that isn't on the battlefield stops existing the next time state-based actions are checked).", "704.5d", "111.7")
-                    if (!isCopy) state.outcomes += "$what ceases to exist; it doesn't stay in the zone it went to."
+                    if (!isCopy) { state.outcomes += "$what ceases to exist; it doesn't stay in the zone it went to."; state.ceased[obj.id] = obj.name }
                     changed = true
                 }
             }

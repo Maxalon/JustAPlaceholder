@@ -1825,7 +1825,7 @@ object OracleParser {
         Regex("""\s+(?:in|from) (?:your|a|an opponent's|their) graveyard$""").find(core)?.let { m -> inGraveyard = true; core = core.removeRange(m.range) }
         val kinds = mutableSetOf<Kind>(); val notKinds = mutableSetOf<Kind>(); val unknown = mutableListOf<String>()
         val subtypes = mutableSetOf<String>(); val keywords = mutableSetOf<String>(); val notKeywords = mutableSetOf<String>(); val notSubtypes = mutableListOf<String>()
-        var attacking: Boolean? = null; var tapped: Boolean? = null; var token: Boolean? = null; var legendary: Boolean? = null; var attachedToSource = false
+        var attacking: Boolean? = null; var blocking: Boolean? = null; var tapped: Boolean? = null; var token: Boolean? = null; var legendary: Boolean? = null; var attachedToSource = false
         // "sources you don't control": a source of damage is any object at all, permanent or spell. Read as a
         // creature type named "source", Comeuppance's shield matched nothing and the damage went through.
         var anySource = false
@@ -1869,6 +1869,8 @@ object OracleParser {
                 w == "nonsnow" -> notSubtypes += "snow"
                 w == "activated" || w == "triggered" -> { /* ability qualifiers: both counterable the same way */ }
                 w == "attacking" -> attacking = true
+                w == "blocking" -> blocking = true
+                w == "or" -> {}
                 w == "tapped" -> tapped = true
                 w == "untapped" -> tapped = false
                 w == "token" || w == "tokens" -> token = true
@@ -1901,6 +1903,6 @@ object OracleParser {
         if (kinds.isEmpty() && notKinds.isNotEmpty()) kinds += defaultKind ?: Kind.PERMANENT
         if (kinds.isEmpty() && defaultKind != null) kinds += defaultKind
         if (kinds.isEmpty() && notSubtypes.isNotEmpty()) kinds += defaultKind ?: Kind.CREATURE
-        return ObjFilter(kinds, notKinds, notSubtypes, controller, attacking, tapped, unknown, desc, subtypes, keywords, notKeywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1, colors = colors, notColors = notColors, maxManaValue = maxManaValue, minManaValue = minManaValue, inGraveyard = inGraveyard)
+        return ObjFilter(kinds, notKinds, notSubtypes, controller, attacking, blocking, tapped, unknown, desc, subtypes, keywords, notKeywords, token, legendary, attachedToSource = attachedToSource, minPower = minPower, maxPower = maxPower, subtypesAny = subtypesAny && subtypes.size > 1, colors = colors, notColors = notColors, maxManaValue = maxManaValue, minManaValue = minManaValue, inGraveyard = inGraveyard)
     }
 }

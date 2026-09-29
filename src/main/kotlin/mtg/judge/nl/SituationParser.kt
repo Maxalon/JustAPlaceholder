@@ -2108,7 +2108,7 @@ class SituationParser(private val names: NameIndex) {
         // Pure questions carry no state; the engine answers "what happens" by default.
         // "Who wins?" with nobody named is still a question the outcome can answer; ask it before giving up on the
         // sentence, or it was skipped as small talk.
-        if (m.cards.isEmpty() && Regex("""^(what happens|what now|who wins|who dies|who loses|so what|what is the result|does (it|that|this) (resolve|work|happen)|can (i|they|my opponent) respond)\b.*$""").matches(t)) { askQuestion(t.trim().trimEnd('?'), m, ctx); return true }
+        if (m.cards.isEmpty() && !Regex("""^what happens to (?:the|its|my|their|those|these) (?:[+-]\d+/[+-]\d+ )?counters\b""").containsMatchIn(t) && Regex("""^(what happens|what now|who wins|who dies|who loses|so what|what is the result|does (it|that|this) (resolve|work|happen)|can (i|they|my opponent) respond)\b.*$""").matches(t)) { askQuestion(t.trim().trimEnd('?'), m, ctx); return true }
 
         // Resolution statements.
         if (Regex("""\b(everything resolves|let (it|them|everything|that) resolve|(it|they|both|all) resolves?|resolves? (it|everything|the stack)|nobody responds|no (one|body) responds|no responses?|no further responses?)\b""").containsMatchIn(t)) {
@@ -2727,6 +2727,20 @@ class SituationParser(private val names: NameIndex) {
             if (i < 0) return@let
             if (ctx.events[i].player != "me") ctx.events[i] = ctx.events[i].copy(player = "me")
             ctx.asks += EventSpec("ask", card = CardRef(name = "a spell"), to = "countered"); ctx.notes += "\"${restore(clause0, m)}?\" is about the spell your counter was protecting; it wasn't named, so it stands in as \"a spell\"."; return true
+        }
+        // "They cast Terror on my Bears. Can I regenerate it with Skeletal Grimace?": whether a regeneration shield would help.
+        Regex("""^can (?:i|we) (?:still )?(?:regenerate|regen) (it|that|(?:my |the )?(c\d+)|my creature|my \d+/\d+)(?: with (?:my |the |an? )?(c\d+))?(?: in response)?$""").find(clause0)?.let { r ->
+            val id = r.groupValues[2].takeIf { it.isNotEmpty() }?.let { m.cards[it] }?.let { objectIdFor(it, ctx) }
+                ?: ctx.events.lastOrNull { it.verb == "cast" }?.targets?.firstOrNull { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) }
+                ?: ctx.lastMentioned?.takeIf { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) } ?: return@let
+            val helper = r.groupValues[3].takeIf { it.isNotEmpty() }?.let { m.cards[it] }
+            ctx.asks += EventSpec("ask", obj = id, card = helper?.let { CardRef(name = it.display, oracleId = it.oracleId) }, to = "regenerateVs")
+            ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
+        }
+        // "What happens to the counters?" after a bounce or a flicker: they cease to exist with the zone change.
+        Regex("""^what happens to (?:the|its|my|their|those|these) (?:[+-]\d+/[+-]\d+ )?counters(?: on it)?$""").find(clause0)?.let {
+            if (ctx.events.none { it.verb in setOf("cast", "blink", "leave", "activate") }) return@let
+            ctx.asks += EventSpec("ask", to = "text:The counters are gone. When a permanent leaves the battlefield, the counters on it aren't kept: they simply cease to exist with the zone change (122.2), and the card comes back as a new object with no memory of them (400.7)."); return true
         }
         // "I have a 2/2 with a -1/-1 counter. What is it?": the size of the creature just described.
         Regex("""^what (?:is|'s) (?:it|that)(?: then| after that)?$""").find(clause0)?.let {
@@ -7944,6 +7958,23 @@ class SituationParser(private val names: NameIndex) {
             val id = ctx.objects.values.firstOrNull { it.card.name == name && (poss.isEmpty() || it.controller == owner) }?.id ?: run {
                 var id = slug(kind); var k = 2; while (ctx.objects.containsKey(id)) id = slug(kind) + "_" + (k++)
                 ctx.objects[id] = ObjectSpec(id, CardRef(name = name), controller = owner); ctx.note(owner); id
+            }
+            out += id; return out
+        }
+        // "Divine Verdict on my attacking 3/3": the creature of that side that is attacking (or blocking); if none was
+        // said to, it is put on the battlefield and attacks first.
+        Regex("""^(?:(my|their|his|her|the) )?(attacking|blocking) (\d+/\d+|creature|guy|dude|c\d+)$""").find(seg)?.let { r ->
+            val caster = ctx.clauseActor ?: ctx.lastActor ?: "me"
+            val side = when (r.groupValues[1]) { "my" -> "me"; "their", "his", "her" -> ctx.other(caster) ?: "opp"; else -> ctx.other(caster) ?: "opp" }
+            val w = r.groupValues[3]
+            val inRole = ctx.events.filter { it.verb == r.groupValues[2].removeSuffix("ing") && it.player == side }.mapNotNull { it.obj }
+            val id = inRole.lastOrNull { o -> ctx.objects[o]?.let { !w.contains('/') || (it.card.name ?: "").startsWith("a $w") } == true }
+                ?: m.cards[w]?.let { objectIdFor(it, ctx) ?: addObject(it, side, false, ctx) }
+                ?: ctx.objects.values.lastOrNull { it.controller == side && it.zone == "battlefield" && isCreatureName(it.card.name) && (!w.contains('/') || (it.card.name ?: "").startsWith("a $w")) }?.id
+                ?: describedCreatures("a ", if (w.contains('/')) w else "", "creature", side, ctx).firstOrNull() ?: return@let
+            if (r.groupValues[2] == "attacking" && ctx.events.none { (it.verb == "attack" && it.obj == id) || (it.verb == "attackAll" && it.player == side) }) {
+                ctx.events += EventSpec("attack", player = side, obj = id, targets = listOf(ctx.other(side) ?: "opp"))
+                ctx.notes += "${ctx.objects.getValue(id).card.name} is said to be attacking, so it attacks first."
             }
             out += id; return out
         }

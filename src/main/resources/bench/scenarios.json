@@ -24185,5 +24185,112 @@
     "expect": [
       "opponent discards 1 card (1 → 0 in hand)."
     ]
+  },
+  {
+    "id": "anthem-tokens-vs-pyroclasm-do-they-die",
+    "text": "I have Glorious Anthem and two 1/1 tokens. They cast Pyroclasm. Do my tokens die?",
+    "expect": [
+      "a 1/1 token ceases to exist; it doesn't stay in the zone it went to. (×2)",
+      "Yes: a 1/1 token died, and as a token it then ceased to exist (704.5d). (×2)"
+    ],
+    "cite": [
+      "704.5d"
+    ]
+  },
+  {
+    "id": "terror-vs-skeletal-grimace-regenerate",
+    "text": "They cast Terror on my Grizzly Bears. Can I regenerate it with Skeletal Grimace?",
+    "expect": [
+      "No: Terror says the creature can't be regenerated, so a regeneration shield from Skeletal Grimace can't replace the destruction (701.19c, 614.8)."
+    ],
+    "cite": [
+      "701.19c"
+    ]
+  },
+  {
+    "id": "shock-the-blocker-before-damage-attacker-survives",
+    "text": "I attack with a 2/2 and they block with a 2/2. I cast Shock on their blocker before damage. Does my creature survive?",
+    "expect": [
+      "a 2/2 creature deals no combat damage: its blocker left combat and it stays blocked.",
+      "Yes: your 2/2 creature is still on the battlefield."
+    ]
+  },
+  {
+    "id": "elesh-norn-vs-three-2-2s",
+    "text": "I have Elesh Norn, Grand Cenobite. They have three 2/2s. What happens?",
+    "expect": [
+      "a 2/2 creature: the battlefield → opponent's graveyard. (×3)"
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "divine-verdict-on-my-attacking-3-3",
+    "text": "They cast Divine Verdict on my attacking 3/3. Does it die?",
+    "expect": [
+      "Yes: a 3/3 creature died (it's in the graveyard)."
+    ]
+  },
+  {
+    "id": "wrath-with-thalia-four-lands-can-i",
+    "text": "I have 4 lands and cast Wrath of God with Thalia out. Can I?",
+    "expect": [
+      "Wrath of God can't be cast (costs 5, only 4 mana available)."
+    ],
+    "cite": [
+      "601.2h"
+    ]
+  },
+  {
+    "id": "merfolk-looter-turn-it-comes-down",
+    "text": "I have a Merfolk Looter. Can I use it the turn it comes down?",
+    "expect": [
+      "No: Merfolk Looter came under your control this turn and doesn't have haste, so its {T} ability can't be activated yet (302.6)."
+    ]
+  },
+  {
+    "id": "deathmark-on-green-creature",
+    "text": "They cast Deathmark on my green creature. Does it die?",
+    "expect": [
+      "Deathmark can't target a green creature (not a green or white creature).",
+      "No: a green creature is still on the battlefield."
+    ]
+  },
+  {
+    "id": "lifelink-blocker-how-much-life",
+    "text": "I have a 3/3 and they have a 2/2 with lifelink. I attack and they block. How much life do they gain?",
+    "expect": [
+      "opponent gains 2 life in all."
+    ],
+    "cite": [
+      "702.15b"
+    ]
+  },
+  {
+    "id": "0-4-wall-vs-2-2-attack-survives",
+    "text": "They attack with a 2/2. I have a 0/4 wall. Does the wall survive?",
+    "expect": [
+      "Yes: a 0/4 wall creature is still on the battlefield."
+    ]
+  },
+  {
+    "id": "sulfuric-vortex-vs-healing-salve",
+    "text": "I control Sulfuric Vortex. They cast Healing Salve. Do they gain life?",
+    "expect": [
+      "opponent gains no life (0).",
+      "No: opponent gains no life here."
+    ]
+  },
+  {
+    "id": "vapor-snag-what-happens-to-counters",
+    "text": "I have a 2/2 with two +1/+1 counters and they cast Vapor Snag on it. What happens to the counters?",
+    "expect": [
+      "a 2/2 creature: the battlefield → your hand.",
+      "The counters are gone. When a permanent leaves the battlefield, the counters on it aren't kept: they simply cease to exist with the zone change (122.2), and the card comes back as a new object with no memory of them (400.7)."
+    ],
+    "cite": [
+      "122.2"
+    ]
   }
 ]

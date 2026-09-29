@@ -239,6 +239,8 @@ class GameState(
     var combatDamageDealt = false
     /** The question is whether a spell can be paid for ("they have one Mountain … can they?"): then even a single described land is the whole mana base. */
     var describedLandsAreTheBase = false
+    /** Tokens that ceased to exist, by object id, with the name they had: a question about one can still be answered. */
+    val ceased = mutableMapOf<String, String>()
     /** The game's turn number, when the situation said so. */
     var turnNumber: Int? = null
     /** Creatures whose combat damage, dealt and received, is prevented this turn (Maze of Ith). */
@@ -513,7 +515,12 @@ class GameState(
         val kwOk = f.keywords.all { hasKeyword(o, it) } && f.notKeywords.none { hasKeyword(o, it) }
         val tokenOk = f.token == null || f.token == o.token
         val legOk = f.legendary == null || f.legendary == ("Legendary" in o.def.supertypes)
-        val stateOk = (f.tapped == null || o.tapped == f.tapped) && (f.attacking == null || (o.attacking != null) == f.attacking)
+        // "attacking or blocking creature" (Divine Verdict): either role satisfies the filter.
+        val roleOk = when {
+            f.attacking == true && f.blocking == true -> o.attacking != null || o.blocking != null || o.alsoBlocking.isNotEmpty()
+            else -> (f.attacking == null || (o.attacking != null) == f.attacking) && (f.blocking == null || (o.blocking != null || o.alsoBlocking.isNotEmpty()) == f.blocking)
+        }
+        val stateOk = (f.tapped == null || o.tapped == f.tapped) && roleOk
         val powerOk = (f.minPower == null || (o.power ?: 0) >= f.minPower) && (f.maxPower == null || (o.power ?: 0) <= f.maxPower) && (f.maxManaValue == null || o.def.manaValue.toInt() <= f.maxManaValue) && (f.minManaValue == null || o.def.manaValue.toInt() >= f.minManaValue)
         val cols = colorsOf(o)
         val colorOk = f.colors.all { it in cols } && f.notColors.none { it in cols } && (f.colored == null || f.colored == cols.isNotEmpty())

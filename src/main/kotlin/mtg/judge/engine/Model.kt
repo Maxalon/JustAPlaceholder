@@ -18,6 +18,8 @@ data class ObjFilter(
     val notSubtypes: List<String> = emptyList(),
     val controller: Who? = null,
     val attacking: Boolean? = null,
+    /** "blocking creature"; with [attacking] also set ("attacking or blocking creature") either role will do. */
+    val blocking: Boolean? = null,
     val tapped: Boolean? = null,
     val unknownWords: List<String> = emptyList(),
     val raw: String = "",
