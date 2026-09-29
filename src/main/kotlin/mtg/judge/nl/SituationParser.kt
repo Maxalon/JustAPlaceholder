@@ -109,7 +109,9 @@ class SituationParser(private val names: NameIndex) {
     fun parse(text: String): Parsed {
         val ctx = Ctx()
         // "Can my opponent use the Top?" once Sensei's Divining Top has been named: the capitalised short form is the card.
-        val sentences = splitSentences(if (text.contains("Divining Top")) text.replace(Regex("""\bthe Top\b"""), "Sensei's Divining Top") else text)
+        // "a spell that says exile target creature, then return it to the battlefield": one spell text, so "then" is no sentence break here.
+        val text1 = text.replace(Regex("""(that says exile target creature),? then (return it to the battlefield)""", RegexOption.IGNORE_CASE), "$1 then_$2")
+        val sentences = splitSentences(if (text1.contains("Divining Top")) text1.replace(Regex("""\bthe Top\b"""), "Sensei's Divining Top") else text1)
         // "I crack a fetchland": the word names a cycle, and every member does something different. Saying which
         // card it was read as would be picking one for the asker, so the answer asks instead.
         for ((word, examples) in landCycles) if (Regex("""(?i)\b${Regex.escape(word)}\b""").containsMatchIn(text)) {
@@ -560,7 +562,7 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""\bon my only (land|creature|artifact|enchantment)\b""", RegexOption.IGNORE_CASE), "on my $1")
             // "a creature that says when it enters draw a card" / "my creature says it can't be blocked by more than one creature":
             // a stand-in permanent with that rules text, kept as one token through the clause split.
-        t2 = t2.let { t0 -> Regex("""\b(an?|my|their|his|her|the) ((?:\d+/\d+ )?creature|permanent|artifact|enchantment|land|planeswalker|card|\d+/\d+) that (?:says|reads) (.+?)(?=,|\?|$| with \d+ loyalty\b| (?:on|targeting|at) (?:my|their|his|her|the|an?|one) (?!this )\b| and (?:i|we|they|he|she|my opponent) \b| and (?:\d+|two|three|four|an? |my |their ) ?(?:other )?(?:creatures?|\d+/\d+)\b)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+        t2 = t2.let { t0 -> Regex("""\b(an?|my|their|his|her|the) ((?:\d+/\d+ )?creature|permanent|artifact|enchantment|equipment|aura|land|planeswalker|card|\d+/\d+) that (?:says|reads) (.+?)(?=,|\?|$| with \d+ loyalty\b| (?:on|targeting|at) (?:my|their|his|her|the|an?|one) (?!this )\b| and (?:i|we|they|he|she|my opponent) \b| and (?:\d+|two|three|four|an? |my |their ) ?(?:other )?(?:creatures?|\d+/\d+)\b)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 val k = r.groupValues[2].lowercase()
                 val kind = if (k == "card") "permanent" else if (k.contains('/')) "creature" else k
                 val size = Regex("""\d+/\d+""").find(k)?.value
@@ -603,6 +605,14 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""\bhow big is it if (?:it's|it is) an? (\d+/\d+)\b""", RegexOption.IGNORE_CASE), "it's a $1, how big is it")
         // "on their only land": the one they have.
         t2 = t2.replace(Regex("""\b(on|targeting|at) (their|my|his|her) only (land|creature|artifact|enchantment|planeswalker)\b""", RegexOption.IGNORE_CASE), "$1 $2 $3")
+        // "exile target creature, then return it to the battlefield under its owner's control": one spell text, kept whole through the clause split.
+        t2 = t2.replace(Regex("""\b(that says) exile target creature,? then return it to the battlefield under its owner's control\b""", RegexOption.IGNORE_CASE), "$1 exile_target_creature,_then_return_it_to_the_battlefield_under_its_owner's_control")
+        // "I have a creature that says …, I cast it targeting their 4/4": the creature is cast, not already there.
+        t2 = t2.replace(Regex("""\b(i|we) (?:have|hold) (an? says-\S+ (?:creature|artifact|enchantment|planeswalker)), (?:i|we) cast (?:it|that)\b""", RegexOption.IGNORE_CASE), "$1 cast $2")
+        // "can it block on my turn?": a question about vigilance and untapping, answered from the rules.
+        t2 = t2.replace(Regex("""\bcan (?:it|that|their creature|their \d+/\d+|the \d+/\d+) (?:still |also )?block (?:on|during|in) my (?:next )?turn\b""", RegexOption.IGNORE_CASE), "vigilance-blockmyturn-question")
+        // "I cast it on their 4/4": the creature's enters trigger is aimed there.
+        t2 = t2.replace(Regex("""\b(cast|casts) (it|that) on (?=(?:my|their|his|her|the|an?) )""", RegexOption.IGNORE_CASE), "$1 $2 targeting ")
         // "on myself": the caster.
         t2 = t2.replace(Regex("""\b(on|targeting|at) myself\b""", RegexOption.IGNORE_CASE), "$1 me")
         // "can I also cast a 3 drop this turn?": the question is whether it can be cast now.
@@ -1686,8 +1696,9 @@ class SituationParser(private val names: NameIndex) {
             // "I blink my creature with a counter on it": the counter is part of the board, not of the blinking.
         t2 = t2.replace(Regex("""\b(i|we|they|he|she|my opponent|the opponent|@\w+) (blinks?|flickers?) ((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude)) with ((?:an? |one |two |three |\d+ )?(?:[+-]\d+/[+-]\d+ |[a-z]+ )?counters?(?: on it)?)"""), "$3 has $4, $1 $2 it")
             // "My equipped creature dies" / "my enchanted creature": the adjective says what is on it.
-        t2 = t2.replace(Regex("""\b((?:$possPrefix|an? )?)equipped (creature|guy|dude|\d+/\d+)\b"""), "$1$2 with an equipment on it")
-        t2 = t2.replace(Regex("""\b((?:$possPrefix|an? )?)enchanted (creature|guy|dude|\d+/\d+)\b"""), "$1$2 with an aura on it")
+        // (Not inside a card's own words: "an equipment that says equipped creature gets +2/+2".)
+        t2 = t2.replace(Regex("""(?<!says )(?<!reads )\b((?:$possPrefix|an? )?)equipped (creature|guy|dude|\d+/\d+)\b"""), "$1$2 with an equipment on it")
+        t2 = t2.replace(Regex("""(?<!says )(?<!reads )\b((?:$possPrefix|an? )?)enchanted (creature|guy|dude|\d+/\d+)\b"""), "$1$2 with an aura on it")
             // "I sacrifice my creature with an Aura on it": the attachment is board, the verb is the action.
         t2 = t2.let { t0 -> Regex("""\b(i|we|they|he|she|my opponent|the opponent|@\w+) (sacrifices?|sacs?|blinks?|flickers?|bounces?|exiles?|destroys?|kills?) ((?:$possPrefix|an? )(?:c\d+|\d+/\d+|creature|guy|dude|token)) with (?:an? |the )?(c\d+|aura|equipment)(?: on it| attached(?: to it)?)?""").replace(t0) { r ->
                 // "with X" is the instrument far more often than it is an attachment ("they kill my creature with
@@ -2249,6 +2260,33 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastVerb = "block"; ctx.lastActor = who; ctx.note(who)
             ctx.notes += "\"${restore(clause0, m)}\" is read as blocking with ${blockers.joinToString(" and ") { it.card.name ?: it.id }}."
             return true
+        }
+        // "they attack with three 2/2s and I have one 5/5, how many can I block?": one per creature.
+        Regex("""^how many (?:of them |attackers |creatures )?(?:can|could) (?:i|we) block(?: with it| with (?:my|the) \d+/\d+)?$""").find(clause0)?.let {
+            val mine = ctx.objects.values.count { it.controller == "me" && it.zone == "battlefield" && isCreatureName(it.card.name) && it.tapped != true }
+            ctx.asks += EventSpec("ask", to = "text:${if (mine == 1) "One" else "$mine"}: each creature you control can block only one attacking creature, and only an effect like \"can block an additional creature\" changes that (509.1a). With $mine untapped creature${if (mine == 1) "" else "s"} you can block $mine of them; the rest are unblocked. The outcome below assumes no block was declared.")
+            return true
+        }
+        // "they attack with it, can it block on my turn?": untapping happens anyway before your turn.
+        if (clause0 == "vigilance-blockmyturn-question") {
+            ctx.asks += EventSpec("ask", to = "text:Yes. Whether or not it has vigilance, it untaps during its controller's untap step (502.3), which comes before your turn, so on your turn it is untapped and can block. Vigilance only matters within the same turn: an attacker with vigilance stays untapped and can block or tap for something later that turn (702.20b).")
+            return true
+        }
+        // "I have an equipment that says equipped creature gets +2/+2 on my 1/1": the stand-in, attached to the creature.
+        Regex("""^(i|we|they|he|she|my opponent) (?:have|has|control|controls) (an? says-\S+ (equipment|aura)) on (?:(my|their|his|her|the|an?) )?(\d+/\d+|c\d+|creature)$""").find(clause0)?.let { r ->
+            val who = when (r.groupValues[1]) { "i", "we" -> "me"; else -> pronounPlayer(ctx, "their") }
+            val hostOwner = when (r.groupValues[4]) { "my" -> "me"; "their", "his", "her" -> pronounPlayer(ctx, "their"); else -> who }
+            val hostWord = r.groupValues[5]
+            val host = when {
+                cardRef.matches(hostWord) -> m.cards[hostWord]?.let { objectIdFor(it, ctx) ?: addObject(it, hostOwner, false, ctx) }
+                Regex("""^\d+/\d+$""").matches(hostWord) -> ctx.objects.values.lastOrNull { it.controller == hostOwner && it.card.name == "a $hostWord creature" }?.id ?: describedCreatures("a ", hostWord, "creature", hostOwner, ctx, "").firstOrNull()
+                else -> ctx.objects.values.lastOrNull { it.controller == hostOwner && isCreatureName(it.card.name) }?.id ?: describedCreatures("a ", "", "creature", hostOwner, ctx).firstOrNull()
+            } ?: return@let
+            val kind = r.groupValues[3]; val body = r.groupValues[2].substringAfter("says-").substringBeforeLast(' ')
+            val name = "${if (kind.first() in "aeiou") "an" else "a"} $kind that says \"${body.replace('_', ' ')}\""
+            var id = slug(kind); var k = 2; while (ctx.objects.containsKey(id)) id = slug(kind) + "_" + (k++)
+            ctx.objects[id] = ObjectSpec(id, CardRef(name = name), controller = who, attachedTo = host)
+            ctx.lastMentioned = host; ctx.lastOwner = who; ctx.note(who); return true
         }
         // "do they have to block?": blocking is the defending player's choice unless an effect requires it.
         if (Regex("""^(?:do|does) (?:they|i|we|he|she|my opponent|the opponent) (?:have|need) to block(?: it| that| with it| with anything| at all)?$""").matches(clause0)) {
@@ -3780,7 +3818,7 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "A planeswalker nobody named, with ${r.groupValues[1]} loyalty; only the loyalty matters to the answer."
             ctx.lastMentioned = id; ctx.lastOwner = who; ctx.lastActor = who; ctx.note(who); return true
         }
-        Regex("""^(controls?|controlling|have|has|got|there (?:is|are))\s+(an?|one|\d+|two|three|four|five|six|seven|eight|nine|ten)(?: (?:more|other))? ((?:[a-z]+-\S+ )?)(artifacts?|enchantments?|planeswalkers?|permanents?|lands?|creatures?)(?: with (\d+) loyalty(?: counters?)?)?(?: on the battlefield| in play| out)?$""").find(c)?.let { r0 ->
+        Regex("""^(controls?|controlling|have|has|got|there (?:is|are))\s+(an?|one|\d+|two|three|four|five|six|seven|eight|nine|ten)(?: (?:more|other))? ((?:[a-z]+-\S+ )?)(artifacts?|enchantments?|planeswalkers?|permanents?|lands?|creatures?|equipments?|auras?)(?: with (\d+) loyalty(?: counters?)?)?(?: on the battlefield| in play| out)?$""").find(c)?.let { r0 ->
             // A plain "creature" is described elsewhere; only one named by its text ("a says-… creature") is taken here.
             if (r0.groupValues[4].startsWith("creature") && r0.groupValues[3].isEmpty()) return@let
             // "a dies-draw enchantment": a stand-in named by what it does keeps that name; the kind is the last word.
@@ -4544,6 +4582,14 @@ class SituationParser(private val names: NameIndex) {
             }
             // "can they respond with a spell that says regenerate target creature": the response goes on the stack above what it answers.
             if (inResponse && ctx.events.lastOrNull()?.verb == "resolveAll") ctx.events.removeAt(ctx.events.size - 1)
+            // A permanent said by its words is cast as a card in hand, so that once it resolves "it", "my creature" and its size all find it.
+            if (Regex("""^an? (?:\d+/\d+ )?(?:creature|artifact|enchantment|planeswalker) that says """).containsMatchIn(name)) {
+                val kind = Regex("""(creature|artifact|enchantment|planeswalker) that says""").find(name)!!.groupValues[1]
+                var id = slug(kind); var k = 2; while (ctx.objects.containsKey(id)) id = slug(kind) + "_" + (k++)
+                ctx.objects[id] = ObjectSpec(id, CardRef(name = name), controller = who, zone = "hand")
+                ctx.events += EventSpec("cast", player = who, obj = id, targets = targets); ctx.lastActor = who; ctx.lastVerb = "cast"
+                ctx.lastMentioned = id; ctx.note(who); return true
+            }
             ctx.events += EventSpec("cast", player = who, card = CardRef(name = name), targets = targets); ctx.lastActor = who; ctx.lastVerb = "cast"
             // "I cast a spell that says gain control of target creature on their 2/2, can I attack with it?": "it" is what the spell was aimed at.
             ctx.lastMentioned = targets.firstOrNull { it in ctx.objects } ?: "cast:${slug(name)}"; ctx.note(who); return true
@@ -7225,6 +7271,15 @@ class SituationParser(private val names: NameIndex) {
             ctx.events.lastOrNull { it.verb == "attack" && it.targets.firstOrNull() == who }?.obj?.let { out += it; return out }
         }
         // "targeting a spell" / "countering my spell": the spell last cast, on the stack.
+        // "on my creature with two +1/+1 counters": a creature nobody sized, told apart by its counters.
+        Regex("""^(?:(my|their|his|her|my opponent's|the opponent's|opponent's|an?|the) )?(creature|guy|dude) with (an? |one |two |three |four |\d+ )?([+-]\d+/[+-]\d+) counters?(?: on it)?$""").find(seg)?.let { r ->
+            val owner = when (r.groupValues[1]) { "my" -> "me"; "their", "his", "her", "my opponent's", "the opponent's", "opponent's" -> pronounPlayer(ctx, "their"); else -> ctx.lastOwner ?: "me" }
+            val n = number(r.groupValues[3].trim().ifEmpty { "one" }) ?: 1; val kind = r.groupValues[4]
+            val id = ctx.objects.values.lastOrNull { o -> o.controller == owner && isCreatureName(o.card.name) && (o.counters[kind] ?: 0) >= n }?.id
+                ?: describedCreatures("a ", "", "creature", owner, ctx).firstOrNull()?.also { id -> ctx.objects[id] = ctx.objects.getValue(id).let { o -> o.copy(counters = o.counters + (kind to ((o.counters[kind] ?: 0) + n))) } }
+                ?: return@let
+            ctx.lastMentioned = id; out += id; return out
+        }
         // "on their land": a land nobody named, on that side.
         Regex("""^(their|my|his|her) (land|basic land)$""").find(seg)?.let { r ->
             val owner = if (r.groupValues[1] == "my") "me" else pronounPlayer(ctx, "their")
@@ -7505,6 +7560,12 @@ class SituationParser(private val names: NameIndex) {
         val described = (if (pt.isNotEmpty()) "$pt " else "") + kind + "creature" + (if (extraKw.isNotEmpty()) " with $extraKw" else "")
         val article = if (described.first().lowercaseChar() in "aeiou") "an " else "a "
         val name = article + described
+        // "I cast a creature that says …, then they kill my creature": a bare "creature" of that player is the one with the words,
+        // on the battlefield or just cast from hand, before it is a new one nobody described.
+        if (pt.isEmpty() && kind.isBlank() && extraKw.isEmpty() && n == 1 && count.trim() in setOf("", "a", "the", "my", "their")) {
+            ctx.objects.values.lastOrNull { o -> o.controller == who && o.card.name?.startsWith("a creature that says") == true &&
+                (o.zone == "battlefield" || (o.zone == "hand" && ctx.events.any { e -> e.verb == "cast" && e.obj == o.id })) }?.let { o -> ctx.lastMentioned = o.id; return listOf(o.id) }
+        }
         // "the 2/2" / "my 3/3": one already described, not a new one.
         if (count.trim() in setOf("the", "my", "their")) {
             val kindWordOnly = kind.trim()

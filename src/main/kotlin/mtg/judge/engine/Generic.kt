@@ -55,7 +55,7 @@ object Generic {
         if (n in setOf("land destruction spell", "land destruction")) return OracleParser.parse("generic-land-destruction", "a land destruction spell", "Sorcery", "{1}{R}{R}", 3.0, "R", null, null, emptyList(), "Destroy target land.")
         if (n in setOf("dies-draw enchantment", "dies draw enchantment")) return OracleParser.parse("generic-dies-draw", "a dies-draw enchantment", "Enchantment", "{1}{B}", 2.0, "B", null, null, emptyList(), "Whenever a creature dies, draw a card.")
         // "a creature that says when it enters draw a card": a permanent whose rules text is the words given.
-        Regex("""^(?:(\d+)/(\d+) )?(creature|artifact|enchantment|permanent|land|planeswalker) that says (.+)$""").find(n)?.let { m ->
+        Regex("""^(?:(\d+)/(\d+) )?(creature|artifact|enchantment|permanent|land|planeswalker|equipment|aura) that says (.+)$""").find(n)?.let { m ->
             val kind = m.groupValues[3]; val raw = m.groupValues[4].replace('_', ' ').trim().trim('"')
             val self = if (kind == "creature") "this creature" else "this permanent"
             var t = raw.replace(Regex("""^(when(?:ever)?) it\b"""), "$1 $self").replace(Regex("""^it (can't|can|has|gets|deals|doesn't)\b"""), "${self.replaceFirstChar { c -> c.uppercase() }} $1")
@@ -72,7 +72,7 @@ object Generic {
             // Table wording into card wording: "you deal 1 damage to it", "and lose 1 life", "return it to the battlefield", "spells cost 1 more".
             t = t.replace(Regex("""\byou deals? (\d+) damage to it$"""), "$self deals $1 damage to that creature").replace(Regex("""\byou deals? (\d+) damage\b"""), "$self deals $1 damage")
             t = t.replace(Regex("""\breturn it to the battlefield$"""), "return it to the battlefield under its owner's control")
-            t = t.replace(Regex("""^(\w[\w ]*?) cost (\d+) more to cast$""")) { w -> "${w.groupValues[1]} cost {${w.groupValues[2]}} more to cast" }
+            t = t.replace(Regex("""^(\w[\w ]*?) cost (\d+) (more|less)(?: to cast)?$""")) { w -> "${w.groupValues[1]} cost {${w.groupValues[2]}} ${w.groupValues[3]} to cast" }
             t = t.replace(Regex("""\b(draw (?:a|\d+|two|three) cards?) and (?:you )?(lose|gain) (\d+) life$"""), "$1. You $2 $3 life")
             // "target creature fights another target creature": the two creatures the situation aims it at.
             t = t.replace(Regex("""^target creature fights another target creature$"""), "target creature you control fights target creature you don't control")
@@ -94,9 +94,13 @@ object Generic {
             // A land said by its words taps for mana unless its words say what it adds: "a land that says it enters tapped".
             if (kind == "land" && !Regex("""\badd\b""", RegexOption.IGNORE_CASE).containsMatchIn(text)) text = (text + "\n{T}: Add {C}.").trim()
             val kws = if (keywordOnly) t.split(", ").map { k -> k.replaceFirstChar { c -> c.uppercase() } } else emptyList()
-            val type = when (kind) { "creature" -> "Creature"; "artifact" -> "Artifact"; "land" -> "Land"; "planeswalker" -> "Planeswalker"; else -> "Enchantment" }
+            val type = when (kind) { "creature" -> "Creature"; "artifact" -> "Artifact"; "land" -> "Land"; "planeswalker" -> "Planeswalker"; "equipment" -> "Artifact — Equipment"; "aura" -> "Enchantment — Aura"; else -> "Enchantment" }
+            // An Equipment said by its words equips; an Aura said by its words enchants a creature.
+            var kws2 = kws
+            if (kind == "equipment" && !Regex("""\bequip\b""", RegexOption.IGNORE_CASE).containsMatchIn(text)) { text = (text + "\nEquip {1}").trim(); kws2 = kws2 + "Equip" }
+            if (kind == "aura" && !Regex("""\benchant\b""", RegexOption.IGNORE_CASE).containsMatchIn(text)) { text = ("Enchant creature\n" + text).trim(); kws2 = kws2 + "Enchant" }
             val pw = m.groupValues[1].ifEmpty { if (kind == "creature") "2" else "" }.ifEmpty { null }; val tf = m.groupValues[2].ifEmpty { if (kind == "creature") "2" else "" }.ifEmpty { null }
-            return OracleParser.parse("generic-says-$kind-${m.groupValues[1]}-${raw.take(60)}", "${if (m.groupValues[1].isNotEmpty()) "a ${m.groupValues[1]}/${m.groupValues[2]} " else if (kind.first() in "aeiou") "an " else "a "}$kind that says \"$raw\"", type, if (kind == "land") null else "{2}", if (kind == "land") 0.0 else 2.0, "", pw, tf, kws, text, loyalty = if (kind == "planeswalker") "3" else null)
+            return OracleParser.parse("generic-says-$kind-${m.groupValues[1]}-${raw.take(60)}", "${if (m.groupValues[1].isNotEmpty()) "a ${m.groupValues[1]}/${m.groupValues[2]} " else if (kind.first() in "aeiou") "an " else "a "}$kind that says \"$raw\"", type, if (kind == "land") null else "{2}", if (kind == "land") 0.0 else 2.0, "", pw, tf, kws2, text, loyalty = if (kind == "planeswalker") "3" else null)
         }
         // "a spell that says destroy target creature with power 2 or less": the words given are its rules text.
         Regex("""^(spell|instant|sorcery) that says (.+)$""").find(n)?.let { m ->
@@ -106,6 +110,8 @@ object Generic {
                 // "target creature fights another target creature": the two the situation aims it at; "target player draws two cards and loses 2 life": two sentences.
                 .replace(Regex("""^target creature fights another target creature$"""), "target creature you control fights target creature you don't control")
                 .replace(Regex("""^copy target (creature |instant or sorcery |instant |sorcery )?spell$"""), "copy target $1spell. You may choose new targets for the copy")
+                // "exile target creature then return it to the battlefield": the card's comma.
+                .replace(Regex("""^(exile target [a-z ]+?) then (return (?:it|that card) to the battlefield)"""), "$1, then $2")
                 .replace(Regex("""^target player draws (a|\d+|two|three) cards? and loses (\d+) life$""")) { w -> "target player draws ${w.groupValues[1]} card${if (w.groupValues[1] == "a") "" else "s"}. That player loses ${w.groupValues[2]} life" }.replace(Regex("""^it (gains?|gets|has|loses|can't)\b"""), "target creature $1").replace(Regex("""^gains? me (\d+) life$"""), "you gain $1 life").replace(Regex("""^deals? me (\d+) damage$"""), "this spell deals $1 damage to you")
                 // "destroy target creature and its controller loses 2 life": two sentences on the card.
                 .replace(Regex("""^((?:destroy|exile|return|counter|tap|bounce)\b[^.]*?) and (its controller|that player|that creature's controller|you) """)) { w -> "${w.groupValues[1]}. ${w.groupValues[2].replaceFirstChar { c -> c.uppercase() }} " }

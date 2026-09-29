@@ -1639,6 +1639,8 @@ object OracleParser {
             if (!a.hasUnparsed() && !b.hasUnparsed()) return Effect.Seq(listOf(a, b))
         }
         Regex("""^exile (target .+?), then return (?:that card|it|them|that creature) to the battlefield under (your|its owner's|their owner's) control\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> return Effect.Blink(target(m.groupValues[1]), ownersControl = !m.groupValues[2].equals("your", true)) }
+        // "Exile target creature until ~ leaves the battlefield." (Banisher Priest, Fiend Hunter's current wording)
+        Regex("""^exile (target .+?) until ~ leaves the battlefield\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.ExileUntilLeaves(target(it.groupValues[1])) }
         exileRe.matchEntire(s)?.let { return Effect.Exile(target(it.groupValues[1])) }
         tapRe.matchEntire(s)?.let { return Effect.Tap(target(it.groupValues[1])) }
         // Threaten: "Untap target creature and gain control of it until end of turn."

@@ -2013,6 +2013,7 @@ class Engine(val state: GameState) {
     private fun applyEffect(effect: Effect, item: StackItem) {
         val you = state.player(item.controller)
         when (effect) {
+            is Effect.DamageCausing, is Effect.DoublePower, is Effect.PumpCount, is Effect.LoseHalfLife, is Effect.ExileUntilLeaves -> applyEffectMore(effect, item)
             is Effect.Seq -> effect.effects.forEach { applyEffect(it, item) }
             is Effect.CantCastThisTurn -> {
                 val who = when (effect.who) {
@@ -2441,11 +2442,6 @@ class Engine(val state: GameState) {
                 }
             }
             is Effect.DamagePlayer -> for (p in resolvePlayers(effect.who, item)) applyDamage(item.source.name, Ref.Player(p.id), effect.amount, item.source)
-            is Effect.DamageCausing -> {
-                val o = item.causedObject?.let { state.objects[it] }
-                if (o == null || !o.isOnBattlefield()) trace.step("The creature that caused the trigger isn't on the battlefield, so the damage isn't dealt.", "611.2c")
-                else applyDamage(item.source.name, Ref.Obj(o.id), effect.amount, item.source)
-            }
             is Effect.PumpCausing -> {
                 val o = item.causedObject?.let { state.objects[it] }
                 if (o != null && effect.unlessCausingHas != null && state.hasKeyword(o, effect.unlessCausingHas)) {
@@ -2721,27 +2717,6 @@ class Engine(val state: GameState) {
             } }
             is Effect.Tap -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { trace.step("${it.name} becomes tapped.", "701.26a"); tap(it); state.outcomes += "${it.name} is tapped." } }
             is Effect.Untap -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { it.tapped = false; trace.step("${it.name} becomes untapped.", "701.26b"); state.outcomes += "${it.name} is untapped." } }
-            is Effect.PumpCount -> {
-                val x = when (val c = effect.count) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }; else -> null }
-                if (x == null) { state.unsupported += Unsupported(item.describe, "Couldn't count X."); return }
-                trace.step("X is $x (counted as the effect resolves).", "608.2h")
-                applyEffect(Effect.Pump(effect.target, x, x), item)
-            }
-            is Effect.LoseHalfLife -> for (p in resolvePlayers(effect.who, item)) {
-                val life = p.life
-                if (life == null) { state.unsupported += Unsupported(item.describe, "${p.subject}'s life total wasn't given."); continue }
-                val n = if (effect.roundUp) (life + 1) / 2 else life / 2
-                p.life = life - n
-                trace.step("${p.subject} ${p.v("loses", "lose")} half ${p.possessive} life, rounded ${if (effect.roundUp) "up" else "down"}: $n life ($life → ${life - n}).", "119.3")
-                state.outcomes += "${p.subject} ${p.v("loses", "lose")} $n life."
-            }
-            is Effect.DoublePower -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let {
-                val x = it.power ?: 0
-                it.pumps.add(x to 0)
-                if (x >= 0) trace.step("${it.name}'s power is doubled: it gets +$x/+0 until end of turn (its power as the effect resolves), so it's now ${it.power}/${it.toughness}.", "701.10b")
-                else trace.step("${it.name}'s power is doubled while it's below 0: it gets $x/-0 until end of turn (twice as far below 0), so it's now ${it.power}/${it.toughness}.", "701.10c")
-                state.outcomes += "${it.name} is ${it.power}/${it.toughness} until end of turn."
-            } }
             is Effect.Pump -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let {
                 it.pumps += effect.power to effect.toughness
                 trace.step("${it.name} gets ${signed(effect.power)}/${signed(effect.toughness)} until end of turn; it's now ${it.power}/${it.toughness}.", "611.2a")
@@ -3128,6 +3103,51 @@ class Engine(val state: GameState) {
                     state.outcomes += "${item.source.name}: the player it hit (or the controller of the permanent it hit) may pay ${cc.groupValues[1]} as it resolves to copy it and choose a new target for the copy — it can be chained back at ${state.player(item.controller).subject.lowercase()}, and that copy can be chained again (707.10)."
                 }
             }
+        }
+    }
+
+    /** The newer one-shot effects, kept out of [applyEffect] so that method stays under the JVM's 64 KB limit. */
+    private fun applyEffectMore(effect: Effect, item: StackItem) {
+        when (effect) {
+            is Effect.DamageCausing -> {
+                val o = item.causedObject?.let { state.objects[it] }
+                if (o == null || !o.isOnBattlefield()) trace.step("The creature that caused the trigger isn't on the battlefield, so the damage isn't dealt.", "611.2c")
+                else applyDamage(item.source.name, Ref.Obj(o.id), effect.amount, item.source)
+            }
+            is Effect.DoublePower -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let {
+                val x = it.power ?: 0
+                it.pumps.add(x to 0)
+                if (x >= 0) trace.step("${it.name}'s power is doubled: it gets +$x/+0 until end of turn (its power as the effect resolves), so it's now ${it.power}/${it.toughness}.", "701.10b")
+                else trace.step("${it.name}'s power is doubled while it's below 0: it gets $x/-0 until end of turn (twice as far below 0), so it's now ${it.power}/${it.toughness}.", "701.10c")
+                state.outcomes += "${it.name} is ${it.power}/${it.toughness} until end of turn."
+            } }
+            is Effect.PumpCount -> {
+                val x = when (val c = effect.count) { is CountExpr.Permanents -> state.objects.values.count { state.matches(c.filter, it, item.controller) }; else -> null }
+                if (x == null) { state.unsupported += Unsupported(item.describe, "Couldn't count X."); return }
+                trace.step("X is $x (counted as the effect resolves).", "608.2h")
+                applyEffect(Effect.Pump(effect.target, x, x), item)
+            }
+            is Effect.LoseHalfLife -> for (p in resolvePlayers(effect.who, item)) {
+                val life = p.life
+                if (life == null) { state.unsupported += Unsupported(item.describe, "${p.subject}'s life total wasn't given."); continue }
+                val n = if (effect.roundUp) (life + 1) / 2 else life / 2
+                p.life = life - n
+                trace.step("${p.subject} ${p.v("loses", "lose")} half ${p.possessive} life, rounded ${if (effect.roundUp) "up" else "down"}: $n life ($life → ${life - n}).", "119.3")
+                state.outcomes += "${p.subject} ${p.v("loses", "lose")} $n life."
+            }
+            is Effect.ExileUntilLeaves -> {
+                if (!item.source.isOnBattlefield()) {
+                    // 610.3a–b: the "until" event has already happened, so the exile doesn't happen at all.
+                    trace.step("${item.source.name} has already left the battlefield, so the duration is already over and nothing is exiled.", "610.3", if (item.kind == StackKind.TRIGGERED) "610.3b" else "610.3a")
+                    state.outcomes += "Nothing is exiled: ${item.source.name} had already left the battlefield."
+                    return
+                }
+                forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o ->
+                    move(o, Zone.EXILE, "${o.name} is exiled until ${item.source.name} leaves the battlefield.", "701.13a", "610.3")
+                    state.exiledUntilLeaves.getOrPut(item.source.id) { mutableListOf() } += o.id
+                } }
+            }
+            else -> {}
         }
     }
 
@@ -3771,6 +3791,15 @@ class Engine(val state: GameState) {
         state.outcomes += "${obj.name}: ${zoneName(from, obj)} → ${zoneName(to, obj)}."
         if (from == Zone.BATTLEFIELD) {
             if (to == Zone.GRAVEYARD) { onEvent(GameEvent.Dies(obj)); undyingOrPersist(obj, hadUndying, hadPersist) } else onEvent(GameEvent.LeavesBattlefield(obj))
+            // "Exile … until ~ leaves the battlefield": leaving is the event that returns them (610.3, 610.3c).
+            state.exiledUntilLeaves.remove(obj.id)?.forEach { id ->
+                val ex = state.objects[id] ?: return@forEach
+                if (ex.zone != Zone.EXILE) return@forEach
+                val back = state.add(GameObject(freshObjectId(ex.def.name), ex.def, Zone.BATTLEFIELD, ex.owner, ex.owner)); back.timestamp = state.tick(); back.summoningSick = ex.def.isCreature; ex.successor = back.id
+                trace.step("${obj.name} has left the battlefield, so ${ex.def.name} returns to the battlefield under its owner's control, as a new object with no memory of its previous existence.", "610.3", "610.3c")
+                state.outcomes += "${ex.def.name}: exile → the battlefield (${state.player(back.controller).possessive} control), returned because ${obj.name} left."
+                applyEntersReplacements(back); onEvent(GameEvent.EntersBattlefield(back))
+            }
             // Whatever was attached to it, or it was attached to, is checked by state-based actions (704.5m/n).
         }
     
@@ -4081,7 +4110,7 @@ class Engine(val state: GameState) {
         is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.CreateTokenCopy -> "create ${effect.count} token${if (effect.count > 1) "s" else ""} that's a copy of ${effect.target?.raw ?: item.source.name}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.GainLifePerSpellThisTurn -> "gain ${effect.per} life for each spell cast this turn"; is Effect.WinIfDevotionCoversLibrary -> "look at the top X cards (X = your devotion) and win if X is at least your library size"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.ExileGraveyard -> "exile ${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "your"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }}${if (effect.who == Who.YOU) "" else "'s"} graveyard"; is Effect.DiscardNamed -> "that player reveals their hand and discards every card with the name you chose"; is Effect.BounceChosen -> "return ${withArticle(effect.what)} you control to its owner's hand"; is Effect.LivingWeapon -> "create a 0/0 black Phyrexian Germ creature token, then attach ${item.source.name} to it"; is Effect.DiscardChosen -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }} reveals their hand and discards ${effect.what} of your choice"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"} onto the battlefield"
         is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.GainLifeEqualToToughness -> "its controller gains life equal to its toughness"; is Effect.PutOnBottom -> "put ${effect.target.raw} on the bottom of its owner's library"; is Effect.GainLifeLostThisWay -> "gain life equal to the life lost this way"; is Effect.RevealTopToHand -> "reveal the top card of your library and put it into your hand"; is Effect.PutSelfOnLibraryTop -> "put ${item.source.name} on top of its owner's library"; is Effect.LoseLifeEqualToRevealedMv -> "lose life equal to the revealed card's mana value"; is Effect.ExileIfDamagedDies -> "exile a creature dealt damage this way instead if it would die this turn"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"
         is Effect.Tap -> "tap ${effect.target.raw}"; is Effect.Untap -> "untap ${effect.target.raw}"
-        is Effect.DoublePower -> "${effect.target.raw}'s power is doubled"; is Effect.PumpCount -> "${effect.target.raw} gets +X/+X"; is Effect.LoseHalfLife -> "${effect.who} loses half their life"; is Effect.Pump -> "${effect.target.raw} gets ${signed(effect.power)}/${signed(effect.toughness)}"
+        is Effect.DoublePower -> "${effect.target.raw}'s power is doubled"; is Effect.ExileUntilLeaves -> "exile ${effect.target.raw} until this leaves the battlefield"; is Effect.PumpCount -> "${effect.target.raw} gets +X/+X"; is Effect.LoseHalfLife -> "${effect.who} loses half their life"; is Effect.Pump -> "${effect.target.raw} gets ${signed(effect.power)}/${signed(effect.toughness)}"
         is Effect.PumpSameName -> "${effect.target.raw} and all other creatures with the same name get ${signed(effect.power)}/${signed(effect.toughness)}"
         is Effect.GainKeywords -> "${effect.target.raw} gains ${effect.keywords.joinToString(" and ")}"
         is Effect.GainControl -> "gain control of ${effect.target.raw}${if (effect.untilEndOfTurn) " until end of turn" else ""}"

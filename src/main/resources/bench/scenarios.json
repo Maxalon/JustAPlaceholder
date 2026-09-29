@@ -20083,7 +20083,8 @@
 "id": "says-dies-trigger-bolted-on-stack",
 "text": "i cast a creature that says when it dies each opponent loses 2 life, they bolt it, what happens",
 "expect": [
-"Lightning Bolt can't target a creature that says \"when it dies each opponent loses 2 life\" while it's still a spell on the stack."
+"Lightning Bolt can't target a creature that says \"when it dies each opponent loses 2 life\" while it's still a spell on the stack: a creature spell isn't a creature until it resolves. Aim it at a creature that says \"when it dies each opponent loses 2 life\" once it has entered the battlefield, or counter the spell instead.",
+"a creature that says \"when it dies each opponent loses 2 life\" enters the battlefield."
 ]
 },
 {
@@ -21418,6 +21419,108 @@
 "expect": [
 "Yes: opponent's 2/2 creature died (it's in the graveyard).",
 "No: your 2/2 creature is still on the battlefield."
+]
+},
+{
+"id": "says-equipment-host-dies",
+"text": "i have an equipment that says equipped creature gets +2/+2 on my 1/1, they kill the 1/1, what happens to the equipment",
+"expect": [
+"a 1/1 creature: the battlefield → your graveyard.",
+"an equipment that says \"equipped creature gets +2/+2\" stays on the battlefield, unattached."
+],
+"cite": [
+"704.5n"
+]
+},
+{
+"id": "says-aura-host-bounced",
+"text": "i have an aura that says enchanted creature gets +1/+1 on my 2/2, they bounce the 2/2, what happens to the aura",
+"expect": [
+"a 2/2 creature: the battlefield → your hand.",
+"an aura that says \"enchanted creature gets +1/+1\": the battlefield → your graveyard."
+],
+"cite": [
+"704.5m"
+]
+},
+{
+"id": "says-flicker-loses-counters",
+"text": "i cast a spell that says exile target creature then return it to the battlefield under its owner's control on my creature with two +1/+1 counters, does it keep the counters",
+"expect": [
+"a creature is exiled and returns as a new object (your control), with no +1/+1 counters on it."
+],
+"cite": [
+"400.7"
+]
+},
+{
+"id": "three-attackers-one-blocker-how-many",
+"text": "they attack with three 2/2s and i have one 5/5, how many can i block",
+"notExpect": [
+"Not understood"
+],
+"cite": [
+"509.1a"
+]
+},
+{
+"id": "says-becomes-tapped-draw-attack",
+"text": "i have a creature that says whenever this creature becomes tapped draw a card, i attack with it, do i draw",
+"expect": [
+"Yes: You draw 1 card in all."
+]
+},
+{
+"id": "says-protection-from-creatures-block",
+"text": "i have a creature that says protection from creatures, they attack with a 3/3, can i block it and take no damage",
+"expect": [
+"Damage to a creature that says \"protection from creatures\" from a 3/3 creature is prevented (protection)."
+],
+"cite": [
+"702.16e"
+]
+},
+{
+"id": "says-exile-until-leaves-source-dies",
+"text": "i have a creature that says when this creature enters exile target creature until this creature leaves the battlefield, i cast it on their 4/4, then they kill my creature, what happens",
+"expect": [
+"a 4/4 creature: the battlefield → exile.",
+"a 4/4 creature: exile → the battlefield (opponent's control), returned because a creature that says \"when this creature enters exile target creature until this creature leaves the battlefield\" left."
+],
+"cite": [
+"610.3",
+"610.3c"
+]
+},
+{
+"id": "banisher-priest-dies-returns-bears",
+"text": "I cast Banisher Priest targeting their Grizzly Bears, then they Doom Blade the Priest, what happens",
+"expect": [
+"Grizzly Bears: the battlefield → exile.",
+"Banisher Priest: the battlefield → your graveyard.",
+"Grizzly Bears: exile → the battlefield (opponent's control), returned because Banisher Priest left."
+],
+"cite": [
+"610.3"
+]
+},
+{
+"id": "vigilance-block-on-my-turn",
+"text": "they have a creature that says it has vigilance, they attack with it, can it block on my turn",
+"notExpect": [
+"can't attack on your turn",
+"Not understood"
+],
+"cite": [
+"502.3",
+"702.20b"
+]
+},
+{
+"id": "says-spells-cost-1-less-two-lands",
+"text": "my opponent controls a creature that says spells you cast cost 1 less, they have 2 lands and cast a 3 drop, can they",
+"expect": [
+"a 3 mana creature enters the battlefield."
 ]
 }
 ]

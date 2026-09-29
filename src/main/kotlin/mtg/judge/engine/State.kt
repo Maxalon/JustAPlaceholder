@@ -198,6 +198,8 @@ class GameState(
     var activePlayer: String? = null,
     /** The player who is the monarch, if any (725.1). No monarch until an effect makes one. */
     var monarch: String? = null,
+    /** "Exile … until ~ leaves the battlefield": the exiled objects, by the id of the permanent whose leaving returns them (610.3). */
+    val exiledUntilLeaves: MutableMap<String, MutableList<String>> = mutableMapOf(),
     /** Players who can't lose the game this turn (Angel's Grace); cleared in the cleanup step. */
     val cantLoseThisTurn: MutableSet<String> = mutableSetOf(),
     /** Players whose life total damage can't take below the given number this turn (Angel's Grace); cleared in cleanup. */
