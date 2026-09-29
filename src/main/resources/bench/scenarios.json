@@ -21150,5 +21150,112 @@
 "expect": [
 "You draw 1 card."
 ]
+},
+{
+"id": "says-nonblack-removal-on-black-2-2",
+"text": "they cast a spell that says destroy target nonblack creature on my black 2/2, can they",
+"expect": [
+"a spell that says \"destroy target nonblack creature\" can't target a 2/2 black creature (not a nonblack creature)."
+]
+},
+{
+"id": "doom-blade-on-black-2-2",
+"text": "they cast Doom Blade on my black 2/2, can they",
+"expect": [
+"Doom Blade can't target a 2/2 black creature (not a nonblack creature)."
+]
+},
+{
+"id": "says-gain-control-attack-this-turn",
+"text": "my opponent has a 2/2 and i cast a spell that says gain control of target creature until end of turn, can i attack with it this turn",
+"expect": [
+"You control a 2/2 creature until end of turn.",
+"a 2/2 creature can't attack (summoning sick)."
+],
+"cite": [
+"302.6"
+]
+},
+{
+"id": "two-says-creatures-counter-on-enter",
+"text": "i have two creatures that say whenever another creature enters put a +1/+1 counter on this creature, i cast a third creature, how big are they",
+"expect": [
+"a creature that says \"whenever another creature enters put a +1/+1 counter on this creature\" is 3/3 (2/2 base, 1 +1/+1 counter). (×2)"
+]
+},
+{
+"id": "must-be-blocked-do-i-have-to",
+"text": "they attack with a 4/4 and i have a creature that says it must be blocked if able, do i have to block",
+"notExpect": [
+"No. Blocking is never required"
+],
+"cite": [
+"509.1c"
+]
+},
+{
+"id": "says-lose-half-life-rounded-up",
+"text": "i cast a spell that says each player loses half their life rounded up, i'm at 7 and they're at 10, what happens",
+"expect": [
+"You lose 4 life.",
+"opponent loses 5 life.",
+"You go from 7 to 3 life.",
+"opponent goes from 10 to 5 life."
+]
+},
+{
+"id": "says-cant-be-countered-can-they-counter",
+"text": "i have a land that says tap: add one mana of any color, and a creature that says it can't be countered, they have a counterspell, can they counter my creature",
+"notExpect": [
+"Yes, with a counterspell in hand",
+"Not understood"
+],
+"cite": [
+"701.6a"
+]
+},
+{
+"id": "says-pump-x-creatures-you-control",
+"text": "i have a 3/3 and cast a spell that says target creature gets +X/+X until end of turn where X is the number of creatures you control, i control 3 creatures, how big is it",
+"expect": [
+"a 3/3 creature is 7/7 (3/3 base, +4/+4 until end of turn)."
+],
+"cite": [
+"608.2h"
+]
+},
+{
+"id": "says-combat-damage-to-player-draw",
+"text": "i have a creature that says whenever this creature deals combat damage to a player draw a card, i attack and they don't block, do i draw",
+"expect": [
+"opponent takes 2 damage.",
+"Yes: You draw 1 card in all."
+]
+},
+{
+"id": "says-gain-5-life-at-3",
+"text": "i cast a spell that says you gain 5 life, i'm at 3, what's my life",
+"expect": [
+"You are at 8 life.",
+"You go from 3 to 8 life."
+]
+},
+{
+"id": "flying-first-strike-vs-reach-blocker",
+"text": "they have a creature that says it has flying and first strike, i block with a 2/2 with reach, what happens",
+"expect": [
+"a 2/2 creature with reach: the battlefield → your graveyard."
+]
+},
+{
+"id": "says-mill-three-with-two-left",
+"text": "my opponent casts a spell that says target player mills three cards, i have 2 cards in library, do i lose",
+"expect": [
+"You mill 2 cards (0 left in library).",
+"No: You are still in the game. An empty library isn't a loss by itself: you lose only when you would draw from it, at the next state-based check (704.5b)."
+],
+"cite": [
+"704.5b"
+]
 }
 ]
