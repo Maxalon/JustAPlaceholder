@@ -2497,7 +2497,9 @@ class Engine(val state: GameState) {
             }
             is Effect.ExileGraveyard -> for (p in resolvePlayers(effect.who, item)) {
                 val cards = state.objects.values.filter { it.zone == Zone.GRAVEYARD && it.owner == p.id }
-                if (cards.isEmpty()) trace.step("${p.possessive.replaceFirstChar { c -> c.uppercase() }} graveyard is empty, so nothing is exiled.", "701.13a")
+                // "I have 5 cards in graveyard": a graveyard given only as a count is exiled as that count.
+                if (cards.isEmpty() && (p.graveyardSize ?: 0) > 0) { val n = p.graveyardSize!!; trace.step("All $n cards in ${p.possessive} graveyard are exiled at once.", "701.13a", "400.7"); state.outcomes += "${p.possessive.replaceFirstChar { c -> c.uppercase() }} graveyard ($n cards) is exiled; it is empty now."; p.graveyardSize = 0 }
+                else if (cards.isEmpty()) trace.step("${p.possessive.replaceFirstChar { c -> c.uppercase() }} graveyard is empty, so nothing is exiled.", "701.13a")
                 else {
                     trace.step("Every card in ${p.possessive} graveyard is exiled at once: ${cards.joinToString(", ") { c -> c.name }}. They all leave the graveyard as a single event, so nothing can be returned from it in response.", "701.13a", "400.7")
                     for (c in cards) c.zone = Zone.EXILE
@@ -4081,7 +4083,7 @@ class Engine(val state: GameState) {
     private fun unparsedText(e: Effect): String = when (e) { is Effect.Unparsed -> e.text; is Effect.May -> unparsedText(e.effect); is Effect.UnlessPays -> unparsedText(e.effect); is Effect.Seq -> e.effects.filter { it.hasUnparsed() }.joinToString(" | ") { unparsedText(it) }; is Effect.Modal -> e.modes.filter { it.hasUnparsed() }.joinToString(" | ") { "mode \"" + unparsedText(it) + "\"" }; else -> "" }
     private fun signed(n: Int) = if (n >= 0) "+$n" else "$n"
     private fun colorWord(c: Char) = when (c) { 'W' -> "white"; 'U' -> "blue"; 'B' -> "black"; 'R' -> "red"; 'G' -> "green"; else -> c.toString() }
-    private fun withArticle(s: String) = (if (s.firstOrNull()?.lowercaseChar() in setOf('a', 'e', 'i', 'o', 'u')) "an " else "a ") + s
+    private fun withArticle(s: String) = if (Regex("""^(?:a|an|the) """).containsMatchIn(s)) s else (if (s.firstOrNull()?.lowercaseChar() in setOf('a', 'e', 'i', 'o', 'u')) "an " else "a ") + s
     private fun freshObjectId(name: String): String { val base = name.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_'); var id = base; var i = 2; while (state.objects.containsKey(id)) id = "${base}_${i++}"; return id }
     private fun zoneName(z: Zone, obj: GameObject?) = when (z) {
         Zone.BATTLEFIELD -> "the battlefield"; Zone.GRAVEYARD -> "${obj?.let { state.player(it.owner).possessive } ?: "its owner's"} graveyard"; Zone.HAND -> "${obj?.let { state.player(it.owner).possessive } ?: "its owner's"} hand"
