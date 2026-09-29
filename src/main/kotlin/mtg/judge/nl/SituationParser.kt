@@ -1512,6 +1512,8 @@ class SituationParser(private val names: NameIndex) {
             // wasn't blocked. "I hit them with it for 3 more" after commander damage: the unnamed commander is a 3/3.
         t2 = t2.replace(Regex("""\b(i|we|they|he|she|my opponent|the opponent|opponent) hits? (?:them|him|her|me|my opponent|the opponent|@\w+) with ((?:an? |my |their |\d+ |two |three )?(?:\d+/\d+|creatures?|tokens?)\b(?:(?! and | but | then | while | so | because )[^,.?])*?)(?: unblocked| unopposed)?(?=[,.?]| and | but | then | while | so | because |$)"""), "$1 attack with $2 unblocked")
         t2 = t2.replace(Regex("""\b(i|we) hit (?:them |him |her |my opponent |the opponent )?with (it|that) for (\d+)(?: more)?\b"""), "$2 is a $3/$3 and $2 attacks unblocked")
+            // "it hits again for 3" / "my commander connects for 3 more": the unnamed attacker is a 3/3 and isn't blocked.
+        t2 = t2.replace(Regex("""\b(it|that|my commander) (?:hits|connects|gets through|swings in)(?: them| him| her| my opponent| the opponent)?(?: again)? for (\d+)(?: more| damage| more damage)?\b""", RegexOption.IGNORE_CASE), "$1 is a $2/$2 and $1 attacks unblocked")
             // "it hits them" / "they connect with me": the same, with the creature said as a pronoun.
         t2 = t2.replace(Regex("""\b(it|they)\s+(?:hits|hit|connects with|connected with)\s+(me|them|him|her|my opponent|the opponent|@\w+)\b(?!(?:\s+for \d+)?\s+with\b)"""), "$1 attacks $2 unblocked")
         t2 = t2.replace(Regex("""\b(?:they are|they're|he is|he's|she is|she's) attacking\b"""), "they attack")
@@ -2666,6 +2668,14 @@ class SituationParser(private val names: NameIndex) {
             val who = if (r.groupValues[1] == "they") ctx.other(ctx.lastActor ?: "me") ?: "opp" else "me"
             val id = m.cards[r.groupValues[2]]?.let { objectIdFor(it, ctx) }?.takeIf { ctx.objects.getValue(it).zone in setOf("graveyard", "exile") } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, player = who, to = "castNow"); return true
+        }
+        // "They Counterspell my Counterspell. Does my original spell resolve?": the spell nobody named, which the asker's
+        // counter was read as aimed at, was the asker's own; it is re-owned and asked about.
+        Regex("""^(?:does|will|would|so does) (?:my|our) (?:original|first|own|initial) spell (?:still |even )?(?:resolve|go through|get countered|fizzle|get through|happen)$""").find(clause0)?.let {
+            val i = ctx.events.indexOfLast { it.verb == "cast" && it.card?.name == "a spell" && it.obj == null }
+            if (i < 0) return@let
+            if (ctx.events[i].player != "me") ctx.events[i] = ctx.events[i].copy(player = "me")
+            ctx.asks += EventSpec("ask", card = CardRef(name = "a spell"), to = "countered"); ctx.notes += "\"${restore(clause0, m)}?\" is about the spell your counter was protecting; it wasn't named, so it stands in as \"a spell\"."; return true
         }
         // "Can Serra Angel attack and still block on their turn?": whether attacking leaves it untapped to block.
         Regex("""^can (it|that|(?:my |the )?(c\d+)|my (\d+/\d+)) attackthenblock$""").find(clause0)?.let { r ->
@@ -7338,7 +7348,9 @@ class SituationParser(private val names: NameIndex) {
         // "is it summoning sick?" / "does my Elves have summoning sickness?": whether it came down this turn.
         Regex("""^(?:is|are|does|do|did|was|were) (?:it|that|they|(?:my |their |his |her |the |@\w+'s )?(c\d+))(?:'s)? (?:still |even |actually )*(?:summoning[- ]sick|have summoning sickness|has summoning sickness)(?: still| now| right now)?$""").find(clause0)?.let { q ->
             val ph = q.groupValues[1]
-            val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: return@let
+            // "They cast Clone copying my Bears. Is their Clone summoning sick?": the Clone is the one just cast, theirs.
+            val side = if (Regex("""^(?:is|are|does|do|did|was|were) (?:their|his|her) """).containsMatchIn(clause0)) (ctx.other("me") ?: "opp") else "me"
+            val id = if (ph.isNotEmpty()) m.cards[ph]?.let { objectIdForOrCast(it, ctx) ?: addObject(it, side, false, ctx) } ?: return@let
                      else ctx.lastMentioned?.takeIf { it in ctx.objects }
                          ?: ctx.events.lastOrNull { it.verb == "cast" && it.card?.name != null }?.card?.name?.let { slug(it) } ?: return@let
             ctx.asks += EventSpec("ask", obj = id, to = "summoningSick"); ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true

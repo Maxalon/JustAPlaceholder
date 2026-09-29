@@ -23590,5 +23590,112 @@
       "No: a 2/2 creature didn't die, but it left the battlefield; it's in exile.",
       "No: a 3/3 creature didn't die, but it left the battlefield; it's in exile."
     ]
+  },
+  {
+    "id": "liliana-attacked-can-i-block-to-save-her",
+    "text": "I have Liliana of the Veil with 3 loyalty. They attack her with a 3/3. I have a 2/2. Can I block to save her?",
+    "expect": [
+      "Yes: a 2/2 creature can block a 3/3 creature, and Liliana of the Veil takes no damage from it (a blocked creature without trample deals no damage to what it attacked, 510.1c)."
+    ],
+    "cite": [
+      "510.1c"
+    ]
+  },
+  {
+    "id": "clone-copying-my-bears-is-their-clone-sick",
+    "text": "They cast Clone copying my Grizzly Bears. Is their Clone summoning sick?",
+    "expect": [
+      "Clone, a copy of Grizzly Bears, enters the battlefield.",
+      "Yes: Grizzly Bears came under opponent's control this turn and doesn't have haste, so it can't attack or use a {T} ability (302.6)."
+    ]
+  },
+  {
+    "id": "bolt-on-2-2-with-two-counters-survives",
+    "text": "I have a 2/2 with two +1/+1 counters and they cast Lightning Bolt on it. Does it survive?",
+    "expect": [
+      "Yes: a 2/2 creature is still on the battlefield."
+    ]
+  },
+  {
+    "id": "counterspell-my-counterspell-original-resolves",
+    "text": "They Counterspell my Counterspell. Does my original spell resolve?",
+    "expect": [
+      "Counterspell is countered.",
+      "No: a spell isn't countered; it resolves."
+    ]
+  },
+  {
+    "id": "sakura-tribe-elder-sacrificed-while-blocking",
+    "text": "I sacrifice my Sakura-Tribe Elder while it's blocking. Does the attacker deal damage to me?",
+    "expect": [
+      "No: a 3/3 creature dealt no damage to you.",
+      "a basic land enters the battlefield."
+    ],
+    "cite": [
+      "509.1h"
+    ]
+  },
+  {
+    "id": "platinum-angel-at-1-life-bolted",
+    "text": "I have 1 life and Platinum Angel. They cast Lightning Bolt at me. Do I lose?",
+    "expect": [
+      "No: You are still in the game at -2 life."
+    ]
+  },
+  {
+    "id": "rest-in-peace-vs-reanimate",
+    "text": "I control Rest in Peace. They cast Reanimate. What happens?",
+    "expect": [
+      "Reanimate does nothing: Rest in Peace has kept the graveyards empty, so there is no creature to put onto the battlefield."
+    ],
+    "cite": [
+      "614.1a"
+    ]
+  },
+  {
+    "id": "giant-growth-before-damage-2-2-vs-2-2",
+    "text": "They attack with a 2/2 and I block with a 2/2. Before damage I cast Giant Growth on mine. What happens?",
+    "expect": [
+      "a 2/2 creature is 5/5 until end of turn.",
+      "a 2/2 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "a 2/2 creature: the battlefield → your graveyard."
+    ]
+  },
+  {
+    "id": "nine-poison-infect-1-1-attacks",
+    "text": "I have 9 poison counters and they attack with a 1/1 infect. Do I lose?",
+    "expect": [
+      "You have 10 poison counters.",
+      "You lose the game (poison)."
+    ],
+    "cite": [
+      "704.5c"
+    ]
+  },
+  {
+    "id": "commander-19-then-hits-again-for-3",
+    "text": "My commander has dealt 19 damage to them. It hits again for 3. Do they lose?",
+    "expect": [
+      "opponent has taken 22 commander damage from a 3/3 creature.",
+      "opponent loses the game (commander damage)."
+    ]
+  },
+  {
+    "id": "naturalize-on-sol-ring-tap-in-response",
+    "text": "They cast Naturalize on my Sol Ring. Can I tap it for mana in response?",
+    "expect": [
+      "Sol Ring's mana ability: add {C}{C}.",
+      "Sol Ring: the battlefield → your graveyard."
+    ]
+  },
+  {
+    "id": "ponder-how-many-cards",
+    "text": "I cast Ponder. How many cards do I look at?",
+    "expect": [
+      "Ponder: Look at the top three cards of your library, then put them back in any order (not tracked in detail).",
+      "You draw 1 card."
+    ]
   }
 ]

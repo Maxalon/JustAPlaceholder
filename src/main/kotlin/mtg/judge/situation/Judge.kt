@@ -703,7 +703,10 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                                 engine.cantBlockWhy(att, o)?.let { (why, rules, out) -> state.trace.step(why, *rules.toTypedArray()); "No: $out" }
                                     ?: run {
                                         if (state.hasKeyword(att, "flying") && !state.hasKeyword(o, "flying") && state.hasKeyword(o, "reach")) state.trace.step("${att.name} has flying, which only creatures with flying or reach can block; ${o.name} has reach, so it can.", "702.9b", "702.17b")
-                                        "Yes: ${o.name} can block ${att.name}."
+                                        // "Can I block to save her?": the planeswalker attacked takes nothing from a blocked attacker without trample.
+                                        val pw = (att.attacking as? mtg.judge.engine.Ref.Obj)?.let { state.objects[it.id] }?.takeIf { "Planeswalker" in it.def.types }
+                                        if (pw != null && !state.hasKeyword(att, "trample")) { state.trace.step("${att.name} is blocked, so it deals its combat damage to ${o.name}, not to ${pw.name}: a blocked creature without trample deals no damage to the player or planeswalker it attacked.", "509.1h", "510.1c"); "Yes: ${o.name} can block ${att.name}, and ${pw.name} takes no damage from it (a blocked creature without trample deals no damage to what it attacked, 510.1c)." }
+                                        else "Yes: ${o.name} can block ${att.name}."
                                     }
                             }
                         // "can they block with it?" when the block was then played out: it could, and did, even if it died in the combat.

@@ -2648,6 +2648,12 @@ class Engine(val state: GameState) {
                     state.outcomes += "${chosen.name} can't be found with ${item.source.name}: it isn't ${withArticle(effect.filter.raw)}."
                     return
                 }
+                // "I control Rest in Peace. They cast Reanimate": the graveyards are empty, so there is nothing to name.
+                val keeper = if (chosen == null && fromZone == Zone.GRAVEYARD) state.objects.values.firstOrNull { src -> src.isOnBattlefield() && src.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.any { e -> ((e as? StaticEffect.Replace)?.replacement as? Replacement.GraveyardReplacement)?.let { it.fromAnywhere && !it.self && it.instead == "exile" && it.filter.controller == null } == true } } else null
+                if (keeper != null) {
+                    trace.step("${keeper.name} exiles every card that would be put into a graveyard, so the graveyards are empty: there is no ${effect.filter.raw} for ${item.source.name} to put onto the battlefield. (Had one been named as a target, ${item.source.name} couldn't have been cast at all.)", "614.1a", "601.2c")
+                    state.outcomes += "${item.source.name} does nothing: ${keeper.name} has kept the graveyards empty, so there is no ${effect.filter.raw} to put onto the battlefield."
+                } else
                 if (chosen == null) { state.clarifications += Clarification("${item.source.name}'s card", "${item.source.name} puts ${withArticle(effect.filter.raw)} from ${you.possessive} $zoneName onto the battlefield; which card? (none was named, so nothing is put)"); trace.step("No ${effect.filter.raw} in ${you.possessive} $zoneName was named for ${item.source.name}; nothing is put onto the battlefield${if (effect.fromLibrary) " (the library is still shuffled)" else ""}.") }
                 else if (chosen.zone != fromZone) trace.step("${chosen.name} isn't in ${you.possessive} $zoneName, so ${item.source.name} can't put it onto the battlefield.", "608.2b")
                 else if (effect.maxMv != null && chosen.def.manaValue.toInt() > effect.maxMv) { trace.step("${chosen.name} has mana value ${chosen.def.manaValue.toInt()}, more than ${effect.maxMv}, so ${item.source.name} can't find it.", "202.3"); state.outcomes += "${chosen.name} can't be put onto the battlefield (mana value too high)." }
