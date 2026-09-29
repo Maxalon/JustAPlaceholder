@@ -20561,5 +20561,123 @@
 "expect": [
 "opponent discards 1 card (3 → 2 in hand)."
 ]
+},
+{
+"id": "says-pump-on-mine-then-bolt",
+"text": "i cast a spell that says target creature gets +2/+2 until end of turn on my 2/2, then they bolt it, does it die",
+"expect": [
+"a 2/2 creature is 4/4 until end of turn.",
+"a 2/2 creature has 3 damage marked.",
+"No: a 2/2 creature is still on the battlefield."
+]
+},
+{
+"id": "says-each-sacrifices-they-have-none",
+"text": "my opponent casts a spell that says each player sacrifices a creature, i have 2 creatures and they have none, what happens",
+"expect": [
+"a creature: the battlefield → your graveyard.",
+"opponent has no creature to sacrifice to a spell that says \"each player sacrifices a creature\"; with one, opponent would have to."
+],
+"notExpect": [
+"Not understood"
+]
+},
+{
+"id": "says-double-power",
+"text": "i have a 2/2 and cast a spell that says double target creature's power until end of turn, how big is it",
+"expect": [
+"a 2/2 creature is 4/2 until end of turn.",
+"a 2/2 creature is 4/2 (2/2 base, +2/+0 until end of turn)."
+],
+"cite": [
+"701.10b"
+]
+},
+{
+"id": "unleash-fury",
+"text": "i cast Unleash Fury on my 3/3, how big is it",
+"expect": [
+"a 3/3 creature is 6/3 until end of turn."
+],
+"cite": [
+"701.10b"
+]
+},
+{
+"id": "says-land-enters-tapped-mana",
+"text": "i play a land that says it enters tapped, can i tap it for mana this turn",
+"expect": [
+"a land that says \"it enters tapped\"'s {T} ability can't be activated (already tapped)."
+],
+"cite": [
+"614.1c"
+]
+},
+{
+"id": "first-striker-blocks-3-3",
+"text": "i attack with a 3/3 and they block with a 2/2 first striker, does my creature die",
+"expect": [
+"No: a 3/3 creature is still on the battlefield.",
+"a 2/2 creature with first strike: the battlefield → opponent's graveyard."
+]
+},
+{
+"id": "says-cant-block",
+"text": "they have a creature that says it can't block, i attack with a 1/1, can they block",
+"expect": [
+"a creature that says \"it can't block\" can't block.",
+"opponent takes 1 damage."
+]
+},
+{
+"id": "says-flying-anthem-block",
+"text": "i have an enchantment that says creatures you control have flying, they have a 4/4 without reach, i attack with a 2/2, can they block",
+"expect": [
+"a 4/4 creature can't block a 2/2 creature (flying).",
+"opponent takes 2 damage."
+]
+},
+{
+"id": "says-artifact-tax-3-lands",
+"text": "they have an artifact that says spells cost 1 more to cast, i have 3 lands and cast a 3 drop, can i",
+"expect": [
+"a 3 mana creature can't be cast (costs 4, only 3 mana available)."
+]
+},
+{
+"id": "says-counter-when-another-dies",
+"text": "i have a creature that says whenever another creature you control dies put a +1/+1 counter on this creature, my 1/1 dies, how big is it",
+"expect": [
+"a creature that says \"whenever another creature you control dies put a +1/+1 counter on this creature\" has 1 +1/+1 counter."
+]
+},
+{
+"id": "one-blocker-two-attackers",
+"text": "my opponent attacks me with two 2/2s and i have one 3/3, can i block both",
+"expect": [
+"a 3/3 creature can't block a 2/2 creature as well (a creature blocks only one attacker, 509.1a)."
+],
+"cite": [
+"509.1a"
+]
+},
+{
+"id": "says-exile-respond-sac-to-seer",
+"text": "they cast a spell that says exile target creature on my Grizzly Bears, i respond by sacrificing it to my Viscera Seer, does it fizzle",
+"expect": [
+"Grizzly Bears: the battlefield → your graveyard.",
+"a spell that says \"exile target creature\" doesn't resolve (all targets illegal)."
+],
+"cite": [
+"608.2b"
+]
+},
+{
+"id": "preordain-scry-not-keyword",
+"text": "I cast Preordain, what happens",
+"expect": [
+"Preordain: Scry 2 (not tracked in detail).",
+"You draw 1 card."
+]
 }
 ]

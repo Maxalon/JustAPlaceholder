@@ -56,6 +56,8 @@ object Generic {
             val self = if (kind == "creature") "this creature" else "this permanent"
             var t = raw.replace(Regex("""^(when(?:ever)?) it\b"""), "$1 $self").replace(Regex("""^it (can't|can|has|gets|deals|doesn't)\b"""), "${self.replaceFirstChar { c -> c.uppercase() }} $1")
             t = t.replace(Regex("""\bon it$"""), "on $self").replace(Regex("""^tap[:,]? (.+)$"""), "{T}: $1")
+            // "a land that says it enters tapped", "it must be blocked if able".
+            t = t.replace(Regex("""^it enters(?: the battlefield)? tapped$"""), "${self.replaceFirstChar { c -> c.uppercase() }} enters tapped").replace(Regex("""^it must be blocked if able$"""), "All creatures able to block ${self} do so")
             // "an opponent's creature dies", "whenever this creature blocks it deals 1 damage to the creature it blocks", "it can't be the target of spells".
             t = t.replace(Regex("""\ban opponent's creature\b"""), "a creature an opponent controls").replace(Regex("""\bto the creature it blocks$"""), "to that creature").replace(Regex("""^whenever this creature blocks it\b"""), "whenever this creature blocks a creature, it")
             t = t.replace(Regex("""^(?:this creature|this permanent|it) can't be the target of spells(?: or abilities)?$""", RegexOption.IGNORE_CASE), "shroud").replace(Regex("""^(?:this creature|this permanent|it) can't be the target of spells or abilities your opponents control$""", RegexOption.IGNORE_CASE), "hexproof")
@@ -70,7 +72,9 @@ object Generic {
             // "whenever this creature attacks, it gets +1/+0": a pump from a trigger lasts until end of turn unless said otherwise.
             if (Regex("""^(?:when|whenever|at)\b.*\b(?:gets?|gains?) [+-]\d+/[+-]\d+$""").containsMatchIn(t)) t += " until end of turn"
             val keywordOnly = Regex("""^(?:flying|reach|trample|lifelink|deathtouch|first strike|double strike|haste|vigilance|hexproof|indestructible|menace|flash|defender|infect|wither|shroud|protection from [a-z]+)(?:, (?:flying|reach|trample|lifelink|deathtouch|first strike|double strike|haste|vigilance|hexproof|indestructible|menace|flash|defender|infect|wither|shroud|protection from [a-z]+))*$""").matches(t)
-            val text = if (keywordOnly) "" else t.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
+            var text = if (keywordOnly) "" else t.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
+            // A land said by its words taps for mana unless its words say what it adds: "a land that says it enters tapped".
+            if (kind == "land" && !Regex("""\badd\b""", RegexOption.IGNORE_CASE).containsMatchIn(text)) text = (text + "\n{T}: Add {C}.").trim()
             val kws = if (keywordOnly) t.split(", ").map { k -> k.replaceFirstChar { c -> c.uppercase() } } else emptyList()
             val type = when (kind) { "creature" -> "Creature"; "artifact" -> "Artifact"; "land" -> "Land"; else -> "Enchantment" }
             val pw = m.groupValues[1].ifEmpty { if (kind == "creature") "2" else "" }.ifEmpty { null }; val tf = m.groupValues[2].ifEmpty { if (kind == "creature") "2" else "" }.ifEmpty { null }

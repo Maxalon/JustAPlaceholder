@@ -174,9 +174,12 @@ object OracleParser {
         return s
     }
 
+    /** Keyword actions (701): verbs a card's keyword list carries ("Double", "Scry", "Mill") that head an effect sentence, never a keyword ability line. */
+    private val keywordActions = setOf("activate", "attach", "cast", "counter", "create", "destroy", "discard", "double", "exchange", "exile", "fight", "mill", "play", "regenerate", "reveal", "sacrifice", "scry", "search", "shuffle", "tap", "untap", "vote", "transform", "detain", "populate", "monstrosity", "bolster", "manifest", "support", "investigate", "meld", "goad", "exert", "explore", "assemble", "surveil", "adapt", "amass", "learn", "venture into the dungeon", "connive", "open an attraction", "roll to visit your attractions", "convert", "incubate", "the ring tempts you", "face a villainous choice", "time travel", "discover", "cloak", "collect evidence", "suspect", "forage", "manifest dread", "endure", "behold")
+
     private fun isKeywordLine(line: String, keywords: Collection<String>): Boolean {
         val parts = line.trimEnd('.').split(',', ';').map { it.trim().lowercase() }
-        val kws = keywords.map { it.lowercase() }.toSet()
+        val kws = keywords.map { it.lowercase() }.toSet() - keywordActions
         // "Evoke—Exile a black card from your hand": a keyword whose cost follows an em-dash with no space.
         return parts.isNotEmpty() && parts.all { p -> kws.any { k -> p == k || p.startsWith("$k ") || p.startsWith("$k—") || p.startsWith("$k–") } }
     }
@@ -1636,6 +1639,7 @@ object OracleParser {
         Regex("""^gain control of (target .+?) until end of turn\. untap (?:that|it|that creature|that permanent).*?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> val t = target(m.groupValues[1]); return Effect.Seq(listOf(Effect.GainControl(t, true), Effect.Untap(t))) }
         untapRe.matchEntire(s)?.let { return Effect.Untap(target(it.groupValues[1])) }
         pumpRe.matchEntire(s)?.let { return Effect.Pump(target(it.groupValues[1]), it.groupValues[2].toInt(), it.groupValues[3].toInt()) }
+        Regex("""^double (?:the power of (target creature)|(target creature)['’]s power) until end of turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.DoublePower(target(it.groupValues[1].ifEmpty { it.groupValues[2] })) }
         pumpSameNameRe.matchEntire(s)?.let { return Effect.PumpSameName(target(it.groupValues[1]), it.groupValues[2].toInt(), it.groupValues[3].toInt()) }
         pumpGainRe.matchEntire(s)?.let { m -> keywordsIn(m.groupValues[4])?.let { kws -> return Effect.Seq(listOf(Effect.Pump(target(m.groupValues[1]), m.groupValues[2].toInt(), m.groupValues[3].toInt()), Effect.GainKeywords(target(m.groupValues[1]), kws))) } }
         gainRe.matchEntire(s)?.let { m -> keywordsIn(m.groupValues[3])?.let { kws ->

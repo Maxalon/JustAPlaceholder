@@ -58,6 +58,7 @@ fun main(args: Array<String>) {
             if (opts.containsKey("debug")) { println("name index: ${index.size} names, up to ${index.maxWords} words"); parser.debugMark(text).forEach { println("  mark: $it") } }
             val parsed = parser.parse(text)
             val json = kotlinx.serialization.json.Json { prettyPrint = true; encodeDefaults = false }
+            if (System.getenv("MTG_DEBUG_CLAUSE") != null) System.err.println("situation: " + json.encodeToString(mtg.judge.situation.Situation.serializer(), parsed.situation))
             // "My commander gets copied by their Clone, is the Clone a commander?": a card is named but nothing
             // happens, and the question is one the rules answer outright.
             val tableAnswer = if (parsed.situation.events.isEmpty()) mtg.judge.cr.RulesAnswers.lookup(text) else null
