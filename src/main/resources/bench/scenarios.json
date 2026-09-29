@@ -22858,5 +22858,137 @@
     "notExpect": [
       "not modeled"
     ]
+  },
+  {
+    "id": "said-another-dies-counter-sac-two-size",
+    "text": "i have a creature that says whenever another creature you control dies, put a +1/+1 counter on this creature, i sacrifice two creatures, how big is it if it's a 1/1",
+    "expect": [
+      "a 1/1 creature that says \"whenever another creature you control dies, put a +1/+1 counter on this creature\" is 3/3 (1/1 base, 2 +1/+1 counters)."
+    ]
+  },
+  {
+    "id": "said-controller-sacrifices-it-token",
+    "text": "they cast a spell that says target creature's controller sacrifices it on my token, what happens",
+    "expect": [
+      "a 1/1 token: the battlefield → your graveyard.",
+      "a 1/1 token ceases to exist; it doesn't stay in the zone it went to."
+    ]
+  },
+  {
+    "id": "team-indestructible-vs-wrath",
+    "text": "i have 2 creatures and cast a spell that says creatures you control gain indestructible until end of turn, they cast a spell that says destroy all creatures, what happens",
+    "expect": [
+      "a creature is indestructible and isn't destroyed. (×2)"
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "4-4-double-blocked-first-strike-2-2-and-1-1",
+    "text": "i attack with a 4/4 and they block with a 2/2 with first strike and a 1/1, what dies",
+    "expect": [
+      "a 2/2 creature with first strike: the battlefield → opponent's graveyard.",
+      "a 1/1 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "a 4/4 creature: the battlefield"
+    ],
+    "cite": [
+      "702.7b"
+    ]
+  },
+  {
+    "id": "said-cant-be-blocked-they-attack-with-it",
+    "text": "my opponent has a creature that says this creature can't be blocked, i have a 5/5, they attack me with it, can i block",
+    "expect": [
+      "No: a 5/5 creature can't block a creature that says \"this creature can't be blocked\".",
+      "You take 2 damage."
+    ],
+    "notExpect": [
+      "can't attack with a 5/5"
+    ]
+  },
+  {
+    "id": "indestructible-minus-4-4-dies",
+    "text": "i cast a spell that says target creature gets -4/-4 until end of turn on their creature with indestructible, it's a 3/3, does it die",
+    "expect": [
+      "Yes: a 3/3 creature with indestructible died (it's in the graveyard)."
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "lifelink-deathtouch-1-1-blocks-6-6",
+    "text": "i have a creature with lifelink and deathtouch, it's a 1/1, i block their 6/6, what happens to my life and their creature if i'm at 10",
+    "expect": [
+      "You go from 10 to 11 life.",
+      "a 6/6 creature: the battlefield → opponent's graveyard."
+    ],
+    "cite": [
+      "702.15b",
+      "702.2b"
+    ]
+  },
+  {
+    "id": "said-destroy-two-targets-on-both",
+    "text": "they have two 2/2s and i cast a spell that says destroy target creature and target creature on both, what happens",
+    "expect": [
+      "a 2/2 creature: the battlefield → opponent's graveyard. (×2)"
+    ],
+    "notExpect": [
+      "Need to know"
+    ]
+  },
+  {
+    "id": "said-gain-life-draw-plus-lifelinker",
+    "text": "i control a creature that says whenever you gain life, draw a card, and a creature with lifelink, my lifelinker deals 3 damage, how many cards do i draw",
+    "expect": [
+      "You gain 3 life.",
+      "Yes: You draw 1 card in all."
+    ]
+  },
+  {
+    "id": "said-turn-to-frog-then-block",
+    "text": "i have a 3/3 and they cast a spell that says target creature loses all abilities and becomes a 1/1 until end of turn on it, then i block their 2/2 with it, does it survive",
+    "expect": [
+      "a 3/3 creature is 1/1 with no abilities until end of turn.",
+      "No: a 3/3 creature is in the graveyard."
+    ],
+    "notExpect": [
+      "not modeled"
+    ]
+  },
+  {
+    "id": "bounce-token-ceases",
+    "text": "they cast a spell that says return target creature to its owner's hand on my token, what happens",
+    "expect": [
+      "a 1/1 token: the battlefield → your hand.",
+      "a 1/1 token ceases to exist; it doesn't stay in the zone it went to."
+    ],
+    "cite": [
+      "704.5d"
+    ]
+  },
+  {
+    "id": "flying-pump-vs-reach-wall",
+    "text": "i cast a spell that says target creature gains flying until end of turn on my 2/2, they have a wall with reach, i attack, can it block",
+    "expect": [
+      "Yes: a wall creature with reach can block a 2/2 creature."
+    ],
+    "cite": [
+      "702.17b"
+    ]
+  },
+  {
+    "id": "said-max-one-blocker-double-block",
+    "text": "they have a creature that says this creature can't be blocked by more than one creature, i have two 2/2s, they attack, can i double block",
+    "expect": [
+      "a 2/2 creature can't block a creature that says \"this creature can't be blocked by more than one creature\" too (it can't be blocked by more than 1 creature)."
+    ],
+    "cite": [
+      "509.1b"
+    ]
   }
 ]

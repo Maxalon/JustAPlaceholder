@@ -651,6 +651,8 @@ object OracleParser {
             val f = parseFilter(m.groupValues[1], Kind.CREATURE)
             return if (f.verifiable) listOf(StaticEffect.BlockOnly(f)) else emptyList()
         }
+        // "~ can't be blocked by more than one creature": a cap on blockers, not a kind of blocker.
+        Regex("""^~ can't be blocked by more than (one|two|three|\d+) creatures?\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m -> return listOf(StaticEffect.MaxBlockers(number(m.groupValues[1]) ?: 1)) }
         Regex("""^~ can't be blocked by (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val f = parseFilter(m.groupValues[1], Kind.CREATURE)
             return if (f.verifiable) listOf(StaticEffect.Cant("be blocked", f)) else emptyList()
@@ -1569,6 +1571,10 @@ object OracleParser {
             return Effect.Seq(listOf(Effect.SacrificeEach(Who.TARGET_PLAYER, parseFilter(raw, Kind.PERMANENT).copy(raw = raw)), Effect.Discard(Who.TARGET_PLAYER, 1), Effect.LoseLife(Who.TARGET_PLAYER, m.groupValues[1].toInt())))
         }
         Regex("""^you draw a card and gain (\d+) life\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m -> return Effect.Seq(listOf(Effect.Draw(Who.YOU, 1), Effect.GainLife(Who.YOU, m.groupValues[1].toInt()))) }
+        // Turn to Frog: "Target creature loses all abilities and becomes a 1/1 until end of turn." / "has base power and toughness 1/1 until end of turn".
+        Regex("""^target (creature|artifact or creature|permanent) (?:(loses all abilities) and )?(?:becomes an? |has base power and toughness |is an? )(\d+)/(\d+)(?: creature)? until end of turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            return Effect.SetBasePtTarget(target(m.groupValues[1]), m.groupValues[3].toInt(), m.groupValues[4].toInt(), m.groupValues[2].isNotEmpty())
+        }
         // Oko, Thief of Crowns: "Target artifact or creature loses all abilities and becomes a green Elk creature with base power and toughness 3/3."
         Regex("""^target (artifact or creature|creature|artifact|permanent|creature or planeswalker) loses all abilities and becomes an? (?:(white|blue|black|red|green) )?([A-Z][a-z]+) creature with base power and toughness (\d+)/(\d+)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
             val raw = m.groupValues[1].lowercase()
@@ -1660,6 +1666,12 @@ object OracleParser {
         }
         Regex("""^prevent all combat damage that would be dealt to and (?:dealt )?by (target .+?) this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.PreventCombatToAndBy(target(it.groupValues[1].removePrefix("target "))) }
         Regex("""^copy target (.+? spell)(?:\. you may choose new targets for the copy)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.CopySpell(target(it.groupValues[1], Kind.SPELL), s.contains("new targets", true)) }
+        // "Destroy target creature and target land" (two targets, one verb): two destroys, each with its own target.
+        Regex("""^(destroy|exile) target (.+?) and target (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            // Two targets with the same words are two different targets (601.2c); the second is worded apart so they stay two.
+            val a = target(m.groupValues[2]); val b0 = target(m.groupValues[3]); val b = if (b0 == a) b0.copy(raw = "another " + b0.raw) else b0
+            if (a.filter.verifiable && b.filter.verifiable) return if (m.groupValues[1].lowercase() == "destroy") Effect.Seq(listOf(Effect.Destroy(a), Effect.Destroy(b))) else Effect.Seq(listOf(Effect.Exile(a), Effect.Exile(b)))
+        }
         destroyRe.matchEntire(s)?.let { return Effect.Destroy(target(it.groupValues[1])) }
         bounceRe.matchEntire(s)?.let { m -> return Effect.Bounce(if (m.groupValues[1] == "~") null else target(m.groupValues[1])) }
         bounceChosenRe.matchEntire(s)?.let { m ->

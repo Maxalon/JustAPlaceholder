@@ -178,6 +178,8 @@ object Generic {
     /** "3/3 creature", "2/2 goblin creature", "4/4 creature with flying": an unnamed creature card (not a token). */
     fun creature(desc: String): CardDef? {
         val n = desc.lowercase().removePrefix("a ").removePrefix("an ").trim()
+        // "a spell that says destroy target creature and target creature" ends in "creature" but is a said spell, not a creature.
+        if (Regex("""\bthat (?:says|reads)\b""").containsMatchIn(n)) return null
         val m = creatureRe.matchEntire(n) ?: return null
         if (m.groupValues[1].isEmpty() && m.groupValues[3].isEmpty() && m.groupValues[4].isEmpty()) return null
         // "an artifact creature" / "an enchantment creature": the word is a card type, not a creature type.

@@ -1535,6 +1535,11 @@ class Engine(val state: GameState) {
             trace.step("${b.name} is already blocking ${state.objects[b.blocking!!]?.name ?: "another attacker"}, and its text lets it block an additional creature, so it blocks ${a.name} too.", "509.1a")
         }
         if (cant(b, "block")) { trace.step(if (b.has("cant-block") || b.tempKeywords.any { it.startsWith("cant-block@") }) "${b.name} can't block: an effect says it can't block${if (b.tempKeywords.any { it.startsWith("cant-block@") }) " until its caster's next turn" else " this turn"}." else "${b.name} can't block (a rules text says so${cantSource(b, "block")?.let { ": $it" } ?: ""}).", "509.1b"); state.outcomes += if (b.has("cant-block") || b.tempKeywords.any { it.startsWith("cant-block@") }) "${b.name} doesn't block (an effect says it can't block)." else "${b.name} can't block."; return }
+        // "~ can't be blocked by more than one creature": a second blocker can't be declared for it.
+        a.def.abilities.filterIsInstance<StaticAbility>().flatMap { it.effects }.filterIsInstance<StaticEffect.MaxBlockers>().firstOrNull()?.let { cap ->
+            val already = blockersOf(a)
+            if (already.size >= cap.n && b !in already) { trace.step("${a.name} can't be blocked by more than ${cap.n} creature${if (cap.n == 1) "" else "s"}, and ${already.joinToString(" and ") { it.name }} ${if (already.size == 1) "is" else "are"} already blocking it, so ${b.name} can't be declared as another blocker.", "509.1b"); state.outcomes += "${b.name} can't block ${a.name} too (it can't be blocked by more than ${cap.n} creature${if (cap.n == 1) "" else "s"})."; return }
+        }
         cantBlockWhy(a, b)?.let { (why, rules, out) -> trace.step(why, *rules.toTypedArray()); state.outcomes += out; return }
         val firstBlocker = blockersOf(a).isEmpty()
         if (b.blocking != null && b.blocking != a.id) b.alsoBlocking += a.id else b.blocking = a.id
@@ -2048,7 +2053,7 @@ class Engine(val state: GameState) {
     private fun applyEffect(effect: Effect, item: StackItem) {
         val you = state.player(item.controller)
         when (effect) {
-            is Effect.DamageCausing, is Effect.DoublePower, is Effect.PumpCount, is Effect.LoseHalfLife, is Effect.ExileUntilLeaves, is Effect.SacrificeTarget, is Effect.GainLifeEqualTo, is Effect.FreezeUntap, is Effect.RemoveCounters -> applyEffectMore(effect, item)
+            is Effect.DamageCausing, is Effect.DoublePower, is Effect.PumpCount, is Effect.LoseHalfLife, is Effect.ExileUntilLeaves, is Effect.SacrificeTarget, is Effect.GainLifeEqualTo, is Effect.FreezeUntap, is Effect.RemoveCounters, is Effect.SetBasePtTarget -> applyEffectMore(effect, item)
             is Effect.Seq -> effect.effects.forEach { applyEffect(it, item) }
             is Effect.CantCastThisTurn -> {
                 val who = when (effect.who) {
@@ -3121,6 +3126,12 @@ class Engine(val state: GameState) {
     /** The newer one-shot effects, kept out of [applyEffect] so that method stays under the JVM's 64 KB limit. */
     private fun applyEffectMore(effect: Effect, item: StackItem) {
         when (effect) {
+            is Effect.SetBasePtTarget -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o ->
+                o.basePt = effect.power to effect.toughness
+                if (effect.loseAbilities) { o.lostKeywords += o.def.abilities.filterIsInstance<StaticAbility>().mapNotNull { it.keyword?.lowercase() } + o.tempKeywords; o.tempKeywords.clear() }
+                trace.step("${o.name}${if (effect.loseAbilities) " loses all abilities and" else ""} has base power and toughness ${effect.power}/${effect.toughness} until end of turn; it's now ${o.power}/${o.toughness}${if (effect.loseAbilities) " (counters and other effects still apply, in their layers)" else ""}.", "613.4", *(if (effect.loseAbilities) arrayOf("613.1f") else emptyArray()))
+                state.outcomes += "${o.name} is ${o.power}/${o.toughness}${if (effect.loseAbilities) " with no abilities" else ""} until end of turn."
+            } }
             is Effect.ForAll -> {
                 // "mana value X or less": X is what was paid (Ugin, the Spirit Dragon's −X).
                 val effect = if (!effect.filter.maxManaValueX) effect else (item.x ?: 0).let { x ->
@@ -4201,7 +4212,7 @@ class Engine(val state: GameState) {
             if (ks == setOf("cant-block")) "${effect.target.raw} can't block $dur" else if (ks == setOf("cant-attack")) "${effect.target.raw} can't attack $dur" else if (ks == setOf("cant-attack", "cant-block")) "${effect.target.raw} can't attack or block $dur" else if (ks == setOf("unblockable")) "${effect.target.raw} can't be blocked this turn" else "${effect.target.raw} gains ${ks.joinToString(" and ")}" }
         is Effect.GainControl -> "gain control of ${effect.target.raw}${if (effect.untilEndOfTurn) " until end of turn" else ""}"
         is Effect.PumpSelf -> "${item.source.name} gets ${signed(effect.power)}/${signed(effect.toughness)}"
-        is Effect.PumpAll -> "${effect.filter.raw} get ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.SetBasePtAll -> "${effect.filter.raw} have base power and toughness ${if (effect.x) "X/X" else "${effect.power}/${effect.toughness}"} until end of turn"
+        is Effect.SetBasePtTarget -> "${effect.target.raw}${if (effect.loseAbilities) " loses all abilities and" else ""} becomes ${effect.power}/${effect.toughness} until end of turn"; is Effect.PumpAll -> "${effect.filter.raw} get ${signed(effect.power)}/${signed(effect.toughness)}"; is Effect.SetBasePtAll -> "${effect.filter.raw} have base power and toughness ${if (effect.x) "X/X" else "${effect.power}/${effect.toughness}"} until end of turn"
         is Effect.PutCounters -> "put ${effect.count} ${effect.kind} counter(s) on ${effect.target?.raw ?: item.source.name}"; is Effect.RemoveAllCounters -> "remove all counters from ${effect.target.raw}"
         is Effect.AddMana -> "add ${effect.text}"; is Effect.AddManaPer -> "add ${effect.symbol} for each ${effect.filter.raw}"; is Effect.AddManaDevotion -> "choose a colour and add that much mana of it as your devotion to it"; is Effect.AddManaInstead -> "add ${effect.text} instead if you control ${effect.required.joinToString(" and ") { "an $it" }}"; is Effect.Narrated -> effect.text.replace("~", item.source.name).replaceFirstChar { it.lowercase() }
         is Effect.ForAll -> if (effect.action == "selfdamage") "each ${effect.filter.raw} deals damage to itself equal to its power" else "${effect.action} ${if (effect.action == "damage") "${effect.amount} to " else ""}each ${effect.filter.raw}"
