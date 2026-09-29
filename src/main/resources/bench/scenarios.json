@@ -21345,5 +21345,79 @@
 "cite": [
 "702.19b"
 ]
+},
+{
+"id": "says-copy-their-4-4",
+"text": "i cast a spell that says copy target creature spell, they cast a 4/4, i copy it, what do i get",
+"expect": [
+"A copy of a 4/4 creature is put on the stack.",
+"a 4/4 creature enters the battlefield. (×2)"
+],
+"cite": [
+"707.10"
+]
+},
+{
+"id": "says-gain-life-counter",
+"text": "i have a creature that says whenever you gain life put a +1/+1 counter on this creature, i cast a spell that says you gain 3 life, how big is it",
+"expect": [
+"You gain 3 life.",
+"a creature that says \"whenever you gain life put a +1/+1 counter on this creature\" is 3/3 (2/2 base, 1 +1/+1 counter)."
+]
+},
+{
+"id": "if-i-double-block-first-strike",
+"text": "they attack with a 3/3 and i have a 2/2 with first strike and a 1/1, if i double block what happens",
+"expect": [
+"a 3/3 creature: the battlefield → opponent's graveyard.",
+"a 2/2 creature with first strike: the battlefield → your graveyard.",
+"a 1/1 creature: the battlefield → your graveyard."
+]
+},
+{
+"id": "says-destroy-their-only-land",
+"text": "i cast a spell that says destroy target land on their only land, what happens",
+"expect": [
+"a basic land: the battlefield → opponent's graveyard."
+]
+},
+{
+"id": "says-tapper-stop-attacking",
+"text": "they have a 4/4 and i have a creature that says tap: tap target creature, can i stop it from attacking",
+"expect": [
+"a 4/4 creature is tapped.",
+"a 4/4 creature can't attack (tapped)."
+]
+},
+{
+"id": "says-enters-with-two-counters-1-1",
+"text": "i have a creature that says it enters with two +1/+1 counters, i cast it, how big is it if it's a 1/1",
+"expect": [
+"a 1/1 creature that says \"it enters with 2 +1/+1 counters\" is 3/3 (1/1 base, 2 +1/+1 counters)."
+]
+},
+{
+"id": "says-exile-their-2-2-controller-gains-3-at-5",
+"text": "i cast a spell that says exile target creature and its controller gains 3 life on their 2/2, they're at 5, what happens",
+"expect": [
+"a 2/2 creature: the battlefield → exile.",
+"opponent gains 3 life.",
+"opponent goes from 5 to 8 life."
+]
+},
+{
+"id": "says-haste-enchantment-attack",
+"text": "they have an enchantment that says creatures you control have haste, they cast a 3/3, can it attack this turn",
+"expect": [
+"You take 3 damage."
+]
+},
+{
+"id": "first-strike-pump-on-mine-who-dies",
+"text": "i attack with a 2/2 and they block with a 2/2, i cast a spell that says target creature gains first strike until end of turn on mine, who dies",
+"expect": [
+"Yes: opponent's 2/2 creature died (it's in the graveyard).",
+"No: your 2/2 creature is still on the battlefield."
+]
 }
 ]
