@@ -24090,5 +24090,100 @@
     "notExpect": [
       "Ajani Goldmane: the battlefield → your graveyard."
     ]
+  },
+  {
+    "id": "casual-2-2-gets-bolted-giant-growth",
+    "text": "my 2/2 gets bolted, i respond with giant growth, does it live",
+    "expect": [
+      "a 2/2 creature is 5/5 until end of turn.",
+      "Yes: a 2/2 creature is still on the battlefield."
+    ]
+  },
+  {
+    "id": "casual-chump-5-5-with-1-1-life-lost",
+    "text": "they swing with a 5/5, i chump with a 1/1, how much life do i lose",
+    "expect": [
+      "No: you lose no life here.",
+      "a 1/1 creature: the battlefield → your graveyard."
+    ]
+  },
+  {
+    "id": "casual-if-i-attack-do-i-lose-my-guy",
+    "text": "i've got a 3/3 and they've got a 4/4, if i attack do i lose my guy",
+    "expect": [
+      "Yes: a 3/3 creature died (it's in the graveyard)."
+    ]
+  },
+  {
+    "id": "casual-wrath-three-dudes",
+    "text": "opp casts wrath, i have 3 dudes, do they all die",
+    "expect": [
+      "Yes: a creature died (it's in the graveyard). (×3)"
+    ]
+  },
+  {
+    "id": "casual-thoughtseize-only-lands-in-hand",
+    "text": "they play thoughtseize on me, i only have lands in hand, what happens",
+    "expect": [
+      "You discard nothing (no nonland card in hand).",
+      "opponent loses 2 life."
+    ]
+  },
+  {
+    "id": "casual-flier-vs-3-3-without-reach",
+    "text": "i attack with my 2/2 flier, they have a 3/3 without reach, can they block",
+    "expect": [
+      "No: a 3/3 creature can't block a 2/2 creature with flying (flying)."
+    ],
+    "cite": [
+      "702.9b"
+    ]
+  },
+  {
+    "id": "casual-counter-war-does-my-bolt-still-hit",
+    "text": "i counterspell their counterspell that was targeting my bolt, does my bolt still hit",
+    "expect": [
+      "Counterspell is countered.",
+      "opponent takes 3 damage.",
+      "No: Lightning Bolt isn't countered; it resolves."
+    ]
+  },
+  {
+    "id": "casual-bolt-my-3-3-twice",
+    "text": "they bolt my 3/3 twice, does it die",
+    "expect": [
+      "Yes: a 3/3 creature died (it's in the graveyard).",
+      "Lightning Bolt doesn't resolve (all targets illegal)."
+    ]
+  },
+  {
+    "id": "casual-1-1-vs-1-1-do-both-die",
+    "text": "i have a 1/1 and they have a 1/1, i attack and they block, do both die",
+    "expect": [
+      "Yes: opponent's 1/1 creature died (it's in the graveyard).",
+      "Yes: your 1/1 creature died (it's in the graveyard)."
+    ]
+  },
+  {
+    "id": "casual-doom-blade-on-black-creature",
+    "text": "they cast doom blade on my black creature, does it work",
+    "expect": [
+      "Doom Blade can't target a black creature (not a nonblack creature)."
+    ]
+  },
+  {
+    "id": "casual-at-5-two-3-3s-block-one-am-i-dead",
+    "text": "i'm at 5, they have two 3/3s and attack with both, i block one, am i dead",
+    "expect": [
+      "You take 3 damage.",
+      "No: You are still in the game at 2 life."
+    ]
+  },
+  {
+    "id": "casual-hymn-vs-one-card",
+    "text": "my opponent has 1 card in hand and i cast hymn to tourach, what happens",
+    "expect": [
+      "opponent discards 1 card (1 → 0 in hand)."
+    ]
   }
 ]
