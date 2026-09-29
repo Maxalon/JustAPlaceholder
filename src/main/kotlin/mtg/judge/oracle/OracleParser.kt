@@ -229,7 +229,7 @@ object OracleParser {
         val cond = m.groupValues[2].trim().replace(Regex("""^Landfall — """), "")
         val trigger = parseTrigger(cond)
         // "Whenever ~ attacks, it gets +1/+1" / "…, put a +1/+1 counter on it": in a self-trigger, a leading "it" is ~.
-        val selfTrigger = trigger is Trigger.ThisDies || trigger is Trigger.ThisLeavesBattlefield || trigger is Trigger.ThisAttacks || trigger is Trigger.ThisEnters || trigger is Trigger.ThisDealsDamage || trigger is Trigger.ThisBecomesBlocked || trigger is Trigger.ThisBecomesBlockedByCreature || trigger is Trigger.ThisBlocks || trigger is Trigger.ThisAttacksUnblocked ||
+        val selfTrigger = trigger is Trigger.ThisDies || trigger is Trigger.ThisLeavesBattlefield || trigger is Trigger.ThisAttacks || trigger is Trigger.ThisEnters || trigger is Trigger.ThisDealsDamage || trigger is Trigger.ThisBecomesBlocked || trigger is Trigger.ThisBecomesBlockedByCreature || trigger is Trigger.ThisBlocks || trigger is Trigger.ThisBlocks || trigger is Trigger.ThisAttacksUnblocked ||
             trigger is Trigger.ThisBecomesTarget || trigger is Trigger.ThisBecomesTapped || trigger is Trigger.ThisBecomesMonstrous || trigger is Trigger.ThisIsDealtDamage || trigger is Trigger.ThisCast
         val effText = if (selfTrigger) selfEffText(m.groupValues[3]) else m.groupValues[3]
         // "Whenever a creature you control attacks alone, it gains double strike / gets +2/+2 until end of turn": the attacking creature.
@@ -243,11 +243,17 @@ object OracleParser {
                 return TriggeredAbility(trigger, Effect.PumpCausing(0, 0, kws.toList()), line)
             }
         }
+        // "Whenever ~ blocks a creature, ~ deals 1 damage to that creature": the creature it blocks (or that blocks it).
+        if (trigger is Trigger.ThisBlocks || trigger is Trigger.ThisBecomesBlockedByCreature) causingEffect(effText)?.let { return TriggeredAbility(trigger, it, line) }
         return TriggeredAbility(trigger, parseEffect(effText), line)
     }
 
+    /** "~ deals N damage to that creature" in a block trigger: the creature it blocks or is blocked by. */
+    private fun causingEffect(effText: String): Effect? =
+        Regex("""^~ deals (\d+) damage to that creature\.?$""", RegexOption.IGNORE_CASE).matchEntire(effText)?.let { Effect.DamageCausing(it.groupValues[1].toInt()) }
+
     /** In a trigger about ~ itself, a leading "it" is ~. */
-    private fun selfEffText(t: String) = t.replace(Regex("""^it (gets|gains) """), "~ $1 ")
+    private fun selfEffText(t: String) = t.replace(Regex("""^it (gets|gains|deals) """), "~ $1 ")
         .replace(Regex("""^(put (?:a|an|\w+|\d+|X) [+-]\d/[+-]\d counters? on) it\b"""), "$1 ~")
         .replace(Regex("""^return it to its owner's hand"""), "return ~ to its owner's hand")
 
@@ -263,7 +269,7 @@ object OracleParser {
         // "Whenever ~ blocks or becomes blocked(, by a creature)" — the two halves are separate triggers, and the
         // "by a creature" half triggers once for each creature blocking it, so it keeps its own trigger.
         Regex("""^~ blocks or becomes blocked( by a creature)?$""", RegexOption.IGNORE_CASE).matchEntire(cond)?.let { bm ->
-            val eff = parseEffect(selfEffText(m.groupValues[3]))
+            val eff = causingEffect(selfEffText(m.groupValues[3])) ?: parseEffect(selfEffText(m.groupValues[3]))
             val blocked = if (bm.groupValues[1].isEmpty()) Trigger.ThisBecomesBlocked else Trigger.ThisBecomesBlockedByCreature
             return listOf(TriggeredAbility(Trigger.ThisBlocks, eff, line), TriggeredAbility(blocked, eff, line))
         }
@@ -306,7 +312,7 @@ object OracleParser {
         if (Regex("""^~ becomes tapped$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBecomesTapped
         if (Regex("""^~ becomes monstrous$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBecomesMonstrous
         if (Regex("""^you cycle ~$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisCycled
-        if (Regex("""^~ blocks$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBlocks
+        if (Regex("""^~ blocks(?: a creature)?$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisBlocks
         if (Regex("""^~ attacks and isn't blocked$""", RegexOption.IGNORE_CASE).matches(c)) return Trigger.ThisAttacksUnblocked
         Regex("""^(.+?) attacks$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m -> if (!m.groupValues[1].equals("~", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Trigger.PermanentAttacks(f) } }
         Regex("""^(.+?) deals combat damage to a player$""", RegexOption.IGNORE_CASE).matchEntire(c)?.let { m -> if (!m.groupValues[1].equals("~", true)) { val f = parseFilter(m.groupValues[1], Kind.CREATURE); if (f.verifiable) return Trigger.PermanentDealsCombatDamageToPlayer(f) } }
