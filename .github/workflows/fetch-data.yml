@@ -15,7 +15,7 @@ on:
     - cron: "17 4 * * *"   # daily, after Scryfall's overnight bulk refresh
   push:
     branches:
-      - claude/mtg-player-bot-design-j52iiz
+      - main
     paths:
       - ".github/workflows/fetch-data.yml"
 

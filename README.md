@@ -1,4 +1,6 @@
-# mtg-judge
+# VM-Judge
+
+Judge-level ruling with natural language support for difficult game situations in Magic: The Gathering.
 
 A fast, local Magic: The Gathering rules assistant. Card data, rulings and the Comprehensive
 Rules live in one SQLite file that is rebuilt daily; questions are answered by a deterministic
