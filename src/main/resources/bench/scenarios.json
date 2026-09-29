@@ -23212,5 +23212,118 @@
     "notExpect": [
       "not modeled"
     ]
+  },
+  {
+    "id": "doom-blade-bears-giant-growth-response",
+    "text": "i have Grizzly Bears and they cast Doom Blade on it, then i cast Giant Growth in response, does it live",
+    "expect": [
+      "Grizzly Bears is 5/5 until end of turn.",
+      "No: Grizzly Bears is in the graveyard."
+    ],
+    "cite": [
+      "701.8a"
+    ]
+  },
+  {
+    "id": "serra-blocks-then-attacks-next-turn",
+    "text": "they have Serra Angel and i attack with a 3/3, can they block with it and still attack next turn",
+    "expect": [
+      "a 3/3 creature: the battlefield → your graveyard.",
+      "Yes: Serra Angel can attack."
+    ],
+    "notExpect": [
+      "isn't there to block"
+    ]
+  },
+  {
+    "id": "bolt-birds-giant-growth-response",
+    "text": "i cast Lightning Bolt at their Birds of Paradise and they respond with Giant Growth, what happens",
+    "expect": [
+      "Birds of Paradise is 3/4 until end of turn.",
+      "Birds of Paradise has 3 damage marked."
+    ],
+    "notExpect": [
+      "Birds of Paradise: the battlefield"
+    ]
+  },
+  {
+    "id": "elves-two-forests-four-drop",
+    "text": "i have Llanowar Elves and 2 Forests, can i cast a 4 mana creature this turn",
+    "expect": [
+      "a 4 mana creature can't be cast (costs 4, only 3 mana available)."
+    ],
+    "notExpect": [
+      "enters the battlefield"
+    ]
+  },
+  {
+    "id": "wrath-vs-darksteel-colossus",
+    "text": "they cast Wrath of God and i have a Darksteel Colossus, does it die",
+    "expect": [
+      "No: Darksteel Colossus is still on the battlefield."
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "hill-giant-vs-wall-of-omens",
+    "text": "i attack with a Hill Giant and they block with a Wall of Omens, does anything die",
+    "expect": [
+      "No: Wall of Omens is still on the battlefield.",
+      "No: Hill Giant is still on the battlefield."
+    ]
+  },
+  {
+    "id": "counterspell-their-counterspell-bears-resolves",
+    "text": "i cast Counterspell targeting their Counterspell that targets my Grizzly Bears, does my bears resolve",
+    "expect": [
+      "Counterspell is countered.",
+      "No: Grizzly Bears isn't countered; it resolves."
+    ]
+  },
+  {
+    "id": "anthem-tokens-vs-pyroclasm",
+    "text": "they have a Glorious Anthem and two 1/1 tokens, i cast Pyroclasm, do the tokens die",
+    "expect": [
+      "a 1/1 token: the battlefield → opponent's graveyard. (×2)"
+    ],
+    "cite": [
+      "704.5g"
+    ]
+  },
+  {
+    "id": "rancor-returns-when-host-dies",
+    "text": "i have Rancor on my 2/2 and they kill the 2/2, what happens to Rancor",
+    "expect": [
+      "Rancor: your graveyard → your hand."
+    ],
+    "cite": [
+      "704.5m"
+    ]
+  },
+  {
+    "id": "blightsteel-blocked-by-deathtouch-1-1",
+    "text": "they have Blightsteel Colossus and i have a 1/1 with deathtouch, i block it, what happens",
+    "expect": [
+      "You have 10 poison counters.",
+      "Blightsteel Colossus is indestructible and isn't destroyed by the lethal damage on it.",
+      "You lose the game (poison)."
+    ],
+    "cite": [
+      "702.90c",
+      "702.19b",
+      "704.5c"
+    ]
+  },
+  {
+    "id": "platinum-angel-at-zero",
+    "text": "i control Platinum Angel and i'm at 0 life, do i lose",
+    "expect": [
+      "No: You are still in the game at 0 life."
+    ],
+    "cite": [
+      "104.3b"
+    ]
   }
 ]

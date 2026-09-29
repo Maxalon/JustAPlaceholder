@@ -574,6 +574,8 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""\s+(?:by mistake|by accident|accidentally|on accident|mistakenly)(?=,|\?|$| )""", RegexOption.IGNORE_CASE), "")
             // "do I deal damage to them?": the attacker of the asker's is what deals it.
         t2 = t2.replace(Regex("""\bdo (?:i|we) (?:still |even )?deal (?:any |the |combat )?damage to (them|my opponent|the opponent|him|her)\b""", RegexOption.IGNORE_CASE), "does my creature deal damage to $1")
+            // "can they block with it and still attack next turn?": the block now, then the attack on their turn.
+        t2 = t2.replace(Regex("""\bcan (they|i|we|he|she) block (?:with )?(it|that|my creature|their creature|(?:my |their |the )?c\d+|(?:my |their |the )?\d+/\d+) and (?:still |also |then )?attack(?: with it| with that)? (?:next turn|on (?:their|my|his|her) (?:next )?turn|the next turn)\b""", RegexOption.IGNORE_CASE), "$1 block with $2, can $1 attack with it next turn")
             // "a spell that costs 3": a 3 mana spell.
         t2 = t2.replace(Regex("""\ban? (spell|instant|sorcery|creature|creature spell|artifact|enchantment) that costs (\d+)(?: mana)?(?= |,|\?|$)""", RegexOption.IGNORE_CASE), "a $2 mana $1")
             // "I have a creature that says X, and my opponent has one that says the same": the same words again.
@@ -3197,16 +3199,18 @@ class SituationParser(private val names: NameIndex) {
                 return readClause(says + "attack with " + (if (q.groupValues[1].isEmpty()) "it" else (if (theirs) "their " else "") + q.groupValues[1]), m, ctx)
             }
             // "can I attack with it the turn I play it?" / "can I attack with Dryad Arbor the turn it comes down?"
-            Regex("""^(?:i|we|they|he|she|my opponent|the opponent|@\w+) (?:still |even )?attacks? with (?:it|that|(?:my |the |their )?(c\d+|\d+/\d+(?: [a-z]+)*))( the (?:same )?turn (?:i|it|they|he|she) (?:plays? it|played it|casts? it|cast it|comes? down|came down|enters?(?: the battlefield)?|entered)| right away| immediately)?$""").find(r.groupValues[1])?.let { q ->
-                val what = q.groupValues[1].ifEmpty { "it" }
-                if (q.groupValues[2].isNotBlank()) {
-                    val id = if (what == "it") ctx.lastMentioned?.takeIf { it in ctx.objects } else m.cards[what]?.let { objectIdFor(it, ctx) ?: addObject(it, "me", false, ctx) } ?: ctx.objects.values.lastOrNull { it.card.name == what }?.id
+            Regex("""^(i|we|they|he|she|my opponent|the opponent|@\w+) (?:still |even )?attacks? with (?:it|that|(?:my |the |their )?(c\d+|\d+/\d+(?: [a-z]+)*))( the (?:same )?turn (?:i|it|they|he|she) (?:plays? it|played it|casts? it|cast it|comes? down|came down|enters?(?: the battlefield)?|entered)| right away| immediately)?$""").find(r.groupValues[1])?.let { q ->
+                // "can they attack with it next turn?": the attacker is whoever the question says, not always the asker.
+                val subj = when (val w = q.groupValues[1]) { "i", "we" -> "i"; "they", "he", "she", "my opponent", "the opponent" -> "they"; else -> w }
+                val what = q.groupValues[2].ifEmpty { "it" }
+                if (q.groupValues[3].isNotBlank()) {
+                    val id = if (what == "it") ctx.lastMentioned?.takeIf { it in ctx.objects } else m.cards[what]?.let { objectIdFor(it, ctx) ?: addObject(it, if (subj == "i") "me" else "opp", false, ctx) } ?: ctx.objects.values.lastOrNull { it.card.name == what }?.id
                     if (id != null) {
                         ctx.objects[id] = ctx.objects.getValue(id).copy(summoningSick = true)
                         ctx.notes += "Read as: ${ctx.objects.getValue(id).card.name ?: id} came under its controller's control this turn."
                     }
                 }
-                return readClause("i attack with $what", m, ctx)
+                return readClause("$subj attack with $what", m, ctx)
             }
             // "can my 2/2 block it?" / "can I block with a 2/2?": a described blocker, when an attack is already on the table.
             Regex("""^(?:(?:i|we|they|he|she|my opponent|the opponent|@\w+) (?:still |even )?blocks? with (?:an? |the |my |their )?((?:\d+/\d+)(?: [a-z]+)*)|(?:my |the |their |his |her )?((?:\d+/\d+)(?: [a-z]+)*) (?:still |even )?blocks?(?: it| that| the attacker)?)(?: (?:this|next) turn| now| right away| at all)?$""").find(r.groupValues[1])?.let { q ->
@@ -6987,15 +6991,19 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
         // "can I attack with it this turn?": a yes/no for the creature, and then the attack itself is read.
-        Regex("""^can (?:i|we) (?:still |even |also )?attack with (it|that|my creature|(?:my |the )?\d+/\d+(?: with [a-z ]+)?|(?:my |the )?c\d+)(?: this turn| now| right away| immediately| already)?$""").find(clause0)?.let { r ->
+        Regex("""^can (i|we|they|he|she|my opponent) (?:still |even |also )?attack with (it|that|my creature|their creature|(?:my |the |their )?\d+/\d+(?: with [a-z ]+)?|(?:my |the |their )?c\d+)(?: this turn| now| right away| immediately| already)?$""").find(clause0)?.let { r0 ->
+            val r = object { val groupValues = listOf(r0.groupValues[0], r0.groupValues[2]) }
+            val asker = if (r0.groupValues[1] in setOf("i", "we")) "me" else pronounPlayer(ctx, "their")
             if (ctx.asks.any { it.to == "attack" }) return@let
             val w = r.groupValues[1]
             // Only a creature already described is asked about; a card first named here is left to the rules that read it.
-            val o = if (w == "it" || w == "that" || w == "my creature") ctx.lastMentioned?.takeIf { it in ctx.objects && isCreatureName(ctx.objects.getValue(it).card.name) }
+            // "can they attack with it?": "it" is a creature of theirs.
+            val o = if (w == "it" || w == "that" || w == "my creature" || w == "their creature") ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller == asker && isCreatureName(ctx.objects.getValue(it).card.name) }
+                    ?: ctx.objects.values.lastOrNull { it.controller == asker && it.zone == "battlefield" && isCreatureName(it.card.name) }?.id
                 else if (Regex("""c\d+$""").containsMatchIn(w)) m.cards[w.substringAfterLast(' ')]?.let { objectIdFor(it, ctx) }
-                else ctx.objects.values.lastOrNull { it.controller == "me" && it.zone == "battlefield" && (it.card.name ?: "").contains(Regex("""\d+/\d+""").find(w)?.value ?: "\u0000") }?.id
+                else ctx.objects.values.lastOrNull { it.controller == asker && it.zone == "battlefield" && (it.card.name ?: "").contains(Regex("""\d+/\d+""").find(w)?.value ?: "\u0000") }?.id
             o ?: return@let
-            ctx.asks += EventSpec("ask", obj = o, to = "attack"); return@let
+            ctx.asks += EventSpec("ask", obj = o, to = "attack"); ctx.lastMentioned = o; return@let
         }
         // "can I take it back?" / "can I change the target?": no; a cast spell's targets are set (601.2c) and only an effect can change them.
         Regex("""^can (?:i|we) (?:take (?:it|that|the spell) back|undo (?:it|that)|change (?:the|its|my) targets?|retarget (?:it|that)|redo (?:it|that)|pick a different target)(?: now)?$""").find(clause0)?.let {

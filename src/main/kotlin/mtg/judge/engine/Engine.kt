@@ -3808,7 +3808,8 @@ class Engine(val state: GameState) {
     /** True when every mana source the player controls is a land: then the lands named are all the mana there is to count. */
     private fun landsOnly(p: Player): Boolean {
         val sources = state.objects.values.filter { it.isOnBattlefield() && it.controller == p.id && activatedAbilitiesOf(it).any { a -> isManaEffect(a.effect) } }
-        return sources.size >= 2 && sources.all { "Land" in it.def.types && "Basic" in it.def.supertypes }
+        // Two or more lands or mana creatures (Llanowar Elves and two Forests) are the whole mana base described.
+        return sources.size >= 2 && sources.all { "Land" in it.def.types || it.def.isCreature }
     }
 
     private fun availableMana(p: Player): Int? {
