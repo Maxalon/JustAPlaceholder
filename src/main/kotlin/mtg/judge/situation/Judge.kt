@@ -744,8 +744,8 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
                     "tapped" -> state.outcomes += if (o.tapped == true) "${o.name} is tapped." else "${o.name} is untapped${if (state.hasKeyword(o, "vigilance") && state.trace.steps.any { it.text.startsWith("${o.name} attacks") || it.text.contains("attack with ${o.name}") }) " (vigilance: attacking didn't tap it)" else ""}."
                     "survive", "die" -> {
                         val where = when (o.zone) { mtg.judge.engine.Zone.GRAVEYARD -> "the graveyard"; mtg.judge.engine.Zone.EXILE -> "exile"; mtg.judge.engine.Zone.HAND -> "its owner's hand"; mtg.judge.engine.Zone.LIBRARY -> "its owner's library"; mtg.judge.engine.Zone.COMMAND -> "the command zone"; else -> o.zone.name.lowercase() }
-                        state.outcomes += if (o.phasedOut) "No: ${o.name} is phased out — treated as though it doesn't exist until it phases in at its controller's next untap step, so nothing happened to it." else if (e.to == "die") { if (o.isOnBattlefield()) "No: ${o.name} is still on the battlefield." else if (o.zone == mtg.judge.engine.Zone.GRAVEYARD) "Yes: ${o.name} died (it's in the graveyard)." else "No: ${o.name} didn't die, but it left the battlefield; it's in $where." }
-                        else { if (o.isOnBattlefield()) "Yes: ${o.name} is still on the battlefield." else "No: ${o.name} is in $where." }
+                        state.outcomes += if (o.phasedOut) "No: ${sideName(o, state)} is phased out — treated as though it doesn't exist until it phases in at its controller's next untap step, so nothing happened to it." else if (e.to == "die") { if (o.isOnBattlefield()) "No: ${sideName(o, state)} is still on the battlefield." else if (o.zone == mtg.judge.engine.Zone.GRAVEYARD) "Yes: ${sideName(o, state)} died (it's in the graveyard)." else "No: ${sideName(o, state)} didn't die, but it left the battlefield; it's in $where." }
+                        else { if (o.isOnBattlefield()) "Yes: ${sideName(o, state)} is still on the battlefield." else "No: ${sideName(o, state)} is in $where." }
                         if (o.zone == mtg.judge.engine.Zone.EXILE && (o.def.has("persist") || o.def.has("undying"))) { val kw = if (o.def.has("persist")) "persist" else "undying"; state.outcomes += "${o.name}'s $kw doesn't return it: it was exiled instead of going to the graveyard, and $kw returns it only from the graveyard (${if (kw == "persist") "702.79a" else "702.93a"})." }
                     }
                     else -> {}
@@ -787,6 +787,10 @@ class Judge(private val cards: CardRepo, private val rules: RulesRepo?) {
     }
 
     /** The attacker a creature would be blocking: one attacking its controller, or a planeswalker they control. */
+    /** "my 2/2 blocks their 2/2, who dies?": a permanent whose description another player's shares is named by whose it is. */
+    private fun sideName(o: mtg.judge.engine.GameObject, state: GameState): String =
+        if ((o.name.startsWith("a ") || o.name.startsWith("an ")) && state.objects.values.any { it !== o && it.name == o.name && it.controller != o.controller }) "${state.player(o.controller).possessive} ${o.name.substringAfter(' ')}" else o.name
+
     private fun attackerFacing(o: mtg.judge.engine.GameObject, state: GameState): mtg.judge.engine.GameObject? =
         state.objects.values.lastOrNull { a -> a.isOnBattlefield() && a.attacking != null && when (val d = a.attacking) {
             is mtg.judge.engine.Ref.Player -> d.id == o.controller

@@ -266,7 +266,8 @@ class BatchThirteenTest {
         val s = state(); s.put("thalia", thalia, "me"); s.player("opp").mana = 1; val e = Engine(s)
         assertTrue(e.cast("opp", bolt, listOf(Ref.Player("me"))) == null); assertTrue("601.2h" in s.cited())
         s.player("opp").mana = 2; assertTrue(e.cast("opp", bolt, listOf(Ref.Player("me"))) != null)
-        s.player("opp").mana = 2; assertTrue(e.cast("opp", bears, emptyList()) != null, "creature spells aren't taxed")
+        // Mana the situation gave is the turn's total, less what earlier casts spent; a fresh statement starts over.
+        s.player("opp").mana = 2; s.player("opp").manaSpent = 0; assertTrue(e.cast("opp", bears, emptyList()) != null, "creature spells aren't taxed")
     }
 
     @Test

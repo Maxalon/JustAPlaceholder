@@ -572,6 +572,12 @@ class SituationParser(private val names: NameIndex) {
         // "a token that says it's a 1/1 with flying": a token given by its size and keywords.
         t2 = Regex("""\b(an?|my|their|his|her|the) token that (?:says|reads) (?:it's|it is|its) an? (\d+/\d+)(?: (?:with|that has) ([a-z]+(?: [a-z]+)?(?:(?:,| and|, and) [a-z]+(?: [a-z]+)?)*))?(?=,|\?|$)""", RegexOption.IGNORE_CASE).replace(t2) { r -> "${r.groupValues[1]} ${r.groupValues[2]} ${r.groupValues[3].replace(Regex(""",? and |, """), " ").trim()} token".replace("  ", " ") }
         t2 = t2.replace(Regex("""\bthey counterspell it\b""", RegexOption.IGNORE_CASE), "they counter it")
+        // "can I also cast a 3 drop this turn?": the question is whether it can be cast now.
+        t2 = t2.replace(Regex("""\bcan (i|we) (?:also|still|then|now) cast\b""", RegexOption.IGNORE_CASE), "can $1 cast").replace(Regex("""\b(can (?:i|we) cast [^,?]+?) this turn(?=\?|,|$)""", RegexOption.IGNORE_CASE), "$1")
+        // "my graveyard is empty": a graveyard of no cards.
+        t2 = t2.replace(Regex("""\b(my|their|his|her) graveyard is empty\b""", RegexOption.IGNORE_CASE), "$1 graveyard has 0 cards")
+        // "they counter my creature spell": a creature was cast and countered.
+        t2 = t2.replace(Regex("""(?<!\bcan |\bcould |\bdoes |\bdo |\bwill |\bwould |\bmay |\bif )\b(they|he|she|my opponent) counters? my (creature|artifact|enchantment|planeswalker) spell\b""", RegexOption.IGNORE_CASE)) { r -> "i cast a ${r.groupValues[2]}, ${r.groupValues[1]} counter it" }
         t2 = t2.replace(Regex("""\bdo (they|i|we) (?:still |even |also )?gain (?:any )?life\b(?! if)""", RegexOption.IGNORE_CASE), "how much life do $1 gain")
         t2 = t2.replace(Regex("""(?<=, )how much damage\??$""", RegexOption.IGNORE_CASE), "how much damage do they take")
         t2 = t2.replace(Regex("""\bhow much mana do (i|we) have with it and (\d+) other lands\b""", RegexOption.IGNORE_CASE), "i have $2 other lands, how much mana do i have")
@@ -1097,7 +1103,8 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""\ban? (?:spell|instant) with split second\b""", RegexOption.IGNORE_CASE), "a split second spell")
         t2 = t2.replace(Regex("""\b(casts?|plays?) an? spell (targeting|on|at) (my |their |the )?(creature|\d+/\d+|c\d+)\b""", RegexOption.IGNORE_CASE), "$1 a removal spell $2 $3$4")
             // "I give it hexproof in response": the response, then the keyword.
-        t2 = t2.let { t0 -> Regex("""\b(?:i|we) give (?:it|that|my creature|(?:my )?c\d+|(?:my )?\d+/\d+) (hexproof|shroud|protection from [a-z]+) in response\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+        t2 = t2.replace(Regex("""\bin response,? (i|we|they|he|she) (?:give|gives) (it|that|my creature|their creature|(?:my |their )?c\d+|(?:my |their )?\d+/\d+) (hexproof|shroud|indestructible|protection from [a-z]+)\b""", RegexOption.IGNORE_CASE), "$1 give $2 $3 in response")
+        t2 = t2.let { t0 -> Regex("""\b(?:i|we|they|he|she) (?:give|gives) (?:it|that|my creature|their creature|(?:my |their )?c\d+|(?:my |their )?\d+/\d+) (hexproof|shroud|indestructible|protection from [a-z]+) in response\b""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 // With a permanent named that could be the source (Mother of Runes), its ability does the work and is read as such.
                 if (m.cards.values.any { !it.isSpellOnly }) r.value else "keywordresponse-question ${r.groupValues[1]}" } }
             // "can I attack the planeswalker back on my turn?": the turn phrase would move the turn; the question is about choosing defenders.
@@ -1163,7 +1170,7 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""\ban? spell that (?:says )?each player discards? a card\b""", RegexOption.IGNORE_CASE), "a symmetrical discard spell")
         t2 = t2.replace(Regex("""\ban? spell that (?:says )?destroys? target land\b""", RegexOption.IGNORE_CASE), "a land destruction spell")
         // "a spell that says target creature gets +2/+2 until end of turn on my 2/2": the pump, aimed at what follows "on".
-        t2 = Regex("""\ban? spell that (?:says )?target creature gets ([+-]\d+/[+-]\d+)(?: until end of turn)?(?=( on (?:my|their|his|her|the|an?|c\d+)\b)?)""", RegexOption.IGNORE_CASE).replace(t2) { r -> if (r.groupValues[2].isNotEmpty()) "a ${r.groupValues[1]} pump" else "a ${r.groupValues[1]} pump on it" }
+        t2 = Regex("""\ban? spell that (?:says )?target creature gets ([+-]\d+/[+-]\d+)(?: until end of turn)?(?=( on (?:my|their|his|her|the|an?|c\d+|mine|theirs|yours)\b)?)""", RegexOption.IGNORE_CASE).replace(t2) { r -> if (r.groupValues[2].isNotEmpty()) "a ${r.groupValues[1]} pump" else "a ${r.groupValues[1]} pump on it" }
         t2 = t2.replace(Regex("""\ban? (?:card|permanent|enchantment) that says whenever a creature dies,? (?:i |you )?draw a card\b""", RegexOption.IGNORE_CASE), "a dies-draw enchantment")
         t2 = t2.replace(Regex("""\bon my only (land|creature)\b""", RegexOption.IGNORE_CASE), "on my $1")
             // "they have a creature that can't be blocked, I have a fog effect, can I stop the damage?"
@@ -1773,6 +1780,12 @@ class SituationParser(private val names: NameIndex) {
             for (i in 2..n) ctx.players.putIfAbsent("opponent$i", "Opponent $i")
             ctx.usesOpp = true; ctx.notes += "$n opponents: the first is \"opponent\", the others \"Opponent 2\"${if (n > 2) " and so on" else ""}."; any = true; t2 = t2.removeRange(r.range)
         }
+        // "both are at 3" / "my opponents are all at 5": every opponent's life at once.
+        Regex("""\b(?:they're both|they are both|both of them are|both are|both opponents are|my opponents are|each of them is|all of them are|everyone else is|the others are) (?:both |each |all )?(?:at|on) (\d+)(?: life)?\b""").find(t2)?.let { r ->
+            ctx.usesOpp = true; val n = r.groupValues[1].toInt()
+            ctx.playerIds().filter { it != "me" }.forEach { ctx.life[it] = n }
+            any = true; t2 = t2.removeRange(r.range)
+        }
         // "they reveal Counterspell and Forest" / "my hand is Bolt, Bears and Forest": cards in hand, kept together before the clause split.
         Regex("""\b(?:reveals?|revealing|shows? me|(?:my|their|his|her) hand (?:is|has|contains)|(?:i'm|i am|they're|they are) holding|holds?|holding) ((?:an? |the |two |three |four |\d+ )?c\d+s?(?:,? (?:and )?(?:an? |the |two |three |four |\d+ )?c\d+s?)*)$""").find(t2)?.let { r ->
             val before = t2.substring(0, r.range.first)
@@ -2128,8 +2141,15 @@ class SituationParser(private val names: NameIndex) {
             return true
         }
         // "I give it hexproof in response": the spell's target is checked again on resolution.
-        Regex("""^keywordresponse-question (hexproof|shroud|protection from [a-z]+)$""").find(clause0)?.let { r ->
+        Regex("""^keywordresponse-question (hexproof|shroud|indestructible|protection from [a-z]+)$""").find(clause0)?.let { r ->
             val kw = r.groupValues[1]
+            if (kw == "indestructible") {
+                // Indestructible doesn't touch the targeting; the spell resolves and "destroy" simply does nothing.
+                ctx.asks += EventSpec("ask", to = "text:The spell still resolves: indestructible doesn't make the creature an illegal target, so nothing fizzles. But a permanent with indestructible can't be destroyed (702.12b), so \"destroy\" does nothing to it and the creature stays on the battlefield.")
+                val idx = ctx.events.indexOfLast { e -> e.verb == "cast" && e.player == "me" }
+                if (idx >= 0) ctx.events.removeAt(idx)
+                return true
+            }
             ctx.asks += EventSpec("ask", to = "text:Yes. A spell's targets are checked again as it starts to resolve, and a target that is no longer legal is ignored; with every target illegal the spell doesn't resolve at all (it \"fizzles\") and goes to its owner's graveyard (608.2b). Giving the creature $kw in response makes it an illegal target for ${if (kw == "hexproof") "your opponent's spell" else if (kw == "shroud") "any spell" else "a spell of that quality"} (${if (kw == "hexproof") "702.11b" else if (kw == "shroud") "702.18a" else "702.16b"}), so their spell fizzles and the creature is untouched.")
             // The spell is answered by the rule above; left in the events it would resolve and kill the creature it can no longer target.
             val idx = ctx.events.indexOfLast { e -> e.verb == "cast" && e.player != "me" && e.targets.any { t -> ctx.objects[t]?.controller == "me" } }
@@ -2157,6 +2177,11 @@ class SituationParser(private val names: NameIndex) {
             ctx.notes += "\"${restore(clause0, m)}?\" is answered for each of your creatures below."; return true
         }
         // "can it attack and block in the same turn?": only one player attacks in a turn.
+        // "they counter my creature spell, does its enter the battlefield trigger happen?": a countered spell never enters.
+        if (Regex("""^(?:does|do|will|would) (?:its|the|my|their|his|her) (?:enters?[- ]the[- ]battlefield|etb|enters?) (?:trigger|ability|effect)s? (?:still |even )?(?:happen|trigger|go off|resolve|work|fire)$""").matches(clause0) && ctx.events.any { it.verb == "cast" && it.card?.name?.contains("counter", ignoreCase = true) == true }) {
+            ctx.asks += EventSpec("ask", to = "text:No. A countered spell is removed from the stack and none of its effects occur (701.6a). It never enters the battlefield, so an ability that says \"when this enters\" has nothing to trigger on (603.6a); the card goes to its owner's graveyard.")
+            return true
+        }
         // "do they have to block?": blocking is the defending player's choice unless an effect requires it.
         if (Regex("""^(?:do|does) (?:they|i|we|he|she|my opponent|the opponent) (?:have|need) to block(?: it| that| with it| with anything| at all)?$""").matches(clause0)) {
             ctx.asks += EventSpec("ask", to = "text:No. Blocking is never required by the rules: the defending player chooses which creatures they control, if any, will block (509.1a). Only an effect that says a creature must block, or that all creatures able to block a creature do so, takes that choice away (509.1c). The outcome below assumes no block.")
@@ -3621,7 +3646,7 @@ class SituationParser(private val names: NameIndex) {
             applyStateWords(id, "with " + r.groupValues[3], ctx)
             return readClause((if (who == "me") "i " else if (who == "opp") "they " else "@$who ") + r.groupValues[1] + " " + r.groupValues[2] + r.groupValues[4], m, ctx)
         }
-        Regex("""^(?:sacrifices?|sacs?|sacrificing|saccing) (?:an? |the |my |one |another )?(c\d+|it|itself|says-\S+ (?:creature|artifact|enchantment|permanent|land)|(?:\d+/\d+)(?: (?!to\b|into\b|targeting\b|at\b|on\b)[a-z]+)*)(?: (?:to|into) (?:an? |the |my )?(c\d+|it|that)(?:'s ability)?)?(.*)$""").find(c.replace(Regex("""\s+(?:in response(?: to (?:it|that|the spell))?|for mana|for value|instead|first|before it resolves|with (?:the )?(?:trigger|spell) on the stack)(?=\s|$)"""), ""))?.let { r ->
+        Regex("""^(?:sacrifices?|sacs?|sacrificing|saccing) (?:an? |the |my |one |another )?(c\d+|itself|it|says-\S+ (?:creature|artifact|enchantment|permanent|land)|(?:\d+/\d+)(?: (?!to\b|into\b|targeting\b|at\b|on\b)[a-z]+)*)(?: (?:to|into) (?:an? |the |my )?(c\d+|itself|it|that)(?:'s (?:own )?ability)?)?(.*)$""").find(c.replace(Regex("""\s+(?:in response(?: to (?:it|that|the spell))?|for mana|for value|instead|first|before it resolves|with (?:the )?(?:trigger|spell) on the stack)(?=\s|$)"""), ""))?.let { r ->
             val who = actor ?: subject ?: "me"
             val what = r.groupValues[1]
             // "I sacrifice it to Viscera Seer": the Seer is the outlet, never the thing being fed to it. Without
@@ -3647,7 +3672,7 @@ class SituationParser(private val names: NameIndex) {
                      else m.cards.getValue(what).let { card -> objectIdFor(card, ctx) ?: addObject(card, who, false, ctx) }
             if (r.groupValues[2].isNotEmpty()) {
                 // "sacrifice Bears to Ashnod's Altar" / "to it": the outlet's ability, the sacrifice being its cost.
-                val oid = if (r.groupValues[2] == "it" || r.groupValues[2] == "that") (ctx.lastMentioned?.takeIf { it in ctx.objects && it != id } ?: ctx.objects.values.lastOrNull { it.controller == who && it.id != id }?.id ?: return@let)
+                val oid = if (r.groupValues[2] == "itself") id else if (r.groupValues[2] == "it" || r.groupValues[2] == "that") (ctx.lastMentioned?.takeIf { it in ctx.objects && it != id } ?: ctx.objects.values.lastOrNull { it.controller == who && it.id != id }?.id ?: return@let)
                           else m.cards.getValue(r.groupValues[2]).let { objectIdFor(it, ctx) ?: addObject(it, who, false, ctx) }
                 ctx.events += EventSpec("activate", player = who, obj = oid, to = "sacrifice:$id", targets = targetsIn(r.groupValues[3], m, ctx)); ctx.lastActor = who; ctx.lastMentioned = oid; return true
             }
@@ -4403,6 +4428,11 @@ class SituationParser(private val names: NameIndex) {
             val name = when { r.groupValues[1].isNotEmpty() -> "a ${r.groupValues[1]} mana ${r.groupValues[2]}"; r.groupValues[3].isNotEmpty() -> "a ${r.groupValues[3]} damage spell"; r.groupValues[5].isNotEmpty() -> "a ${r.groupValues[5]} spell"; r.groupValues[6].isNotEmpty() -> "an exiling counterspell"; r.groupValues[7].isNotEmpty() -> "a ${r.groupValues[7]} damage sweeper"; r.groupValues[8].isNotEmpty() -> "a ${r.groupValues[8]} pump"; r.groupValues[9].isNotEmpty() -> r.groupValues[9].substringBefore(" that says ").let { k -> "${if (k.first() in "aeiou") "an" else "a"} $k that says \"${r.groupValues[9].substringAfter(" that says ").replace('_', ' ')}\"" }; r.groupValues[10].isNotEmpty() -> r.groupValues[10].substringAfterLast(' ').let { k -> "${if (k.first() in "aeiou") "an" else "a"} $k that says \"${r.groupValues[10].substringBeforeLast(' ').removePrefix("says-").replace('_', ' ')}\"" }; else -> "a ${r.groupValues[4].replace(" and ", " ").trim()} pump" }
             var targets = if (r.groupValues[1].isNotEmpty()) emptyList() else targetsIn(r.groupValues[11], m, ctx)
             // "they cast a spell that says counter target spell unless its controller pays 2": the spell on the stack is the target.
+            if (targets.isEmpty() && name.contains("counter target spell") && ctx.events.none { it.verb == "cast" && it.player != who }) {
+                // "I cast a spell that says counter target spell unless its controller pays 3, they have 2 lands untapped": their spell wasn't said; one is assumed.
+                ctx.events += EventSpec("cast", player = if (who == "me") (ctx.playerIds().firstOrNull { it != "me" } ?: "opp") else "me", card = CardRef(name = "a spell"))
+                ctx.notes += "No spell of theirs was said to be on the stack; a counterspell needs one, so a spell of theirs is assumed to be there."
+            }
             if (targets.isEmpty() && name.contains("counter target spell")) targets = targetsIn("targeting the spell", m, ctx)
             // "I play a land that says it enters tapped, can I tap it for mana?": a land is played, not cast, and "it" afterwards is the land.
             if (Regex("""^an? land that says """).containsMatchIn(name)) {

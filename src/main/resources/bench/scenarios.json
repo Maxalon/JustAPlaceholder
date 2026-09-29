@@ -12695,7 +12695,8 @@
 "id": "tag-question-both-die",
 "text": "I attack with a 2/2 and they block with a 2/2, both die right?",
 "expect": [
-"Yes: a 2/2 creature died"
+"Yes: your 2/2 creature died (it's in the graveyard).",
+"Yes: opponent's 2/2 creature died (it's in the graveyard)."
 ],
 "notExpect": [
 "Not understood"
@@ -20865,6 +20866,114 @@
 ],
 "cite": [
 "704.5d"
+]
+},
+{
+"id": "four-lands-2-drop-then-3-drop-question",
+"text": "i have 4 lands and cast a 2 drop, can i also cast a 3 drop this turn",
+"expect": [
+"a 3 mana creature can't be cast (costs 3, only 2 mana available)."
+],
+"cite": [
+"601.2h"
+]
+},
+{
+"id": "countered-creature-etb",
+"text": "they counter my creature spell, does its enter the battlefield trigger happen",
+"expect": [
+"a creature spell is countered."
+],
+"notExpect": [
+"Not understood"
+],
+"cite": [
+"701.6a",
+"603.6a"
+]
+},
+{
+"id": "says-etb-graveyard-empty-cast",
+"text": "i have a creature that says when it enters return target creature card from your graveyard to your hand, my graveyard is empty, can i cast it",
+"notExpect": [
+"Not understood"
+]
+},
+{
+"id": "three-player-each-opponent-loses-3-both-at-3",
+"text": "in a 3 player game i cast a spell that says each opponent loses 3 life, both are at 3, what happens",
+"expect": [
+"opponent 2 loses the game.",
+"opponent loses the game.",
+"opponent goes from 3 to 0 life.",
+"opponent 2 goes from 3 to 0 life."
+]
+},
+{
+"id": "destroy-response-indestructible",
+"text": "i cast a spell that says destroy target creature, in response they give it indestructible, what happens",
+"notExpect": [
+"Not understood",
+"Nothing changes"
+],
+"cite": [
+"702.12b"
+]
+},
+{
+"id": "says-sac-outlet-itself",
+"text": "i have a creature that says sacrifice a creature: draw a card, i sacrifice it to itself, do i draw",
+"expect": [
+"a creature that says \"sacrifice a creature: draw a card\": the battlefield → your graveyard.",
+"You draw 1 card.",
+"Yes: You draw 1 card in all."
+]
+},
+{
+"id": "viscera-seer-sac-itself",
+"text": "i have Viscera Seer and Grizzly Bears, i sacrifice the Seer to itself, do i scry",
+"expect": [
+"Viscera Seer: the battlefield → your graveyard.",
+"Viscera Seer: Scry 1 (not tracked in detail)."
+]
+},
+{
+"id": "says-each-player-discards-hand",
+"text": "my opponent has 2 cards in hand and i cast a spell that says each player discards their hand, how many do they discard",
+"expect": [
+"opponent discards their hand (2 cards)."
+]
+},
+{
+"id": "says-cast-trigger-counter-both-players",
+"text": "i have a creature that says whenever a player casts a spell put a +1/+1 counter on this creature, they cast a spell and i cast a spell, how big is it",
+"expect": [
+"a creature that says \"whenever a player casts a spell put a +1/+1 counter on this creature\" is 4/4 (2/2 base, 2 +1/+1 counters)."
+]
+},
+{
+"id": "says-counter-unless-pay-3-two-lands",
+"text": "i cast a spell that says counter target spell unless its controller pays 3, they have 2 lands untapped, is it countered",
+"expect": [
+"a spell is countered.",
+"Yes: a spell is countered."
+]
+},
+{
+"id": "mine-vs-theirs-2-2-pump-who-dies",
+"text": "my 2/2 blocks their 2/2 and i cast a spell that says target creature gets +1/+1 until end of turn on mine, who dies",
+"expect": [
+"a 2/2 creature is 3/3 until end of turn.",
+"a 2/2 creature: the battlefield → opponent's graveyard.",
+"No: your 2/2 creature is still on the battlefield.",
+"Yes: opponent's 2/2 creature died (it's in the graveyard)."
+]
+},
+{
+"id": "says-cant-be-blocked-vs-10-10",
+"text": "i have a creature that says this creature can't be blocked, they have a 10/10, i attack, what happens",
+"expect": [
+"opponent takes 2 damage."
 ]
 }
 ]

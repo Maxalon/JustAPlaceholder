@@ -1397,6 +1397,8 @@ object OracleParser {
         forAllRe.matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[2], Kind.PERMANENT); if (f.verifiable) return Effect.ForAll(f, m.groupValues[1].lowercase()) }
         // Aetherize, Evacuation: "Return all attacking creatures to their owner's hand." / "Return all creatures to their owners' hands."
         Regex("""^return (?:all|each) (.+?) to (?:their owners?' hands?|its owner's hand|their owner's hands?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m -> val f = parseFilter(m.groupValues[1], Kind.PERMANENT); if (f.verifiable) return Effect.ForAll(f, "bounce") }
+        // "Each player discards their hand." on its own.
+        if (Regex("""^each player discards (?:their|his or her) hand\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.DiscardHand(Who.EACH_PLAYER)
         // "Each player discards their hand, then draws seven cards." (Wheel of Fortune, Windfall-style)
         Regex("""^each player discards (?:their|his or her) hand, then draws (\w+|\d+) cards?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             number(m.groupValues[1])?.let { return Effect.Seq(listOf(Effect.DiscardHand(Who.EACH_PLAYER), Effect.Draw(Who.EACH_PLAYER, it))) }
