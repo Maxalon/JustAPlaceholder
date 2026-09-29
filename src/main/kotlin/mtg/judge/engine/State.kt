@@ -198,6 +198,8 @@ class GameState(
     var activePlayer: String? = null,
     /** The player who is the monarch, if any (725.1). No monarch until an effect makes one. */
     var monarch: String? = null,
+    /** The creature whose attack began combat, while "at the beginning of combat" triggers choose their targets. */
+    var combatAttackerHint: String? = null,
     /** "Exile … until ~ leaves the battlefield": the exiled objects, by the id of the permanent whose leaving returns them (610.3). */
     val exiledUntilLeaves: MutableMap<String, MutableList<String>> = mutableMapOf(),
     /** Players who can't lose the game this turn (Angel's Grace); cleared in the cleanup step. */
@@ -360,6 +362,7 @@ class GameState(
         null -> null
         is CountExpr.Permanents -> objects.values.count { matches(expr.filter, it, obj.controller, obj) }
         is CountExpr.CardTypesInGraveyards -> cardTypesInGraveyards().size
+        is CountExpr.CardsInHand -> players.firstOrNull { it.id == obj.controller }?.handSize
         is CountExpr.YourLifeTotal -> players.firstOrNull { it.id == obj.controller }?.life
         is CountExpr.CountersOn -> obj.counters[expr.kind] ?: 0
         is CountExpr.Unknown -> null

@@ -1653,6 +1653,17 @@ object OracleParser {
             val f = parseFilter(m.groupValues[2] + " you control", Kind.CREATURE)
             if (f.verifiable) return Effect.PumpCount(target(m.groupValues[1]), CountExpr.Permanents(f))
         }
+        // "Target creature gets +1/+1 until end of turn for each card in your hand" / "… for each creature you control".
+        Regex("""^(target creature(?: you control)?) gets ([+-]\d+)/([+-]\d+) until end of turn for each (.+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            if (m.groupValues[2].toInt() == m.groupValues[3].toInt() && m.groupValues[2].toInt() == 1) {
+                val what = m.groupValues[4]
+                val count: CountExpr? = if (Regex("""^card in your hand$""", RegexOption.IGNORE_CASE).matches(what)) CountExpr.CardsInHand(Who.YOU)
+                    else parseCount("the number of ${what}s".replace("ss", "s")).takeIf { it !is CountExpr.Unknown }
+                if (count != null) return Effect.PumpCount(target(m.groupValues[1]), count)
+            }
+        }
+        // "Target creature's controller sacrifices it."
+        Regex("""^(target creature)['’]s controller sacrifices (?:it|that creature)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.SacrificeTarget(target(it.groupValues[1])) }
         // "Each player loses half their life, rounded up."
         Regex("""^(each player|you|target player|each opponent) loses? half (?:their|your|his or her) life,? rounded (up|down)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             val who = when (m.groupValues[1].lowercase()) { "each player" -> Who.EACH_PLAYER; "you" -> Who.YOU; "target player" -> Who.TARGET_PLAYER; else -> Who.EACH_OPPONENT }

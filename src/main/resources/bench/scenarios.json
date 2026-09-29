@@ -21522,5 +21522,109 @@
 "expect": [
 "a 3 mana creature enters the battlefield."
 ]
+},
+{
+"id": "says-dies-draw-double-block-two-die",
+"text": "i have a creature that says whenever a creature you control dies draw a card, i block their 5/5 with two 1/1s, how many cards do i draw",
+"expect": [
+"a 1/1 creature: the battlefield → your graveyard. (×2)",
+"Yes: You draw 2 cards in all."
+]
+},
+{
+"id": "says-controller-sacrifices-regenerate",
+"text": "they cast a spell that says target creature's controller sacrifices it on my 2/2, can i regenerate it",
+"expect": [
+"a 2/2 creature: the battlefield → your graveyard."
+],
+"notExpect": [
+"Not modeled"
+],
+"cite": [
+"701.21a",
+"701.19a"
+]
+},
+{
+"id": "says-pump-per-card-in-hand",
+"text": "i have a 3/3 and cast a spell that says target creature gets +1/+1 until end of turn for each card in your hand on it, i have 3 cards, how big is it",
+"expect": [
+"a 3/3 creature is 6/6 until end of turn.",
+"a 3/3 creature is 6/6 (3/3 base, +3/+3 until end of turn)."
+]
+},
+{
+"id": "says-not-more-than-one-blocker-how-many",
+"text": "they have a creature that says it can't be blocked by more than one creature, i have three 2/2s, how many can block it",
+"notExpect": [
+"Nothing changes",
+"Not understood"
+],
+"cite": [
+"509.1b"
+]
+},
+{
+"id": "says-attack-trigger-lose-1-at-1",
+"text": "i have a creature that says whenever this creature attacks each opponent loses 1 life, i attack, they're at 1, do they lose before damage",
+"expect": [
+"opponent loses 1 life.",
+"opponent loses the game.",
+"Yes: opponent has lost the game."
+]
+},
+{
+"id": "says-reveal-choose-nonland-hand-listed",
+"text": "i cast a spell that says target player reveals their hand and you choose a nonland card from it and that player discards it, they have a bolt and two lands, what do i take",
+"notExpect": [
+"You take 3 damage",
+"Not understood"
+]
+},
+{
+"id": "menace-2-2-blocked-by-both-1-1s",
+"text": "they attack me with a 2/2 with menace and i have two 1/1s, if i block with both what happens",
+"expect": [
+"a 2/2 creature with menace: the battlefield → opponent's graveyard.",
+"a 1/1 creature: the battlefield → your graveyard. (×2)"
+]
+},
+{
+"id": "says-each-player-draws-empty-library",
+"text": "i cast a spell that says each player draws a card, they have 0 cards in library, what happens",
+"expect": [
+"You draw 1 card.",
+"opponent can't draw: opponent's library is empty.",
+"opponent loses the game (drew from an empty library)."
+],
+"cite": [
+"704.5b"
+]
+},
+{
+"id": "says-beginning-of-combat-pump-attacker",
+"text": "i have a creature that says at the beginning of combat on your turn target creature you control gets +2/+0 until end of turn, i attack with a 2/2, how much damage",
+"expect": [
+"a 2/2 creature is 4/2 until end of turn.",
+"opponent takes 4 damage.",
+"Yes: opponent takes 4 damage in all."
+],
+"cite": [
+"506.1",
+"603.2b"
+]
+},
+{
+"id": "says-cant-be-regenerated-can-i",
+"text": "my opponent casts a spell that says destroy target creature and it can't be regenerated on my 2/2, can i regenerate it",
+"expect": [
+"a 2/2 creature: the battlefield → your graveyard."
+],
+"notExpect": [
+"not tracked in detail"
+],
+"cite": [
+"701.19c"
+]
 }
 ]

@@ -177,7 +177,7 @@ class SituationParser(private val names: NameIndex) {
             // A hand listed for a discard spell ("they have Bolt and Brainstorm in hand, I cast Thoughtseize") is what the
             // spell looks at, not a card waiting to be cast; the same when the hand holds more than the one card.
             if (ctx.objects.values.count { it.zone == "hand" && it.controller == who } != 1) continue
-            if (ctx.events.any { e -> e.verb == "cast" && e.card?.name?.lowercase() in discardSpells }) continue
+            if (ctx.events.any { e -> e.verb == "cast" && (e.card?.name?.lowercase() in discardSpells || e.card?.name?.contains("discard", true) == true || e.card?.name?.contains("reveals their hand", true) == true) }) continue
             val lastOther = ctx.events.indexOfLast { it.player != null && it.player != who && it.verb in setOf("attack", "attackAll", "cast", "activate") }
             if (lastOther < 0) continue
             val card = names.lookup(Names.normalize(held.card.name ?: "")) ?: continue
@@ -595,6 +595,13 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""^(?:i|we) (?:have|hold|cast|am holding|'ve got) (an? (?:spell|instant) that says copy[^,]*?), ((?:they|he|she|my opponent) casts? [^,]+?), (?:i|we) copy (?:it|that)\b""", RegexOption.IGNORE_CASE), "$2, i cast $1 on it in response")
         // "if I double block": both of the blockers just described.
         t2 = t2.replace(Regex("""\b(?:if|when) (i|we) double[- ]block\b(?: (?:it|that|him|her|the attacker))?,?(?= (?:what|who|which|does|do|is|are|how|can|will|would)\b)""", RegexOption.IGNORE_CASE), "$1 block with both,")
+        t2 = t2.replace(Regex("""\b(?:if|when) (i|we) block with both\b(?: of them)?,?(?= (?:what|who|which|does|do|is|are|how|can|will|would)\b)""", RegexOption.IGNORE_CASE), "$1 block with both,")
+        // "I cast a discard spell, they have a Bolt and two lands": what they have is their hand.
+        if (Regex("""\b(?:discards?|reveals?)\b""", RegexOption.IGNORE_CASE).containsMatchIn(t2))
+            t2 = t2.replace(Regex("""\b(they|my opponent|he|she) (?:have|has|is holding|are holding) ((?:an? |two |three |\d+ )?(?:c\d+|lands?|creatures?|instants?)(?:(?:,| and|, and) (?:an? |two |three |\d+ )?(?:c\d+|lands?|creatures?|instants?|cards?))+)(?=,|\?|$)""", RegexOption.IGNORE_CASE), "$1 have $2 in hand")
+        // "they have a Bolt and two lands in hand" for a nonland discard: the lands are only there to be passed over.
+        if (Regex("""\bnonland card\b""", RegexOption.IGNORE_CASE).containsMatchIn(t2))
+            t2 = t2.replace(Regex("""\b((?:an? )?c\d+(?:(?:,| and) (?:an? )?c\d+)*)(?:,| and) (?:two|three|four|\d+) lands(?= in hand\b)""", RegexOption.IGNORE_CASE), "$1")
         t2 = t2.replace(Regex("""\b(?:if|when) (i|we) double[- ]block\b(?: (?:it|that|him|her|the attacker))?""", RegexOption.IGNORE_CASE), "$1 block with both")
         // "can I stop it from attacking?" with a tapper: tap it before combat, then ask.
         t2 = Regex("""\bcan (i|we) stop (?:it|that|their creature|their \d+/\d+|the \d+/\d+) from attacking\b""", RegexOption.IGNORE_CASE).replace(t2) { r ->
@@ -1213,7 +1220,7 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""\ban? spell that (?:says )?each player discards? a card\b""", RegexOption.IGNORE_CASE), "a symmetrical discard spell")
         t2 = t2.replace(Regex("""\ban? spell that (?:says )?destroys? target land\b""", RegexOption.IGNORE_CASE), "a land destruction spell")
         // "a spell that says target creature gets +2/+2 until end of turn on my 2/2": the pump, aimed at what follows "on".
-        t2 = Regex("""\ban? spell that (?:says )?target creature gets ([+-]\d+/[+-]\d+)(?: until end of turn)?(?=( on (?:my|their|his|her|the|an?|c\d+|mine|theirs|yours|it|that|them)\b)?)""", RegexOption.IGNORE_CASE).replace(t2) { r -> if (r.groupValues[2].isNotEmpty()) "a ${r.groupValues[1]} pump" else "a ${r.groupValues[1]} pump on it" }
+        t2 = Regex("""\ban? spell that (?:says )?target creature gets ([+-]\d+/[+-]\d+)(?!(?: until end of turn)? for each)(?: until end of turn)?(?=( on (?:my|their|his|her|the|an?|c\d+|mine|theirs|yours|it|that|them)\b)?)""", RegexOption.IGNORE_CASE).replace(t2) { r -> if (r.groupValues[2].isNotEmpty()) "a ${r.groupValues[1]} pump" else "a ${r.groupValues[1]} pump on it" }
         t2 = t2.replace(Regex("""\ban? (?:card|permanent|enchantment) that says whenever a creature dies,? (?:i |you )?draw a card\b""", RegexOption.IGNORE_CASE), "a dies-draw enchantment")
         t2 = t2.replace(Regex("""\bon my only (land|creature)\b""", RegexOption.IGNORE_CASE), "on my $1")
             // "they have a creature that can't be blocked, I have a fog effect, can I stop the damage?"
@@ -2260,6 +2267,28 @@ class SituationParser(private val names: NameIndex) {
             ctx.lastVerb = "block"; ctx.lastActor = who; ctx.note(who)
             ctx.notes += "\"${restore(clause0, m)}\" is read as blocking with ${blockers.joinToString(" and ") { it.card.name ?: it.id }}."
             return true
+        }
+        // "target creature's controller sacrifices it, can I regenerate it?": a sacrifice isn't destruction.
+        Regex("""^can (?:i|we|they) (?:still |even )?regenerate (?:it|that|my creature|their creature|the creature|(?:my |their |the )?\d+/\d+)$""").find(clause0)?.let {
+            val last = ctx.events.lastOrNull { it.verb == "cast" || it.verb == "sacrifice" || it.verb == "activate" } ?: return@let
+            val name = last.card?.name ?: last.obj?.let { ctx.objects[it]?.card?.name } ?: ""
+            if (last.verb == "sacrifice" || Regex("""\bsacrifice""", RegexOption.IGNORE_CASE).containsMatchIn(name))
+                ctx.asks += EventSpec("ask", to = "text:No. Regeneration replaces destruction only (701.19a). A sacrifice isn't destruction: the creature is put into its owner's graveyard by its controller as a cost or effect (701.21a), and a regeneration shield does nothing about that.")
+            else if (Regex("""can't be regenerated""", RegexOption.IGNORE_CASE).containsMatchIn(name))
+                ctx.asks += EventSpec("ask", to = "text:No. The spell says the creature can't be regenerated, so a regeneration shield can't replace this destruction (701.19c).")
+            else return@let
+            return true
+        }
+        // "they have a creature that says it can't be blocked by more than one creature, how many can block it?": from the attacker's words.
+        Regex("""^how many (?:of them |of my creatures |creatures |blockers )?(?:can|could|may) block (?:it|that|him|her|their creature|the attacker)$""").find(clause0)?.let {
+            val att = ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller != "me" }?.let { ctx.objects.getValue(it) } ?: ctx.objects.values.lastOrNull { it.controller != "me" && isCreatureName(it.card.name) } ?: return@let
+            val n = att.card.name ?: return@let
+            val text = when {
+                Regex("""can't be blocked by more than one""", RegexOption.IGNORE_CASE).containsMatchIn(n) -> "One at most: its words say it can't be blocked by more than one creature, so a second blocker declared for it makes the block illegal (509.1b). The outcome below assumes no block."
+                n.contains("menace", true) || Regex("""except by (?:two|2) or more""", RegexOption.IGNORE_CASE).containsMatchIn(n) -> "Two or more, or none: menace means it can't be blocked except by two or more creatures (702.111b). The outcome below assumes no block."
+                else -> "Any number: nothing in its words limits how many creatures block it, and each of your untapped creatures may be declared as a blocker for it (509.1a). The outcome below assumes no block."
+            }
+            ctx.asks += EventSpec("ask", to = "text:$text"); return true
         }
         // "they attack with three 2/2s and I have one 5/5, how many can I block?": one per creature.
         Regex("""^how many (?:of them |attackers |creatures )?(?:can|could) (?:i|we) block(?: with it| with (?:my|the) \d+/\d+)?$""").find(clause0)?.let {

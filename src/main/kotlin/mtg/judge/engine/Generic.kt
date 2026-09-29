@@ -113,6 +113,8 @@ object Generic {
                 // "exile target creature then return it to the battlefield": the card's comma.
                 .replace(Regex("""^(exile target [a-z ]+?) then (return (?:it|that card) to the battlefield)"""), "$1, then $2")
                 .replace(Regex("""^target player draws (a|\d+|two|three) cards? and loses (\d+) life$""")) { w -> "target player draws ${w.groupValues[1]} card${if (w.groupValues[1] == "a") "" else "s"}. That player loses ${w.groupValues[2]} life" }.replace(Regex("""^it (gains?|gets|has|loses|can't)\b"""), "target creature $1").replace(Regex("""^gains? me (\d+) life$"""), "you gain $1 life").replace(Regex("""^deals? me (\d+) damage$"""), "this spell deals $1 damage to you")
+                // "destroy target creature and it can't be regenerated": the card's two sentences.
+                .replace(Regex("""^(destroy target [a-z ]+?) and it can't be regenerated$"""), "$1. It can't be regenerated")
                 // "destroy target creature and its controller loses 2 life": two sentences on the card.
                 .replace(Regex("""^((?:destroy|exile|return|counter|tap|bounce)\b[^.]*?) and (its controller|that player|that creature's controller|you) """)) { w -> "${w.groupValues[1]}. ${w.groupValues[2].replaceFirstChar { c -> c.uppercase() }} " }
             val text = text0.let { if (Regex("""\b(?:gets?|gains?) [+-]\d+/[+-]\d+$""").containsMatchIn(it)) "$it until end of turn" else it }.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
