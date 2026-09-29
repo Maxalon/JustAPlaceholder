@@ -236,7 +236,8 @@ object OracleParser {
             trigger is Trigger.ThisBecomesTarget || trigger is Trigger.ThisBecomesTapped || trigger is Trigger.ThisBecomesMonstrous || trigger is Trigger.ThisIsDealtDamage || trigger is Trigger.ThisCast
         val effText = if (selfTrigger) selfEffText(m.groupValues[3]) else m.groupValues[3]
         // "Whenever a creature you control attacks alone, it gains double strike / gets +2/+2 until end of turn": the attacking creature.
-        if (trigger is Trigger.CreatureAttacksAlone) {
+        // "Whenever a creature attacks you, it gets -1/-1 until end of turn": the attacking creature, too.
+        if (trigger is Trigger.CreatureAttacksAlone || trigger is Trigger.PermanentAttacks) {
             Regex("""^(?:it|that creature) gets ([+-]\d+)/([+-]\d+)(?: and gains (.+?))? until end of turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(effText)?.let { r ->
                 val kws = r.groupValues[3].takeIf { it.isNotEmpty() }?.let { keywordsIn(it) ?: return TriggeredAbility(trigger, Effect.Unparsed(effText), line) } ?: emptySet()
                 return TriggeredAbility(trigger, Effect.PumpCausing(r.groupValues[1].toInt(), r.groupValues[2].toInt(), kws.toList()), line)
@@ -1040,6 +1041,10 @@ object OracleParser {
                 } else if (Regex("""^If (?:this spell|~) was kicked, it deals (\d+) damage instead\.?$""", RegexOption.IGNORE_CASE).matches(cur) && out.lastOrNull() is Effect.Damage) {
                     val n = Regex("""(\d+)""").find(cur)!!.groupValues[1].toInt()
                     out[out.lastIndex] = (out.last() as Effect.Damage).copy(kickedAmount = n); i++
+                } else if (Regex("""^(?:It|That creature) doesn't untap during its controller's next untap step\.?$""", RegexOption.IGNORE_CASE).matches(cur) && out.lastOrNull() is Effect.Tap) {
+                    // "Tap target creature. It doesn't untap during its controller's next untap step." (Frost Breath and its kin)
+                    val prev = out.removeAt(out.lastIndex) as Effect.Tap
+                    out += Effect.Seq(listOf(prev, Effect.FreezeUntap(prev.target))); i++
                 } else if (Regex("""^(?:It|They) can't be regenerated\.?$""", RegexOption.IGNORE_CASE).matches(cur) && out.isNotEmpty()) {
                     val prev = out.removeAt(out.lastIndex)
                     out += when (prev) { is Effect.Destroy -> prev.copy(noRegen = true); is Effect.ForAll -> prev.copy(noRegen = true); else -> Effect.Seq(listOf(prev, Effect.Narrated("it can't be regenerated", listOf("701.19c")))) }
@@ -1662,6 +1667,8 @@ object OracleParser {
                 if (count != null) return Effect.PumpCount(target(m.groupValues[1]), count)
             }
         }
+        // "You gain life equal to target creature's toughness."
+        Regex("""^you gain life equal to (target creature)['’]s (toughness|power)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.GainLifeEqualTo(target(it.groupValues[1]), it.groupValues[2].lowercase()) }
         // "Target creature's controller sacrifices it."
         Regex("""^(target creature)['’]s controller sacrifices (?:it|that creature)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.SacrificeTarget(target(it.groupValues[1])) }
         // "Each player loses half their life, rounded up."

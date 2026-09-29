@@ -104,6 +104,8 @@ class GameObject(
     val lostKeywords = mutableSetOf<String>()
     /** The card as printed: a copy effect (Clone) changes [def] only while it is on the battlefield (400.7). */
     val printedDef: CardDef = def
+    /** "It doesn't untap during its controller's next untap step": set by the effect, spent at that step. */
+    var skipNextUntap: Boolean = false
     /** The parser put it on the battlefield only because a spell named it; a graveyard-targeting spell may move it. */
     var assumed = false
     /** Mox Diamond with no land to discard: it never enters, and goes to the graveyard instead. */

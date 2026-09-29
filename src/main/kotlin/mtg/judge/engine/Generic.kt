@@ -65,7 +65,9 @@ object Generic {
             // "a land that says it enters tapped", "it must be blocked if able".
             t = t.replace(Regex("""^it enters(?: the battlefield)? tapped$"""), "${self.replaceFirstChar { c -> c.uppercase() }} enters tapped").replace(Regex("""^it must be blocked if able$"""), "All creatures able to block ${self} do so")
             // "an opponent's creature dies", "whenever this creature blocks it deals 1 damage to the creature it blocks", "it can't be the target of spells".
-            t = t.replace(Regex("""\ban opponent's creature\b"""), "a creature an opponent controls").replace(Regex("""\bto the creature it blocks$"""), "to that creature").replace(Regex("""^whenever this creature blocks it\b"""), "whenever this creature blocks a creature, it")
+            t = t.replace(Regex("""\ban opponent's creature\b"""), "a creature an opponent controls")
+            // "whenever a creature attacks you": the trigger the card writes as "attacks you or a planeswalker you control".
+            t = t.replace(Regex("""^(whenever a creature) attacks you\b(?: or a planeswalker you control)?"""), "$1 attacks").replace(Regex("""\bto the creature it blocks$"""), "to that creature").replace(Regex("""^whenever this creature blocks it\b"""), "whenever this creature blocks a creature, it")
             t = t.replace(Regex("""^(?:this creature|this permanent|it) can't be blocked except by (?:2|two) or more creatures$""", RegexOption.IGNORE_CASE), "menace")
             t = t.replace(Regex("""^(?:this creature|this permanent|this spell|it) can't be countered$""", RegexOption.IGNORE_CASE), "This spell can't be countered")
             t = t.replace(Regex("""^(?:this creature|this permanent|it) can't be the target of spells(?: or abilities)?$""", RegexOption.IGNORE_CASE), "shroud").replace(Regex("""^(?:this creature|this permanent|it) can't be the target of spells or abilities your opponents control$""", RegexOption.IGNORE_CASE), "hexproof")
@@ -117,7 +119,9 @@ object Generic {
                 .replace(Regex("""^(destroy target [a-z ]+?) and it can't be regenerated$"""), "$1. It can't be regenerated")
                 // "destroy target creature and its controller loses 2 life": two sentences on the card.
                 .replace(Regex("""^((?:destroy|exile|return|counter|tap|bounce)\b[^.]*?) and (its controller|that player|that creature's controller|you) """)) { w -> "${w.groupValues[1]}. ${w.groupValues[2].replaceFirstChar { c -> c.uppercase() }} " }
+            // Each sentence of the words begins with a capital, as on the card, so the parser splits them as it does a card's.
             val text = text0.let { if (Regex("""\b(?:gets?|gains?) [+-]\d+/[+-]\d+$""").containsMatchIn(it)) "$it until end of turn" else it }.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
+                .replace(Regex("""\. ([a-z])""")) { w -> ". " + w.groupValues[1].uppercase() }
             // Said only as "a spell", it is an instant: the question is about what it does, not about when it can be cast.
             val type = if (m.groupValues[1] == "sorcery") "Sorcery" else "Instant"
             return OracleParser.parse("generic-says-${m.groupValues[2].take(60)}", "${if (m.groupValues[1] == "instant") "an instant" else "a ${m.groupValues[1]}"} that says \"$text0\"", type, "{$cost}", cost.toDouble(), "", null, null, emptyList(), text)

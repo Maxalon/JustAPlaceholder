@@ -1075,8 +1075,11 @@ class Engine(val state: GameState) {
                 trace.step("${o.name} doesn't untap during its controller's untap step (${src.name}).", "502.3", "614.1")
                 state.outcomes += "${o.name} doesn't untap (${src.name})."
             }
-            val wereTapped = (mine - held.toSet()).filter { it.tapped == true }
-            (mine - held.toSet()).forEach { it.tapped = false; it.summoningSick = false; it.attacking = null; it.blocking = null }
+            // "It doesn't untap during its controller's next untap step": this is that step, so it stays tapped and the effect is spent.
+            val frozen = (mine - held.toSet()).filter { it.skipNextUntap && it.tapped == true }
+            for (o in frozen) { o.skipNextUntap = false; trace.step("${o.name} doesn't untap: an effect said it doesn't untap during this untap step.", "502.3", "611.2a"); state.outcomes += "${o.name} stays tapped (it doesn't untap this untap step)." }
+            val wereTapped = (mine - held.toSet() - frozen.toSet()).filter { it.tapped == true }
+            (mine - held.toSet() - frozen.toSet()).forEach { it.tapped = false; it.summoningSick = false; it.attacking = null; it.blocking = null }
             for (o in wereTapped) state.outcomes += "${o.name} untaps."
             // Seedborn Muse: another player's permanents untap in this player's untap step too.
             for (src in state.objects.values.filter { it.isOnBattlefield() && it.controller != activePlayer }) {
@@ -2027,7 +2030,7 @@ class Engine(val state: GameState) {
     private fun applyEffect(effect: Effect, item: StackItem) {
         val you = state.player(item.controller)
         when (effect) {
-            is Effect.DamageCausing, is Effect.DoublePower, is Effect.PumpCount, is Effect.LoseHalfLife, is Effect.ExileUntilLeaves, is Effect.SacrificeTarget -> applyEffectMore(effect, item)
+            is Effect.DamageCausing, is Effect.DoublePower, is Effect.PumpCount, is Effect.LoseHalfLife, is Effect.ExileUntilLeaves, is Effect.SacrificeTarget, is Effect.GainLifeEqualTo, is Effect.FreezeUntap -> applyEffectMore(effect, item)
             is Effect.Seq -> effect.effects.forEach { applyEffect(it, item) }
             is Effect.CantCastThisTurn -> {
                 val who = when (effect.who) {
@@ -3135,6 +3138,16 @@ class Engine(val state: GameState) {
                 else trace.step("${it.name}'s power is doubled while it's below 0: it gets $x/-0 until end of turn (twice as far below 0), so it's now ${it.power}/${it.toughness}.", "701.10c")
                 state.outcomes += "${it.name} is ${it.power}/${it.toughness} until end of turn."
             } }
+            is Effect.FreezeUntap -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o ->
+                o.skipNextUntap = true
+                trace.step("${o.name} won't untap during its controller's next untap step.", "611.2a"); state.outcomes += "${o.name} doesn't untap during its controller's next untap step."
+            } }
+            is Effect.GainLifeEqualTo -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o ->
+                val n = (if (effect.stat == "power") o.power else o.toughness) ?: return@let
+                val p = state.player(item.controller); p.life = p.life?.plus(n)
+                trace.step("${p.subject} ${p.v("gains", "gain")} $n life, ${o.name}'s ${effect.stat} as the spell resolves${p.life?.let { " ($it)" } ?: ""}.", "119.4")
+                state.outcomes += "${p.subject} ${p.v("gains", "gain")} $n life."
+            } }
             is Effect.SacrificeTarget -> forEachLegalTarget(item, effect.target) { ref -> objOf(ref)?.let { o ->
                 trace.step("${o.name}'s controller sacrifices it.", "701.21a"); sacrifice(o.controller, o.id) } }
             is Effect.PumpCount -> {
@@ -4127,7 +4140,7 @@ class Engine(val state: GameState) {
         is Effect.CreateToken -> "create ${if (effect.countBy != null) "X" else effect.count.toString()} ${effect.token} token${if (effect.count > 1 || effect.countBy != null) "s" else ""}"; is Effect.CreateTokenCopy -> "create ${effect.count} token${if (effect.count > 1) "s" else ""} that's a copy of ${effect.target?.raw ?: item.source.name}"; is Effect.SacrificeEach -> "each such player sacrifices a ${effect.filter.raw}"; is Effect.SacrificeSource -> "sacrifice ${item.source.name}"; is Effect.GainLifePerSpellThisTurn -> "gain ${effect.per} life for each spell cast this turn"; is Effect.WinIfDevotionCoversLibrary -> "look at the top X cards (X = your devotion) and win if X is at least your library size"; is Effect.Mill -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "you"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }} mills ${effect.count} cards"; is Effect.ExileGraveyard -> "exile ${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.YOU -> "your"; Who.EACH_PLAYER -> "each player"; Who.EACH_OPPONENT -> "each opponent"; else -> "that player" }}${if (effect.who == Who.YOU) "" else "'s"} graveyard"; is Effect.DiscardNamed -> "that player reveals their hand and discards every card with the name you chose"; is Effect.BounceChosen -> "return ${withArticle(effect.what)} you control to its owner's hand"; is Effect.LivingWeapon -> "create a 0/0 black Phyrexian Germ creature token, then attach ${item.source.name} to it"; is Effect.DiscardChosen -> "${when (effect.who) { Who.TARGET_PLAYER -> "target player"; Who.EACH_OPPONENT -> "each opponent"; Who.EACH_PLAYER -> "each player"; else -> "that player" }} reveals their hand and discards ${effect.what} of your choice"; is Effect.SacrificeThatMany -> "that player sacrifices that many ${effect.filter.raw}s"; is Effect.PutFromHand -> "put ${withArticle(effect.filter.raw)} from your ${if (effect.fromLibrary) "library" else if (effect.fromGraveyard) "graveyard" else "hand"} onto the battlefield"
         is Effect.Bounce -> "return ${effect.target?.raw ?: item.source.name} to its owner's hand"; is Effect.GainLifeEqualToPower -> "its controller gains life equal to its power"; is Effect.GainLifeEqualToToughness -> "its controller gains life equal to its toughness"; is Effect.PutOnBottom -> "put ${effect.target.raw} on the bottom of its owner's library"; is Effect.GainLifeLostThisWay -> "gain life equal to the life lost this way"; is Effect.RevealTopToHand -> "reveal the top card of your library and put it into your hand"; is Effect.PutSelfOnLibraryTop -> "put ${item.source.name} on top of its owner's library"; is Effect.LoseLifeEqualToRevealedMv -> "lose life equal to the revealed card's mana value"; is Effect.ExileIfDamagedDies -> "exile a creature dealt damage this way instead if it would die this turn"; is Effect.NarratedTargeted -> "${effect.target.raw}: ${effect.text}"
         is Effect.Tap -> "tap ${effect.target.raw}"; is Effect.Untap -> "untap ${effect.target.raw}"
-        is Effect.DoublePower -> "${effect.target.raw}'s power is doubled"; is Effect.SacrificeTarget -> "${effect.target.raw}'s controller sacrifices it"; is Effect.ExileUntilLeaves -> "exile ${effect.target.raw} until this leaves the battlefield"; is Effect.PumpCount -> "${effect.target.raw} gets +X/+X"; is Effect.LoseHalfLife -> "${effect.who} loses half their life"; is Effect.Pump -> "${effect.target.raw} gets ${signed(effect.power)}/${signed(effect.toughness)}"
+        is Effect.DoublePower -> "${effect.target.raw}'s power is doubled"; is Effect.SacrificeTarget -> "${effect.target.raw}'s controller sacrifices it"; is Effect.GainLifeEqualTo -> "you gain life equal to ${effect.target.raw}'s ${effect.stat}"; is Effect.FreezeUntap -> "${effect.target.raw} doesn't untap during its controller's next untap step"; is Effect.ExileUntilLeaves -> "exile ${effect.target.raw} until this leaves the battlefield"; is Effect.PumpCount -> "${effect.target.raw} gets +X/+X"; is Effect.LoseHalfLife -> "${effect.who} loses half their life"; is Effect.Pump -> "${effect.target.raw} gets ${signed(effect.power)}/${signed(effect.toughness)}"
         is Effect.PumpSameName -> "${effect.target.raw} and all other creatures with the same name get ${signed(effect.power)}/${signed(effect.toughness)}"
         is Effect.GainKeywords -> "${effect.target.raw} gains ${effect.keywords.joinToString(" and ")}"
         is Effect.GainControl -> "gain control of ${effect.target.raw}${if (effect.untilEndOfTurn) " until end of turn" else ""}"

@@ -111,6 +111,8 @@ class SituationParser(private val names: NameIndex) {
         // "Can my opponent use the Top?" once Sensei's Divining Top has been named: the capitalised short form is the card.
         // "a spell that says exile target creature, then return it to the battlefield": one spell text, so "then" is no sentence break here.
         val text1 = text.replace(Regex("""(that says exile target creature),? then (return it to the battlefield)""", RegexOption.IGNORE_CASE), "$1 then_$2")
+            // "a spell that says tap target creature, it doesn't untap during its controller's next untap step": the card's two sentences, kept together.
+            .replace(Regex("""(that says) tap target creature,? (?:and )?it doesn't untap during its controller's next untap step""", RegexOption.IGNORE_CASE), "$1 tap_target_creature._it_doesn't_untap_during_its_controller's_next_untap_step")
         val sentences = splitSentences(if (text1.contains("Divining Top")) text1.replace(Regex("""\bthe Top\b"""), "Sensei's Divining Top") else text1)
         // "I crack a fetchland": the word names a cycle, and every member does something different. Saying which
         // card it was read as would be picking one for the asker, so the answer asks instead.
@@ -620,6 +622,16 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""\bcan (?:it|that|their creature|their \d+/\d+|the \d+/\d+) (?:still |also )?block (?:on|during|in) my (?:next )?turn\b""", RegexOption.IGNORE_CASE), "vigilance-blockmyturn-question")
         // "I cast it on their 4/4": the creature's enters trigger is aimed there.
         t2 = t2.replace(Regex("""\b(cast|casts) (it|that) on (?=(?:my|their|his|her|the|an?) )""", RegexOption.IGNORE_CASE), "$1 $2 targeting ")
+        // "they respond by giving it hexproof": the response, then the keyword.
+        t2 = t2.replace(Regex("""\b(they|he|she|i|we|my opponent) responds? by giving (it|that|my creature|their creature|(?:my |their )?\d+/\d+) (hexproof|shroud|indestructible|protection from [a-z]+)\b""", RegexOption.IGNORE_CASE), "$1 give $2 $3 in response")
+        // "they counter it with a spell that says counter target spell": a plain counter, the instrument adds nothing.
+        t2 = t2.replace(Regex("""\b(counters?) (it|that|my spell|my creature) with an? (?:spell|instant) that says counter target spell\b""", RegexOption.IGNORE_CASE), "$1 $2")
+        // "what happens if I sacrifice the 4/4" after their removal: the sacrifice is the response.
+        t2 = t2.replace(Regex("""\bwhat happens if (i|we) (sacrifice|sac) ((?:my |the )?(?:\d+/\d+|c\d+|it))(?=\?|$|,)""", RegexOption.IGNORE_CASE), "$1 $2 $3 in response, what happens")
+        // "I use it three turns in a row": once now, then once each following turn.
+        t2 = Regex("""\b(i|we) (?:uses?|activates?) (it|his \S+|her \S+|the \S+) (?:(\d+|two|three|four) turns in a row|for (\d+|two|three|four) turns(?: straight)?)\b""", RegexOption.IGNORE_CASE).replace(t2) { r ->
+            val n = number(r.groupValues[3].ifEmpty { r.groupValues[4] }) ?: 2
+            "${r.groupValues[1]} use ${r.groupValues[2]}" + ", ${r.groupValues[1]} use ${r.groupValues[2]} next turn".repeat(n - 1) }
         // "on myself": the caster.
         t2 = t2.replace(Regex("""\b(on|targeting|at) myself\b""", RegexOption.IGNORE_CASE), "$1 me")
         // "can I also cast a 3 drop this turn?": the question is whether it can be cast now.
@@ -4595,7 +4607,7 @@ class SituationParser(private val names: NameIndex) {
             // "I cast a spell that says gain control of target creature until end of turn" with one creature of theirs, or
             // "target creature gets +X/+X" with one creature of mine: the target nobody named is the one it can only mean.
             if (targets.isEmpty() && Regex("""target creature\b""").containsMatchIn(name) && !name.contains("counter target")) {
-                val mine = !name.contains("gain control") && Regex("""\bgets? [+]|gains?\b|untap|indestructible|hexproof|regenerate|prevent|protection|\+\d+/\+\d+|counters? on""").containsMatchIn(name)
+                val mine = !name.contains("gain control") && !Regex("""\btap target|doesn't untap""").containsMatchIn(name) && Regex("""\bgets? [+]|gains?\b|untap|indestructible|hexproof|regenerate|prevent|protection|\+\d+/\+\d+|counters? on""").containsMatchIn(name)
                 val side = ctx.objects.values.filter { o -> o.zone == "battlefield" && isCreatureName(o.card.name) && (if (mine) o.controller == who else o.controller != who) }
                 val pick = side.filter { it.card.name != "a creature" }.ifEmpty { side }
                 if (pick.size == 1) { targets = listOf(pick.single().id); ctx.notes += "${name.replaceFirstChar { c -> c.uppercase() }} wasn't aimed at anything; ${pick.single().card.name} is the only creature it can mean here." }

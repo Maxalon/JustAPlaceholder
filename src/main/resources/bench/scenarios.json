@@ -21626,5 +21626,99 @@
 "cite": [
 "701.19c"
 ]
+},
+{
+"id": "says-minus-2-2-on-2-2",
+"text": "they have a 2/2 and i cast a spell that says target creature gets -2/-2 until end of turn, does it die",
+"expect": [
+"a 2/2 creature is 0/0 until end of turn.",
+"Yes: a 2/2 creature died (it's in the graveyard)."
+]
+},
+{
+"id": "respond-by-giving-hexproof",
+"text": "i cast a spell that says destroy target creature, they respond by giving it hexproof, what happens",
+"notExpect": [
+"Not understood",
+"Nothing changes"
+],
+"cite": [
+"608.2b"
+]
+},
+{
+"id": "counter-it-with-said-counterspell-etb",
+"text": "i have a creature that says when this creature enters draw two cards, they counter it with a spell that says counter target spell, do i draw",
+"expect": [
+"a creature that says \"when this creature enters draw 2 cards\" is countered.",
+"No: You don't draw."
+]
+},
+{
+"id": "says-team-flying-attack-both",
+"text": "i have two 2/2s and cast a spell that says creatures you control gain flying until end of turn, they have a 4/4 without flying, i attack with both, how much damage",
+"expect": [
+"a 2/2 creature has flying until end of turn. (×2)",
+"Yes: opponent takes 4 damage in all."
+]
+},
+{
+"id": "sac-in-response-to-removal-fizzles",
+"text": "they cast a spell that says destroy target creature on my 4/4 and i have a creature that says sacrifice a creature: target creature gets +2/+2, what happens if i sacrifice the 4/4",
+"expect": [
+"a 4/4 creature: the battlefield → your graveyard.",
+"a spell that says \"destroy target creature\" doesn't resolve (all targets illegal)."
+],
+"cite": [
+"608.2b"
+]
+},
+{
+"id": "says-damage-to-opponent-discard",
+"text": "i have a creature that says whenever this creature deals damage to an opponent that player discards a card, i attack unblocked, what happens",
+"expect": [
+"opponent takes 2 damage.",
+"opponent discards 1 card."
+]
+},
+{
+"id": "deathtouch-first-strike-1-1-blocks-3-3",
+"text": "my opponent has a 3/3 and i have a 1/1 with deathtouch and first strike, if i block does mine survive",
+"expect": [
+"a 3/3 creature: the battlefield → opponent's graveyard.",
+"Yes: a 1/1 creature with deathtouch, first strike is still on the battlefield."
+]
+},
+{
+"id": "says-pw-plus-one-three-turns",
+"text": "i have a planeswalker that says +1 each opponent loses 1 life with 3 loyalty, i use it three turns in a row, how much life do they lose",
+"expect": [
+"opponent loses 1 life. (×3)",
+"opponent loses 3 life in all."
+]
+},
+{
+"id": "says-attacks-you-minus-1-1",
+"text": "i have an enchantment that says whenever a creature attacks you it gets -1/-1 until end of turn, they attack with a 1/1, what happens",
+"expect": [
+"a 1/1 creature is 0/0 until end of turn.",
+"a 1/1 creature: the battlefield → opponent's graveyard."
+]
+},
+{
+"id": "says-gain-life-equal-toughness",
+"text": "i cast a spell that says you gain life equal to target creature's toughness on my 4/4, how much life",
+"expect": [
+"You gain 4 life."
+]
+},
+{
+"id": "says-tap-and-freeze-next-turn",
+"text": "they have a 5/5 and i cast a spell that says tap target creature, it doesn't untap during its controller's next untap step, can it attack next turn",
+"expect": [
+"a 5/5 creature is tapped.",
+"a 5/5 creature doesn't untap during its controller's next untap step.",
+"a 5/5 creature can't attack (tapped)."
+]
 }
 ]
