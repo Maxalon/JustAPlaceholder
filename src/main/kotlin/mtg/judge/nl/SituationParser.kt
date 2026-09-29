@@ -574,6 +574,7 @@ class SituationParser(private val names: NameIndex) {
             // "they fight because of a spell that says target creature you control fights target creature you don't control":
             // the spell is cast at the asker's creature and the other player's.
         t2 = t2.replace(Regex("""\b(?:they|the two|both|my creature and theirs|mine and theirs) fight (?:because of|due to|thanks to|with|via|off|from) (an? (?:spell|instant|sorcery) that (?:says|reads) .+?)(?=,|\?|$)""", RegexOption.IGNORE_CASE), "i cast $1")
+        t2 = t2.replace(Regex("""\b(?:we|they|the two|both|my creature and theirs) fight because (i|we|they|he|she) cast (an? (?:spell|instant|sorcery) that (?:says|reads) .+?)(?=,|\?|$)""", RegexOption.IGNORE_CASE), "$1 cast $2")
             // "a creature that says when this creature enters, exile target creature until …": the comma after the
             // trigger condition belongs to the said text; it is carried as a fullwidth comma so the clause split
             // leaves the text whole, and turned back into a comma where the text is read.
@@ -2238,10 +2239,15 @@ class SituationParser(private val names: NameIndex) {
             return true
         }
         // "can I still hit their creature?" after a Bolt cast with no target named: the creature is the target.
-        Regex("""^can (i|we) (?:still |even )?(?:hit|target|bolt|kill|shoot|burn|point it at) (their|my opponent's|his|her|the) (creatures?|\d+/\d+|c\d+|guy|dude)$""").find(clause0)?.let { r ->
+        Regex("""^can (i|we) (?:still |even )?(?:hit|target|bolt|kill|shoot|burn|point it at) (?:(their|my opponent's|his|her|the) (creatures?|\d+/\d+|c\d+|guy|dude)|(it|that|that creature))$""").find(clause0)?.let { r ->
+            // "can I kill it?": the creature last spoken of, or the one creature across the table.
+            val targets = if (r.groupValues[4].isNotEmpty()) listOfNotNull(ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller != "me" && isCreatureName(ctx.objects.getValue(it).card.name) }
+                    ?: ctx.objects.values.filter { it.controller != "me" && it.zone == "battlefield" && isCreatureName(it.card.name) }.singleOrNull()?.id)
+                else targetsIn("targeting ${r.groupValues[2]} ${r.groupValues[3].removeSuffix("s")}", m, ctx)
+            // "I have a spell that says destroy target creature …, can I kill it?": the spell is already aimed at it; the outcome answers.
+            if (targets.isNotEmpty() && ctx.events.any { it.verb == "cast" && it.player == "me" && it.targets.any { t -> t in targets } }) { ctx.notes += "\"${restore(clause0, m)}?\" is answered by what the spell does to it below."; return true }
             val idx = ctx.events.indexOfLast { it.verb == "cast" && it.player == "me" && it.targets.isEmpty() }
             if (idx < 0) return@let
-            val targets = targetsIn("targeting ${r.groupValues[2]} ${r.groupValues[3].removeSuffix("s")}", m, ctx)
             if (targets.isEmpty()) return@let
             ctx.events[idx] = ctx.events[idx].copy(targets = targets)
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by aiming the spell at that creature below."; return true
@@ -4170,7 +4176,8 @@ class SituationParser(private val names: NameIndex) {
             val name = "a ${r.groupValues[2]} " + n0.substringAfter(' ').removePrefix("1/1 ").replace(Regex("""^\d+/\d+ """), "")
             ctx.objects[id.id] = id.copy(card = id.card.copy(name = name)); ctx.lastMentioned = id.id; return true
         }
-        Regex("""^(?:it's|it is|its|that's|that is) an? (\d+/\d+)(?: creature)?$""").find(c)?.let { r ->
+        Regex("""^(?:it's|it is|its|that's|that is|is|'s) an? (\d+/\d+)(?: creature)?(?: base| by default| printed| to begin with| normally)?$|^an? (\d+/\d+) (?:base|printed|by default|to begin with)$""").find(c)?.let { r0 ->
+            val r = object { val groupValues = listOf(r0.groupValues[0], r0.groupValues[1].ifEmpty { r0.groupValues[2] }) }
             // "I cast a creature that says it enters with two +1/+1 counters, it's a 1/1": the size belongs to the creature just cast.
             if (ctx.lastMentioned?.startsWith("cast:") == true) {
                 val at = ctx.events.indexOfLast { it.verb == "cast" && it.obj == null && it.card?.name != null && isCreatureName(it.card.name) && it.card.name.startsWith("a ") }
@@ -4768,7 +4775,7 @@ class SituationParser(private val names: NameIndex) {
         // "Can I kill my opponent at 40?" / "can I kill it?": what the asker has that deals damage, aimed at it.
         Regex("""^(?:kills?|finish(?:es)? off|burns? out|shoots?) (my opponent|the opponent|them|him|her|it|that|(?:my |the |their )?c\d+|(?:the |their )?\d+/\d+)(?: (?:at|who is at|who's at) (\d+)(?: life)?)?$""").find(c)?.let { r ->
             val who = actor ?: subject ?: "me"
-            if (ctx.events.lastOrNull()?.let { it.verb == "cast" && it.player == who } == true) return@let   // "I cast Bolt and kill it" is the Bolt's own work
+            if (ctx.events.lastOrNull { it.verb != "resolveAll" }?.let { it.verb == "cast" && it.player == who } == true) return@let   // "I cast Bolt and kill it" is the Bolt's own work
             val w = r.groupValues[1]
             val victim = when {
                 w in setOf("my opponent", "the opponent", "them", "him", "her") -> pronounPlayer(ctx, "their")

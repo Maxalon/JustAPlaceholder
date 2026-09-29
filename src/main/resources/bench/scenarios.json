@@ -22632,5 +22632,118 @@
     "notExpect": [
       "can't be cast"
     ]
+  },
+  {
+    "id": "said-damage-to-opponent-discard",
+    "text": "i have a creature that says whenever this creature deals damage to an opponent, that player discards a card, i attack unblocked, they have 3 cards, how many do they have after",
+    "expect": [
+      "opponent discards 1 card (3 → 2 in hand)."
+    ]
+  },
+  {
+    "id": "indestructible-response-survives",
+    "text": "they cast a spell that says destroy target creature on my 2/2 and i respond with a spell that says target creature gains indestructible until end of turn, does it survive",
+    "expect": [
+      "Yes: a 2/2 creature is still on the battlefield."
+    ],
+    "cite": [
+      "702.12b"
+    ]
+  },
+  {
+    "id": "first-strike-blocker-3-3-vs-3-3",
+    "text": "i have a 3/3 and they have a 3/3 with first strike, i attack and they block, what happens",
+    "expect": [
+      "a 3/3 creature: the battlefield → your graveyard."
+    ],
+    "notExpect": [
+      "a 3/3 creature with first strike: the battlefield"
+    ],
+    "cite": [
+      "702.7b"
+    ]
+  },
+  {
+    "id": "said-drain-2",
+    "text": "i cast a spell that says each opponent loses 2 life and you gain 2 life, i'm at 5 and they're at 3, what happens",
+    "expect": [
+      "You go from 5 to 7 life.",
+      "opponent goes from 3 to 1 life."
+    ]
+  },
+  {
+    "id": "minus-counters-base-4-4-minus-2-2",
+    "text": "my creature has 2 -1/-1 counters and is a 4/4 base, they cast a spell that says target creature gets -2/-2 until end of turn on it, does it die",
+    "expect": [
+      "a 4/4 creature is 0/0 until end of turn.",
+      "Yes: a 4/4 creature died (it's in the graveyard)."
+    ],
+    "cite": [
+      "704.5f"
+    ]
+  },
+  {
+    "id": "said-cast-trigger-gain-1-three-spells",
+    "text": "i control an enchantment that says whenever you cast a spell, you gain 1 life, i cast 3 spells this turn, how much life do i gain",
+    "expect": [
+      "You gain 3 life in all."
+    ]
+  },
+  {
+    "id": "held-destroy-power-4-can-i-kill-it",
+    "text": "they have a 5/5 and i have a spell that says destroy target creature with power 4 or greater, can i kill it",
+    "expect": [
+      "a 5/5 creature: the battlefield → opponent's graveyard."
+    ],
+    "notExpect": [
+      "graveyard → opponent's graveyard"
+    ]
+  },
+  {
+    "id": "blocked-2-2-pumped-plus-1-1-who-dies",
+    "text": "i attack with a 2/2 and they block with a 2/2, then i cast a spell that says target creature gets +1/+1 until end of turn on mine, who dies",
+    "expect": [
+      "Yes: opponent's 2/2 creature died (it's in the graveyard).",
+      "No: your 2/2 creature is still on the battlefield."
+    ]
+  },
+  {
+    "id": "hexproof-vs-wrath",
+    "text": "they have a creature with hexproof and i cast a spell that says destroy all creatures, does it die",
+    "expect": [
+      "Yes: a creature with hexproof died (it's in the graveyard)."
+    ]
+  },
+  {
+    "id": "deathtouch-1-1-fights-10-10",
+    "text": "i have a 1/1 with deathtouch and they have a 10/10, we fight because i cast a spell that says target creature you control fights target creature you don't control, what happens",
+    "expect": [
+      "a 10/10 creature: the battlefield → opponent's graveyard.",
+      "a 1/1 creature with deathtouch: the battlefield → your graveyard."
+    ],
+    "cite": [
+      "702.2b"
+    ]
+  },
+  {
+    "id": "said-draw-two-with-one-in-library",
+    "text": "i cast a spell that says target player draws two cards on them, they have 1 card in their library, what happens",
+    "expect": [
+      "opponent loses the game (drew from an empty library)."
+    ],
+    "cite": [
+      "704.5b"
+    ]
+  },
+  {
+    "id": "block-then-sac-blocker-no-trample",
+    "text": "they attack with a 3/3 and i have a 2/2, i block and then sacrifice my 2/2 to a creature that says sacrifice a creature: draw a card, do i take damage",
+    "expect": [
+      "a 3/3 creature deals no combat damage: its blocker left combat and it stays blocked.",
+      "No: you take no damage."
+    ],
+    "cite": [
+      "509.1h"
+    ]
   }
 ]
