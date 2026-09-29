@@ -3204,6 +3204,26 @@ class SituationParser(private val names: NameIndex) {
             if (tgt != null) ctx.lastMentioned = tgt
             ctx.lastActor = caster; ctx.lastVerb = "cast"; ctx.note(caster); return true
         }
+        // "it deals 3 damage to them", "my creature deals 2 damage to me", "they take 3 damage from it": damage
+        // from a permanent already on the board, so lifelink, infect and the like apply to it.
+        Regex("""^(it|that|that creature|this creature|the creature|my creature|their creature) (?:deals?|dealt) (\d+) (?:combat )?damage to (me|you|them|him|her|my opponent|the opponent|@\w+)$|^(i|they|he|she|my opponent|the opponent|@\w+) (?:takes?|took|is dealt|am dealt|are dealt|was dealt|were dealt) (\d+) (?:combat )?damage from (it|that|that creature|this creature|the creature|my creature|their creature)$""").find(c)?.let { r ->
+            val subj = r.groupValues[1].ifEmpty { r.groupValues[6] }
+            val amount = r.groupValues[2].ifEmpty { r.groupValues[5] }.toIntOrNull() ?: return@let
+            val victimWord = r.groupValues[3].ifEmpty { r.groupValues[4] }
+            fun only(who: String?): String? = ctx.objects.values.filter { it.controller == who && it.zone == "battlefield" && isCreatureName(it.card.name) }.let { if (it.size == 1) it[0].id else null }
+            val src = when (subj) {
+                "my creature" -> only("me")
+                "their creature" -> only(ctx.other("me"))
+                else -> ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).zone == "battlefield" }
+            } ?: return@let
+            val victim = when (victimWord) {
+                "me", "you", "i" -> "me"
+                "them", "him", "her", "my opponent", "the opponent", "they", "he", "she" -> pronounPlayer(ctx, "their")
+                else -> if (victimWord.startsWith("@")) victimWord.removePrefix("@").also { ctx.players.putIfAbsent(it, m.players[it] ?: it) } else return@let
+            }
+            ctx.events += EventSpec("damage", source = src, targets = listOf(victim), amount = amount)
+            ctx.lastActor = ctx.objects.getValue(src).controller; ctx.lastMentioned = src; ctx.note(victim); return true
+        }
         // "They deal 3 damage to me", "I take 3 damage": damage from a source nobody named, so the answer can still
         // show what prevention and replacement effects do to it.
         Regex("""^(?:(i|they|he|she|we|my opponent|the opponent|@\w+) )?(?:deals?|dealt) (\d+) damage to (me|you|them|him|her|my opponent|the opponent|@\w+|it|that|(?:$possPrefix)?c\d+|(?:my |their |the )?\d+/\d+)$|^(?:(i|they|he|she|we|my opponent|the opponent|@\w+|(?:$possPrefix)?c\d+|(?:$possPrefix)?\d+/\d+|it|that) )?(?:takes?|took) (\d+) damage$|^(?:(?:my |their |his |her |the )?(c\d+|it|that) )?(?:is|are|was|were) dealt (\d+) damage$""").find(c)?.let { r ->

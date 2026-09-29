@@ -700,6 +700,7 @@ object OracleParser {
         Regex("""^([a-z][a-z0-9' -]*) can't (attack|block|attack or block)(?: this turn)?\.?$""", RegexOption.IGNORE_CASE).matchEntire(line)?.let { m ->
             val what = m.groupValues[1].trim().lowercase()
             if ("creature" !in what) return@let    // "players can't…" is a different thing
+            if (what.startsWith("target ")) return@let    // "target creature can't block this turn" is a one-shot effect, not a static
             val f = parseFilter(what.replace(Regex("""^creatures\b"""), "creature").replace(Regex("""\bcreatures\b"""), "creature"), Kind.CREATURE)
             if (f.verifiable) return listOf(StaticEffect.Cant(m.groupValues[2].lowercase(), applies = f))
         }
@@ -1252,6 +1253,13 @@ object OracleParser {
             val t = target(m.groupValues[1], Kind.CREATURE)
             if (t.filter.verifiable) return Effect.GainKeywords(t, setOf("unblockable"))
         }
+        // "Target creature can't block this turn" — carried as a pseudo-keyword for the turn, like "unblockable".
+        if (Regex("""^(?:~|it) can't block this turn\.?$""", RegexOption.IGNORE_CASE).matches(s.trim())) return Effect.GainKeywordsSelf(setOf("cant-block"))
+        Regex("""^target (.+?) can't (block|attack|attack or block) this turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
+            val t = target(m.groupValues[1], Kind.CREATURE)
+            val kw = when (m.groupValues[2].lowercase()) { "block" -> setOf("cant-block"); "attack" -> setOf("cant-attack"); else -> setOf("cant-attack", "cant-block") }
+            if (t.filter.verifiable) return Effect.GainKeywords(t, kw)
+        }
         // Snapcaster Mage: "target instant or sorcery card in your graveyard gains flashback until end of turn."
         Regex("""^target ((?:instant|sorcery|creature|instant or sorcery)(?: card)?) in your graveyard gains (flashback|haste|flash) until end of turn\.?$""", RegexOption.IGNORE_CASE).matchEntire(s.trim())?.let { m ->
             val raw = "${m.groupValues[1].lowercase()} in your graveyard"
@@ -1430,8 +1438,8 @@ object OracleParser {
         }
         if (Regex("""^counter that spell(?: or ability)?\.?$""", RegexOption.IGNORE_CASE).matches(s)) return Effect.CounterThatSpell
         // "Exile target player's graveyard" (Bojuka Bog), "exile each opponent's graveyard".
-        Regex("""^exile (target player|target opponent|that player|each player|each opponent|your)(?:'s)? graveyard\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
-            return Effect.ExileGraveyard(when (m.groupValues[1].lowercase()) { "target player", "target opponent" -> Who.TARGET_PLAYER; "that player" -> Who.THAT_PLAYER; "each player" -> Who.EACH_PLAYER; "each opponent" -> Who.EACH_OPPONENT; else -> Who.YOU })
+        Regex("""^exile (?:all cards from )?(target player|target opponent|that player|each player|each opponent|your|all)(?:'s)? graveyards?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            return Effect.ExileGraveyard(when (m.groupValues[1].lowercase()) { "target player", "target opponent" -> Who.TARGET_PLAYER; "that player" -> Who.THAT_PLAYER; "each player", "all" -> Who.EACH_PLAYER; "each opponent" -> Who.EACH_OPPONENT; else -> Who.YOU })
         }
         Regex("""^(you |target player |that player |each player |each opponent )?mills? (\w+|\d+) cards?\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
             val who = when (m.groupValues[1].trim().lowercase()) { "target player" -> Who.TARGET_PLAYER; "that player" -> Who.THAT_PLAYER; "each player" -> Who.EACH_PLAYER; "each opponent" -> Who.EACH_OPPONENT; else -> Who.YOU }
