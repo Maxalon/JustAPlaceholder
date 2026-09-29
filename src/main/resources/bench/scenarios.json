@@ -21257,5 +21257,93 @@
 "cite": [
 "704.5b"
 ]
+},
+{
+"id": "counter-then-minus-1-1-base-1-1",
+"text": "i have a creature with a +1/+1 counter and they cast a spell that says target creature gets -1/-1 until end of turn on it, it's a 1/1 base, does it die",
+"expect": [
+"No: a 1/1 creature is still on the battlefield."
+],
+"notExpect": [
+"Not understood"
+]
+},
+{
+"id": "two-tokens-destroy-one-how-many-left",
+"text": "they have two 1/1 tokens and i cast a spell that says destroy target creature, how many do they have left",
+"expect": [
+"a 1/1 token: the battlefield → opponent's graveyard.",
+"opponent has 1 token."
+]
+},
+{
+"id": "5-5-double-blocked-by-1-1s",
+"text": "i attack with a 5/5 and they block with a 1/1 and a 1/1, how much damage do they take",
+"expect": [
+"a 1/1 creature: the battlefield → opponent's graveyard. (×2)",
+"No: opponent takes no damage."
+]
+},
+{
+"id": "says-plus-one-for-each-other-creature",
+"text": "i have a creature that says this creature gets +1/+1 for each other creature you control, i control 2 other creatures, how big is it",
+"expect": [
+"a creature that says \"this creature gets +1/+1 for each other creature you control\" is 4/4."
+]
+},
+{
+"id": "says-anthem-attack-with-three",
+"text": "i cast a spell that says creatures you control get +1/+1 until end of turn, i have three 1/1s, they have a 2/2, i attack with everything, what happens",
+"expect": [
+"a 1/1 creature is 2/2 until end of turn. (×3)",
+"opponent takes 2 damage. (×3)"
+]
+},
+{
+"id": "says-cant-attack-or-block-worry",
+"text": "they have a creature that says it can't attack or block, do i need to worry about it",
+"notExpect": [
+"Nothing changes",
+"Not understood"
+]
+},
+{
+"id": "says-destroy-vs-respond-regenerate",
+"text": "i have a 2/2 and they have a 2/2, i cast a spell that says destroy target creature on theirs, can they respond with a spell that says regenerate target creature",
+"expect": [
+"a 2/2 creature has a regeneration shield this turn.",
+"a 2/2 creature regenerates."
+],
+"cite": [
+"701.19a"
+]
+},
+{
+"id": "six-lands-4-mana-spell-left",
+"text": "i have 6 lands and cast a spell that says draw three cards for 4 mana, how much mana do i have left",
+"expect": [
+"You draw 3 cards.",
+"You have 2 mana left: the situation gave you 6, and 4 of it paid for what you cast."
+]
+},
+{
+"id": "says-attack-trigger-plus-2-damage",
+"text": "they have a creature that says whenever this creature attacks it gets +2/+0 until end of turn, it's a 1/1, they attack, how much damage do i take",
+"expect": [
+"You take 3 damage.",
+"Yes: you take 3 damage in all."
+]
+},
+{
+"id": "deathtouch-trample-3-3-vs-2-2",
+"text": "my creature has deathtouch and trample, it's a 3/3, they block with a 2/2, how much damage goes through",
+"expect": [
+"a 2/2 creature has 1 damage marked.",
+"opponent takes 2 damage.",
+"Yes: opponent takes 2 damage in all."
+],
+"cite": [
+"702.19b"
+]
 }
 ]
