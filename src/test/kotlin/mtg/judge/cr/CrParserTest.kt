@@ -32,6 +32,23 @@ class CrParserTest {
     }
 
     @Test
+    fun `a Unicode line separator inside a rule is a line break, not the end of the rule`() {
+        // The September 25, 2026 text joins 509.1b's second paragraph to its first with U+2028; read with "." and "$",
+        // which stop at it, the whole line failed to be a subrule and was swallowed into 509.1a.
+        val text = "Credits\n509.1a The defending player chooses which creatures they control, if any, will block.\n\u00a0\n" +
+            "509.1b The defending player checks each creature they control for restrictions.\u2028\u00a0\u00a0\u00a0\u00a0 A restriction may be created by an evasion ability.\n" +
+            "Example: An attacking creature with flying can\u2019t be blocked by a creature without flying.\n\u00a0\n" +
+            "509.1c The defending player checks each creature they control for requirements.\nGlossary\nCredits\n"
+        val parsed = CrParser.parse(text)
+        val b = parsed.byNumber["509.1b"]; assertNotNull(b)
+        assertTrue(b.text.startsWith("The defending player checks each creature they control for restrictions."))
+        assertTrue(b.text.contains("A restriction may be created by an evasion ability."), b.text)
+        assertEquals(1, b.examples.size)
+        assertTrue(parsed.byNumber["509.1a"]!!.text.endsWith("will block."))
+        assertNotNull(parsed.byNumber["509.1c"])
+    }
+
+    @Test
     fun `derives chapter and section numbers`() {
         val sub = cr.byNumber["702.19b"]!!
         assertEquals(702, sub.chapter); assertEquals(7, sub.section)

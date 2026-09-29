@@ -1568,7 +1568,12 @@ object OracleParser {
         Regex("""^(.+?)(?: and |, then |, and then )(you |each opponent |target player |that player |it |~ |create |draw |gain |lose |put |exile |destroy |sacrifice |tap |untap |return |scry |mill |discard )(.+)$""", RegexOption.IGNORE_CASE).matchEntire(s.trimEnd('.'))?.let { m ->
             if (!m.groupValues[1].contains(" and ", true) && !m.groupValues[1].startsWith("if ", true)) {
                 val left = parseSentence(m.groupValues[1].replaceFirstChar { it.uppercase() })
-                val right = parseSentence((m.groupValues[2] + m.groupValues[3]).replaceFirstChar { it.uppercase() })
+                // "You draw a card and lose 1 life." (Phyrexian Arena's current wording): the second verb keeps the first's subject.
+                val rightText = (m.groupValues[2] + m.groupValues[3]).replaceFirstChar { it.uppercase() }
+                val right = parseSentence(rightText).let { r0 ->
+                    if (r0 is Effect.Unparsed && Regex("""^(you|each opponent|each player|target player|that player) """, RegexOption.IGNORE_CASE).find(m.groupValues[1])?.let { subj -> !rightText.startsWith(subj.groupValues[1], true) } == true)
+                        parseSentence(Regex("""^(you|each opponent|each player|target player|that player) """, RegexOption.IGNORE_CASE).find(m.groupValues[1])!!.groupValues[1].replaceFirstChar { it.uppercase() } + " " + rightText.replaceFirstChar { it.lowercase() })
+                    else r0 }
                 if (left !is Effect.Unparsed && right !is Effect.Unparsed) return Effect.Seq(listOf(left, right))
             }
         }

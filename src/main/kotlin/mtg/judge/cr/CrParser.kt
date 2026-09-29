@@ -55,7 +55,10 @@ object CrParser {
     val refRe = Regex("""rule (\d{3}(?:\.\d+[a-z]?)?)""")
 
     fun parse(text: String): ComprehensiveRules {
-        val lines = text.removePrefix("﻿").lines().map { it.trimEnd() }
+        // The September 2026 text joins a rule's second paragraph to its first with a Unicode LINE SEPARATOR (U+2028) rather
+        // than a new line. Java's "." and "$" stop at it, so the whole 509.1b line failed to read as a rule and was swallowed
+        // into 509.1a. Every Unicode line break is read as a line break.
+        val lines = text.removePrefix("\ufeff").replace('\u2028', '\n').replace('\u2029', '\n').replace('\u0085', '\n').lines().map { it.trimEnd() }
         val effective = lines.take(10).firstNotNullOfOrNull { effectiveRe.find(it)?.groupValues?.get(1) }
 
         // The table of contents ends at the first "Credits" line; the body starts right after it.
