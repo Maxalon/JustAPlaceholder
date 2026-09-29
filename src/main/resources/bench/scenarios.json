@@ -20975,5 +20975,93 @@
 "expect": [
 "opponent takes 2 damage."
 ]
+},
+{
+"id": "says-attack-token-twice-over-two-turns",
+"text": "i have a creature that says whenever this creature attacks create a 1/1 token, i attack with it twice over two turns, how many tokens",
+"expect": [
+"You get a 1/1 token. (×2)",
+"You have 2 tokens."
+]
+},
+{
+"id": "kill-the-lord-said-in-words",
+"text": "they have a creature that says other creatures you control get +1/+1, and two 2/2s, i kill the lord, how big are the 2/2s",
+"expect": [
+"a creature that says \"other creatures you control get +1/+1\": the battlefield → opponent's graveyard.",
+"a 2/2 creature is 2/2. (×2)"
+]
+},
+{
+"id": "says-fight-mine-and-theirs",
+"text": "i cast a spell that says target creature fights another target creature with my 3/3 and their 2/2, what happens",
+"expect": [
+"a 2/2 creature has 3 damage marked.",
+"a 3/3 creature has 2 damage marked.",
+"a 2/2 creature: the battlefield → opponent's graveyard."
+],
+"cite": [
+"701.14a"
+]
+},
+{
+"id": "says-draw-two-lose-two-on-myself-at-2",
+"text": "i cast a spell that says target player draws two cards and loses 2 life on myself, i'm at 2, what happens",
+"expect": [
+"You draw 2 cards.",
+"You lose 2 life.",
+"You lose the game.",
+"You go from 2 to 0 life."
+]
+},
+{
+"id": "player-hexproof-from-said-enchantment",
+"text": "my opponent has hexproof from an enchantment that says you have hexproof, can i target them with a discard spell",
+"expect": [
+"a discard spell can't target opponent."
+]
+},
+{
+"id": "damaged-3-3-then-minus-1-1",
+"text": "i have a creature with 2 damage on it and it's a 3/3, they cast a spell that says target creature gets -1/-1 until end of turn on it, does it die",
+"expect": [
+"a 3/3 creature is 2/2 until end of turn.",
+"Yes: a 3/3 creature died (it's in the graveyard)."
+],
+"cite": [
+"704.5g"
+]
+},
+{
+"id": "first-strike-2-2-vs-deathtouch-2-2",
+"text": "i have a 2/2 with first strike and they block with a 2/2 with deathtouch, who dies",
+"expect": [
+"Yes: a 2/2 creature with deathtouch died (it's in the graveyard).",
+"No: a 2/2 creature with first strike is still on the battlefield."
+]
+},
+{
+"id": "says-bounce-token",
+"text": "they cast a spell that says return target creature to its owner's hand on my token, what happens",
+"expect": [
+"a 1/1 token: the battlefield → your hand.",
+"a 1/1 token ceases to exist; it doesn't stay in the zone it went to."
+]
+},
+{
+"id": "says-minus-3-3-on-3-3",
+"text": "they have a 3/3 and i cast a spell that says target creature gets -3/-3 until end of turn on it, does it die",
+"expect": [
+"a 3/3 creature is 0/0 until end of turn.",
+"Yes: a 3/3 creature died (it's in the graveyard)."
+]
+},
+{
+"id": "deathtouch-1-1-blocks-6-6",
+"text": "i have a 1/1 with deathtouch and they attack with a 6/6, if i block does it die",
+"expect": [
+"a 6/6 creature: the battlefield → opponent's graveyard.",
+"a 1/1 creature with deathtouch: the battlefield → your graveyard."
+]
 }
 ]

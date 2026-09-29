@@ -71,6 +71,10 @@ object Generic {
             t = t.replace(Regex("""\breturn it to the battlefield$"""), "return it to the battlefield under its owner's control")
             t = t.replace(Regex("""^(\w[\w ]*?) cost (\d+) more to cast$""")) { w -> "${w.groupValues[1]} cost {${w.groupValues[2]}} more to cast" }
             t = t.replace(Regex("""\b(draw (?:a|\d+|two|three) cards?) and (?:you )?(lose|gain) (\d+) life$"""), "$1. You $2 $3 life")
+            // "target creature fights another target creature": the two creatures the situation aims it at.
+            t = t.replace(Regex("""^target creature fights another target creature$"""), "target creature you control fights target creature you don't control")
+            // "target player draws two cards and loses 2 life": two sentences, the second about that player.
+            t = t.replace(Regex("""^target player draws (a|\d+|two|three) cards? and loses (\d+) life$""")) { w -> "target player draws ${w.groupValues[1]} card${if (w.groupValues[1] == "a") "" else "s"}. That player loses ${w.groupValues[2]} life" }
             // "add two mana" / "add one mana": colorless, in symbols.
             t = t.replace(Regex("""\badd (one|two|three|\d) mana(?! of)""")) { w -> "add " + "{C}".repeat(when (w.groupValues[1]) { "one" -> 1; "two" -> 2; "three" -> 3; else -> w.groupValues[1].toInt() }) }
             // "whenever you draw a card this creature gets +1/+1": the comma goes before the effect, not after the "you" who draws.
@@ -95,7 +99,10 @@ object Generic {
         Regex("""^(spell|instant|sorcery) that says (.+)$""").find(n)?.let { m ->
             var cost = 2
             val text0 = m.groupValues[2].replace('_', ' ').trim().trim('"').replace(Regex("""\s+for (\d+) mana$""")) { w -> cost = w.groupValues[1].toInt(); "" }
-                .replace(Regex("""^exile all cards from target player's graveyard$"""), "exile target player's graveyard").replace(Regex("""^it (gains?|gets|has|loses|can't)\b"""), "target creature $1").replace(Regex("""^gains? me (\d+) life$"""), "you gain $1 life").replace(Regex("""^deals? me (\d+) damage$"""), "this spell deals $1 damage to you")
+                .replace(Regex("""^exile all cards from target player's graveyard$"""), "exile target player's graveyard")
+                // "target creature fights another target creature": the two the situation aims it at; "target player draws two cards and loses 2 life": two sentences.
+                .replace(Regex("""^target creature fights another target creature$"""), "target creature you control fights target creature you don't control")
+                .replace(Regex("""^target player draws (a|\d+|two|three) cards? and loses (\d+) life$""")) { w -> "target player draws ${w.groupValues[1]} card${if (w.groupValues[1] == "a") "" else "s"}. That player loses ${w.groupValues[2]} life" }.replace(Regex("""^it (gains?|gets|has|loses|can't)\b"""), "target creature $1").replace(Regex("""^gains? me (\d+) life$"""), "you gain $1 life").replace(Regex("""^deals? me (\d+) damage$"""), "this spell deals $1 damage to you")
                 // "destroy target creature and its controller loses 2 life": two sentences on the card.
                 .replace(Regex("""^((?:destroy|exile|return|counter|tap|bounce)\b[^.]*?) and (its controller|that player|that creature's controller|you) """)) { w -> "${w.groupValues[1]}. ${w.groupValues[2].replaceFirstChar { c -> c.uppercase() }} " }
             val text = text0.let { if (Regex("""\b(?:gets?|gains?) [+-]\d+/[+-]\d+$""").containsMatchIn(it)) "$it until end of turn" else it }.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
@@ -106,6 +113,7 @@ object Generic {
         if (n in setOf("bounce spell", "bounce")) return OracleParser.parse("generic-bounce", "a bounce spell", "Instant", "{1}{U}", 2.0, "U", null, null, emptyList(), "Return target creature to its owner's hand.")
         if (n in setOf("exiling counterspell", "counterspell that exiles")) return OracleParser.parse("generic-exiling-counterspell", "an exiling counterspell", "Instant", "{1}{U}{U}", 3.0, "U", null, null, emptyList(), "Counter target spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.")
         if (n in setOf("removal spell", "kill spell", "removal")) return OracleParser.parse("generic-removal", "a removal spell", "Instant", "{1}{B}", 2.0, "B", null, null, emptyList(), "Destroy target creature.")
+        if (n in setOf("discard spell", "hand disruption spell")) return OracleParser.parse("generic-discard", "a discard spell", "Sorcery", "{B}", 1.0, "B", null, null, emptyList(), "Target player discards a card.")
         Regex("""^(\d+) damage spell$""").find(n)?.let { m -> val d = m.groupValues[1].toInt(); return OracleParser.parse("generic-$d-damage", "a $d damage spell", "Instant", "{R}", 1.0, "R", null, null, emptyList(), "This spell deals $d damage to any target.") }
         Regex("""^([+-]\d+)/([+-]\d+)(?: ([a-z][a-z ]*?))? pump$""").find(n)?.let { m ->
             val kw = m.groupValues[3].trim()
