@@ -24292,5 +24292,107 @@
     "cite": [
       "122.2"
     ]
+  },
+  {
+    "id": "bloodbraid-what-does-cascade-do",
+    "text": "I cast Bloodbraid Elf. What does cascade do?",
+    "expect": [
+      "Cascade triggers when you cast the spell: you exile cards from the top of your library until you exile a nonland card with lesser mana value, you may cast it without paying its mana cost, and the rest go on the bottom in a random order. It resolves before the cascading spell does. (702.85a)"
+    ],
+    "cite": [
+      "702.85a"
+    ]
+  },
+  {
+    "id": "grapeshot-three-spells-how-much-damage",
+    "text": "I have Grapeshot and have cast 3 spells this turn. How much damage?",
+    "expect": [
+      "Storm puts 3 copies of Grapeshot on the stack, above the original.",
+      "Yes: opponent takes 4 damage in all."
+    ],
+    "cite": [
+      "702.40a"
+    ]
+  },
+  {
+    "id": "spellskite-redirect-bolt",
+    "text": "They cast Lightning Bolt at my face and I have Spellskite. Can I redirect it?",
+    "expect": [
+      "Lightning Bolt now targets Spellskite instead of you.",
+      "Spellskite has 3 damage marked."
+    ],
+    "notExpect": [
+      "You take 3 damage."
+    ]
+  },
+  {
+    "id": "brute-force-on-blocked-goblin-guide",
+    "text": "I attack with Goblin Guide and they block with a 2/2. I cast Brute Force on Goblin Guide. Does theirs die?",
+    "expect": [
+      "Goblin Guide is 5/5 until end of turn.",
+      "Yes: a 2/2 creature died (it's in the graveyard)."
+    ]
+  },
+  {
+    "id": "morph-face-down-bolted",
+    "text": "I have a morph face down. They Bolt it. Does it die?",
+    "expect": [
+      "Yes: a 2/2 creature died (it's in the graveyard)."
+    ]
+  },
+  {
+    "id": "commander-in-zone-cast-twice-before-cost",
+    "text": "My commander is in the command zone. I've cast it twice before. How much does it cost now?",
+    "expect": [
+      "The commander tax adds {4} to its mana cost (903.8), because it has been cast from the command zone 2 times. Name the card for the total."
+    ]
+  },
+  {
+    "id": "sol-ring-and-two-lands-how-much-mana",
+    "text": "I have Sol Ring and 2 lands. How much mana can I make?",
+    "expect": [
+      "You can make 4 mana right now: Sol Ring → {C}{C}; plus the 2 the situation gives from permanents it didn't name."
+    ]
+  },
+  {
+    "id": "mana-leak-with-three-lands-untapped",
+    "text": "They cast Mana Leak on my 4 mana spell. I have 3 lands untapped. Does it get countered?",
+    "expect": [
+      "You pay {3}; Mana Leak has no further effect.",
+      "No: a spell isn't countered; it resolves."
+    ]
+  },
+  {
+    "id": "rhystic-three-spells-unpaid-how-many",
+    "text": "I control Rhystic Study and they cast three spells without paying. How many cards do I draw?",
+    "expect": [
+      "You draw 3 cards in all."
+    ]
+  },
+  {
+    "id": "first-strike-2-2-vs-2-2-blocker-survives",
+    "text": "They have a 2/2 and I have a 2/2 with first strike. I attack and they block. Does mine survive?",
+    "expect": [
+      "Yes: a 2/2 creature with first strike is still on the battlefield.",
+      "a 2/2 creature: the battlefield → opponent's graveyard."
+    ],
+    "cite": [
+      "702.7b"
+    ]
+  },
+  {
+    "id": "path-their-goyf-do-they-get-a-land",
+    "text": "I cast Path to Exile on their Tarmogoyf. Do they get a land?",
+    "expect": [
+      "Tarmogoyf: the battlefield → exile.",
+      "Yes: the search is opponent's. The card gives it to the exiled creature's controller, which is opponent; opponent may search for a basic land card and put it onto the battlefield tapped."
+    ]
+  },
+  {
+    "id": "blood-artist-two-1-1s-pyroclasm-life-lost",
+    "text": "I have Blood Artist and two 1/1s. They cast Pyroclasm. How much life do they lose?",
+    "expect": [
+      "opponent loses 3 life in all."
+    ]
   }
 ]

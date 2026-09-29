@@ -611,6 +611,11 @@ class SituationParser(private val names: NameIndex) {
             "${if (me) "i" else "they"} cast ${r.groupValues[6]}, ${if (me) "they" else "i"} cast ${r.groupValues[4]} targeting it, ${if (me) "i" else "they"} cast ${r.groupValues[2]} targeting ${r.groupValues[3]} ${r.groupValues[4]}" }
             // "does my bolt still hit?" after a counter war: whether it was countered.
         t2 = t2.replace(Regex("""\b(?:does|will|would) (my|their) (c\d+) still (?:hit|go through|connect|resolve|work|happen|land)\b""", RegexOption.IGNORE_CASE), "is $1 $2 countered")
+            // "I've cast it twice before": the commander tax, said in the active voice.
+        t2 = t2.replace(Regex("""\b(?:i|we)(?:'ve| have)? (?:already )?cast (it|him|her|my commander) (once|twice|three times|four times|\d+ times)(?: before| already| so far| this game| from the command zone)*(?=,|\.|\?|$)""", RegexOption.IGNORE_CASE), "$1 has been cast $2")
+            // "how much damage?" on its own, after a held spell: what the other player takes.
+        t2 = t2.replace(Regex("""(?<=[,.] )how much damage\??$""", RegexOption.IGNORE_CASE), "how much damage do they take")
+        t2 = t2.replace(Regex("""^how much damage\??$""", RegexOption.IGNORE_CASE), "how much damage do they take")
             // "I cast Ajani Goldmane's -1": the planeswalker is cast and then its loyalty ability is activated.
         t2 = t2.replace(Regex("""\b(casts?|plays?) ((?:my |an? |the )?c\d+)'s ([+-]\d+)\b""", RegexOption.IGNORE_CASE), "$1 $2 and $3")
             // "how much mana do I need (for it)?": the cost of the spell just cast.
@@ -2727,6 +2732,38 @@ class SituationParser(private val names: NameIndex) {
             if (i < 0) return@let
             if (ctx.events[i].player != "me") ctx.events[i] = ctx.events[i].copy(player = "me")
             ctx.asks += EventSpec("ask", card = CardRef(name = "a spell"), to = "countered"); ctx.notes += "\"${restore(clause0, m)}?\" is about the spell your counter was protecting; it wasn't named, so it stands in as \"a spell\"."; return true
+        }
+        // "They Bolt my face and I have Spellskite. Can I redirect it?": Spellskite's ability, aimed at the spell.
+        Regex("""^can (?:i|we) (?:still )?(?:redirect|deflect|spellskite|skite) (?:it|that|the spell|the bolt|their spell)(?: (?:to|onto|with|at|into) (?:my |the )?(?:c\d+|it))?$""").find(clause0)?.let {
+            val skite = ctx.objects.values.lastOrNull { it.controller == "me" && it.zone == "battlefield" && (it.card.name ?: "") == "Spellskite" } ?: return@let
+            val spell = ctx.events.lastOrNull { it.verb == "cast" && it.player != "me" } ?: return@let
+            val name = spell.card?.name ?: spell.obj?.let { ctx.objects[it]?.card?.name } ?: return@let
+            ctx.events += EventSpec("activate", player = "me", obj = skite.id, targets = listOf(slug(name) + ":spell"))
+            ctx.notes += "\"${restore(clause0, m)}?\" is read as activating Spellskite targeting $name; the outcome says where the spell ends up aimed."; return true
+        }
+        // "I cast Bloodbraid Elf. What does cascade do?": the keyword, in the rules' words, alongside the situation.
+        Regex("""^(?:what does|what's|what is|how does) (cascade|storm|prowess|menace|deathtouch|lifelink|trample|first strike|flash|hexproof|indestructible|vigilance|haste|flying|reach|defender|infect|split second)(?: do| work| mean)?$""").find(clause0)?.let { r ->
+            val (text, rule) = when (r.groupValues[1]) {
+                "cascade" -> "Cascade triggers when you cast the spell: you exile cards from the top of your library until you exile a nonland card with lesser mana value, you may cast it without paying its mana cost, and the rest go on the bottom in a random order. It resolves before the cascading spell does." to "702.85a"
+                "storm" -> "Storm triggers when you cast the spell: you copy it for each other spell cast before it this turn, and you may choose new targets for the copies. The copies resolve before the original." to "702.40a"
+                "prowess" -> "Prowess: whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn." to "702.108a"
+                "menace" -> "Menace: this creature can't be blocked except by two or more creatures." to "702.111b"
+                "deathtouch" -> "Deathtouch: any amount of damage a source with deathtouch deals to a creature is enough to destroy it, and an attacker with deathtouch can assign as little as 1 damage to each blocker before trampling over." to "702.2b"
+                "lifelink" -> "Lifelink: damage dealt by the source also causes its controller to gain that much life, at the same time as the damage." to "702.15b"
+                "trample" -> "Trample: an attacking creature that's blocked assigns lethal damage to its blockers and the rest to the player or planeswalker it's attacking." to "702.19b"
+                "first strike" -> "First strike: if any creature in combat has first strike or double strike, there are two combat damage steps; first-strikers deal damage in the first, everything else in the second." to "702.7b"
+                "flash" -> "Flash: you may cast the card any time you could cast an instant." to "702.8a"
+                "hexproof" -> "Hexproof: this permanent can't be the target of spells or abilities your opponents control (you can still target it yourself)." to "702.11b"
+                "indestructible" -> "Indestructible: it can't be destroyed, so lethal damage, deathtouch and \"destroy\" effects don't kill it; it can still be exiled, sacrificed, bounced, or die to 0 toughness." to "702.12b"
+                "vigilance" -> "Vigilance: attacking doesn't cause this creature to tap." to "702.20b"
+                "haste" -> "Haste: this creature can attack and use {T} abilities the turn it comes under your control." to "702.10b"
+                "flying" -> "Flying: this creature can't be blocked except by creatures with flying or reach." to "702.9b"
+                "reach" -> "Reach: this creature can block creatures with flying." to "702.17b"
+                "defender" -> "Defender: this creature can't attack." to "702.3b"
+                "infect" -> "Infect: damage this source deals to a player gives them that many poison counters instead of life loss, and damage to a creature is dealt as -1/-1 counters." to "702.90b"
+                else -> "Split second: while this spell is on the stack, players can't cast spells or activate abilities that aren't mana abilities." to "702.61a"
+            }
+            ctx.asks += EventSpec("ask", to = "text:$text ($rule)"); return true
         }
         // "They cast Terror on my Bears. Can I regenerate it with Skeletal Grimace?": whether a regeneration shield would help.
         Regex("""^can (?:i|we) (?:still )?(?:regenerate|regen) (it|that|(?:my |the )?(c\d+)|my creature|my \d+/\d+)(?: with (?:my |the |an? )?(c\d+))?(?: in response)?$""").find(clause0)?.let { r ->
@@ -5238,6 +5275,15 @@ class SituationParser(private val names: NameIndex) {
             if (r.groupValues[1].isEmpty()) return true
             return readClause(r.groupValues[1] + " " + ph + " " + tail.replace(Regex("""^from the command zone\b"""), "").trim(), m, ctx)
         }
+        // "My commander is in the command zone": a commander nobody named, waiting to be cast (the tax is the question).
+        Regex("""^(?:(my|their|his|her) )?commander is (?:in|back in|sitting in) (?:the |my |their )?command zone$""").find(c)?.let { r ->
+            val who = when (r.groupValues[1]) { "their", "his", "her" -> pronounPlayer(ctx, "their"); else -> actor ?: "me" }
+            if (ctx.objects.values.any { it.commander && it.controller == who }) return true
+            var cid = "commander"; var k = 2; while (ctx.objects.containsKey(cid)) cid = "commander_" + (k++)
+            ctx.objects[cid] = ObjectSpec(cid, CardRef(name = "a commander"), controller = who, commander = true, zone = "command"); ctx.note(who)
+            ctx.lastMentioned = cid; ctx.lastOwner = who; ctx.lastVerb = "have"
+            ctx.notes += "The commander wasn't named; name it for its printed cost."; return true
+        }
         // "it has been countered twice" / "Kaalia was countered once": the commander tax.
         // "it died twice" says the same thing in the active voice, and went unread, so the tax came out as {0}.
         Regex("""^(?:(?:my |their |his |her )?commander )?(?:(?:my |their |his |her )?(c\d+)|it|that)? ?(?:(?:has been|was|got|has already been|had been|have been) (?:countered|killed|cast)|died|has died|have died|was sacrificed|went to the command zone) (once|twice|three times|four times|\d+ times?)(?: (?:already|before|so far|this game))?$""").find(c)?.let { r ->
@@ -7357,6 +7403,15 @@ class SituationParser(private val names: NameIndex) {
         Regex("""^(?:does|do|will|would) (i|they|my opponent|the opponent|opponent|he|she|@\w+) (?:still |even )?(?:take|takes|receive|suffer) (?:any |the |combat |that )?damage\b|^how much (?:combat )?damage (?:do|does|will|would) (i|they|my opponent|the opponent|opponent|he|she|@\w+) (?:take|receive|suffer)\b""").find(clause0)?.let { q0 ->
             val q = object { val groupValues = listOf(q0.groupValues[0], q0.groupValues[1].ifEmpty { q0.groupValues[2] }) }
             val who = when (val w = q.groupValues[1]) { "i" -> "me"; else -> if (w.startsWith("@")) w.removePrefix("@") else pronounPlayer(ctx, w.substringAfterLast(' ')) }
+            // "I have Grapeshot and have cast 3 spells this turn. How much damage do they take?": the spell held is cast at them.
+            if (ctx.events.none { it.verb in setOf("cast", "attack", "attackAll", "activate", "damage", "trigger") }) {
+                val caster = ctx.other(who) ?: "me"
+                ctx.objects.values.lastOrNull { o -> o.controller == caster && o.zone == "hand" && names.lookup(Names.normalize(o.card.name ?: ""))?.isSpellOnly == true }?.let { held ->
+                    val card = names.lookup(Names.normalize(held.card.name ?: "")) ?: return@let
+                    ctx.notes += "${card.display} is in ${if (caster == "me") "your" else "their"} hand; assuming ${if (caster == "me") "you" else "they"} cast it at ${if (who == "me") "you" else "them"}."
+                    emitCast(caster, card, "targeting " + (if (who == "me") "me" else "them"), m, ctx)
+                }
+            }
             ctx.asks += EventSpec("ask", player = who, to = "playerDamage"); ctx.note(who)
             ctx.notes += "\"${restore(clause0, m)}?\" is answered by the outcome below."; return true
         }
