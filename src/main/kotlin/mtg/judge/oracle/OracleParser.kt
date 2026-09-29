@@ -1667,6 +1667,11 @@ object OracleParser {
                 if (count != null) return Effect.PumpCount(target(m.groupValues[1]), count)
             }
         }
+        // "Remove a counter from target permanent." / "Remove two +1/+1 counters from target creature."
+        Regex("""^remove (a|an|\d+|two|three|four) (?:([+-]\d/[+-]\d|[a-z]+) )?counters? from (target .+?)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { m ->
+            val n = number(m.groupValues[1]) ?: 1
+            return Effect.RemoveCounters(target(m.groupValues[3]), n, m.groupValues[2].ifEmpty { null })
+        }
         // "You gain life equal to target creature's toughness."
         Regex("""^you gain life equal to (target creature)['’]s (toughness|power)\.?$""", RegexOption.IGNORE_CASE).matchEntire(s)?.let { return Effect.GainLifeEqualTo(target(it.groupValues[1]), it.groupValues[2].lowercase()) }
         // "Target creature's controller sacrifices it."

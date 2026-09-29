@@ -21720,5 +21720,109 @@
 "a 5/5 creature doesn't untap during its controller's next untap step.",
 "a 5/5 creature can't attack (tapped)."
 ]
+},
+{
+"id": "says-attack-trigger-damage-each-opponent-blocked",
+"text": "i have a creature that says whenever this creature attacks it deals 1 damage to each opponent, i attack with it and they block, do they still take the 1",
+"expect": [
+"opponent takes 1 damage."
+]
+},
+{
+"id": "says-cast-lose-1-each-spell",
+"text": "they have a creature that says whenever a player casts a spell that player loses 1 life, i cast two spells, how much life do i lose",
+"expect": [
+"You lose 1 life. (×2)",
+"You lose 2 life in all."
+]
+},
+{
+"id": "says-reanimate-dead-3-3",
+"text": "i cast a spell that says return target creature card from your graveyard to the battlefield on my dead 3/3, what do i get",
+"expect": [
+"a 3/3 creature enters the battlefield."
+]
+},
+{
+"id": "block-one-of-two-attackers-damage",
+"text": "they attack with a 3/3 and a 2/2, i have a 4/4, i block the 3/3, how much damage do i take",
+"expect": [
+"You take 2 damage.",
+"a 3/3 creature: the battlefield → opponent's graveyard.",
+"Yes: you take 2 damage in all."
+]
+},
+{
+"id": "says-block-additional-both-attackers",
+"text": "i have a creature that says this creature can block an additional creature each combat, they attack with two 2/2s, can i block both with it",
+"notExpect": [
+"Not understood"
+],
+"cite": [
+"509.1a",
+"510.1d"
+]
+},
+{
+"id": "says-each-player-sacrifices-land-3-vs-1",
+"text": "my opponent casts a spell that says each player sacrifices a land, i have 3 lands and they have 1, what happens",
+"expect": [
+"a basic land: the battlefield → your graveyard.",
+"a basic land: the battlefield → opponent's graveyard."
+]
+},
+{
+"id": "says-remove-a-counter",
+"text": "i have a 2/2 with a +1/+1 counter, they cast a spell that says remove a counter from target permanent, how big is it",
+"expect": [
+"a 2/2 creature loses 1 +1/+1 counter and is 2/2.",
+"a 2/2 creature is 2/2."
+],
+"cite": [
+"122.1"
+]
+},
+{
+"id": "says-becomes-blocked-pump-who-dies",
+"text": "they have a creature that says whenever this creature becomes blocked it gets +2/+2 until end of turn, it's a 2/2, i block with my 3/3, who dies",
+"expect": [
+"a 3/3 creature: the battlefield → your graveyard.",
+"Yes: a 3/3 creature died (it's in the graveyard)."
+]
+},
+{
+"id": "says-destroy-all-power-2-or-less",
+"text": "i cast a spell that says destroy all creatures with power 2 or less, i have a 3/3 and a 1/1, they have a 2/2, what dies",
+"expect": [
+"a 1/1 creature: the battlefield → your graveyard.",
+"a 2/2 creature: the battlefield → opponent's graveyard."
+],
+"notExpect": [
+"3/3 creature: the battlefield"
+]
+},
+{
+"id": "says-cant-be-blocked-by-black",
+"text": "i have a creature that says it can't be blocked by black creatures, they have a black 4/4, can they block it",
+"expect": [
+"No: a 4/4 black creature can't block a creature that says \"it can't be blocked by black creatures\"."
+]
+},
+{
+"id": "says-second-card-each-turn-counter",
+"text": "i control a creature that says whenever you draw your second card each turn put a +1/+1 counter on this creature, i draw 3 cards, how many counters",
+"expect": [
+"You draw 3 cards.",
+"a creature that says \"whenever you draw your second card each turn put a +1/+1 counter on this creature\" has 1 +1/+1 counter."
+]
+},
+{
+"id": "says-minus-1-1-on-token",
+"text": "they cast a spell that says target creature gets -1/-1 until end of turn on my 1/1 token, what happens",
+"expect": [
+"a 1/1 token is 0/0 until end of turn.",
+"a 1/1 token: the battlefield → your graveyard.",
+"a 1/1 token ceases to exist; it doesn't stay in the zone it went to."
+]
 }
 ]

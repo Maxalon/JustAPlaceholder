@@ -632,6 +632,13 @@ class SituationParser(private val names: NameIndex) {
         t2 = Regex("""\b(i|we) (?:uses?|activates?) (it|his \S+|her \S+|the \S+) (?:(\d+|two|three|four) turns in a row|for (\d+|two|three|four) turns(?: straight)?)\b""", RegexOption.IGNORE_CASE).replace(t2) { r ->
             val n = number(r.groupValues[3].ifEmpty { r.groupValues[4] }) ?: 2
             "${r.groupValues[1]} use ${r.groupValues[2]}" + ", ${r.groupValues[1]} use ${r.groupValues[2]} next turn".repeat(n - 1) }
+        // "on my dead 3/3": the creature card in the graveyard; a reanimation spell says where it is.
+        t2 = t2.replace(Regex("""\b(my|their|his|her) dead (\d+/\d+|c\d+|creature)\b""", RegexOption.IGNORE_CASE), "$1 $2")
+        // "each player sacrifices a land, I have 3 lands": the lands are a board here, not the mana idiom.
+        if (Regex("""\bsacrifices? (?:a|an|two|\d+) lands?\b""", RegexOption.IGNORE_CASE).containsMatchIn(t2))
+            t2 = t2.replace(Regex("""\b(i|we|they|he|she|my opponent) (?:have|has) (\d+|two|three|four|five|a|an|one) lands?\b""", RegexOption.IGNORE_CASE), "$1 control $2 land")
+        // "can I block both with it?": one creature blocking two attackers (only its words can allow it).
+        t2 = t2.replace(Regex("""\bcan (i|we) block both(?: of them| attackers)? with (it|that|my creature|(?:my |the )?c\d+|(?:my |the )?\d+/\d+)\b""", RegexOption.IGNORE_CASE), "$1 block both attackers with $2")
         // "on myself": the caster.
         t2 = t2.replace(Regex("""\b(on|targeting|at) myself\b""", RegexOption.IGNORE_CASE), "$1 me")
         // "can I also cast a 3 drop this turn?": the question is whether it can be cast now.
@@ -1207,7 +1214,7 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.let { t0 -> Regex("""\b(?:and |, )?then (i|we) give (mine|it|that|my creature) ([+-]\d+/[+-]\d+)\b(?! counter)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 ", ${r.groupValues[1]} give ${r.groupValues[2]} ${r.groupValues[3]}" } }
             // "a spell that says destroy all creatures" / "a spell that deals 2 damage to each creature": stand-in sweepers.
-        t2 = t2.replace(Regex("""\ban? (?:spell|sorcery) that (?:says )?destroys? all creatures\b""", RegexOption.IGNORE_CASE), "a wrath spell")
+        t2 = t2.replace(Regex("""\ban? (?:spell|sorcery) that (?:says )?destroys? all creatures\b(?! with| that| an? opponent| you| and)""", RegexOption.IGNORE_CASE), "a wrath spell")
         t2 = t2.replace(Regex("""\ban? (?:spell|sorcery) that deals (\d+) damage to (?:each|every|all) creatures?\b(?! and (?:each|every) player)""", RegexOption.IGNORE_CASE), "a $1 damage sweeper")
             // "do my indestructible guys survive?": a creature with that keyword stands in.
         t2 = t2.replace(Regex("""\bdo my (indestructible|hexproof|flying|shroud) (?:guys|dudes|creatures) (survive|die|live)\b""", RegexOption.IGNORE_CASE), "i have a creature with $1, does it $2")
@@ -1897,6 +1904,10 @@ class SituationParser(private val names: NameIndex) {
         // "I control Goblin Bushwhacker and cast it kicked": the card is being cast, not already on the
         // battlefield, so the control statement isn't one — it only says which card "it" is.
         t2 = t2.replace(Regex("""\b(?:controls?|have|has|got) ((?:$possPrefix|an? )?c\d+) and (casts?|plays?|casting|playing) it\b"""), "$2 $1")
+        // "I have 3 lands and they have 1": the noun left out the second time.
+        t2 = Regex("""\b(i|we|they|he|she|my opponent) (have|has|controls?) (\d+|two|three|four|an?) (creatures?|artifacts?|enchantments?|lands?|planeswalkers?|permanents?) and (i|we|they|he|she|my opponent) (have|has|controls?) (\d+|two|three|four|one)(?=,|\?|$| and| in play| on the battlefield)""", RegexOption.IGNORE_CASE).replace(t2) { r ->
+            val n = r.groupValues[7]; val kind = r.groupValues[4].removeSuffix("s"); val plural = n !in setOf("1", "one", "a", "an")
+            "${r.groupValues[1]} ${r.groupValues[2]} ${r.groupValues[3]} ${r.groupValues[4]} and ${r.groupValues[5]} ${r.groupValues[6]} $n ${if (plural) kind + "s" else kind}" }
         // "I have 2 creatures and they have none": none of the same kind.
         t2 = Regex("""\b(i|we|they|he|she|my opponent) (have|has|controls?) (\d+|two|three|four|an?) (creatures?|artifacts?|enchantments?|lands?|planeswalkers?|permanents?) and (i|we|they|he|she|my opponent) (?:have|has|controls?) none\b""", RegexOption.IGNORE_CASE).replace(t2) { r ->
             val kind = r.groupValues[4].let { if (it.endsWith("s")) it else it + "s" }
@@ -2268,6 +2279,29 @@ class SituationParser(private val names: NameIndex) {
                 else -> return@let
             }
             ctx.asks += EventSpec("ask", to = "text:$text"); return true
+        }
+        // "I block both attackers with it": the same creature declared as a blocker for each attacker.
+        Regex("""^(i|we|they|he|she|my opponent) (?:then )?blocks? both attackers with (it|that|my creature|(?:my |the )?c\d+|(?:my |the )?\d+/\d+)$""").find(clause0)?.let { q ->
+            val who = when (val w = q.groupValues[1]) { "i", "we" -> "me"; "my opponent" -> "opp"; else -> pronounPlayer(ctx, w) }
+            val bw = q.groupValues[2]
+            val blocker = when {
+                cardRef.matches(bw.substringAfterLast(' ')) -> m.cards[bw.substringAfterLast(' ')]?.let { objectIdFor(it, ctx) }
+                Regex("""\d+/\d+""").containsMatchIn(bw) -> ctx.objects.values.lastOrNull { it.controller == who && it.card.name == "a ${Regex("""\d+/\d+""").find(bw)!!.value} creature" }?.id
+                else -> ctx.lastMentioned?.takeIf { it in ctx.objects && ctx.objects.getValue(it).controller == who } ?: ctx.objects.values.lastOrNull { it.controller == who && isCreatureName(it.card.name) }?.id
+            } ?: return@let
+            val attackers = ctx.events.filter { it.verb == "attack" && it.player != who && it.obj != null }.mapNotNull { it.obj }.distinct()
+            if (attackers.size < 2) return@let
+            val bname = ctx.objects.getValue(blocker).card.name ?: ""
+            if (Regex("""can block an additional creature|can block any number of creatures""", RegexOption.IGNORE_CASE).containsMatchIn(bname)) {
+                // The engine follows one block per creature; the extra block is answered from the creature's words.
+                ctx.events += EventSpec("block", player = who, obj = blocker, targets = listOf(attackers.first()))
+                ctx.asks += EventSpec("ask", to = "text:Yes. $bname's words let it block an additional creature each combat, so it can be declared as a blocker for both attackers (509.1a); it then deals its combat damage divided between them as its controller chooses (510.1d). The outcome below follows only its block on ${ctx.objects[attackers.first()]?.card?.name ?: "the first attacker"}.")
+                ctx.lastVerb = "block"; ctx.lastActor = who; ctx.note(who); return true
+            }
+            for (a in attackers) ctx.events += EventSpec("block", player = who, obj = blocker, targets = listOf(a))
+            ctx.lastVerb = "block"; ctx.lastActor = who; ctx.note(who)
+            ctx.notes += "\"${restore(clause0, m)}\" is read as declaring ${ctx.objects.getValue(blocker).card.name} as a blocker for each attacker; the outcome says whether it may."
+            return true
         }
         // "I block with both" / "they block with all of them", said as what happens rather than asked.
         Regex("""^(i|we|they|he|she|my opponent|the opponent|@\w+) (?:then )?blocks? with (?:both|both of them|both of my creatures|all of them|all three|everything|all my creatures|all of my creatures|my whole board)$""").find(clause0)?.let { q ->

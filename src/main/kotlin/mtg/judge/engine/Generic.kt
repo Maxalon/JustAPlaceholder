@@ -83,7 +83,7 @@ object Generic {
             // "add two mana" / "add one mana": colorless, in symbols.
             t = t.replace(Regex("""\badd (one|two|three|\d) mana(?! of)""")) { w -> "add " + "{C}".repeat(when (w.groupValues[1]) { "one" -> 1; "two" -> 2; "three" -> 3; else -> w.groupValues[1].toInt() }) }
             // "whenever you draw a card this creature gets +1/+1": the comma goes before the effect, not after the "you" who draws.
-            if (!t.contains(',')) t = t.replace(Regex("""^((?:when|whenever|at the beginning of) \S+(?: \S+)*?)(?<! you) (draw|create|put|sacrifice|destroy|exile|return|tap|untap|each|it (?:gets|gains|deals|becomes)|this (?:creature|permanent) (?:deals|gets|gains|becomes)|you (?:draw|gain|lose|may|get|create|put|sacrifice|discard)|that player|its controller|target)\b"""), "$1, $2")
+            if (!t.contains(',')) t = t.replace(Regex("""^((?:when|whenever|at the beginning of) \S+(?: \S+)*?)(?<! you) (draw|create|put|sacrifice|destroy|exile|return|tap|untap|each (?!turn\b|combat\b)|it (?:gets|gains|deals|becomes)|this (?:creature|permanent) (?:deals|gets|gains|becomes)|you (?:draw|gain|lose|may|get|create|put|sacrifice|discard)|that player|its controller|target)\b"""), "$1, $2")
             // "whenever this creature attacks, it gets +1/+0": a pump from a trigger lasts until end of turn unless said otherwise.
             if (Regex("""^(?:when|whenever|at)\b.*\b(?:gets?|gains?) [+-]\d+/[+-]\d+$""").containsMatchIn(t)) t += " until end of turn"
             // "it has protection from red", "it has flying and first strike": the keywords themselves.
