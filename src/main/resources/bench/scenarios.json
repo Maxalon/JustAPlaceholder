@@ -22420,5 +22420,117 @@
     "expect": [
       "You gain 6 life in all."
     ]
+  },
+  {
+    "id": "pump-plus-2-0-attack-into-3-3",
+    "text": "i have a 2/2 and they have a 3/3, i cast a spell that says target creature gets +2/+0 until end of turn on mine and attack, they block, who dies",
+    "expect": [
+      "a 2/2 creature is 4/2 until end of turn.",
+      "Yes: a 3/3 creature died (it's in the graveyard)."
+    ]
+  },
+  {
+    "id": "said-becomes-tapped-draw-attack",
+    "text": "they have a creature that says whenever this creature becomes tapped, draw a card, they attack with it, do they draw",
+    "expect": [
+      "Yes: opponent draws 1 card in all."
+    ],
+    "cite": [
+      "508.1f"
+    ]
+  },
+  {
+    "id": "destroy-target-creature-assumed-then-bounced",
+    "text": "i cast a spell that says destroy target creature, they respond with a spell that says return target creature you control to its owner's hand on it, what happens",
+    "expect": [
+      "a creature: the battlefield → opponent's hand.",
+      "a spell that says \"destroy target creature\" doesn't resolve (all targets illegal)."
+    ],
+    "cite": [
+      "608.2b"
+    ]
+  },
+  {
+    "id": "team-pump-flying-can-they-block",
+    "text": "i have a 1/1 and a 1/1 and cast a spell that says creatures you control get +1/+1 and gain flying until end of turn, they have a 2/2, i attack with both, can they block",
+    "expect": [
+      "No: a 2/2 creature can't block a 1/1 creature (flying).",
+      "opponent takes 2 damage. (×2)"
+    ],
+    "cite": [
+      "702.9b"
+    ]
+  },
+  {
+    "id": "infect-3-3-thats-hits-them-poison",
+    "text": "my opponent has 5 poison counters and i have a creature with infect that's a 3/3, it hits them, what happens",
+    "expect": [
+      "opponent has 8 poison counters."
+    ],
+    "cite": [
+      "702.90b"
+    ]
+  },
+  {
+    "id": "lifelink-fight-life-totals-sizes-after",
+    "text": "i have a creature with lifelink and they have a creature with lifelink, they fight because of a spell that says target creature you control fights target creature you don't control, i'm at 10 and they're at 10, what are the life totals if mine is a 3/3 and theirs is a 2/2",
+    "expect": [
+      "You are at 13 life.",
+      "opponent is at 12 life.",
+      "a 2/2 creature with lifelink: the battlefield → opponent's graveyard."
+    ],
+    "cite": [
+      "702.15b"
+    ]
+  },
+  {
+    "id": "said-steal-until-eot-cant-attack-sick",
+    "text": "they cast a spell that says gain control of target creature until end of turn on my 4/4, can they attack me with it",
+    "expect": [
+      "opponent controls a 4/4 creature until end of turn.",
+      "a 4/4 creature can't attack (summoning sick)."
+    ],
+    "cite": [
+      "302.6"
+    ]
+  },
+  {
+    "id": "said-end-step-return-to-hand",
+    "text": "i have a creature that says at the beginning of your end step, return this creature to its owner's hand, what happens at my end step",
+    "expect": [
+      "a creature that says \"at the beginning of your end step, return this creature to its owner's hand\": the battlefield → your hand."
+    ]
+  },
+  {
+    "id": "pump-then-destroy-power-2-or-greater",
+    "text": "they have a 1/1 and cast a spell that says target creature gets +1/+1 until end of turn on it, then i cast a spell that says destroy target creature with power 2 or greater on it, does it die",
+    "expect": [
+      "Yes: a 1/1 creature died (it's in the graveyard)."
+    ]
+  },
+  {
+    "id": "three-tokens-destroy-one-left",
+    "text": "i have three 1/1 tokens and they cast a spell that says destroy target creature, how many do i have left",
+    "expect": [
+      "You have 2 tokens."
+    ]
+  },
+  {
+    "id": "wall-0-4-blocks-3-3-nothing-dies",
+    "text": "i attack with a 3/3 and they have a 0/4 wall, they block, does anything die",
+    "expect": [
+      "No: a 0/4 wall creature is still on the battlefield.",
+      "No: a 3/3 creature is still on the battlefield."
+    ]
+  },
+  {
+    "id": "said-counter-unless-pays-3-two-lands",
+    "text": "i cast a spell that says counter target spell unless its controller pays 3 on their spell, they have 2 untapped lands, what happens",
+    "expect": [
+      "a spell is countered."
+    ],
+    "notExpect": [
+      "Can't verify"
+    ]
   }
 ]

@@ -113,6 +113,8 @@ object Generic {
             val text0 = m.groupValues[3].replace('_', ' ').trim().trim('"').replace(Regex("""\.?\s*this spell is (white|blue|black|red|green|colorless)\.?$""")) { w -> color = when (w.groupValues[1]) { "white" -> "W"; "blue" -> "U"; "black" -> "B"; "red" -> "R"; "green" -> "G"; else -> "" }; "" }
                 .replace(Regex("""\s+for (\d+) mana$""")) { w -> cost = w.groupValues[1].toInt(); "" }
                 .replace(Regex("""^exile all cards from target player's graveyard$"""), "exile target player's graveyard")
+                // "counter target spell unless its controller pays 3": the card writes the mana as a symbol.
+                .replace(Regex("""unless (its controller|that player|they) pays? (\d+)(?=[.,]|$)""")) { w -> "unless ${w.groupValues[1]} pays {${w.groupValues[2]}}" }
                 // "deal 3 damage to any target": the card says "~ deals".
                 .replace(Regex("""^deals? (\d+|x) damage\b""", RegexOption.IGNORE_CASE), "this spell deals $1 damage")
                 // "target creature fights another target creature": the two the situation aims it at; "target player draws two cards and loses 2 life": two sentences.
