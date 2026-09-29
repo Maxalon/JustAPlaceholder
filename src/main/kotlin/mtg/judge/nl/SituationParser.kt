@@ -560,15 +560,17 @@ class SituationParser(private val names: NameIndex) {
         t2 = t2.replace(Regex("""\bon my only (land|creature|artifact|enchantment)\b""", RegexOption.IGNORE_CASE), "on my $1")
             // "a creature that says when it enters draw a card" / "my creature says it can't be blocked by more than one creature":
             // a stand-in permanent with that rules text, kept as one token through the clause split.
-        t2 = t2.let { t0 -> Regex("""\b(an?|my|their|his|her|the) ((?:\d+/\d+ )?creature|permanent|artifact|enchantment|land|card|\d+/\d+) that (?:says|reads) (.+?)(?=,|\?|$| (?:on|targeting|at) (?:my|their|his|her|the|an?|one) (?!this )\b| and (?:i|we|they|he|she|my opponent) \b| and (?:\d+|two|three|four|an? |my |their ) ?(?:other )?(?:creatures?|\d+/\d+)\b)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+        t2 = t2.let { t0 -> Regex("""\b(an?|my|their|his|her|the) ((?:\d+/\d+ )?creature|permanent|artifact|enchantment|land|planeswalker|card|\d+/\d+) that (?:says|reads) (.+?)(?=,|\?|$| with \d+ loyalty\b| (?:on|targeting|at) (?:my|their|his|her|the|an?|one) (?!this )\b| and (?:i|we|they|he|she|my opponent) \b| and (?:\d+|two|three|four|an? |my |their ) ?(?:other )?(?:creatures?|\d+/\d+)\b)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 val k = r.groupValues[2].lowercase()
                 val kind = if (k == "card") "permanent" else if (k.contains('/')) "creature" else k
                 val size = Regex("""\d+/\d+""").find(k)?.value
                 "${r.groupValues[1]} says-${if (size != null) "$size~" else ""}${r.groupValues[3].trim().lowercase().replace(' ', '_')} $kind" } }
-        t2 = t2.let { t0 -> Regex("""\b(my|their|his|her) ((?:\d+/\d+ )?creature|permanent|artifact|enchantment|land|\d+/\d+) says (.+?)(?=,|\?|$)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
+        t2 = t2.let { t0 -> Regex("""\b(my|their|his|her) ((?:\d+/\d+ )?creature|permanent|artifact|enchantment|land|planeswalker|\d+/\d+) says (.+?)(?=,|\?|$)""", RegexOption.IGNORE_CASE).replace(t0) { r ->
                 val k = r.groupValues[2].lowercase()
                 val size = Regex("""\d+/\d+""").find(k)?.value
                 "${if (r.groupValues[1].lowercase() == "my") "i have" else "they have"} a says-${if (size != null) "$size~" else ""}${r.groupValues[3].trim().lowercase().replace(' ', '_')} ${if (k.contains('/')) "creature" else k}" } }
+        // "a token that says it's a 1/1 with flying": a token given by its size and keywords.
+        t2 = Regex("""\b(an?|my|their|his|her|the) token that (?:says|reads) (?:it's|it is|its) an? (\d+/\d+)(?: (?:with|that has) ([a-z]+(?: [a-z]+)?(?:(?:,| and|, and) [a-z]+(?: [a-z]+)?)*))?(?=,|\?|$)""", RegexOption.IGNORE_CASE).replace(t2) { r -> "${r.groupValues[1]} ${r.groupValues[2]} ${r.groupValues[3].replace(Regex(""",? and |, """), " ").trim()} token".replace("  ", " ") }
         t2 = t2.replace(Regex("""\bthey counterspell it\b""", RegexOption.IGNORE_CASE), "they counter it")
         t2 = t2.replace(Regex("""\bdo (they|i|we) (?:still |even |also )?gain (?:any )?life\b(?! if)""", RegexOption.IGNORE_CASE), "how much life do $1 gain")
         t2 = t2.replace(Regex("""(?<=, )how much damage\??$""", RegexOption.IGNORE_CASE), "how much damage do they take")

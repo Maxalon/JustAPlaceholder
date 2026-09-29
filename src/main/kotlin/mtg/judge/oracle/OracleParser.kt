@@ -1766,8 +1766,8 @@ object OracleParser {
                 w == "attacking" -> attacking = true
                 w == "tapped" -> tapped = true
                 w == "untapped" -> tapped = false
-                w == "token" -> token = true
-                w == "nontoken" -> token = false
+                w == "token" || w == "tokens" -> token = true
+                w == "nontoken" || w == "nontokens" -> token = false
                 w == "legendary" -> legendary = true
                 w == "nonlegendary" -> legendary = false
                 w == "enchanted" || w == "equipped" -> attachedToSource = true
@@ -1791,6 +1791,8 @@ object OracleParser {
             else -> Kind.CREATURE
         }
         if (kinds.isEmpty() && anySource) kinds += Kind.PERMANENT
+        // "destroy all tokens": a token is a permanent, whatever else it is (111.1).
+        if (kinds.isEmpty() && token != null) kinds += Kind.PERMANENT
         if (kinds.isEmpty() && notKinds.isNotEmpty()) kinds += defaultKind ?: Kind.PERMANENT
         if (kinds.isEmpty() && defaultKind != null) kinds += defaultKind
         if (kinds.isEmpty() && notSubtypes.isNotEmpty()) kinds += defaultKind ?: Kind.CREATURE

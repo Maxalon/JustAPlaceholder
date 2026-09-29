@@ -20764,5 +20764,107 @@
 "expect": [
 "a spell that says \"destroy target creature with flying\" can't target a 2/2 creature (not a creature with flying)."
 ]
+},
+{
+"id": "says-planeswalker-plus-one",
+"text": "i have a planeswalker that says +1 draw a card with 3 loyalty, i use it, how much loyalty does it have",
+"expect": [
+"You draw 1 card.",
+"a planeswalker that says \"+1 draw a card\" has 4 loyalty counters."
+]
+},
+{
+"id": "pw-attacked-3-loyalty-no-block",
+"text": "they attack my planeswalker with a 4/4, it has 3 loyalty, i don't block, what happens",
+"expect": [
+"a planeswalker has 0 loyalty.",
+"a planeswalker: the battlefield → your graveyard."
+]
+},
+{
+"id": "token-says-1-1-flying-destroy-all-tokens",
+"text": "i have a token that says it's a 1/1 with flying, they cast a spell that says destroy all tokens, what happens",
+"expect": [
+"a 1/1 token: the battlefield → your graveyard.",
+"a 1/1 token ceases to exist; it doesn't stay in the zone it went to."
+]
+},
+{
+"id": "flying-token-blocked-by-ground",
+"text": "i have a 1/1 flying token, can their 2/2 block it",
+"expect": [
+"a 2/2 creature can't block a 1/1 token (flying).",
+"opponent takes 1 damage."
+]
+},
+{
+"id": "says-remove-all-counters",
+"text": "my creature has three +1/+1 counters and they cast a spell that says remove all counters from target creature, how big is it",
+"expect": [
+"a creature loses all its counters (3 +1/+1).",
+"a creature is 1/1."
+]
+},
+{
+"id": "says-artifact-creature-enters-gain-1",
+"text": "i have an artifact that says whenever a creature enters you gain 1 life, i cast two creatures, how much life do i gain",
+"expect": [
+"You gain 1 life. (×2)",
+"You gain 2 life in all."
+]
+},
+{
+"id": "says-draw-trigger-pump",
+"text": "they have a creature that says whenever you draw a card this creature gets +1/+1 until end of turn, they draw 2, how big is it",
+"expect": [
+"opponent draws 2 cards.",
+"a creature that says \"whenever you draw a card this creature gets +1/+1 until end of turn\" is 4/4 (2/2 base, +2/+2 until end of turn)."
+]
+},
+{
+"id": "says-protection-from-red-bolt",
+"text": "i have a creature that says it has protection from red, they bolt it, what happens",
+"expect": [
+"Lightning Bolt can't target a creature that says \"it has protection from red\"."
+],
+"cite": [
+"702.16b"
+]
+},
+{
+"id": "says-flying-keyword-only",
+"text": "i have a 2/2 creature that says flying, can their 3/3 block it",
+"expect": [
+"a 3/3 creature can't block a 2/2 creature that says \"flying\" (flying).",
+"opponent takes 2 damage."
+]
+},
+{
+"id": "lifelink-blocked-gain",
+"text": "they have a 2/2 with lifelink and i block with a 3/3, how much life do they gain",
+"expect": [
+"opponent gains 2 life in all.",
+"a 2/2 creature with lifelink: the battlefield → opponent's graveyard."
+]
+},
+{
+"id": "says-upkeep-lose-1-from-1-life",
+"text": "i have an enchantment that says at the beginning of your upkeep you lose 1 life, i'm at 1, what happens on my upkeep",
+"expect": [
+"You lose 1 life.",
+"You lose the game.",
+"You go from 1 to 0 life."
+]
+},
+{
+"id": "says-exile-permanent-token",
+"text": "they cast a spell that says exile target permanent on my token, does it come back",
+"expect": [
+"a 1/1 token: the battlefield → exile.",
+"a 1/1 token ceases to exist; it doesn't stay in the zone it went to."
+],
+"cite": [
+"704.5d"
+]
 }
 ]

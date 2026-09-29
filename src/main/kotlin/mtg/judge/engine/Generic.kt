@@ -5,6 +5,7 @@ import mtg.judge.oracle.OracleParser
 /** Stand-in cards for things described rather than named: "a spell", "a creature", "a 5/5 Zombie token with flying". */
 object Generic {
     private val colorMap = mapOf("white" to "W", "blue" to "U", "black" to "B", "red" to "R", "green" to "G")
+    private val tokenKeywordWords = setOf("flying", "reach", "trample", "lifelink", "deathtouch", "haste", "vigilance", "hexproof", "indestructible", "menace", "flash", "defender", "infect", "wither", "shroud")
     private val tokenRe = Regex("""^(?:(\d+)/(\d+) )?((?:(?:white|blue|black|red|green|colorless) )*)((?:[a-z]+ )*?)(?:(creature|artifact|enchantment|artifact creature) )?tokens?(?: with (.+))?$""")
 
     /** "5/5 zombie token", "2/2 zombie creature token", "treasure token", "1/1 white soldier creature token with flying". */
@@ -15,11 +16,14 @@ object Generic {
         val n = n1.removePrefix("legendary ").replace(Regex("""\s+named .+$"""), "")
         val m = tokenRe.matchEntire(n) ?: return null
         val colors = m.groupValues[3].trim().split(' ').filter { it.isNotEmpty() }.mapNotNull { colorMap[it] }.joinToString("")
-        val subs = m.groupValues[4].trim().split(' ').filter { it.isNotEmpty() }.joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+        // "1/1 flying token": a keyword said where a creature type would go is a keyword, not a type named Flying.
+        val subWords = m.groupValues[4].trim().split(' ').filter { it.isNotEmpty() }
+        val kwWords = subWords.filter { it in tokenKeywordWords }
+        val subs = (subWords - kwWords.toSet()).joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
         val creature = m.groupValues[1].isNotEmpty() || m.groupValues[5].contains("creature")
         val artifact = m.groupValues[5].contains("artifact") || subs in setOf("Treasure", "Food", "Clue", "Blood", "Powerstone", "Map")
         val typeLine = "Token " + (if (legendary) "Legendary " else "") + listOfNotNull(if (artifact) "Artifact" else null, if (creature) "Creature" else null, if (m.groupValues[5] == "enchantment") "Enchantment" else null).joinToString(" ").ifEmpty { "Permanent" } + (if (subs.isEmpty()) "" else " — $subs")
-        val keywords = m.groupValues[6].split(Regex("""\s*,\s*|\s+and\s+""")).map { it.trim() }.filter { it.isNotEmpty() }
+        val keywords = kwWords + m.groupValues[6].split(Regex("""\s*,\s*|\s+and\s+""")).map { it.trim() }.filter { it.isNotEmpty() }
         val text = when (subs) { "Treasure" -> "{T}, Sacrifice this token: Add one mana of any color."; "Food" -> "{2}, {T}, Sacrifice this token: You gain 3 life."; "Clue" -> "{2}, Sacrifice this token: Draw a card."; else -> "" }
         val kwLine = keywords.joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } }
         return OracleParser.parse("generic-token-$n", named?.let { it.split(' ').joinToString(" ") { w -> w.replaceFirstChar { c -> c.uppercase() } } } ?: if (subs.isNotEmpty()) "$subs token" else if (m.groupValues[1].isNotEmpty()) "a ${m.groupValues[1]}/${m.groupValues[2]} token" else "a token", typeLine, null, 0.0, colors,
@@ -51,7 +55,7 @@ object Generic {
         if (n in setOf("land destruction spell", "land destruction")) return OracleParser.parse("generic-land-destruction", "a land destruction spell", "Sorcery", "{1}{R}{R}", 3.0, "R", null, null, emptyList(), "Destroy target land.")
         if (n in setOf("dies-draw enchantment", "dies draw enchantment")) return OracleParser.parse("generic-dies-draw", "a dies-draw enchantment", "Enchantment", "{1}{B}", 2.0, "B", null, null, emptyList(), "Whenever a creature dies, draw a card.")
         // "a creature that says when it enters draw a card": a permanent whose rules text is the words given.
-        Regex("""^(?:(\d+)/(\d+) )?(creature|artifact|enchantment|permanent|land) that says (.+)$""").find(n)?.let { m ->
+        Regex("""^(?:(\d+)/(\d+) )?(creature|artifact|enchantment|permanent|land|planeswalker) that says (.+)$""").find(n)?.let { m ->
             val kind = m.groupValues[3]; val raw = m.groupValues[4].replace('_', ' ').trim().trim('"')
             val self = if (kind == "creature") "this creature" else "this permanent"
             var t = raw.replace(Regex("""^(when(?:ever)?) it\b"""), "$1 $self").replace(Regex("""^it (can't|can|has|gets|deals|doesn't)\b"""), "${self.replaceFirstChar { c -> c.uppercase() }} $1")
@@ -69,17 +73,23 @@ object Generic {
             t = t.replace(Regex("""\b(draw (?:a|\d+|two|three) cards?) and (?:you )?(lose|gain) (\d+) life$"""), "$1. You $2 $3 life")
             // "add two mana" / "add one mana": colorless, in symbols.
             t = t.replace(Regex("""\badd (one|two|three|\d) mana(?! of)""")) { w -> "add " + "{C}".repeat(when (w.groupValues[1]) { "one" -> 1; "two" -> 2; "three" -> 3; else -> w.groupValues[1].toInt() }) }
-            if (!t.contains(',')) t = t.replace(Regex("""^((?:when|whenever|at the beginning of) \S+(?: \S+)*?) (draw|create|put|sacrifice|destroy|exile|return|tap|untap|each|it (?:gets|gains|deals|becomes)|this (?:creature|permanent) (?:deals|gets|gains|becomes)|you (?:draw|gain|lose|may|get|create|put|sacrifice|discard)|that player|its controller|target)\b"""), "$1, $2")
+            // "whenever you draw a card this creature gets +1/+1": the comma goes before the effect, not after the "you" who draws.
+            if (!t.contains(',')) t = t.replace(Regex("""^((?:when|whenever|at the beginning of) \S+(?: \S+)*?)(?<! you) (draw|create|put|sacrifice|destroy|exile|return|tap|untap|each|it (?:gets|gains|deals|becomes)|this (?:creature|permanent) (?:deals|gets|gains|becomes)|you (?:draw|gain|lose|may|get|create|put|sacrifice|discard)|that player|its controller|target)\b"""), "$1, $2")
             // "whenever this creature attacks, it gets +1/+0": a pump from a trigger lasts until end of turn unless said otherwise.
             if (Regex("""^(?:when|whenever|at)\b.*\b(?:gets?|gains?) [+-]\d+/[+-]\d+$""").containsMatchIn(t)) t += " until end of turn"
+            // "it has protection from red", "it has flying and first strike": the keywords themselves.
+            Regex("""^(?:it|this creature|this permanent) has (.+)$""", RegexOption.IGNORE_CASE).matchEntire(t)?.let { h -> val rest = h.groupValues[1].replace(Regex(""",? and """), ", "); if (Regex("""^(?:[a-z]+(?: [a-z]+)?|protection from [a-z]+)(?:, (?:[a-z]+(?: [a-z]+)?|protection from [a-z]+))*$""").matches(rest)) t = rest }
+            // "+1 draw a card" on a planeswalker: a loyalty ability, in card wording.
+            if (kind == "planeswalker") t = t.replace(Regex("""^([+\u2212-]\d+|0):? (.+)$""")) { w -> "${w.groupValues[1].replace('-', '\u2212')}: ${w.groupValues[2].replaceFirstChar { c -> c.uppercase() }}" }
             val keywordOnly = Regex("""^(?:flying|reach|trample|lifelink|deathtouch|first strike|double strike|haste|vigilance|hexproof|indestructible|menace|flash|defender|infect|wither|shroud|protection from [a-z]+)(?:, (?:flying|reach|trample|lifelink|deathtouch|first strike|double strike|haste|vigilance|hexproof|indestructible|menace|flash|defender|infect|wither|shroud|protection from [a-z]+))*$""").matches(t)
-            var text = if (keywordOnly) "" else t.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
+            // Keywords alone are a keyword line ("Protection from red"), read the way a printed card's is.
+            var text = if (keywordOnly) t.split(", ").joinToString(", ") { k -> k.replaceFirstChar { c -> c.uppercase() } } else t.replaceFirstChar { it.uppercase() }.let { if (it.endsWith(".")) it else "$it." }
             // A land said by its words taps for mana unless its words say what it adds: "a land that says it enters tapped".
             if (kind == "land" && !Regex("""\badd\b""", RegexOption.IGNORE_CASE).containsMatchIn(text)) text = (text + "\n{T}: Add {C}.").trim()
             val kws = if (keywordOnly) t.split(", ").map { k -> k.replaceFirstChar { c -> c.uppercase() } } else emptyList()
-            val type = when (kind) { "creature" -> "Creature"; "artifact" -> "Artifact"; "land" -> "Land"; else -> "Enchantment" }
+            val type = when (kind) { "creature" -> "Creature"; "artifact" -> "Artifact"; "land" -> "Land"; "planeswalker" -> "Planeswalker"; else -> "Enchantment" }
             val pw = m.groupValues[1].ifEmpty { if (kind == "creature") "2" else "" }.ifEmpty { null }; val tf = m.groupValues[2].ifEmpty { if (kind == "creature") "2" else "" }.ifEmpty { null }
-            return OracleParser.parse("generic-says-$kind-${m.groupValues[1]}-${raw.take(60)}", "${if (m.groupValues[1].isNotEmpty()) "a ${m.groupValues[1]}/${m.groupValues[2]} " else if (kind.first() in "aeiou") "an " else "a "}$kind that says \"$raw\"", type, if (kind == "land") null else "{2}", if (kind == "land") 0.0 else 2.0, "", pw, tf, kws, text)
+            return OracleParser.parse("generic-says-$kind-${m.groupValues[1]}-${raw.take(60)}", "${if (m.groupValues[1].isNotEmpty()) "a ${m.groupValues[1]}/${m.groupValues[2]} " else if (kind.first() in "aeiou") "an " else "a "}$kind that says \"$raw\"", type, if (kind == "land") null else "{2}", if (kind == "land") 0.0 else 2.0, "", pw, tf, kws, text, loyalty = if (kind == "planeswalker") "3" else null)
         }
         // "a spell that says destroy target creature with power 2 or less": the words given are its rules text.
         Regex("""^(spell|instant|sorcery) that says (.+)$""").find(n)?.let { m ->
