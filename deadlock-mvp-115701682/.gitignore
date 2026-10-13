@@ -1,0 +1,3 @@
+data/slice*.json
+data/raw_vindicta_apollo.json
+__pycache__/
